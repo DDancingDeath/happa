@@ -2,11 +2,8 @@ const fs = require('fs');
 const path = require('path');
 
 // `npm run typecheck` checks only files that start with `// @ts-check` (#71). Every
-// www/js/utils file is checked except these; take a file off the list when it is.
-const NOT_YET = [
-    'anomalies.js', 'bill-checks.js', 'month-snapshots.js', 'number-checks.js', 'product-traffic.js', 'qr-code.js',
-    'rate-trends.js', 'statements.js'
-];
+// www/js/utils file is checked, so a new one must start with it too.
+const NOT_YET = [];
 const UTILS = 'www/js/utils';
 
 test('every www/js/utils file not listed as not yet is type-checked, and the list holds no checked file', () => {

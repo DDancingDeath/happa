@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Save-time / live bill checks (#37, #188) as one pure rule engine.
  *
@@ -50,45 +51,60 @@ export const DEFAULT_THRESHOLDS = Object.freeze({
 });
 
 /** Rate list on an item for each bill kind (see utils/rate-history.js RATE_FIELDS). */
+/** @type {Object<string, string>} */
 const ITEM_RATE_FIELD = { purchase: 'rates', retail: 'saleRates', wholesale: 'wholesaleRates' };
 
 /** Rule ids an owner/manager may never override: saving them would corrupt money/stock. */
 const HARD_RULES = new Set(['payment-none', 'party-required', 'payment-split', 'qty-invalid', 'rate-invalid']);
 
-const normalize = (s) => (s == null ? '' : String(s).trim().toLowerCase());
-const fmtRs = (n) => formatRupees(n, { exact: true });
-const fmtKg = (n) => formatKg(n);
+const normalize = (/** @type {*} */ s) => (s == null ? '' : String(s).trim().toLowerCase());
+const fmtRs = (/** @type {number} */ n) => formatRupees(n, { exact: true });
+const fmtKg = (/** @type {number} */ n) => formatKg(n);
 
 /**
  * Thresholds with blank / invalid / non-positive values replaced by the defaults.
- * @param {Object} [raw]
+ * @param {Rec} [raw]
  * @returns {typeof DEFAULT_THRESHOLDS}
  */
 export function normalizeThresholds(raw = {}) {
     const out = { ...DEFAULT_THRESHOLDS };
     for (const key of Object.keys(DEFAULT_THRESHOLDS)) {
         const n = toMoney(raw?.[key]);
-        if (n !== null && n > 0) out[key] = n;
+        if (n !== null && n > 0) /** @type {Rec} */ (out)[key] = n;
     }
     return out;
 }
 
+/**
+ * @param {string} id
+ * @param {string} field
+ * @param {'block'|'warn'} severity
+ * @param {string} en
+ * @param {string} hi
+ * @param {Rec} [extra]
+ * @returns {Rec}
+ */
 function issue(id, field, severity, en, hi, extra = {}) {
     return { id, field, severity, en, hi, overridable: severity === 'block' && !HARD_RULES.has(id), ...extra };
 }
 
-/** Bill-line key used to compare lines and look up rates (itemId, else name). */
+/**
+ * Bill-line key used to compare lines and look up rates (itemId, else name).
+ * @param {Rec} item
+ * @returns {string}
+ */
 function lineKey(item) {
     return item?.itemId || normalize(readLineItem(item).name);
 }
 
 /**
  * Most recent rate per item from saved bills of the same kind (newest wins).
- * @param {Array<Object>} bills
- * @param {string|null} skipId - bill being edited (its own old rate is not "usual")
+ * @param {Array<Rec>} bills
+ * @param {?string|undefined} skipId - bill being edited (its own old rate is not "usual")
  * @returns {Map<string, number>}
  */
 function lastRates(bills, skipId) {
+    /** @type {Map<string, {ts: number, rate: number}>} */
     const best = new Map();
     for (const bill of Array.isArray(bills) ? bills : []) {
         if (!bill || (skipId && bill.id === skipId) || !Array.isArray(bill.items)) continue;
@@ -104,6 +120,11 @@ function lastRates(bills, skipId) {
     return new Map([...best].map(([k, v]) => [k, v.rate]));
 }
 
+/**
+ * @param {Rec} line
+ * @param {Array<Rec>} catalogue
+ * @returns {?Rec}
+ */
 function findItem(line, catalogue) {
     if (line?.itemId) {
         const byId = catalogue.find(i => i.id === line.itemId);
@@ -113,17 +134,28 @@ function findItem(line, catalogue) {
     return name ? catalogue.find(i => normalize(i.name) === name || normalize(i.hindiName) === name) || null : null;
 }
 
-/** Usual rate for a line: last billed rate of this kind, else the item's saved rate. */
+/**
+ * Usual rate for a line: last billed rate of this kind, else the item's saved rate.
+ * @param {Rec} line
+ * @param {Rec} ctx
+ * @param {Map<string, number>} rates
+ * @returns {number|null|undefined}
+ */
 function usualRate(line, ctx, rates) {
     const last = rates.get(lineKey(line));
-    if (last > 0) return last;
+    if (/** @type {number} */ (last) > 0) return last;
     const item = findItem(line, ctx.catalogue);
     const field = ITEM_RATE_FIELD[ctx.kind];
     const saved = (Array.isArray(item?.[field]) ? item[field] : []).map(Number).find(r => Number.isFinite(r) && r > 0);
     return saved || null;
 }
 
-/** Average stock cost for a line (stock rate), or null when unknown. */
+/**
+ * Average stock cost for a line (stock rate), or null when unknown.
+ * @param {Rec} line
+ * @param {Rec} ctx
+ * @returns {?number}
+ */
 function avgCost(line, ctx) {
     const item = findItem(line, ctx.catalogue);
     const keys = [item?.id, line?.itemId, readLineItem(line).name, item?.name].filter(Boolean);
@@ -134,8 +166,17 @@ function avgCost(line, ctx) {
     return null;
 }
 
-/** Rate checks shared by bill lines and the line being typed. */
+/**
+ * Rate checks shared by bill lines and the line being typed.
+ * @param {Rec} line
+ * @param {string} field
+ * @param {Rec} ctx
+ * @param {Map<string, number>} rates
+ * @param {Rec} [extra]
+ * @returns {Array<Rec>}
+ */
 function rateIssues(line, field, ctx, rates, extra) {
+    /** @type {Array<Rec>} */
     const out = [];
     // Legacy lines without a stored rate (total only) are not judged.
     if (toMoney(line?.rate) === null) return out;
@@ -172,6 +213,12 @@ function rateIssues(line, field, ctx, rates, extra) {
     return out;
 }
 
+/**
+ * @param {Rec} line
+ * @param {string} field
+ * @param {Rec} [extra]
+ * @returns {?Rec}
+ */
 function qtyIssue(line, field, extra) {
     if (toMoney(line?.qty) === null && toMoney(line?.quantity) === null) return null;
     const { qty, name } = readLineItem(line);
@@ -181,6 +228,12 @@ function qtyIssue(line, field, extra) {
         `${name ? name + ': ' : ''}वज़न/मात्रा 0 से ज़्यादा होनी चाहिए`, extra);
 }
 
+/**
+ * @param {Array<Rec>} items
+ * @param {Rec} ctx
+ * @param {Rec} [extraLine] the line being typed
+ * @returns {Array<Rec>}
+ */
 function oversellIssues(items, ctx, extraLine) {
     if (ctx.kind === 'purchase') return [];
     const lines = extraLine ? [...items, extraLine] : items;
@@ -210,6 +263,10 @@ function oversellIssues(items, ctx, extraLine) {
  * rate keeps it at 0, so "no cost now" can't tell a never-bought item from a bought
  * one and a block would stop members selling bought goods. While stock is still loading no cost is known yet:
  * every line warns.
+ * @param {Array<Rec>} items
+ * @param {Rec} ctx
+ * @param {Rec} draft
+ * @returns {Array<Rec>}
  */
 function costUnknownIssues(items, ctx, draft) {
     if (ctx.kind !== 'wholesale' || draft.isEdit) return [];
@@ -235,7 +292,11 @@ function costUnknownIssues(items, ctx, draft) {
     });
 }
 
-/** Multiset signature of bill lines for duplicate detection. */
+/**
+ * Multiset signature of bill lines for duplicate detection.
+ * @param {*} items
+ * @returns {string}
+ */
 function itemsSignature(items) {
     return (Array.isArray(items) ? items : [])
         .map(it => { const l = readLineItem(it); return `${lineKey(it)}|${round2(l.qty)}|${round2(l.rate)}`; })
@@ -243,6 +304,11 @@ function itemsSignature(items) {
         .join(';');
 }
 
+/**
+ * @param {Rec} draft
+ * @param {Rec} ctx
+ * @returns {?Rec}
+ */
 function duplicateIssue(draft, ctx) {
     if (draft.isEdit) return null;
     const windowMs = ctx.thresholds.duplicateWindowSec * 1000;
@@ -250,7 +316,7 @@ function duplicateIssue(draft, ctx) {
     const sig = itemsSignature(draft.items);
     const total = round2(draft.total);
     const ref = Number(draft.enteredAt) || ctx.now;
-    const dup = (ctx.recentBills || []).find(b => {
+    const dup = (ctx.recentBills || []).find((/** @type {?Rec} */ b) => {
         if (!b || (draft.id && b.id === draft.id)) return false;
         // When it was entered (#147: a back-dated bill's timestamp is its day)
         const ts = Number(b.enteredAt) || Number(b.timestamp) || parseAnyBillDate(b.date)?.getTime();
@@ -266,17 +332,23 @@ function duplicateIssue(draft, ctx) {
         `यही बिल ${secs} सेकंड पहले सेव हुआ था${no} — क्या यह दोबारा तो नहीं?`);
 }
 
+/**
+ * @param {Rec} draft
+ * @param {Rec} ctx
+ * @returns {Array<Rec>}
+ */
 function dateIssues(draft, ctx) {
     const d = parseAnyBillDate(draft.date);
     if (!d) return [];
     const ref = Number(draft.enteredAt) || ctx.now;
+    /** @type {Array<Rec>} */
     const out = [];
     if (d.getTime() - ref > ctx.thresholds.maxFutureMin * 60000) {
         out.push(issue('date-future', 'date', 'warn',
             'Bill date is in the future — check the phone date/time',
             'बिल की तारीख़ आगे की है — फ़ोन की तारीख़/समय जाँचें'));
     }
-    const days = Math.round((startOfLocalDay(ref).getTime() - startOfLocalDay(d).getTime()) / 86400000);
+    const days = Math.round((/** @type {Date} */ (startOfLocalDay(ref)).getTime() - /** @type {Date} */ (startOfLocalDay(d)).getTime()) / 86400000);
     // Q20 (backdateDays) for the owner; anyone else's bill is flagged from 1 day back (#147)
     const limit = ctx.ownerEntry === false ? 0 : ctx.thresholds.backdateDays;
     if (days > limit) {
@@ -287,10 +359,15 @@ function dateIssues(draft, ctx) {
     return out;
 }
 
+/**
+ * @param {Rec} draft
+ * @returns {Array<Rec>}
+ */
 function paymentIssues(draft) {
     const cash = round2(draft.payment?.cash);
     const online = round2(draft.payment?.online);
     const due = round2(draft.payment?.due);
+    /** @type {Array<Rec>} */
     const out = [];
     // Order matches the save path before #37: no payment → name for Due → split.
     if (!draft.isEdit && cash === 0 && online === 0 && due === 0) {
@@ -320,20 +397,21 @@ function paymentIssues(draft) {
  * @param {'purchase'|'retail'|'wholesale'} draft.kind
  * @param {boolean} [draft.isEdit]
  * @param {string|null} [draft.id] - bill id (pending id for a new bill)
- * @param {Array<Object>} draft.items - bill lines (any stored shape)
+ * @param {Array<Rec>} draft.items - bill lines (any stored shape)
  * @param {number} draft.total - bill total (purchase: after labour)
  * @param {{cash?: number, online?: number, due?: number}} draft.payment
  * @param {string} [draft.partyName]
  * @param {*} [draft.date] - bill date (any stored shape)
  * @param {number} [draft.enteredAt] - when the bill was entered (ms); defaults to ctx.now
- * @param {{itemId?: string, name?: string, rate?: (number|null), qty?: (number|null)}|null} [draft.entry]
+ * @param {{itemId?: string, name?: string, rate?: (number|string|null), qty?: (number|string|null)}|null} [draft.entry] typed values may still be text
  * @param {ReturnType<typeof buildCheckContext>} ctx
- * @returns {Array<Object>} issues, blocks first
+ * @returns {Array<Rec>} issues, blocks first
  */
 export function evaluateBill(draft, ctx) {
-    const c = { ...ctx, kind: draft.kind, thresholds: normalizeThresholds(ctx?.thresholds), catalogue: ctx?.catalogue || [] };
+    const c = /** @type {Rec} */ ({ ...ctx, kind: draft.kind, thresholds: normalizeThresholds(ctx?.thresholds), catalogue: ctx?.catalogue || [] });
     const items = Array.isArray(draft.items) ? draft.items.filter(Boolean) : [];
     const rates = lastRates(c.recentBills, draft.isEdit ? draft.id : null);
+    /** @type {Array<Rec>} */
     const out = [];
 
     const entry = draft.entry;
@@ -363,10 +441,11 @@ export function evaluateBill(draft, ctx) {
     if (items.length > 0 || draft.isEdit) out.push(...paymentIssues(draft));
 
     const entryQty = toMoney(entry?.qty);
-    if (entry && entryQty > 0 && c.kind === 'wholesale') {
+    if (entry && /** @type {number} */ (entryQty) > 0 && c.kind === 'wholesale') {
         out.push(...oversellIssues(items, c, entry).filter(i => i.field === 'entry.qty'));
     }
 
+    /** @type {Object<string, number>} */
     const rank = { block: 0, warn: 1 };
     return out.map((it, order) => ({ it, order }))
         .sort((a, b) => rank[a.it.severity] - rank[b.it.severity] || a.order - b.order)
@@ -374,12 +453,12 @@ export function evaluateBill(draft, ctx) {
 }
 
 /** True for issues about the line being typed (shown live, never gate Save). */
-export const isEntryIssue = (i) => String(i.field).startsWith('entry.');
+export const isEntryIssue = (/** @type {Rec} */ i) => String(i.field).startsWith('entry.');
 
 /**
  * Split issues for the save decision.
- * @param {Array<Object>} issues
- * @returns {{blocks: Array<Object>, hardBlocks: Array<Object>, warns: Array<Object>}}
+ * @param {Array<Rec>} issues
+ * @returns {{blocks: Array<Rec>, hardBlocks: Array<Rec>, warns: Array<Rec>}}
  */
 export function saveGate(issues) {
     const bill = (issues || []).filter(i => !isEntryIssue(i));
@@ -398,14 +477,18 @@ export function bannerText(count) {
         : { en: `${count} problems — check before saving`, hi: `${count} समस्याएँ — सेव करने से पहले देखें` };
 }
 
-/** Owner / manager may "Save anyway" past an overridable block. */
+/**
+ * Owner / manager may "Save anyway" past an overridable block.
+ * @param {*} role
+ * @returns {boolean}
+ */
 export function canOverride(role) {
     return role === 'owner' || role === 'manager';
 }
 
 /**
  * Accepted warnings to store on the bill as `flags`.
- * @param {Array<Object>} warns
+ * @param {Array<Rec>} warns
  * @param {string} by - uid
  * @param {number} at - ms
  * @returns {Array<{rule: string, en: string, hi: string, by: string, at: number}>}
@@ -416,7 +499,7 @@ export function toFlags(warns, by, at) {
 
 /**
  * Owner/manager overrides of blocks to store on the bill as `overrides` (one per rule).
- * @param {Array<Object>} blocks
+ * @param {Array<Rec>} blocks
  * @param {string} reason
  * @param {string} by - uid
  * @param {number} at - ms
@@ -428,17 +511,17 @@ export function toOverrides(blocks, reason, by, at) {
         .map(b => ({ rule: b.id, reason: String(reason || '').trim(), by, at }));
 }
 
-const historyFor = (s, kind) => (kind === 'purchase' ? s.purchaseHistory : kind === 'retail' ? s.retailSalesHistory : s.salesHistory);
+const historyFor = (/** @type {Rec} */ s, /** @type {string} */ kind) => (kind === 'purchase' ? s.purchaseHistory : kind === 'retail' ? s.retailSalesHistory : s.salesHistory);
 
 /**
  * Bill lines that current stock already reflects for the bill being saved:
  * the saved copy of a bill being edited, or a new bill whose earlier save
  * attempt already reached local history (and stock) before failing (#70 retry).
  * Counting them back avoids blocking a bill against its own quantities.
- * @param {Object} state - AppState-like
+ * @param {Rec} state - AppState-like
  * @param {'purchase'|'retail'|'wholesale'} kind
- * @param {{editingBill?: Object|null, draftId?: string|null}} [opts]
- * @returns {Array<Object>}
+ * @param {{editingBill?: ?Rec, draftId?: string|null}} [opts]
+ * @returns {Array<Rec>}
  */
 export function stockCreditFor(state, kind, { editingBill = null, draftId = null } = {}) {
     const history = historyFor(state || {}, kind);
@@ -449,10 +532,10 @@ export function stockCreditFor(state, kind, { editingBill = null, draftId = null
 
 /**
  * Build the rule context from app state (pure: pass AppState in).
- * @param {Object} state - AppState-like ({ items, stock, stockReady, purchaseHistory, retailSalesHistory, salesHistory, stockAdjustments, userRole, settings })
+ * @param {Rec} state - AppState-like ({ items, stock, stockReady, purchaseHistory, retailSalesHistory, salesHistory, stockAdjustments, userRole, settings })
  * @param {'purchase'|'retail'|'wholesale'} kind
- * @param {{now?: number, editingBill?: Object|null, draftId?: string|null}} [opts]
- * @returns {Object}
+ * @param {{now?: number, editingBill?: ?Rec, draftId?: string|null}} [opts]
+ * @returns {Rec}
  */
 export function buildCheckContext(state, kind, { now = Date.now(), editingBill = null, draftId = null } = {}) {
     const s = state || {};
@@ -480,11 +563,12 @@ export function buildCheckContext(state, kind, { now = Date.now(), editingBill =
  * Cash count against the expected drawer (Q19 bands). Never blocks: the
  * count is what it is; a big gap or a negative expected drawer is flagged.
  * @param {{expected: number, counted: number}} input
- * @param {Object} [thresholds]
+ * @param {Rec} [thresholds]
  * @returns {Rec[]}
  */
 export function evaluateCashCount({ expected, counted }, thresholds) {
     const t = normalizeThresholds(thresholds);
+    /** @type {Rec[]} */
     const out = [];
     const exp = round2(expected);
     if (exp < 0) {
@@ -508,8 +592,8 @@ export function evaluateCashCount({ expected, counted }, thresholds) {
 /**
  * Stock adjustment size check (Q17): above the limit it gets a flag.
  * @param {number} qtyKg - signed adjustment
- * @param {Object} [thresholds]
- * @returns {Array<Object>}
+ * @param {Rec} [thresholds]
+ * @returns {Array<Rec>}
  */
 export function evaluateStockAdjustment(qtyKg, thresholds) {
     const t = normalizeThresholds(thresholds);

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Month snapshots (`monthStats/{YYYY-MM}`) for comparisons with
  * last year and the 13-month profit chart without loading old bills
@@ -16,23 +17,37 @@ export const TOP_PARTIES = 50;
 /** Snapshots are read from this many years back (Money's loadSnapshots); older ones are never compared with. */
 export const SNAPSHOT_YEARS_BACK = 2;
 
-const pad = (x) => String(x).padStart(2, '0');
+const pad = (/** @type {number} */ x) => String(x).padStart(2, '0');
 
-/** 'YYYY-MM' of a local time. */
+/**
+ * 'YYYY-MM' of a local time.
+ * @param {number} ms
+ * @returns {string}
+ */
 export const monthKeyOf = (ms) => {
     const d = new Date(ms);
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
 };
 
-/** [from, to) of a 'YYYY-MM' key. */
+/**
+ * [from, to) of a 'YYYY-MM' key.
+ * @param {*} key
+ * @returns {{from: number, to: number}}
+ */
 export function monthBounds(key) {
     const [y, m] = String(key).split('-').map(Number);
     return { from: new Date(y, m - 1, 1).getTime(), to: new Date(y, m, 1).getTime() };
 }
 
-/** 'YYYY-MM' keys of every month that overlaps [from, to), oldest first. */
+/**
+ * 'YYYY-MM' keys of every month that overlaps [from, to), oldest first.
+ * @param {number} from
+ * @param {number} to
+ * @returns {string[]}
+ */
 export function monthKeysBetween(from, to) {
     if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return [];
+    /** @type {string[]} */
     const out = [];
     const d0 = new Date(from);
     for (let d = new Date(d0.getFullYear(), d0.getMonth(), 1); d.getTime() < to; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
@@ -41,13 +56,22 @@ export function monthKeysBetween(from, to) {
     return out;
 }
 
-/** First month key read by loadSnapshots (SNAPSHOT_YEARS_BACK years before the month of `now`). */
+/**
+ * First month key read by loadSnapshots (SNAPSHOT_YEARS_BACK years before the month of `now`).
+ * @param {number} now
+ * @returns {string}
+ */
 export function snapshotsFrom(now) {
     const d = new Date(now);
     return monthKeyOf(new Date(d.getFullYear() - SNAPSHOT_YEARS_BACK, d.getMonth(), 1).getTime());
 }
 
-/** The last `n` month keys ending with the month of `now`, oldest first. */
+/**
+ * The last `n` month keys ending with the month of `now`, oldest first.
+ * @param {number} now
+ * @param {number} n
+ * @returns {string[]}
+ */
 export function lastMonthKeys(now, n) {
     const d = new Date(now);
     return Array.from({ length: n }, (_, i) => monthKeyOf(new Date(d.getFullYear(), d.getMonth() - (n - 1 - i), 1).getTime()));
@@ -56,24 +80,27 @@ export function lastMonthKeys(now, n) {
 /**
  * A snapshot document from a detailed moneySummary of one whole month.
  * @param {string} month 'YYYY-MM'
- * @param {Object} m moneySummary(input, monthBounds(month), {detail: true})
- * @param {Object} src bill sources (for parties)
+ * @param {Rec} m moneySummary(input, monthBounds(month), {detail: true})
+ * @param {Rec} src bill sources (for parties)
  * @param {number} now
  */
 export function buildSnapshot(month, m, src, now = Date.now()) {
     const range = monthBounds(month);
+    /** @type {Rec} */
     const items = {};
     itemSummary(m).forEach(r => {
         items[r.itemKey || '_'] = { s: r.sales, c: r.cogs, q: r.qty, r: r.retail, w: r.wholesale };
     });
     const allCustomers = partySummary(src, 'sales', range);
-    const parties = (kind) => (kind === 'sales' ? allCustomers : partySummary(src, kind, range)).slice(0, TOP_PARTIES)
+    const parties = (/** @type {'sales'|'purchases'} */ kind) => (kind === 'sales' ? allCustomers : partySummary(src, kind, range)).slice(0, TOP_PARTIES)
         .map(p => ({ k: p.key, n: p.name, t: p.total, c: p.count }));
+    /** @type {Object<string, number>} */
     const categories = {};
-    (m.M4.byCategory || []).forEach(c => { categories[c.category] = c.total; });
+    (m.M4.byCategory || []).forEach((/** @type {Rec} */ c) => { categories[c.category] = c.total; });
     // Per day of month (sales, profit), so a part month compares with the same days last year.
+    /** @type {Object<number, {s: number, p: number}>} */
     const days = {};
-    (m.detail?.sales || []).forEach(r => {
+    (m.detail?.sales || []).forEach((/** @type {Rec} */ r) => {
         if (!Number.isFinite(r.t)) return;
         const k = new Date(r.t).getDate();
         days[k] = days[k] || { s: 0, p: 0 };
@@ -107,7 +134,7 @@ export function buildSnapshot(month, m, src, now = Date.now()) {
 /**
  * Every customer of a snapshot's month, or null when the stored list was cut to the top
  * TOP_PARTIES (m.Cc = how many there were; older snapshots without it count as cut when full).
- * @param {?Object} doc
+ * @param {?Rec} doc
  * @returns {?Array<{key: string, name: string}>}
  */
 export function snapshotCustomers(doc) {
@@ -120,8 +147,8 @@ export function snapshotCustomers(doc) {
 /**
  * The figures a page compares with, from a snapshot (same names as moneySummary).
  * A stale snapshot (a bill of its month changed after it was built) gives null: not known.
- * @param {?Object} doc
- * @returns {?Object}
+ * @param {?Rec} doc
+ * @returns {?Rec}
  */
 export function figuresFromSnapshot(doc) {
     if (!doc || !doc.m || doc.stale) return null;
@@ -131,15 +158,15 @@ export function figuresFromSnapshot(doc) {
         M1: m.M1, M1count: m.M1c, M2: m.M2, M3: m.M3, M4: m.M4, M5: m.M5, M6: m.M6, M7: m.M7,
         M8: m.M8, M9: m.M9, M10: m.M10, M12: m.M12, M13: m.M13, M14: m.M14, M16: m.M16, closing: m.close,
         items: Object.entries(doc.items || {}).map(([k, v]) => ({ key: k === '_' ? '' : k, sales: v.s, cogs: v.c, profit: v.c === null ? null : v.s - v.c })),
-        customers: (doc.customers || []).map(p => ({ key: p.k, name: p.n, total: p.t, count: p.c })),
-        suppliers: (doc.suppliers || []).map(p => ({ key: p.k, name: p.n, total: p.t, count: p.c })),
+        customers: (doc.customers || []).map((/** @type {Rec} */ p) => ({ key: p.k, name: p.n, total: p.t, count: p.c })),
+        suppliers: (doc.suppliers || []).map((/** @type {Rec} */ p) => ({ key: p.k, name: p.n, total: p.t, count: p.c })),
         categories: Object.entries(doc.categories || {}).map(([key, total]) => ({ key, total }))
     };
 }
 
 /**
  * Sales and profit of days `fromDay`…`uptoDay` of a snapshot's month (CMP for a part month).
- * @param {?Object} doc
+ * @param {?Rec} doc
  * @param {number} uptoDay 1–31
  * @param {number} [fromDay=1]
  * @returns {?{M1: number, M6: ?number}}
@@ -169,16 +196,16 @@ export function snapshotItemSales(figures) {
  * Figures for any [from, to) from month snapshots. Whole months add all
  * figures; a part first or last month adds only its days (sales and profit),
  * so a range starting mid-month is never padded with the whole month.
- * @param {Object<string, Object>} docs month → snapshot doc
+ * @param {Object<string, Rec>} docs month → snapshot doc
  * @param {number} from
  * @param {number} to
- * @returns {?Object} null when a month is missing
+ * @returns {?Rec} null when a month is missing
  */
 export function rangeFigures(docs, from, to) {
     const keys = monthKeysBetween(from, to);
     if (!keys.length) return null;
     // Nearest local midnight, so a DST hour does not move the day.
-    const dayOf = (ms) => { const d = new Date(ms + 12 * 3600000); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
+    const dayOf = (/** @type {number} */ ms) => { const d = new Date(ms + 12 * 3600000); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
     const parts = keys.map(k => {
         const b = monthBounds(k);
         const startsInside = from > b.from + 12 * 3600000;
@@ -190,22 +217,24 @@ export function rangeFigures(docs, from, to) {
     });
     if (parts.some(p => !(p.whole || p.part))) return null;
     if (parts.every(p => p.whole)) return sumFigures(parts.map(p => p.whole));
-    const add = (k) => parts.some(p => (p.whole || p.part)[k] === null || (p.whole || p.part)[k] === undefined)
-        ? null : Math.round(parts.reduce((a, p) => a + (p.whole || p.part)[k], 0) * 100) / 100;
+    // Every part has its figures here (checked above)
+    const add = (/** @type {string} */ k) => parts.some(p => /** @type {Rec} */ (p.whole || p.part)[k] === null || /** @type {Rec} */ (p.whole || p.part)[k] === undefined)
+        ? null : Math.round(parts.reduce((a, p) => a + /** @type {Rec} */ (p.whole || p.part)[k], 0) * 100) / 100;
     return { M1: add('M1'), M6: add('M6') };
 }
 
 /**
  * Sum of whole-month figures (for a period made of whole months, e.g. a year).
- * @param {Array<?Object>} list figuresFromSnapshot results
- * @returns {?Object} null when any month is missing
+ * @param {Array<?Rec|undefined>} list figuresFromSnapshot results
+ * @returns {?Rec} null when any month is missing
  */
 export function sumFigures(list) {
     if (!list.length || list.some(x => !x)) return null;
     const keys = ['M1', 'M1count', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M12', 'M13', 'M14', 'M16'];
+    /** @type {Rec} */
     const out = {};
     keys.forEach(k => {
-        out[k] = list.some(x => x[k] === null || x[k] === undefined) ? null : list.reduce((a, x) => a + x[k], 0);
+        out[k] = list.some(x => /** @type {Rec} */ (x)[k] === null || /** @type {Rec} */ (x)[k] === undefined) ? null : list.reduce((a, x) => a + /** @type {Rec} */ (x)[k], 0);
     });
     return out;
 }
@@ -214,7 +243,7 @@ export function sumFigures(list) {
  * Which months to rebuild from the loaded bills: the current and previous
  * month when their snapshot is missing, stale, older than the roll interval,
  * or from another version; only months fully inside the loaded window.
- * @param {Object<string, Object>} docs month → snapshot doc
+ * @param {Object<string, Rec>} docs month → snapshot doc
  * @param {{now: number, loadedFrom: number}} ctx loadedFrom 0 = full history
  * @returns {string[]}
  */
@@ -242,28 +271,38 @@ export function staleMonthsFor(times, { now, cascade = false }) {
     const d = new Date(now);
     const current = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
     const floor = monthBounds(snapshotsFrom(now)).from;
-    const old = (times || []).filter(t => Number.isFinite(t) && t < current);
+    const old = /** @type {number[]} */ ((times || []).filter(t => Number.isFinite(t) && /** @type {number} */ (t) < current));
     if (!old.length) return [];
     const keys = cascade ? monthKeysBetween(Math.min(...old), current) : [...new Set(old.map(monthKeyOf))].sort();
     return keys.filter(k => monthBounds(k).from >= floor);
 }
 
-/** The merge write that marks a month snapshot stale (firestore.rules: any approved user). */
+/**
+ * The merge write that marks a month snapshot stale (firestore.rules: any approved user).
+ * @param {string} month
+ * @param {*} at
+ * @returns {{month: string, stale: true, staleAt: *}}
+ */
 export function staleMark(month, at) {
     return { month, stale: true, staleAt: at };
 }
 
-/** Stale snapshots older than the previous month (the previous and current one are rolled by monthsToRoll). */
+/**
+ * Stale snapshots older than the previous month (the previous and current one are rolled by monthsToRoll).
+ * @param {?Object<string, Rec>|undefined} docs
+ * @param {number} now
+ * @returns {string[]}
+ */
 export function staleOlderMonths(docs, now) {
     const d = new Date(now);
     const prev = new Date(d.getFullYear(), d.getMonth() - 1, 1).getTime();
-    return Object.keys(docs || {}).filter(k => docs[k]?.stale && monthBounds(k).from < prev).sort();
+    return Object.keys(docs || {}).filter(k => /** @type {Object<string, Rec>} */ (docs)[k]?.stale && monthBounds(k).from < prev).sort();
 }
 
 /**
  * Snapshots older than the previous month built by another version (not stale): rebuilt once
  * from the full history by an owner / manager phone, shown as they are until then.
- * @param {Object<string, Object>} docs month → snapshot doc
+ * @param {Object<string, Rec>} docs month → snapshot doc
  * @param {number} now
  * @returns {string[]}
  */
@@ -277,7 +316,7 @@ export function outdatedOlderMonths(docs, now) {
  * Stale older snapshots (staleOlderMonths) that this device can rebuild from its full history:
  * only when that history was read after this device first saw the stale mark (one clock), so the
  * change behind it is in the bills.
- * @param {Object<string, Object>} docs month → snapshot doc
+ * @param {Object<string, Rec>} docs month → snapshot doc
  * @param {{now: number, fetchedAt: number, seenAt: Object<string, number>}} ctx
  * @returns {string[]}
  */

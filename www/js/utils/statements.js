@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Statements (docs/insights-redesign.md §5.4): day book, party
  * ledger, item ledger and the CSV export, as plain rows. Pure: no DOM, no
@@ -13,31 +14,33 @@ import { collectEvents, createItemKeyResolver, replayWithValues, eventTime } fro
 import { normalizePartyName } from './aging.js';
 import { parseAnyBillDate } from './dates.js';
 
-const num = (v) => {
+const num = (/** @type {*} */ v) => {
     const x = typeof v === 'number' ? v : parseFloat(v);
     return Number.isFinite(x) ? x : 0;
 };
-const timeOf = (bill) => {
+const timeOf = (/** @type {Rec} */ bill) => {
     const t = eventTime(bill);
     return Number.isFinite(t) && t !== Number.MAX_SAFE_INTEGER ? t : null;
 };
-const recTime = (rec) => parseAnyBillDate(rec?.date)?.getTime() ?? null;
-const billNo = (b) => String(b?.billNumber || b?.billNo || '');
-const partyOf = (b) => String(b?.customerName ?? b?.supplierName ?? '').trim();
+const recTime = (/** @type {?Rec|undefined} */ rec) => parseAnyBillDate(rec?.date)?.getTime() ?? null;
+const billNo = (/** @type {?Rec|undefined} */ b) => String(b?.billNumber || b?.billNo || '');
+const partyOf = (/** @type {?Rec|undefined} */ b) => String(b?.customerName ?? b?.supplierName ?? '').trim();
 
 /**
  * Day book (ST1): every bill, expense, withdrawal and due payment of [from, to), in time order.
  * Due payments come from the bills and the range's cash-session legs (de-duplicated by id, as M12).
- * @param {Object} src {purchases, wholesaleSales, retailSales, expenses, withdrawals}
+ * @param {Rec} src {purchases, wholesaleSales, retailSales, expenses, withdrawals}
  * @param {{from: number, to: number}} range
- * @param {{personal?: boolean, sessions?: Array}} [opts] personal: false leaves personal expenses out (no personalExpenses permission)
+ * @param {{personal?: boolean, sessions?: Array<Rec>}} [opts] personal: false leaves personal expenses out (no personalExpenses permission)
  * @returns {{rows: Array<{t: ?number, kind: string, billNo: string, party: string, amount: number, cash: number, online: number, due: number, note: string}>,
  *   totals: {sales: number, purchases: number, expenses: number, withdrawals: number, dueReceived: number, duePaid: number, salesCount: number, purchaseCount: number}}}
  */
 export function dayBook(src, { from, to }, { personal = true, sessions = [] } = {}) {
+    /** @type {Array<{t: ?number, kind: string, billNo: string, party: string, amount: number, cash: number, online: number, due: number, note: string}>} */
     const rows = [];
+    /** @type {Object<string, number>} */
     const totals = { sales: 0, purchases: 0, expenses: 0, withdrawals: 0, dueReceived: 0, duePaid: 0, salesCount: 0, purchaseCount: 0 };
-    const addBills = (list, kind) => billsInRange(list || [], from, to).forEach(b => {
+    const addBills = (/** @type {?Array<Rec>|undefined} */ list, /** @type {string} */ kind) => billsInRange(list || [], from, to).forEach(b => {
         const p = saleTimePayment(b);
         const total = billTotal(b);
         rows.push({ t: timeOf(b), kind, billNo: billNo(b), party: partyOf(b), amount: total, cash: p.cash, online: p.online, due: round2(Math.max(0, total - p.cash - p.online)), note: '' });
@@ -55,7 +58,7 @@ export function dayBook(src, { from, to }, { personal = true, sessions = [] } = 
         rows.push({ t, kind: isPersonalExpense(e) ? 'personal' : 'expense', billNo: '', party: String(e.personName || '').trim(), amount, cash: online ? 0 : amount, online: online ? amount : 0, due: 0, note: [e.type, e.remarks].filter(Boolean).join(' · ') });
         totals.expenses += amount;
     });
-    (src.withdrawals || []).forEach(w => {
+    (src.withdrawals || []).forEach((/** @type {Rec} */ w) => {
         const t = recTime(w);
         if (t === null || t < from || t >= to) return;
         rows.push({ t, kind: 'withdrawal', billNo: '', party: String(w.person || '').trim(), amount: num(w.amount), cash: num(w.amount), online: 0, due: 0, note: String(w.purpose || '') });
@@ -71,21 +74,22 @@ export function dayBook(src, { from, to }, { personal = true, sessions = [] } = 
     });
     rows.sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
     Object.keys(totals).forEach(k => { if (!/Count$/.test(k)) totals[k] = round2(totals[k]); });
-    return { rows, totals };
+    return { rows, totals: /** @type {*} */ (totals) };
 }
 
 /** English column keys of the accountant CSV (ST6); the headers are always English. */
 export const ACCOUNTANT_COLUMNS = Object.freeze(['date', 'entry', 'bill_type', 'bill_no', 'party', 'bill_total', 'cash', 'online', 'due', 'payment_amount']);
 
+/** @type {Object<string, 'bill'|'payment_received'|'payment_made'>} */
 const ACCOUNTANT_KINDS = { purchase: 'bill', retail: 'bill', wholesale: 'bill', dueReceived: 'payment_received', duePaid: 'payment_made' };
 
 /**
  * Accountant CSV (ST6): one row per bill of [from, to) (BILL-TOTAL, paid with the bill
  * BILL-AT-SAVE, due at the bill) and one row per due payment made in it (DUE-PAY), the
  * same rows as the day book (ST1) without expenses and withdrawals.
- * @param {Object} src {purchases, wholesaleSales, retailSales}
+ * @param {Rec} src {purchases, wholesaleSales, retailSales}
  * @param {{from: number, to: number}} range
- * @param {{sessions?: Array}} [opts]
+ * @param {{sessions?: Array<Rec>}} [opts]
  * @returns {Array<{t: ?number, entry: 'bill'|'payment_received'|'payment_made', billType: string, billNo: string, party: string,
  *   total: ?number, cash: number, online: number, due: ?number, payment: ?number}>}
  */
@@ -106,21 +110,23 @@ export function accountantLines(src, range, { sessions = [] } = {}) {
  * wholesale bills, balance = what they owe the shop; suppliers: purchases,
  * balance = what the shop owes. Old-app balances (OPENING) start as their
  * carried amount. Bills marked cleared without a payment close their rest.
- * @param {Object} src {purchases, wholesaleSales, retailSales}
+ * @param {Rec} src {purchases, wholesaleSales, retailSales}
  * @param {string} partyKey normalizePartyName() key
  * @param {'customer'|'supplier'} kind
  * @param {{from?: number, to?: number}} [range]
- * @returns {{name: string, opening: number, rows: Array, closing: number, due: number, count: number}}
+ * @returns {{name: string, opening: number, rows: Array<Rec>, closing: number, due: number, count: number}}
  *   due = Σ BILL-DUE of the party's bills (Outstanding's figure) to check `closing` against
  */
 export function partyLedger(src, partyKey, kind, { from = -Infinity, to = Infinity } = {}) {
     const bills = activeBills(kind === 'supplier' ? src.purchases : [...(src.retailSales || []), ...(src.wholesaleSales || [])])
         .filter(b => normalizePartyName(partyOf(b)) === partyKey);
+    /** @type {Array<{t: number, kind: string, billNo: string, debit: number, credit: number}>} */
     const entries = [];
     let name = '';
     bills.forEach(b => {
         if (!name && partyOf(b)) name = partyOf(b);
         const t = timeOf(b) ?? 0;
+        /** @type {number} */
         let balance;
         if (isOpeningRecord(b)) {
             balance = openingAmount(b);
@@ -150,6 +156,7 @@ export function partyLedger(src, partyKey, kind, { from = -Infinity, to = Infini
     entries.sort((a, b) => a.t - b.t || (a.kind === 'bill' || a.kind === 'opening' ? -1 : 1));
     let running = 0;
     let opening = 0;
+    /** @type {Array<Rec>} */
     const rows = [];
     entries.forEach(e => {
         running = round2(running + e.debit - e.credit);
@@ -164,7 +171,7 @@ export function partyLedger(src, partyKey, kind, { from = -Infinity, to = Infini
 
 /**
  * Parties seen in the loaded bills, for the ledger picker (most bills first).
- * @param {Object} src
+ * @param {Rec} src
  * @param {'customer'|'supplier'} kind
  * @returns {Array<{key: string, name: string, count: number}>}
  */
@@ -186,25 +193,28 @@ export function partyChoices(src, kind) {
  * Item ledger (ST4): every purchase, sale and adjustment of one item with the
  * running kg and average cost (AVG-COST); flags a sale below cost (the I8 rule,
  * money.soldBelowCost) and a sale before the stock was bought.
- * @param {Object} src {purchases, wholesaleSales, retailSales, stockAdjustments}
- * @param {Array} items catalogue
+ * @param {Rec} src {purchases, wholesaleSales, retailSales, stockAdjustments}
+ * @param {?Array<{id: string, name?: string, hindiName?: string}>|undefined} items catalogue
  * @param {string} itemKey
  * @param {{from?: number, to?: number}} [range]
- * @returns {{opening: {qty: number, value: number}, rows: Array, closing: {qty: number, value: number, rate: number}}}
+ * @returns {{opening: {qty: number, value: number}, rows: Array<Rec>, closing: {qty: number, value: number, rate: number}}}
  */
 export function itemLedger(src, items, itemKey, { from = -Infinity, to = Infinity } = {}) {
     const getKey = createItemKeyResolver(items || []);
     const events = collectEvents({
-        purchases: activityBills(src.purchases || []), wholesaleSales: activityBills(src.wholesaleSales || []),
-        retailSales: activityBills(src.retailSales || []), stockAdjustments: src.stockAdjustments || []
+        purchases: /** @type {Array<Rec>} */ (activityBills(src.purchases || [])), wholesaleSales: /** @type {Array<Rec>} */ (activityBills(src.wholesaleSales || [])),
+        retailSales: /** @type {Array<Rec>} */ (activityBills(src.retailSales || [])), stockAdjustments: src.stockAdjustments || []
     });
+    /** @type {Rec} */
     const state = {};
+    /** @type {Array<Rec>} */
     const rows = [];
     // I8 judges the item's lines of one bill together: sale value and cost per bill
+    /** @type {Map<Rec, {sales: number, cost: number, rows: Array<Rec>}>} */
     const billGroups = new Map();
     let opening = { qty: 0, value: 0 };
     let openingTaken = false;
-    replayWithValues(state, events, getKey, (ev, key, delta, prevQty) => {
+    replayWithValues(state, events, getKey, (/** @type {Rec} */ ev, key, delta, prevQty) => {
         if (key !== itemKey) return;
         const s = state[key] || { quantity: 0, totalValue: 0 };
         if (ev.t >= to) return;
@@ -215,8 +225,10 @@ export function itemLedger(src, items, itemKey, { from = -Infinity, to = Infinit
             opening = { qty: round2(beforeQty), value: round2(s.totalValue - delta) };
         }
         const line = ev.item ? readLineItem(ev.item) : null;
-        const qty = ev.kind === 'adjustment' ? num(ev.adj?.quantity) : line.qty;
+        // A bill line always has its item; only an adjustment has no line
+        const qty = ev.kind === 'adjustment' ? num(ev.adj?.quantity) : /** @type {{qty: number}} */ (line).qty;
         const avg = s.quantity > 0 ? s.totalValue / s.quantity : 0;
+        /** @type {Rec} */
         const row = {
             t: Number.isFinite(ev.t) && ev.t !== Number.MAX_SAFE_INTEGER ? ev.t : null,
             kind: ev.kind === 'purchase' ? 'purchase' : ev.kind === 'sale' ? ev.source : 'adjustment',
@@ -230,7 +242,7 @@ export function itemLedger(src, items, itemKey, { from = -Infinity, to = Infinit
             row.cost = round2(cost);
             row.belowCost = false;
             const g = billGroups.get(ev.bill) || { sales: 0, cost: 0, rows: [] };
-            g.sales += line.total;
+            g.sales += /** @type {{total: number}} */ (line).total;
             g.cost += -delta;
             g.rows.push(row);
             billGroups.set(ev.bill, g);
@@ -275,12 +287,16 @@ export function csvLanguage(lang, english) {
 }
 
 /** A label without its statement sign ("− Cost of goods sold" → "Cost of goods sold"). */
-export const plainLabel = (s) => String(s ?? '').replace(/^[\s−=+±-]+/, '').trim();
+export const plainLabel = (/** @type {*} */ s) => String(s ?? '').replace(/^[\s−=+±-]+/, '').trim();
 
-/** 'YYYY-MM-DD HH:mm' (local) of a time in ms; '' when unknown. */
+/**
+ * 'YYYY-MM-DD HH:mm' (local) of a time in ms; '' when unknown.
+ * @param {?number|undefined} t
+ * @returns {string}
+ */
 export function isoMinute(t) {
     if (t === null || t === undefined || !Number.isFinite(t)) return '';
-    const pad = (x) => String(x).padStart(2, '0');
+    const pad = (/** @type {number} */ x) => String(x).padStart(2, '0');
     const d = new Date(t);
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
@@ -289,6 +305,8 @@ export function isoMinute(t) {
  * One CSV cell. Text starting with = + - @ (or tab / CR) gets a leading ' so a
  * spreadsheet shows it instead of running it as a formula (CSV injection);
  * numbers are written as they are.
+ * @param {*} v
+ * @returns {string}
  */
 export const csvCell = (v) => {
     let s = v === null || v === undefined ? '' : String(v);
@@ -299,7 +317,7 @@ export const csvCell = (v) => {
 /**
  * CSV text from a header and rows (RFC 4180 quoting, UTF-8 BOM for Excel).
  * @param {string[]} header
- * @param {Array<Array>} rows
+ * @param {Array<Array<*>>} rows
  * @returns {string}
  */
 export function toCsv(header, rows) {
@@ -309,14 +327,15 @@ export function toCsv(header, rows) {
 /**
  * Line-level export (ST5): one row per bill line in [from, to); labour shared by
  * line value, so Σ amount after labour = the bill totals (M1 / M16).
- * @param {Object} src {purchases, wholesaleSales, retailSales}
- * @param {Array} items
+ * @param {Rec} src {purchases, wholesaleSales, retailSales}
+ * @param {?Array<{id: string, name?: string, hindiName?: string}>|undefined} items
  * @param {{from: number, to: number}} range
- * @returns {Array<Object>}
+ * @returns {Array<Rec>}
  */
 export function exportLines(src, items, { from, to }) {
     const byId = new Map((items || []).map(i => [i.id, i]));
     const getKey = createItemKeyResolver(items || []);
+    /** @type {Array<Rec>} */
     const out = [];
     const iso = isoMinute;
     [['purchase', src.purchases], ['retail', src.retailSales], ['wholesale', src.wholesaleSales]].forEach(([type, list]) => {
