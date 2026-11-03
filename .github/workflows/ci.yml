@@ -1,7 +1,7 @@
 # Checks every PR and every push to main (#16).
 # The hosting workflows (firebase-hosting-*.yml) still run Jest before deploying;
 # this workflow adds the checks they don't run: lint, check:sw, check:release,
-# Firestore rules tests, and the nightly read-only production smoke.
+# the rules size budget, Firestore rules tests, and the nightly read-only production smoke.
 # The Playwright E2E suite (#127) has its own workflow, e2e.yml (every PR that
 # changes the app; required check "Playwright E2E (emulators)").
 name: CI
@@ -50,6 +50,8 @@ jobs:
         run: npm run check:release
       - name: innerHTML audit (no new unescaped values; #89)
         run: npm run check:html-escape
+      - name: Firestore rules size budget (the Rules API compile has a time limit)
+        run: npm run check:rules-size
       # On a PR the architecture ratchet compares tests/architecture-baseline.json with the base branch.
       - name: Fetch the PR base branch
         if: github.event_name == 'pull_request'
