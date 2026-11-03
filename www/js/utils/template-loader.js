@@ -1,3 +1,4 @@
+// @ts-check
 // Template Loader Utility
 // Loads HTML templates from separate .html files
 
@@ -40,6 +41,10 @@ const LAZY_PAGES = new Set(PAGE_TEMPLATES.filter(n => n !== 'rate-trends' && !EA
 const pageLoads = new Map();
 
 export class TemplateLoader {
+    /**
+     * @param {string} templateName
+     * @returns {Promise<string>}
+     */
     static async loadTemplate(templateName) {
         try {
             const response = await fetch(`templates/${templateName}.html`);
@@ -53,8 +58,13 @@ export class TemplateLoader {
         }
     }
 
-    /** Fetches the named templates in parallel: { name: html }. */
+    /**
+     * Fetches the named templates in parallel: { name: html }.
+     * @param {string[]} names
+     * @returns {Promise<Object<string, string>>}
+     */
     static async loadTemplates(names) {
+        /** @type {Object<string, string>} */
         const results = {};
         await Promise.all(names.map(async (name) => {
             results[name] = await this.loadTemplate(name);
@@ -66,7 +76,10 @@ export class TemplateLoader {
         return this.loadTemplates([...SHELL_TEMPLATES, ...PAGE_TEMPLATES]);
     }
 
-    /** Login screen, #appContent with the side menu, and the dialogs. */
+    /**
+     * Login screen, #appContent with the side menu, and the dialogs.
+     * @param {Object<string, string>} templates
+     */
     static injectShell(templates) {
         document.body.insertAdjacentHTML('afterbegin', templates.auth || '');
 
@@ -79,7 +92,10 @@ export class TemplateLoader {
         document.body.insertAdjacentHTML('beforeend', templates.modals || '');
     }
 
-    /** The given pages, after the side menu inside #appContent, in PAGE_TEMPLATES order (#66). */
+    /**
+     * The given pages, after the side menu inside #appContent, in PAGE_TEMPLATES order (#66).
+     * @param {Object<string, string>} templates
+     */
     static injectPages(templates) {
         const appContent = document.getElementById('appContent');
         if (!appContent) return;
@@ -91,12 +107,17 @@ export class TemplateLoader {
         });
     }
 
+    /** @param {Object<string, string>} templates */
     static injectTemplates(templates) {
         this.injectShell(templates);
         this.injectPages(templates);
     }
 
-    /** True when `tab` is a page loaded on first visit that is not in the document yet. */
+    /**
+     * True when `tab` is a page loaded on first visit that is not in the document yet.
+     * @param {string} tab
+     * @returns {boolean}
+     */
     static pageMissing(tab) {
         return LAZY_PAGES.has(tab) && typeof document !== 'undefined' && !document.getElementById(tab);
     }
@@ -134,6 +155,9 @@ export class TemplateLoader {
         return run;
     }
 
-    /** Set by main.js: runs once for each page put in on first visit. */
+    /**
+     * Set by main.js: runs once for each page put in on first visit.
+     * @type {(tab: string, el: HTMLElement) => void}
+     */
     static onPageAdded() {}
 }

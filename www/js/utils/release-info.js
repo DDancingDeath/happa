@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Pure helpers for "What's new", the Android update banner and app sharing.
  * Kept free of DOM/network so they can be unit tested.
@@ -13,13 +14,22 @@ export const UPDATE_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
 
 const SEMVER_RE = /^v?(\d+)\.(\d+)(?:\.(\d+))?$/;
 
-/** Parses "1.3.0", "v1.3" etc. into [major, minor, patch]; null when not a plain release version. */
+/**
+ * Parses "1.3.0", "v1.3" etc. into [major, minor, patch]; null when not a plain release version.
+ * @param {*} text
+ * @returns {?number[]}
+ */
 export function parseVersion(text) {
     const m = SEMVER_RE.exec(String(text ?? '').trim());
     return m ? [Number(m[1]), Number(m[2]), Number(m[3] || 0)] : null;
 }
 
-/** -1 / 0 / 1 like a sort comparator; null if either side is not a valid version. */
+/**
+ * -1 / 0 / 1 like a sort comparator; null if either side is not a valid version.
+ * @param {*} a
+ * @param {*} b
+ * @returns {?number}
+ */
 export function compareVersions(a, b) {
     const pa = parseVersion(a);
     const pb = parseVersion(b);
@@ -30,18 +40,33 @@ export function compareVersions(a, b) {
     return 0;
 }
 
+/**
+ * @param {?Rec|undefined} changelog changelog.json
+ * @param {*} version
+ * @returns {?Rec}
+ */
 export function findRelease(changelog, version) {
     const releases = Array.isArray(changelog?.releases) ? changelog.releases : [];
-    return releases.find((r) => r && compareVersions(r.version, version) === 0) || null;
+    return releases.find((/** @type {?Rec} */ r) => r && compareVersions(r.version, version) === 0) || null;
 }
 
-/** The release to show in "What's new" on startup, or null to skip. */
+/**
+ * The release to show in "What's new" on startup, or null to skip.
+ * @param {?Rec|undefined} changelog
+ * @param {*} appVersion
+ * @param {*} lastSeenVersion
+ * @returns {?Rec}
+ */
 export function whatsNewToShow(changelog, appVersion, lastSeenVersion) {
     if (lastSeenVersion && compareVersions(lastSeenVersion, appVersion) === 0) return null;
     const release = findRelease(changelog, appVersion);
     return release && hasNotes(release) ? release : null;
 }
 
+/**
+ * @param {?Rec|undefined} release
+ * @returns {boolean}
+ */
 export function hasNotes(release) {
     const n = release?.notes;
     return Boolean(n && ((Array.isArray(n.en) && n.en.length) || (Array.isArray(n.hi) && n.hi.length)));
@@ -50,7 +75,10 @@ export function hasNotes(release) {
 export const WHATS_NEW_LANGS = ['en', 'hi'];
 export const DEFAULT_WHATS_NEW_LANG = 'en';
 
-/** Sheet labels per language; `fallback` explains that the notes are in the other language. */
+/**
+ * Sheet labels per language; `fallback` explains that the notes are in the other language.
+ * @type {Object<string, {title: string, version: (v: *) => string, close: string, fallback: string, shareTitle: (name: string, v: *) => string, shareDownload: string}>}
+ */
 export const WHATS_NEW_LABELS = {
     en: {
         title: "What's new",
@@ -70,7 +98,11 @@ export const WHATS_NEW_LABELS = {
     }
 };
 
-/** The stored "What's new" language, or English when missing/invalid. */
+/**
+ * The stored "What's new" language, or English when missing/invalid.
+ * @param {*} value
+ * @returns {string}
+ */
 export function normalizeWhatsNewLang(value) {
     return WHATS_NEW_LANGS.includes(value) ? value : DEFAULT_WHATS_NEW_LANG;
 }
@@ -79,10 +111,13 @@ export function normalizeWhatsNewLang(value) {
  * What the "What's new" sheet shows for a release and the (stored) language choice.
  * `lang` is the chosen UI language; `notesLang` is the language the notes are actually in
  * (the other one, with `fellBack: true`, when the chosen language has no notes).
+ * @param {?Rec|undefined} release
+ * @param {*} storedLang
+ * @returns {{lang: string, notesLang: string, notes: string[], fellBack: boolean}}
  */
 export function whatsNewContent(release, storedLang) {
     const lang = normalizeWhatsNewLang(storedLang);
-    const notesFor = (l) => (Array.isArray(release?.notes?.[l]) ? release.notes[l].map(String) : []);
+    const notesFor = (/** @type {string} */ l) => (Array.isArray(release?.notes?.[l]) ? release.notes[l].map(String) : []);
     let notesLang = lang;
     let notes = notesFor(lang);
     let fellBack = false;
@@ -98,14 +133,26 @@ export function whatsNewContent(release, storedLang) {
     return { lang, notesLang, notes, fellBack };
 }
 
-/** Whether to ask GitHub again (at most once per interval; also re-checks if the clock went backwards). */
+/**
+ * Whether to ask GitHub again (at most once per interval; also re-checks if the clock went backwards).
+ * @param {*} lastCheckMs
+ * @param {number} nowMs
+ * @param {number} [intervalMs]
+ * @returns {boolean}
+ */
 export function shouldCheckForUpdate(lastCheckMs, nowMs, intervalMs = UPDATE_CHECK_INTERVAL_MS) {
     const last = Number(lastCheckMs);
     if (!Number.isFinite(last) || last <= 0 || last > nowMs) return true;
     return nowMs - last >= intervalMs;
 }
 
-/** Version string (without "v") to offer in the update banner, or null. */
+/**
+ * Version string (without "v") to offer in the update banner, or null.
+ * @param {*} appVersion
+ * @param {*} latestTag
+ * @param {*} dismissedVersion
+ * @returns {?string}
+ */
 export function updateToOffer(appVersion, latestTag, dismissedVersion) {
     const latest = parseVersion(latestTag);
     if (!latest || compareVersions(latestTag, appVersion) !== 1) return null;
@@ -114,7 +161,13 @@ export function updateToOffer(appVersion, latestTag, dismissedVersion) {
     return version;
 }
 
-/** WhatsApp-ready text for sharing the app, in `lang` (notes fall back to the other language). */
+/**
+ * WhatsApp-ready text for sharing the app, in `lang` (notes fall back to the other language).
+ * @param {?Rec|undefined} release
+ * @param {string} [url]
+ * @param {string} [lang]
+ * @returns {string}
+ */
 export function buildShareMessage(release, url = DOWNLOAD_PAGE_URL, lang = DEFAULT_WHATS_NEW_LANG) {
     const { lang: l, notes } = whatsNewContent(release, lang);
     const labels = WHATS_NEW_LABELS[l];
@@ -124,6 +177,10 @@ export function buildShareMessage(release, url = DOWNLOAD_PAGE_URL, lang = DEFAU
     return lines.join('\n');
 }
 
+/**
+ * @param {string} message
+ * @returns {string}
+ */
 export function whatsAppShareUrl(message) {
     return 'https://wa.me/?text=' + encodeURIComponent(message);
 }

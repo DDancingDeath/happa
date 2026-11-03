@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Personal expenses (#98) live in their own collection, which
  * firestore.rules let only the owner and roles with Roles & access › Personal
@@ -18,7 +19,7 @@ export const PERSONAL_DAYS_COLLECTION = 'personalExpenseDays';
 /**
  * Whether firestore.rules let this role read personal expenses.
  * @param {string} role
- * @param {Object} [roleAccess] settings/app.roleAccess
+ * @param {Rec} [roleAccess] settings/app.roleAccess
  * @returns {boolean}
  */
 export function canReadPersonalExpenses(role, roleAccess) {
@@ -27,7 +28,7 @@ export function canReadPersonalExpenses(role, roleAccess) {
 
 /**
  * Collection a new expense is saved in.
- * @param {Object} expense
+ * @param {Rec} expense
  * @returns {'expenses'|'personalExpenses'}
  */
 export function expenseCollectionFor(expense) {
@@ -49,7 +50,7 @@ export function personalDayKey(date) {
  * online: { <expense id>: true } }. Each expense sets or removes only its own key, so repeated,
  * late or concurrent writes can't make the total drift (#98). `online` flags the expenses paid
  * online (EXP-MODE, #118); a flag without an amount (left by an older app's delete) is ignored.
- * @param {?Object} doc
+ * @param {?Rec} doc
  * @returns {{total: number, count: number, online: number, onlineCount: number}}
  */
 export function dayDocTotals(doc) {
@@ -68,10 +69,11 @@ export function dayDocTotals(doc) {
 /**
  * Day docs as the personal rows say they should be: { [day]: { [id]: amount } }.
  * Rows without a readable day are left out.
- * @param {Array<Object>} rows personal expenses ({ id, day | date, amount })
+ * @param {Array<Rec>} rows personal expenses ({ id, day | date, amount })
  * @returns {Object<string, Object<string, number>>}
  */
 export function personalDaysFromRows(rows) {
+    /** @type {Object<string, Object<string, number>>} */
     const out = {};
     activeExpenses(rows).forEach(r => {
         const day = r?.day || personalDayKey(r?.date);
@@ -84,10 +86,11 @@ export function personalDaysFromRows(rows) {
 /**
  * The online flags of the day docs as the personal rows say they should be:
  * { [day]: { [id]: true } } for the rows paid online (EXP-MODE).
- * @param {Array<Object>} rows personal expenses ({ id, day | date, paymentMode })
+ * @param {Array<Rec>} rows personal expenses ({ id, day | date, paymentMode })
  * @returns {Object<string, Object<string, true>>}
  */
 export function personalOnlineFromRows(rows) {
+    /** @type {Object<string, Object<string, true>>} */
     const out = {};
     activeExpenses(rows).forEach(r => {
         const day = r?.day || personalDayKey(r?.date);
@@ -100,13 +103,14 @@ export function personalOnlineFromRows(rows) {
 /**
  * Keys to set (amount and online flag) or remove (null) so a day doc matches the rows.
  * @param {Object<string, number>} want from personalDaysFromRows
- * @param {?Object} doc the stored day doc
+ * @param {?Rec} doc the stored day doc
  * @param {Object<string, true>} [wantOnline] from personalOnlineFromRows
  * @returns {Array<{id: string, amount: ?number, online: boolean}>}
  */
 export function personalDayFixes(want, doc, wantOnline = {}) {
     const have = doc && typeof doc.amounts === 'object' && doc.amounts ? doc.amounts : {};
     const haveOnline = doc && typeof doc.online === 'object' && doc.online ? doc.online : {};
+    /** @type {Array<{id: string, amount: ?number, online: boolean}>} */
     const fixes = [];
     Object.entries(want || {}).forEach(([id, amount]) => {
         const online = wantOnline?.[id] === true;
@@ -123,14 +127,14 @@ export function personalDayFixes(want, doc, wantOnline = {}) {
  * personal rows this phone has, plus, when it didn't load the personal
  * collection, the stored day total (rows still in `expenses`, from before #98,
  * are counted from the list either way). `online` is the part paid online (EXP-MODE).
- * @param {Array<Object>} rows that day's personal rows in memory
+ * @param {Array<Rec>} rows that day's personal rows in memory
  * @param {boolean} readable the personal listener delivered its rows on this phone
  * @param {?{total?: number, count?: number, online?: number}} dayDoc dayDocTotals() of personalExpenseDays/{day}
  * @returns {{total: number, count: number, online: number}}
  */
 export function personalForDay(rows, readable, dayDoc) {
     const list = Array.isArray(rows) ? rows : [];
-    const amountOf = (e) => Number(e.amount) || Number(e.total) || 0;
+    const amountOf = (/** @type {Rec} */ e) => Number(e.amount) || Number(e.total) || 0;
     let total = list.reduce((s, e) => s + amountOf(e), 0);
     let online = list.filter(isOnlineExpense).reduce((s, e) => s + amountOf(e), 0);
     let count = list.length;

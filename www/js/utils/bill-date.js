@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview The date of a new bill (#147): which days may be picked, the check
  * before saving and the time the bill is saved with. Pure: "now", the role and
@@ -22,31 +23,31 @@ import { addLocalDays, monthStart, parseLocalDate, toLocalISODate } from './date
 
 /**
  * Days that may be picked for a new bill.
- * @param {{role?: string, roleAccess?: Object, now?: Date}} who
+ * @param {{role?: string, roleAccess?: Rec, now?: Date}} who
  * @returns {{max: string, min: string, days: ?number}} YYYY-MM-DD; days null for the owner
  */
 export function billDayRange({ role, roleAccess, now = new Date() } = {}) {
     const max = toLocalISODate(now);
-    const liveFrom = toLocalISODate(monthStart(now, -1));
+    const liveFrom = toLocalISODate(/** @type {Date} */ (monthStart(now, -1)));
     if (role === 'owner') return { max, min: liveFrom, days: null };
-    const days = accessFor(role, roleAccess).editDays;
+    const days = accessFor(/** @type {string} */ (role), roleAccess).editDays;
     // Never before the oldest day the app keeps live, whatever the role's window
-    const byRole = toLocalISODate(addLocalDays(now, -days));
+    const byRole = toLocalISODate(/** @type {Date} */ (addLocalDays(now, -days)));
     return { max, min: byRole > liveFrom ? byRole : liveFrom, days };
 }
 
 /**
  * Check the picked day before saving.
  * @param {string} day YYYY-MM-DD
- * @param {{role?: string, roleAccess?: Object, now?: Date}} who
- * @returns {?{key: string, params?: Object}} null when fine, else the i18n message key
+ * @param {{role?: string, roleAccess?: Rec, now?: Date}} who
+ * @returns {?{key: string, params?: Rec}} null when fine, else the i18n message key
  */
 export function validateBillDay(day, who = {}) {
     if (!parseLocalDate(day)) return { key: 'msg.billing.choose_date' };
     const range = billDayRange(who);
     if (day > range.max) return { key: 'msg.billing.date_in_future' };
     if (day < range.min) {
-        if (range.days === null || range.min > toLocalISODate(addLocalDays(who.now || new Date(), -range.days))) return { key: 'msg.billing.date_before_last_month' };
+        if (range.days === null || range.min > toLocalISODate(/** @type {Date} */ (addLocalDays(who.now || new Date(), -range.days)))) return { key: 'msg.billing.date_before_last_month' };
         return range.days === 0 ? { key: 'msg.billing.date_today_only' } : { key: 'msg.billing.date_too_old', params: { days: range.days } };
     }
     return null;

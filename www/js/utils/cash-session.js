@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Pure cash-session helpers (#66, #69, #101).
  * @module utils/cash-session
@@ -33,7 +34,7 @@ export function parseCashAmount(raw) {
  */
 export function sessionTotals(session, transactions = session?.transactions) {
     const t = transactions || {};
-    const n = (v) => Number(v) || 0;
+    const n = (/** @type {*} */ v) => Number(v) || 0;
     const opening = n(session?.openingBalance);
     const cashIn = round2(n(t.cashDeposits) + n(t.cashSales) + n(t.dueReceived));
     const cashOut = round2(n(t.cashPurchases) + n(t.duePaid) + n(t.businessExpenses) + n(t.personalExpenses));
@@ -46,7 +47,7 @@ export const LONG_SESSION_HOURS = 14;
 /**
  * C10: whole hours the drawer has been open (from `signInTime`), and whether that is
  * LONG_SESSION_HOURS or more. null when the session is closed or its open time is unknown.
- * @param {?Object} session
+ * @param {?Rec} session
  * @param {number} [now]
  * @returns {?{hours: number, long: boolean, since: number}}
  */
@@ -62,7 +63,7 @@ export function openHours(session, now = Date.now()) {
  * A closed session whose cash was never counted: auto-closed by the app
  * (`counted: false`), or auto-closed by an older app version that stored a
  * fake ₹0 count (`autoSignedOut` without a later count).
- * @param {Object} session
+ * @param {Rec} session
  * @returns {boolean}
  */
 export function isNotCounted(session) {
@@ -73,8 +74,8 @@ export function isNotCounted(session) {
 
 /**
  * The most recent closed session with a real count, or null.
- * @param {Object[]} sessions
- * @returns {?Object}
+ * @param {Rec[]} sessions
+ * @returns {?Rec}
  */
 export function lastCountedSession(sessions) {
     const closed = (sessions || [])
@@ -102,9 +103,9 @@ export function cashSessionDocId(date) {
 /**
  * The session for `date`. Older days can have more than one (random ids from
  * before #38): prefer the per-day id, then the earliest opened.
- * @param {Object[]} sessions
+ * @param {Rec[]} sessions
  * @param {string} date
- * @returns {?Object}
+ * @returns {?Rec}
  */
 export function sessionForDate(sessions, date) {
     const same = (sessions || []).filter(s => s && s.date === date);
@@ -115,7 +116,7 @@ export function sessionForDate(sessions, date) {
 
 /**
  * Days that have more than one cash session, newest first.
- * @param {Object[]} sessions
+ * @param {Rec[]} sessions
  * @returns {string[]}
  */
 export function duplicateSessionDays(sessions) {
@@ -128,9 +129,9 @@ export function duplicateSessionDays(sessions) {
  * Fields written when the app closes a session nobody closed (#101): the
  * expected balance is kept, but nothing was counted, so there is no closing
  * balance and no difference (no fake shortage).
- * @param {Object} session Fresh session data (needs `date`, `openingBalance`)
- * @param {Object} transactions Totals for that day
- * @returns {Object}
+ * @param {Rec} session Fresh session data (needs `date`, `openingBalance`)
+ * @param {Rec} transactions Totals for that day
+ * @returns {Rec}
  */
 export function autoCloseFields(session, transactions) {
     const { expected } = sessionTotals(session, transactions);

@@ -538,7 +538,7 @@ A number the app gets wrong today is listed in `BUGS` in
 the entry when you fix that issue. `npm run test:mutation` (Stryker, local or
 the weekly non-blocking `mutation.yml` job) shows how many deliberate small
 bugs in `money.js`, `calc/billing.js`, `stock-replay.js`, `bill-checks.js`, `dates.js`,
-`release-info.js`, `finance-calc.js` and `business-metrics.js` the tests catch (one job per file,
+`release-info.js`, `finance-calc.js`, `business-metrics.js`, `calc/cash.js` and `calc/today.js` the tests catch (one job per file,
 each running only that file's suites: `jest.stryker.config.js`). Owners and managers can run the same checks
 on real loaded data in Diagnostics → Number checks; the daily run's failures become Anomalies flags
 (`utils/number-check-flags.js`, #160).

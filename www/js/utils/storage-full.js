@@ -47,7 +47,7 @@ export function saveFailedText(err, fallback) {
  * localStorage.setItem that reports instead of throwing.
  * @param {string} key
  * @param {string} value
- * @param {Storage} [store]
+ * @param {?Storage} [store] default localStorage
  * @returns {{ok: boolean, full: boolean}}
  */
 export function safeSetItem(key, value, store) {

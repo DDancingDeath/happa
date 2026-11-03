@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Labour on purchases (docs/calculations.md T-LAB-1, T-LAB-2):
  * what was deducted from farmers on the bills, and what the labour should be
@@ -18,7 +19,7 @@ export { billLabour, formatKg, DEFAULT_LABOUR_PACKAGE_KG, LABOUR_PACKAGE_KG_MIN,
  * "(1,000 kg ÷ 35 kg = 29 packages × ₹6)" in the app language.
  * @param {{kg: number, packageKg: number, packages: number, rate: number}} toPay - labourToPay result
  * @param {string} key - catalogue key with {kg} {packageKg} {packages} {rate} (and a `_one` form)
- * @param {Object} [params] - extra params
+ * @param {Rec} [params] - extra params
  * @param {'en'|'hi'} [lang]
  * @returns {string}
  */
@@ -29,13 +30,21 @@ export function labourCalcText(toPay, key, params = {}, lang) {
     }, lang);
 }
 
-/** kg on a purchase bill: Σ line kg. */
+/**
+ * kg on a purchase bill: Σ line kg.
+ * @param {?Bill|undefined} bill
+ * @returns {number}
+ */
 export function billKg(bill) {
     const items = Array.isArray(bill?.items) ? bill.items : [];
     return round2(items.reduce((sum, item) => sum + readLineItem(item).qty, 0));
 }
 
-/** Packets (weighings) on a purchase bill: Σ line weights, else the stored totalPackets. */
+/**
+ * Packets (weighings) on a purchase bill: Σ line weights, else the stored totalPackets.
+ * @param {?Bill|undefined} bill
+ * @returns {number}
+ */
 export function billPackets(bill) {
     const items = Array.isArray(bill?.items) ? bill.items : [];
     const counted = items.reduce((sum, item) => sum + (Array.isArray(item?.weights) ? item.weights.length : 0), 0);
@@ -46,7 +55,7 @@ export function billPackets(bill) {
 
 /**
  * T-LAB-1: labour deducted from farmers on these purchase bills.
- * @param {Array<Object>} bills
+ * @param {Array<?Bill|undefined>} bills
  * @returns {{amount: number, bills: number}} bills = bills with labour > 0
  */
 export function labourDeducted(bills) {
@@ -75,7 +84,7 @@ export function labourPackages(kg, packageKg) {
 
 /**
  * T-LAB-2: what to pay the labour for the kg on these purchase bills.
- * @param {Array<Object>} bills
+ * @param {Array<?Bill|undefined>} bills
  * @param {{laborRate?: *, labourPackageKg?: *}} [settings] - Settings › Aadhat (shared)
  * @returns {{kg: number, packageKg: number, packages: number, rate: number, amount: number}}
  */
@@ -88,18 +97,19 @@ export function labourToPay(bills, settings = {}) {
 
 /**
  * T-LAB-2 for a period longer than a day: each day rounded up on its own, then summed.
- * @param {Array<Object>} bills
- * @param {Object} settings
- * @param {(bill: Object) => (string|null)} dayKeyOf - local day of a bill (e.g. from utils/dates.js)
+ * @param {Array<?Bill|undefined>} bills
+ * @param {Rec} settings
+ * @param {(bill: ?Bill|undefined) => (string|null)} dayKeyOf - local day of a bill (e.g. from utils/dates.js)
  * @returns {{kg: number, packages: number, amount: number, days: number}}
  */
 export function labourToPayByDay(bills, settings, dayKeyOf) {
+    /** @type {Map<string, Array<?Bill|undefined>>} */
     const byDay = new Map();
     activityBills(bills).forEach(b => {
         const key = dayKeyOf(b);
         if (!key) return;
         if (!byDay.has(key)) byDay.set(key, []);
-        byDay.get(key).push(b);
+        /** @type {Array<?Bill|undefined>} */ (byDay.get(key)).push(b);
     });
     let kg = 0;
     let packages = 0;
@@ -136,10 +146,10 @@ export function periodLabourGap(toPay, deducted) {
 
 /**
  * Both labour figures for the Today card, the day report and Money › Spending.
- * @param {Array<Object>} bills - purchase bills of the period (opening records are left out here)
- * @param {Object} [settings]
+ * @param {Array<?Bill|undefined>} bills - purchase bills of the period (opening records are left out here)
+ * @param {Rec} [settings]
  * @returns {{deducted: {amount: number, bills: number}, toPay: ReturnType<typeof labourToPay>,
- *   difference: number, rows: Array<{bill: Object, kg: number, packets: number, labour: number}>}}
+ *   difference: number, rows: Array<{bill: ?Bill|undefined, kg: number, packets: number, labour: number}>}}
  *   difference = to pay − deducted
  */
 export function labourSummary(bills, settings = {}) {

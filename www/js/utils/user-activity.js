@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Admin › Users counts and the per-person activity report (#145).
  * Pure: the page passes the loaded users, the bills already on this phone and
@@ -47,23 +48,31 @@ export function userCounts(users, isRemoved = () => false) {
  * @returns {{from: number, to: number}}
  */
 export function activityRange(range, now = new Date()) {
-    const tomorrow = addLocalDays(now, 1).getTime();
-    if (range === 'today') return { from: startOfLocalDay(now).getTime(), to: tomorrow };
-    if (range === 'week') return { from: addLocalDays(now, -6).getTime(), to: tomorrow };
-    if (range === 'last_month') return monthRange(now, -1);
-    return { from: monthRange(now, 0).from, to: tomorrow };
+    const tomorrow = /** @type {Date} */ (addLocalDays(now, 1)).getTime();
+    if (range === 'today') return { from: /** @type {Date} */ (startOfLocalDay(now)).getTime(), to: tomorrow };
+    if (range === 'week') return { from: /** @type {Date} */ (addLocalDays(now, -6)).getTime(), to: tomorrow };
+    if (range === 'last_month') return /** @type {{from: number, to: number}} */ (monthRange(now, -1));
+    return { from: /** @type {{from: number, to: number}} */ (monthRange(now, 0)).from, to: tomorrow };
 }
 
-/** When a bill was first saved (server createdAt, else its client timestamp, else its date). */
+/**
+ * When a bill was first saved (server createdAt, else its client timestamp, else its date).
+ * @param {?Rec|undefined} bill
+ * @returns {?number}
+ */
 export function billCreatedMs(bill) {
     const d = toJsDate(bill?.createdAt) || toJsDate(bill?.timestamp) || parseAnyBillDate(bill?.date);
     return d ? d.getTime() : null;
 }
 
-/** Who saved a bill: purchases / retail store `userId`, wholesale `createdBy`. */
+/**
+ * Who saved a bill: purchases / retail store `userId`, wholesale `createdBy`.
+ * @param {?Rec|undefined} bill
+ * @returns {?string}
+ */
 export const billAuthor = (bill) => bill?.userId || bill?.createdBy || null;
 
-const blankRow = (uid) => ({ uid, bills: 0, billTotal: 0, payments: 0, edits: 0, voids: 0, lastActive: null });
+const blankRow = (/** @type {string} */ uid) => /** @type {Rec} */ ({ uid, bills: 0, billTotal: 0, payments: 0, edits: 0, voids: 0, lastActive: null });
 
 /**
  * ADM-2 / ADM-3: per person in [from, to).
@@ -72,16 +81,17 @@ const blankRow = (uid) => ({ uid, bills: 0, billTotal: 0, payments: 0, edits: 0,
  * - payments / edits / voids: their audit rows in the range by action (ACTIVITY_ACTIONS).
  * - lastActive: their latest bill or audit row in the range (ms).
  * Rows sorted by bills, then actions, then uid.
- * @param {{bills: Array<Object>, audit: Array<{userId: string, action: string, timestamp: number}>, from: number, to: number}} p
- * @returns {Array<Object>}
+ * @param {{bills: Array<Rec>, audit: Array<{userId: string, action: string, timestamp: number}>, from: number, to: number}} p
+ * @returns {Array<Rec>}
  */
 export function activityByUser({ bills, audit, from, to }) {
+    /** @type {Map<string, Rec>} */
     const rows = new Map();
-    const row = (uid) => {
+    const row = (/** @type {string} */ uid) => {
         if (!rows.has(uid)) rows.set(uid, blankRow(uid));
-        return rows.get(uid);
+        return /** @type {Rec} */ (rows.get(uid));
     };
-    const seen = (r, ms) => { if (r.lastActive === null || ms > r.lastActive) r.lastActive = ms; };
+    const seen = (/** @type {Rec} */ r, /** @type {number} */ ms) => { if (r.lastActive === null || ms > r.lastActive) r.lastActive = ms; };
     activityBills(bills || []).forEach(b => {
         const uid = billAuthor(b);
         const ms = billCreatedMs(b);
@@ -102,6 +112,6 @@ export function activityByUser({ bills, audit, from, to }) {
     });
     const out = [...rows.values()];
     out.forEach(r => { r.billTotal = Math.round(r.billTotal); });
-    const actions = (r) => r.payments + r.edits + r.voids;
+    const actions = (/** @type {Rec} */ r) => r.payments + r.edits + r.voids;
     return out.sort((a, b) => b.bills - a.bills || actions(b) - actions(a) || (a.uid < b.uid ? -1 : 1));
 }

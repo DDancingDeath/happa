@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Item rate / name change history (#82, phase 1 of #65).
  * Pure helpers: snapshot an item when editing starts, diff it against the
@@ -10,7 +11,10 @@
 import { t, getLang } from '../i18n/index.js';
 import { formatRate } from './money.js';
 
-/** Rate types in history entries -> item array field. */
+/**
+ * Rate types in history entries -> item array field.
+ * @type {Object<string, string>}
+ */
 export const RATE_FIELDS = { purchase: 'rates', wholesale: 'wholesaleRates', retail: 'saleRates' };
 
 /** Every `field` value a history entry may have (mirrored in firestore.rules). */
@@ -22,7 +26,10 @@ export const RATE_SANITY_FACTOR = 2;
 /** Two changes of the same item field within this window get a review flag. */
 export const QUICK_REPEAT_MS = 60 * 1000;
 
-/** i18n keys of the history field names. */
+/**
+ * i18n keys of the history field names.
+ * @type {Object<string, string>}
+ */
 export const FIELD_LABEL_KEYS = {
     purchase: 'ui.rate_history.purchase_rate',
     wholesale: 'ui.rate_history.wholesale_rate',
@@ -31,18 +38,23 @@ export const FIELD_LABEL_KEYS = {
     hindiName: 'ui.rate_history.hindi_name'
 };
 
-/** Field name in the app language (unknown fields as they are). */
+/**
+ * Field name in the app language (unknown fields as they are).
+ * @param {*} field
+ * @param {'en'|'hi'} [lang]
+ * @returns {string}
+ */
 export function fieldLabel(field, lang = getLang()) {
     return FIELD_LABEL_KEYS[field] ? t(FIELD_LABEL_KEYS[field], undefined, lang) : String(field ?? '');
 }
 
-const cleanRates = (list) => (Array.isArray(list) ? list : [])
+const cleanRates = (/** @type {*} */ list) => (Array.isArray(list) ? list : [])
     .map(Number)
     .filter(r => Number.isFinite(r) && r > 0);
 
 /**
  * Values the history tracks, taken at edit start or from the data to save.
- * @param {Object|null} item
+ * @param {?Rec} item
  * @returns {{name: string, hindiName: string, purchase: number[], wholesale: number[], retail: number[]}}
  */
 export function snapshotItem(item) {
@@ -79,9 +91,12 @@ export function diffRateList(oldList, newList) {
             lcs[i][j] = a[i] === b[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
         }
     }
+    /** @type {Array<{old: ?number, new: ?number, index: number}>} */
     const out = [];
     let pos = 0;
+    /** @type {number[]} */
     let removed = [];
+    /** @type {number[]} */
     let added = [];
     const flush = () => {
         const n = Math.max(removed.length, added.length);
@@ -121,11 +136,12 @@ export function diffRateList(oldList, newList) {
  * @returns {Array<{field: string, old: *, new: *, index?: number}>}
  */
 export function diffItemSnapshots(before, after) {
+    /** @type {Array<{field: string, old: *, new: *, index?: number}>} */
     const changes = [];
-    ['name', 'hindiName'].forEach(field => {
+    /** @type {Array<'name'|'hindiName'>} */ (['name', 'hindiName']).forEach(field => {
         if (before[field] !== after[field]) changes.push({ field, old: before[field] || null, new: after[field] || null });
     });
-    Object.keys(RATE_FIELDS).forEach(field => {
+    /** @type {Array<'purchase'|'wholesale'|'retail'>} */ (Object.keys(RATE_FIELDS)).forEach(field => {
         diffRateList(before[field], after[field]).forEach(c => changes.push({ field, old: c.old, new: c.new, index: c.index }));
     });
     return changes;
@@ -149,7 +165,7 @@ export function isRateOutOfBand(oldRate, newRate, factor = RATE_SANITY_FACTOR) {
  * Warnings to confirm before saving.
  * @param {Array<{field: string, old: *, new: *}>} changes
  * @param {{isNew?: boolean}} [opts] renames of a new item need no warning
- * @returns {{rename: Array, outOfBand: Array}}
+ * @returns {{rename: Array<{field: string, old: *, new: *}>, outOfBand: Array<{field: string, old: *, new: *}>}}
  */
 export function changeWarnings(changes, { isNew = false } = {}) {
     return {
@@ -170,7 +186,7 @@ export function changeWarnings(changes, { isNew = false } = {}) {
  * @param {number} meta.at ms
  * @param {string} [meta.source] 'modal' | 'inline' | 'import'
  * @param {Object.<string, number>} [meta.lastChangeAt] `${itemId}:${field}` -> ms of the previous change
- * @returns {Array<Object>}
+ * @returns {Array<Rec>}
  */
 export function buildHistoryEntries(changes, { itemId, itemName, by, byUserId, at, source = 'modal', lastChangeAt = {} }) {
     return changes.map(c => {
@@ -178,6 +194,7 @@ export function buildHistoryEntries(changes, { itemId, itemName, by, byUserId, a
         if (RATE_FIELDS[c.field] && isRateOutOfBand(c.old, c.new)) flags.push('out-of-band');
         const prev = lastChangeAt[`${itemId}:${c.field}`];
         if (typeof prev === 'number' && at - prev >= 0 && at - prev < QUICK_REPEAT_MS) flags.push('quick-repeat');
+        /** @type {Rec} */
         const entry = {
             itemId,
             itemName: itemName || '',
@@ -190,7 +207,7 @@ export function buildHistoryEntries(changes, { itemId, itemName, by, byUserId, a
             source,
             flags
         };
-        if (RATE_FIELDS[c.field] && Number.isInteger(c.index) && c.index >= 0 && c.index <= MAX_HISTORY_INDEX) entry.index = c.index;
+        if (RATE_FIELDS[c.field] && Number.isInteger(c.index) && /** @type {number} */ (c.index) >= 0 && /** @type {number} */ (c.index) <= MAX_HISTORY_INDEX) entry.index = c.index;
         return entry;
     });
 }

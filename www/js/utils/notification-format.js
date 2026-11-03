@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Pure helpers for in-app notifications (#12): bilingual text for
  * every notification type, badge text, read-state rules, retention, rate diffs
@@ -17,6 +18,7 @@ export const PAGE_SIZE = 30;
 export const RETENTION_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** @type {Object<string, {en: string, hi: string}>} */
 const RATE_LABELS = {
     purchase: { en: 'Purchase', hi: 'खरीद' },
     sale: { en: 'Retail', hi: 'फुटकर' },
@@ -24,6 +26,7 @@ const RATE_LABELS = {
     wholesale: { en: 'Wholesale', hi: 'थोक' }
 };
 
+/** @type {Object<string, {en: string, hi: string}>} */
 const DOC_LABELS = {
     bill: { en: 'Purchase bill', hi: 'खरीद बिल' },
     purchase: { en: 'Purchase bill', hi: 'खरीद बिल' },
@@ -40,6 +43,7 @@ const DOC_LABELS = {
     item: { en: 'Item', hi: 'आइटम' }
 };
 
+/** @type {Object<string, string>} */
 const DOC_TABS = {
     bill: 'history', purchase: 'history', purchases: 'history',
     retail: 'history', retailSale: 'history', retailSales: 'history',
@@ -47,28 +51,45 @@ const DOC_TABS = {
     payment: 'due', expense: 'expenses', item: 'items'
 };
 
+/** @type {Object<string, {en: string, hi: string}>} */
 const FIELD_LABELS = {
     name: { en: 'name', hi: 'नाम' },
     hindiName: { en: 'Hindi name', hi: 'हिंदी नाम' },
     contactPerson: { en: 'contact', hi: 'संपर्क' }
 };
 
-/** Milliseconds for any stored timestamp shape (Firestore Timestamp, ms, Date), or 0. */
+/**
+ * Milliseconds for any stored timestamp shape (Firestore Timestamp, ms, Date), or 0.
+ * @param {?Rec|undefined} n
+ * @returns {number}
+ */
 export function notificationTime(n) {
     const d = toJsDate(n?.timestamp ?? n?.createdAt);
     return d ? d.getTime() : 0;
 }
 
+/**
+ * @param {*} value
+ * @returns {string}
+ */
 function rateText(value) {
     if (Array.isArray(value)) return value.length ? value.map(v => formatRate(v)).join(', ') : '—';
     if (value === '' || value === null || value === undefined) return '—';
     return formatRate(value);
 }
 
+/**
+ * @param {*} value
+ * @returns {string}
+ */
 function clean(value) {
     return typeof value === 'string' ? value.trim() : '';
 }
 
+/**
+ * @param {Rec} n
+ * @returns {{en: string, hi: string}}
+ */
 function itemNames(n) {
     const en = clean(n.itemName) || clean(n.itemHindiName) || 'Item';
     const hi = clean(n.itemHindiName) || en;
@@ -77,8 +98,8 @@ function itemNames(n) {
 
 /**
  * Display model for one notification document.
- * @param {Object} n - notification document data (with `id`)
- * @returns {{icon: string, en: string, hi: string, who: string, target: ?Object}}
+ * @param {Rec} n - notification document data (with `id`)
+ * @returns {{icon: string, en: string, hi: string, who: string, target: ?Rec}}
  */
 export function describeNotification(n = {}) {
     const who = clean(n.changedBy) || clean(n.editedBy) || clean(n.createdByName) || clean(n.byName);
@@ -139,7 +160,12 @@ export function describeNotification(n = {}) {
     return { icon: '🔔', en, hi, who, target: n.tab ? { tab: n.tab } : null };
 }
 
-/** One-line text in the app language (toast). */
+/**
+ * One-line text in the app language (toast).
+ * @param {Rec} n
+ * @param {'en'|'hi'} [lang]
+ * @returns {string}
+ */
 export function notificationText(n, lang = getLang()) {
     const d = describeNotification(n);
     const by = d.who ? ` — ${d.who}` : '';
@@ -168,13 +194,24 @@ export function formatWhen(ms, now = Date.now()) {
     return { en: `${days} days ago`, hi: `${days} दिन पहले`, abs };
 }
 
-/** Badge text for the bell: '' when nothing unread, '20+' when the listener is full. */
+/**
+ * Badge text for the bell: '' when nothing unread, '20+' when the listener is full.
+ * @param {*} unreadCount
+ * @param {number} [limit]
+ * @returns {string}
+ */
 export function badgeText(unreadCount, limit = UNREAD_LIMIT) {
     if (!unreadCount || unreadCount < 0) return '';
     return unreadCount >= limit ? `${limit}+` : String(unreadCount);
 }
 
-/** True when the notification is within the retention window. */
+/**
+ * True when the notification is within the retention window.
+ * @param {?Rec|undefined} n
+ * @param {number} [now]
+ * @param {number} [days]
+ * @returns {boolean}
+ */
 export function isFresh(n, now = Date.now(), days = RETENTION_DAYS) {
     const t = notificationTime(n);
     // Pending server timestamps have no time yet: they are brand new.
@@ -197,13 +234,16 @@ export function retentionCutoff(now = Date.now(), days = RETENTION_DAYS) {
 export function idsToMarkRead(reason, notifications = [], tappedId) {
     const unread = notifications.filter(n => n && n.id && n.read !== true);
     if (reason === 'open' || reason === 'all') return [...new Set(unread.map(n => n.id))];
-    if (reason === 'tap') return unread.some(n => n.id === tappedId) ? [tappedId] : [];
+    if (reason === 'tap') return unread.some(n => n.id === tappedId) ? [/** @type {string} */ (tappedId)] : [];
     return [];
 }
 
 /**
  * Drops duplicates (same id, or same `eventKey`) keeping the newest first,
  * and hides anything past the retention window.
+ * @param {Array<Rec>} [notifications]
+ * @param {number} [now]
+ * @returns {Array<Rec>}
  */
 export function prepareList(notifications = [], now = Date.now()) {
     const seenIds = new Set();
@@ -231,6 +271,7 @@ export function prepareList(notifications = [], now = Date.now()) {
  * @returns {string[]} ids to toast
  */
 export function newArrivals(changes, seen, initial) {
+    /** @type {string[]} */
     const out = [];
     (changes || []).forEach(ch => {
         if (ch.type !== 'added' || !ch.id) return;
@@ -240,7 +281,12 @@ export function newArrivals(changes, seen, initial) {
     return out;
 }
 
-/** Deterministic document id: one notification per recipient per event. */
+/**
+ * Deterministic document id: one notification per recipient per event.
+ * @param {string} eventId
+ * @param {string} userId
+ * @returns {string}
+ */
 export function notificationDocId(eventId, userId) {
     return `${eventId}_${userId}`.replace(/[/\s]/g, '_');
 }
@@ -249,6 +295,11 @@ export function notificationDocId(eventId, userId) {
  * Plans the notification documents for one event (deduplicated recipients,
  * actor excluded). Writing the same event twice targets the same doc ids,
  * so an event never notifies a user twice.
+ * @param {string} eventId
+ * @param {?Array<string>|undefined} recipientIds
+ * @param {?string|undefined} actorId
+ * @param {Rec} data
+ * @returns {Array<{id: string, data: Rec}>}
  */
 export function planNotificationDocs(eventId, recipientIds, actorId, data) {
     const ids = [...new Set((recipientIds || []).filter(id => id && id !== actorId))];
@@ -262,15 +313,18 @@ export function newEventId(prefix = 'evt') {
 
 const RATE_FIELDS = [['rates', 'purchase'], ['saleRates', 'sale'], ['wholesaleRates', 'wholesale']];
 
-const sameRates = (a, b) => a.length === b.length && a.every((v, i) => Number(v) === Number(b[i]));
-const cleanRates = (list) => (Array.isArray(list) ? list : []).map(Number).filter(v => v > 0);
+const sameRates = (/** @type {number[]} */ a, /** @type {number[]} */ b) => a.length === b.length && a.every((v, i) => Number(v) === Number(b[i]));
+const cleanRates = (/** @type {*} */ list) => (Array.isArray(list) ? list : []).map(Number).filter(v => v > 0);
 
 /**
  * Rate lists that changed between two versions of an item.
  * Single-value changes give numbers (`40 → 45`), others the whole lists.
+ * @param {Rec} [before]
+ * @param {Rec} [after]
  * @returns {Array<{rateType: string, oldRate: (number|number[]), newRate: (number|number[])}>}
  */
 export function diffItemRates(before = {}, after = {}) {
+    /** @type {ReturnType<typeof diffItemRates>} */
     const out = [];
     RATE_FIELDS.forEach(([field, rateType]) => {
         const a = cleanRates(before[field]);
@@ -282,7 +336,12 @@ export function diffItemRates(before = {}, after = {}) {
     return out;
 }
 
-/** Non-rate item fields that changed (for the owners' "item updated" note). */
+/**
+ * Non-rate item fields that changed (for the owners' "item updated" note).
+ * @param {Rec} [before]
+ * @param {Rec} [after]
+ * @returns {string[]}
+ */
 export function diffItemFields(before = {}, after = {}) {
     return Object.keys(FIELD_LABELS).filter(f => clean(before[f]) !== clean(after[f]));
 }
@@ -293,20 +352,29 @@ export function diffItemFields(before = {}, after = {}) {
  * previous keystroke). `begin` keeps the first baseline until `commit`.
  */
 export function createRateEditTracker() {
+    /** @type {Map<string, number>} */
     const baselines = new Map();
     return {
+        /**
+         * @param {string} key
+         * @param {*} value
+         */
         begin(key, value) {
             if (!baselines.has(key)) baselines.set(key, Number(value) || 0);
         },
-        /** @returns {?{oldRate: number, newRate: number}} null when nothing to report */
+        /**
+         * @param {string} key
+         * @param {*} value
+         * @returns {?{oldRate: number, newRate: number}} null when nothing to report
+         */
         commit(key, value) {
             if (!baselines.has(key)) return null;
-            const oldRate = baselines.get(key);
+            const oldRate = /** @type {number} */ (baselines.get(key));
             baselines.delete(key);
             const newRate = Number(value) || 0;
             if (newRate <= 0 || newRate === oldRate) return null;
             return { oldRate, newRate };
         },
-        has: (key) => baselines.has(key)
+        has: (/** @type {string} */ key) => baselines.has(key)
     };
 }

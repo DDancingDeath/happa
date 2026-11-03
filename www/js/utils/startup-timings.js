@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Startup timing marks (#13). Each step of app open records a
  * performance.mark ("aadhat:<step>") plus where its data came from, so slow
@@ -5,14 +6,16 @@
  * @module utils/startup-timings
  */
 
+/** @type {Array<{name: string, t: number, detail: ?Rec}>} */
 const marks = [];
+/** @type {Rec} */
 const info = {};
 const now = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
 
 /**
  * Record a startup step (first occurrence per page load only).
  * @param {string} name
- * @param {Object} [detail]
+ * @param {Rec} [detail]
  */
 export function markStartup(name, detail) {
     if (marks.some(m => m.name === name)) return;
@@ -29,7 +32,7 @@ export function noteStartup(key, value) {
     info[key] = value;
 }
 
-/** @returns {{marks: Array<{name: string, t: number, detail: ?Object}>, info: Object}} */
+/** @returns {{marks: Array<{name: string, t: number, detail: ?Rec}>, info: Rec}} */
 export function getStartupTimings() {
     return { marks: marks.map(m => ({ ...m })), info: JSON.parse(JSON.stringify(info)) };
 }

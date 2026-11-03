@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Bill corrections (#121) and voids (#75). An edit keeps the
  * before/after of every recorded field it changed (the item list too, as it
@@ -31,6 +32,10 @@ export const EDIT_FIELDS = Object.freeze([
 /** Fields written when a bill is voided (firestore.rules voidOk). */
 export const VOID_FIELDS = Object.freeze(['voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason', 'openDue']);
 
+/**
+ * @param {*} v
+ * @returns {string}
+ */
 const canonical = (v) => {
     if (v === undefined) return 'undefined';
     if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
@@ -40,14 +45,19 @@ const canonical = (v) => {
     }
     return JSON.stringify(v ?? null);
 };
-const same = (a, b) => canonical(a) === canonical(b);
+const same = (/** @type {*} */ a, /** @type {*} */ b) => canonical(a) === canonical(b);
 // A value as Firestore keeps it (the rules compare the record with the bill): undefined
 // keys dropped, Timestamps left as Timestamps.
+/**
+ * @param {*} v
+ * @returns {*}
+ */
 const stored = (v) => {
     if (v === undefined || v === null) return null;
     if (Array.isArray(v)) return v.filter(x => x !== undefined).map(stored);
     if (typeof v === 'object') {
         if (typeof v.toMillis === 'function') return v;
+        /** @type {Rec} */
         const out = {};
         Object.keys(v).forEach(k => { if (v[k] !== undefined) out[k] = stored(v[k]); });
         return out;
@@ -65,8 +75,8 @@ export function cleanReason(text) {
     return r.length >= REASON_MIN && r.length <= REASON_MAX ? r : null;
 }
 
-const lineKey = (line) => String(line?.itemId || readLineItem(line).name || '').trim().toLowerCase();
-const lineView = (line) => {
+const lineKey = (/** @type {Rec} */ line) => String(line?.itemId || readLineItem(line).name || '').trim().toLowerCase();
+const lineView = (/** @type {Rec} */ line) => {
     const v = readLineItem(line);
     return { qty: v.qty, rate: v.rate, total: v.total };
 };
@@ -74,19 +84,21 @@ const lineView = (line) => {
 /**
  * Item lines that differ between two versions: lines of the same item are
  * paired in order; a line only in one version is added / removed.
- * @param {Array} before
- * @param {Array} after
- * @returns {Array<{name: string, before: ?{qty, rate, total}, after: ?{qty, rate, total}}>}
+ * @param {*} before
+ * @param {*} after
+ * @returns {Array<{name: string, before: ?{qty: number, rate: number, total: number}, after: ?{qty: number, rate: number, total: number}}>}
  */
 export function diffLines(before, after) {
     const left = (Array.isArray(before) ? before : []).filter(Boolean);
     const right = (Array.isArray(after) ? after : []).filter(Boolean);
+    /** @type {Map<string, Array<Rec>>} */
     const pool = new Map();
     left.forEach(l => {
         const k = lineKey(l);
         if (!pool.has(k)) pool.set(k, []);
-        pool.get(k).push(l);
+        /** @type {Array<Rec>} */ (pool.get(k)).push(l);
     });
+    /** @type {ReturnType<typeof diffLines>} */
     const out = [];
     right.forEach(r => {
         const prev = pool.get(lineKey(r))?.shift();
@@ -105,13 +117,14 @@ export function diffLines(before, after) {
 /**
  * What an edit changes: each recorded field whose stored value differs, with its value
  * before and after ({field: {before, after}}; the whole item list for `items`).
- * @param {Object} before the bill as stored
- * @param {Object} after the bill to be written
+ * @param {Rec} before the bill as stored
+ * @param {Rec} after the bill to be written
  * @returns {{fields: Object<string, {before: *, after: *}>}}
  */
 export function billEditChanges(before, after) {
     const b = before || {};
     const a = after || {};
+    /** @type {Object<string, {before: *, after: *}>} */
     const fields = {};
     EDIT_FIELDS.forEach(k => {
         if (!same(b[k], a[k])) fields[k] = { before: stored(b[k]), after: stored(a[k]) };
@@ -130,8 +143,8 @@ export function hasEditChanges(changes) {
 
 /**
  * The item lines an edit changed, worked out from its stored item lists (diffLines).
- * @param {Object} edit stored edit record
- * @returns {Array}
+ * @param {Rec} edit stored edit record
+ * @returns {ReturnType<typeof diffLines>}
  */
 export function editLines(edit) {
     const items = edit?.fields?.items;
@@ -142,7 +155,7 @@ export function editLines(edit) {
  * The edit record stored at `<bills>/{id}/edits/{n}`; `at` is the server time
  * (passed in), `by` the editor's uid.
  * @param {{n: number, at: *, by: string, byName?: string, reason: string, changes: ReturnType<typeof billEditChanges>}} args
- * @returns {Object}
+ * @returns {Rec}
  */
 export function editRecord({ n, at, by, byName = '', reason, changes }) {
     return {
@@ -153,13 +166,21 @@ export function editRecord({ n, at, by, byName = '', reason, changes }) {
     };
 }
 
-/** Number of edits recorded on a bill (0 for bills never edited or edited before #121). */
+/**
+ * Number of edits recorded on a bill (0 for bills never edited or edited before #121).
+ * @param {?Rec|undefined} bill
+ * @returns {number}
+ */
 export function editCountOf(bill) {
     const n = Number(bill?.editCount);
     return Number.isInteger(n) && n > 0 ? n : 0;
 }
 
-/** Number (and document id) of the next edit record of a bill. */
+/**
+ * Number (and document id) of the next edit record of a bill.
+ * @param {?Rec|undefined} bill
+ * @returns {number}
+ */
 export function nextEditNumber(bill) {
     return editCountOf(bill) + 1;
 }
@@ -168,7 +189,7 @@ export function nextEditNumber(bill) {
  * Why a bill can't be voided right now, or null: already voided, or payments
  * recorded after it was saved (their cash-session legs would be left behind:
  * a void never moves money; see docs/role-permissions.md "Void").
- * @param {Object} bill
+ * @param {Rec} bill
  * @returns {?('voided'|'payments')}
  */
 export function voidBlocker(bill) {
@@ -181,27 +202,27 @@ const TOTAL_FIELDS = ['grandTotal', 'amountPayable', 'total', 'billTotal', 'sale
 const FIELD_LABEL = { customerName: 'ui.edits.field_party', laborCharges: 'ui.edits.field_labour' };
 const PAY_PARTS = [['cash', 'cashPayment', 'ui.edits.field_cash'], ['online', 'onlinePayment', 'ui.edits.field_online'], ['due', 'dueAmount', 'ui.edits.field_due']];
 
-const money = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
-const valueText = (v, lang) => {
+const money = (/** @type {*} */ v) => (v === null || v === undefined || v === '' ? null : Number(v));
+const valueText = (/** @type {*} */ v, /** @type {'en'|'hi'|undefined} */ lang) => {
     if (v === null || v === undefined || v === '') return t('ui.edits.empty_value', null, lang);
     if (typeof v === 'number') return formatRupees(v);
     if (typeof v === 'object') return t('ui.edits.empty_value', null, lang);
     return String(v);
 };
-const dayText = (v, lang) => formatDayTime(v, { lang }) || t('ui.edits.empty_value', null, lang);
-const lineText = (v, lang) => t('ui.edits.line_value', { qty: v.qty, rate: formatRupees(v.rate) }, lang);
+const dayText = (/** @type {*} */ v, /** @type {'en'|'hi'|undefined} */ lang) => formatDayTime(v, { lang }) || t('ui.edits.empty_value', null, lang);
+const lineText = (/** @type {Rec} */ v, /** @type {'en'|'hi'|undefined} */ lang) => t('ui.edits.line_value', { qty: v.qty, rate: formatRupees(v.rate) }, lang);
 
 /**
  * Plain-text lines for one stored edit (caller escapes): what changed, field
  * by field, then item by item. Totals stored in several fields show once.
- * @param {Object} edit stored edit record
+ * @param {Rec} edit stored edit record
  * @param {'en'|'hi'} [lang]
  * @returns {string[]}
  */
 export function describeEdit(edit, lang) {
     const fields = edit?.fields || {};
     const out = [];
-    const change = (labelKey, before, after) => {
+    const change = (/** @type {string} */ labelKey, /** @type {*} */ before, /** @type {*} */ after) => {
         out.push(`${t(labelKey, null, lang)}: ${valueText(before, lang)} → ${valueText(after, lang)}`);
     };
     if (fields.customerName) change(FIELD_LABEL.customerName, fields.customerName.before, fields.customerName.after);
@@ -220,7 +241,7 @@ export function describeEdit(edit, lang) {
     const lines = editLines(edit);
     lines.forEach(l => {
         const name = l.name || t('ui.edits.empty_value', null, lang);
-        if (!l.before) out.push(t('ui.edits.line_added', { name, after: lineText(l.after, lang) }, lang));
+        if (!l.before) out.push(t('ui.edits.line_added', { name, after: lineText(/** @type {Rec} */ (l.after), lang) }, lang));
         else if (!l.after) out.push(t('ui.edits.line_removed', { name, before: lineText(l.before, lang) }, lang));
         else out.push(`${name}: ${lineText(l.before, lang)} → ${lineText(l.after, lang)}`);
     });
@@ -230,7 +251,7 @@ export function describeEdit(edit, lang) {
 
 /**
  * Heading of one edit: "#2 · 31 Oct, 2:05 pm · Ravi".
- * @param {Object} edit
+ * @param {Rec} edit
  * @param {'en'|'hi'} [lang]
  * @returns {string}
  */

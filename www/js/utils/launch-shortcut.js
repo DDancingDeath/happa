@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Home-screen shortcuts of the installed web app (#151): the
  * manifest's `shortcuts` open `/?shortcut=<key>`; after sign-in the app shows the
@@ -19,7 +20,7 @@ export const SHORTCUTS = Object.freeze({
  */
 export function shortcutFromSearch(search) {
     const key = new URLSearchParams(search || '').get('shortcut');
-    return key && Object.prototype.hasOwnProperty.call(SHORTCUTS, key) ? { ...SHORTCUTS[key] } : null;
+    return key && Object.prototype.hasOwnProperty.call(SHORTCUTS, key) ? { ...SHORTCUTS[/** @type {keyof typeof SHORTCUTS} */ (key)] } : null;
 }
 
 /**

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Pure builders for reprinting / sharing a saved bill from
  * History (#136): the printer payload (bill's own date + COPY mark) and the
@@ -9,10 +10,14 @@ import { billLabour, billLineTotal, billTotal, outstandingDue, readPayment, read
 import { billDateOf } from './history-filters.js';
 import { t } from '../i18n/index.js';
 
-/** "COPY" mark on a reprinted slip / shared text, in the app language (or `lang`). */
+/**
+ * "COPY" mark on a reprinted slip / shared text, in the app language (or `lang`).
+ * @param {'en'|'hi'} [lang]
+ * @returns {string}
+ */
 export const copyMark = (lang) => t('ui.bill.copy_mark', undefined, lang);
 
-const pad2 = (n) => String(n).padStart(2, '0');
+const pad2 = (/** @type {number} */ n) => String(n).padStart(2, '0');
 
 /**
  * "DD/MM/YYYY hh:mm am" in device local time (IST), the receipt format.
@@ -29,7 +34,7 @@ export function formatReceiptDateTime(date) {
 /**
  * Date/time printed on the slip: the bill's own date, `now` only when the
  * bill has no usable date (e.g. a test print).
- * @param {Object} billData
+ * @param {Rec} billData
  * @param {Date} [now=new Date()]
  * @returns {string}
  */
@@ -39,7 +44,7 @@ export function receiptDateTime(billData, now = new Date()) {
 
 /**
  * Amount payable on the printed slip: BILL-TOTAL (a present 0 counts; #80).
- * @param {Object} billData
+ * @param {Rec} billData
  * @returns {number}
  */
 export function receiptPayable(billData) {
@@ -49,7 +54,7 @@ export function receiptPayable(billData) {
 /**
  * Text of the bill QR on the slip (#107): bill number, date/time and the
  * payable in whole rupees as printed; '' without a bill number.
- * @param {Object} billData
+ * @param {Rec} billData
  * @returns {string}
  */
 export function billQrText(billData) {
@@ -59,7 +64,7 @@ export function billQrText(billData) {
 
 /**
  * History bill type of a stored record.
- * @param {Object} bill
+ * @param {Rec} bill
  * @param {string} [type] - explicit type from the caller (wins)
  * @returns {'purchase'|'retail'|'wholesale'}
  */
@@ -71,15 +76,15 @@ export function reprintType(bill, type) {
 
 /**
  * Printer payload for reprinting a saved bill. Never mutates `bill`.
- * @param {Object} bill
+ * @param {Rec} bill
  * @param {string} [type]
- * @returns {Object}
+ * @returns {Rec}
  */
 export function buildReprintPayload(bill, type) {
     const kind = reprintType(bill, type);
     const pay = readPayment(bill);
     const due = outstandingDue(bill);
-    const items = (bill?.items || []).map(item => {
+    const items = (bill?.items || []).map((/** @type {BillLine} */ item) => {
         const line = readLineItem(item);
         return { ...item, name: line.name, qty: line.qty, rate: line.rate, total: line.total };
     });
@@ -99,18 +104,19 @@ export function buildReprintPayload(bill, type) {
     return payload;
 }
 
+/** @type {Object<string, string>} */
 const TITLES = {
     purchase: 'ui.bill.title_purchase',
     retail: 'ui.bill.title_retail',
     wholesale: 'ui.bill.title_wholesale'
 };
 
-const money = (n) => formatRupees(n);
+const money = (/** @type {number} */ n) => formatRupees(n);
 
 /**
  * WhatsApp text for a saved bill, in the app language, dated with the bill's own date.
  * Internal figures (expenses, profit, who created it) are never included.
- * @param {Object} bill
+ * @param {Rec} bill
  * @param {string} [type]
  * @param {{copy?: boolean}} [opts]
  * @returns {string}
@@ -125,7 +131,7 @@ export function buildBillShareText(bill, type, { copy = true } = {}) {
     if (p.customerName) lines.push(`${t('ui.bill.customer')}: ${p.customerName}`);
     if (p.printComments && String(p.comments || '').trim()) lines.push(`${t('ui.bill.note')}: ${String(p.comments).trim()}`);
     lines.push('', `*${t('ui.bill.items')}:*`);
-    p.items.forEach(item => {
+    p.items.forEach((/** @type {{name: string, rate: number, qty: number, total: number}} */ item) => {
         lines.push(item.name);
         lines.push(`  ${formatRate(item.rate)} × ${formatKg(item.qty)}kg = ${money(item.total)}`);
     });

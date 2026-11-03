@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Voice billing (#81): turns one spoken bill line, Hindi or English
  * ("10 kg rice 30 rupees", "chawal 10 kilo 30", or the same in Devanagari), into
@@ -12,8 +13,8 @@ import { isArchivedItem, normalizeItemName } from './item-catalog.js';
 // word for kilo is written with escapes: it is only understood here, never shown.
 const HI_KILO = '\u0915\u093F\u0932\u094B';
 /** Speech text is NFC-normalised (ड़ / ज़ become two code points), so every word list is too. */
-const nfc = (w) => w.normalize('NFC');
-const wordSet = (words) => new Set(words.map(nfc));
+const nfc = (/** @type {string} */ w) => w.normalize('NFC');
+const wordSet = (/** @type {string[]} */ words) => new Set(words.map(nfc));
 
 const HINDI_NUMBER_WORDS = [
     'शून्य', 'एक', 'दो', 'तीन', 'चार', 'पांच', 'छह', 'सात', 'आठ', 'नौ',
@@ -27,9 +28,11 @@ const HINDI_NUMBER_WORDS = [
     'अस्सी', 'इक्यासी', 'बयासी', 'तिरासी', 'चौरासी', 'पचासी', 'छियासी', 'सत्तासी', 'अट्ठासी', 'नवासी',
     'नब्बे', 'इक्यानवे', 'बानवे', 'तिरानवे', 'चौरानवे', 'पचानवे', 'छियानवे', 'सत्तानवे', 'अट्ठानवे', 'निन्यानवे'
 ];
+/** @type {Object<string, number>} */
 const HINDI_NUMBER_VARIANTS = {
     'पाँच': 5, 'छः': 6, 'छे': 6, 'पन्द्रह': 15, 'उन्निस': 19, 'पचीस': 25, 'सौ': 100, 'हज़ार': 1000, 'हजार': 1000
 };
+/** @type {Object<string, number>} */
 const ROMAN_HINDI_NUMBERS = {
     shunya: 0, ek: 1, do: 2, teen: 3, char: 4, chaar: 4, panch: 5, paanch: 5, chhe: 6, chhah: 6, chha: 6,
     saat: 7, aath: 8, nau: 9, das: 10, gyarah: 11, barah: 12, baarah: 12, terah: 13, chaudah: 14,
@@ -37,6 +40,7 @@ const ROMAN_HINDI_NUMBERS = {
     pachchis: 25, tees: 30, chalees: 40, chalis: 40, pachas: 50, pachaas: 50, saath: 60, sattar: 70,
     assi: 80, nabbe: 90, sau: 100, sou: 100, hazar: 1000, hazaar: 1000
 };
+/** @type {Object<string, number>} */
 const ENGLISH_NUMBERS = {
     zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
     ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16,
@@ -44,6 +48,7 @@ const ENGLISH_NUMBERS = {
     sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100, thousand: 1000
 };
 const NUMBER_WORDS = (() => {
+    /** @type {Map<string, number>} */
     const map = new Map();
     HINDI_NUMBER_WORDS.forEach((w, n) => map.set(nfc(w), n));
     for (const src of [HINDI_NUMBER_VARIANTS, ROMAN_HINDI_NUMBERS, ENGLISH_NUMBERS]) {
@@ -52,17 +57,17 @@ const NUMBER_WORDS = (() => {
     return map;
 })();
 /** Fractions said as one word: ½, ¼, ¾, 1½, 2½. */
-const FRACTION_WORDS = new Map([
+const FRACTION_WORDS = new Map(/** @type {Array<[string, number]>} */ ([
     ['आधा', 0.5], ['आधी', 0.5], ['aadha', 0.5], ['adha', 0.5], ['aadhi', 0.5], ['half', 0.5],
     ['पाव', 0.25], ['paav', 0.25], ['pav', 0.25], ['quarter', 0.25], ['पौना', 0.75], ['pauna', 0.75],
     ['डेढ़', 1.5], ['डेढ', 1.5], ['dedh', 1.5], ['dhai', 2.5], ['dhaai', 2.5], ['ढाई', 2.5]
-].map(([w, n]) => [nfc(w), n]));
+].map(([w, n]) => [nfc(/** @type {string} */ (w)), n])));
 /** Before a number: "saadhe das" = 10.5, "sava do" = 2.25, "paune do" = 1.75 ("saadhe teen sau" = 350). */
-const NUMBER_MODIFIERS = new Map([
+const NUMBER_MODIFIERS = new Map(/** @type {Array<[string, number]>} */ ([
     ['साढ़े', 0.5], ['साढे', 0.5], ['saadhe', 0.5], ['sadhe', 0.5], ['sade', 0.5],
     ['सवा', 0.25], ['sava', 0.25], ['sawa', 0.25],
     ['पौने', -0.25], ['paune', -0.25], ['pone', -0.25]
-].map(([w, n]) => [nfc(w), n]));
+].map(([w, n]) => [nfc(/** @type {string} */ (w)), n])));
 /** Grams: "500 gram" is 0.5 kg, "1 kilo 500 gram" 1.5 kg. */
 const GRAM_UNITS = wordSet(['g', 'gm', 'gms', 'gram', 'grams', 'gramme', 'ग्राम']);
 
@@ -106,7 +111,7 @@ const NOT_ITEM_WORDS = wordSet([...WEIGHT_UNITS, ...PRICE_AFTER, ...PRICE_BEFORE
     ...PER_WORDS, ...OTHER_UNITS, ...TOTAL_BEFORE, ...TOTAL_AFTER_A_WEIGHT,
     'and', 'aur', 'also', 'then', 'phir', 'with', 'wala', 'wale', 'वाला', 'वाले', 'और', 'फिर']);
 
-const toAsciiDigits = (s) => s.replace(/[\u0966-\u096F]/g, (d) => String(d.charCodeAt(0) - 0x0966));
+const toAsciiDigits = (/** @type {string} */ s) => s.replace(/[\u0966-\u096F]/g, (d) => String(d.charCodeAt(0) - 0x0966));
 
 /**
  * Lower-cased words, with digits split from letters ("10kg", "₹30") and
@@ -125,9 +130,9 @@ export function voiceTokens(text) {
     return s.split(/\s+/).map(w => w.replace(/^\.+|\.+$/g, '')).filter(Boolean);
 }
 
-const isDigits = (w) => /^\d+(?:\.\d+)?$/.test(w);
-const numberOf = (w) => (isDigits(w) ? parseFloat(w) : (NUMBER_WORDS.has(w) ? NUMBER_WORDS.get(w) : FRACTION_WORDS.get(w)));
-const isEnglishTens = (w, n) => Object.prototype.hasOwnProperty.call(ENGLISH_NUMBERS, w) && n >= 20 && n <= 90;
+const isDigits = (/** @type {string} */ w) => /^\d+(?:\.\d+)?$/.test(w);
+const numberOf = (/** @type {string} */ w) => (isDigits(w) ? parseFloat(w) : (NUMBER_WORDS.has(w) ? NUMBER_WORDS.get(w) : FRACTION_WORDS.get(w)));
+const isEnglishTens = (/** @type {string} */ w, /** @type {number} */ n) => Object.prototype.hasOwnProperty.call(ENGLISH_NUMBERS, w) && n >= 20 && n <= 90;
 
 /**
  * Number groups in spoken order: "do sau pachas" → 250, "twenty five" → 25,
@@ -136,17 +141,18 @@ const isEnglishTens = (w, n) => Object.prototype.hasOwnProperty.call(ENGLISH_NUM
  * @returns {Array<{value: number, start: number, end: number}>} end is exclusive
  */
 function numberGroups(tokens) {
+    /** @type {Array<{value: number, start: number, end: number}>} */
     const groups = [];
     for (let i = 0; i < tokens.length; i++) {
         let modifier = 0;
         const start = i;
         // "sava kilo" = 1.25 kg
         if (NUMBER_MODIFIERS.has(tokens[i]) && WEIGHT_UNITS.has(tokens[i + 1])) {
-            groups.push({ value: 1 + NUMBER_MODIFIERS.get(tokens[i]), start, end: i + 1 });
+            groups.push({ value: 1 + /** @type {number} */ (NUMBER_MODIFIERS.get(tokens[i])), start, end: i + 1 });
             continue;
         }
         if (NUMBER_MODIFIERS.has(tokens[i]) && numberOf(tokens[i + 1]) !== undefined) {
-            modifier = NUMBER_MODIFIERS.get(tokens[i]);
+            modifier = /** @type {number} */ (NUMBER_MODIFIERS.get(tokens[i]));
             i += 1;
         }
         const first = numberOf(tokens[i]);
@@ -158,7 +164,7 @@ function numberGroups(tokens) {
         let j = i + 1;
         for (; j < tokens.length; j++) {
             if (tokens[j] === 'and' && !isDigits(lastWord) && cur >= 100 && cur % 100 === 0
-                && numberOf(tokens[j + 1]) < 100 && !isDigits(tokens[j + 1])) continue;
+                && /** @type {number} */ (numberOf(tokens[j + 1])) < 100 && !isDigits(tokens[j + 1])) continue;
             const n = numberOf(tokens[j]);
             if (n === undefined) break;
             const word = !isDigits(tokens[j]);
@@ -183,6 +189,7 @@ function numberGroups(tokens) {
  * @returns {?{index: number, start: number, end: number}}
  */
 function matchItem(tokens, items) {
+    /** @type {?{index: number, start: number, end: number, len: number}} */
     let best = null;
     (items || []).forEach((item, index) => {
         if (!item || isArchivedItem(item)) return;
@@ -214,7 +221,7 @@ function matchItem(tokens, items) {
  * What a number group is, from the words around it: 'weight' (kg), 'gram', 'rate'
  * (₹, unit not said), 'rate-kg' (₹ per kg said), 'rate-of' ("₹N ka": a rate only if a weight is said too), 'other' (another unit or a total: not used) or null (no word).
  * @param {string[]} rest tokens, the item's words blanked
- * @param {Array<{start: number, end: number}>} groups
+ * @param {Array<{value: number, start: number, end: number}>} groups
  * @param {number} gi
  * @returns {?string}
  */
@@ -233,7 +240,7 @@ function numberKind(rest, groups, gi) {
         if (w) [prevWord, lastWord] = [lastWord, w];
         if (TOTAL_AFTER_A_WEIGHT.has(w) && prevWord !== 'give') {
             mein = true;
-            meinAfterRateWord = RATE_WORDS.has(prevWord);
+            meinAfterRateWord = RATE_WORDS.has(/** @type {string} */ (prevWord));
         }
         if (POSSESSIVE.has(w)) possessive = true;
         else if (PRICE_AFTER.has(w)) rupees = true;
@@ -262,7 +269,7 @@ function numberKind(rest, groups, gi) {
     // and so is "60 rupaye mein 2 kilo"
     const next = groups[gi + 1];
     const nextIsWeight = next && next.value !== 1 && (WEIGHT_UNITS.has(rest[next.end]) || GRAM_UNITS.has(rest[next.end]));
-    if (after !== 'weight' && after !== 'gram' && POSSESSIVE.has(lastWord) && nextIsWeight) return 'other';
+    if (after !== 'weight' && after !== 'gram' && POSSESSIVE.has(/** @type {string} */ (lastWord)) && nextIsWeight) return 'other';
     if ((after === null || after === 'rate') && mein && !meinAfterRateWord && nextIsWeight && !RATE_WORDS.has(b1)) return 'other';
     if (WEIGHT_UNITS.has(b1) && PER_WORDS.has(b2) && after !== 'weight') return 'rate-kg';
     if (RATE_WORDS.has(b1)) {
@@ -290,7 +297,7 @@ function numberKind(rest, groups, gi) {
  * A rate more than 3 times above or below every rate kept for the item (purchase,
  * sale, wholesale) is likely a total or a slip: the check dialog warns.
  * @param {number} rate
- * @param {?Object} item
+ * @param {?Rec} item
  */
 export function isUnusualRate(rate, item) {
     const known = [...(item?.rates || []), ...(item?.saleRates || []), ...(item?.wholesaleRates || [])]
@@ -306,7 +313,7 @@ export function isUnusualRate(rate, item) {
  * (or after "at" / "₹" / "rate") is the rate; numbers with no such word fill the
  * weight first, then the rate, in spoken order ("10 kilo aloo 30" → 10 kg at ₹30).
  * @param {string} text what the speech recogniser heard
- * @param {Array<Object>} items AppState.items
+ * @param {Array<Rec>} items AppState.items
  * @returns {{itemIndex: ?number, weight: ?number, rate: ?number, extraNumbers: boolean, rateUnusual: boolean, heard: string}}
  */
 export function parseVoiceLine(text, items = []) {
@@ -316,8 +323,11 @@ export function parseVoiceLine(text, items = []) {
     const rest = item ? tokens.map((w, i) => (i >= item.start && i < item.end ? '' : w)) : tokens;
     const groups = numberGroups(rest).filter(g => g.value > 0);
 
+    /** @type {?number} */
     let weight = null;
+    /** @type {?number} */
     let rate = null;
+    /** @type {number[]} */
     const unmarked = [];
     let kgJustSet = false;
     // Bags, quintals or a weight word with no number before it: don't guess the unmarked numbers
@@ -340,7 +350,7 @@ export function parseVoiceLine(text, items = []) {
             weight = g.value;
             kgJustSet = true;
         } else if (kind === 'gram' && weight === null) weight = g.value / 1000;
-        else if (kind === 'gram' && wasKg && g.value < 1000) weight = Math.round((weight + g.value / 1000) * 1000) / 1000;
+        else if (kind === 'gram' && wasKg && g.value < 1000) weight = Math.round((/** @type {number} */ (weight) + g.value / 1000) * 1000) / 1000;
         else if ((kind === 'rate' || kind === 'rate-kg' || kind === 'rate-of') && rate === null) {
             rate = g.value;
             ratePerKg = kind === 'rate-kg';
@@ -370,7 +380,7 @@ export function parseVoiceLine(text, items = []) {
  * The best of the recogniser's alternatives: the first that names an item and a
  * weight, else the first that gives anything, else the first.
  * @param {string[]} alternatives
- * @param {Array<Object>} items
+ * @param {Array<Rec>} items
  */
 export function pickVoiceLine(alternatives, items = []) {
     const parsed = (alternatives || []).filter(a => String(a || '').trim()).map(a => parseVoiceLine(a, items));
@@ -380,5 +390,9 @@ export function pickVoiceLine(alternatives, items = []) {
         || parseVoiceLine('', items);
 }
 
-/** True when the line gives something to fill. */
+/**
+ * True when the line gives something to fill.
+ * @param {?{itemIndex: ?number, weight: ?number, rate: ?number}|undefined} p parseVoiceLine()
+ * @returns {boolean}
+ */
 export const hasVoiceValues = (p) => !!p && (p.itemIndex !== null || p.weight !== null || p.rate !== null);

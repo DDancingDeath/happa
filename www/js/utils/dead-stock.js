@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Dead stock: items with stock on hand but no sale in N days
  * (#48). Pure functions; works only on the records already loaded in
@@ -37,17 +38,22 @@ export function localDaysBetween(fromMs, toMs) {
  * Latest sale, latest purchase, first purchase and kg purchased per catalogue
  * item id in the loaded bills. Wholesale and retail sales both count as
  * sales (they both move stock).
- * @param {{purchases?: Array, wholesaleSales?: Array, retailSales?: Array}} sources
- * @param {Array<Object>} items catalogue
+ * @param {?{purchases?: Array<Rec>, wholesaleSales?: Array<Rec>, retailSales?: Array<Rec>}|undefined} sources
+ * @param {Array<{id: string, name?: string, hindiName?: string}>} items catalogue
  * @returns {{sale: Object.<string, number>, purchase: Object.<string, number>,
  *   firstPurchase: Object.<string, number>, purchasedQty: Object.<string, number>}}
  */
 export function lastActivityByItem(sources, items) {
     const getKey = createItemKeyResolver(items);
+    /** @type {Object<string, number>} */
     const sale = {};
+    /** @type {Object<string, number>} */
     const purchase = {};
+    /** @type {Object<string, number>} */
     const firstPurchase = {};
+    /** @type {Object<string, number>} */
     const purchasedQty = {};
+    /** @type {(bills: ?Array<Rec>|undefined, fn: (key: string, t: number, line: Rec) => void) => void} */
     const eachLine = (bills, fn) => (bills || []).forEach(bill => {
         if (!isActiveBill(bill) || !Array.isArray(bill.items)) return;
         const t = eventTime(bill);
@@ -56,7 +62,7 @@ export function lastActivityByItem(sources, items) {
             if (line) fn(getKey({ itemId: line.itemId, name: line.name || line.itemName }), t, line);
         });
     });
-    const onSale = (key, t) => { if (!(sale[key] >= t)) sale[key] = t; };
+    const onSale = (/** @type {string} */ key, /** @type {number} */ t) => { if (!(sale[key] >= t)) sale[key] = t; };
     eachLine(sources?.wholesaleSales, onSale);
     eachLine(sources?.retailSales, onSale);
     eachLine(sources?.purchases, (key, t, line) => {
@@ -81,17 +87,18 @@ export function lastActivityByItem(sources, items) {
  *
  * @param {Object} args
  * @param {Object.<string, {quantity: number, rate: number}>} args.stock keyed by item id
- * @param {Array<Object>} args.items catalogue
- * @param {Object} args.sources loaded purchases / wholesaleSales / retailSales
+ * @param {Array<{id: string, name?: string, hindiName?: string}>} args.items catalogue
+ * @param {Rec} args.sources loaded purchases / wholesaleSales / retailSales
  * @param {number} args.now ms
  * @param {number} [args.minDays=30]
  * @param {number} [args.windowStart=0]
- * @returns {Array<Object>}
+ * @returns {Array<Rec>}
  */
 export function findDeadStock({ stock, items, sources, now, minDays = DEFAULT_DEAD_STOCK_DAYS, windowStart = 0 }) {
     const full = !(windowStart > 0);
     const windowDays = full ? Infinity : localDaysBetween(windowStart, now);
     const { sale, purchase, firstPurchase, purchasedQty } = lastActivityByItem(sources, items);
+    /** @type {Array<Rec>} */
     const rows = [];
     (items || []).forEach(item => {
         const entry = stock?.[item.id];

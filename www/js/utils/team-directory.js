@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview The team directory, `settings/team` (#87): names and roles of the
  * approved people, written by the owner's phone from the profiles it reads. Managers
@@ -11,7 +12,7 @@ const ROLES = ['owner', 'manager', 'staff'];
 const GONE = ['pending', 'rejected', 'disabled'];
 
 /** A profile that may use the shop: a known role and not pending, rejected or removed. */
-export const isTeamMember = (u) => !!u && ROLES.includes(u.role) && !GONE.includes(u.status);
+export const isTeamMember = (/** @type {?Rec|undefined} */ u) => !!u && ROLES.includes(u.role) && !GONE.includes(u.status);
 
 /**
  * The directory document for these profiles.
@@ -19,14 +20,19 @@ export const isTeamMember = (u) => !!u && ROLES.includes(u.role) && !GONE.includ
  * @returns {{people: Object<string, {name: string, role: string}>}}
  */
 export function buildTeamDirectory(users) {
+    /** @type {Object<string, {name: string, role: string}>} */
     const people = {};
     (users || []).filter(u => u && u.id && isTeamMember(u))
         .sort((a, b) => String(a.id).localeCompare(String(b.id)))
-        .forEach(u => { people[u.id] = { name: String(u.name || '').slice(0, 100), role: u.role }; });
+        .forEach(u => { people[u.id] = { name: String(u.name || '').slice(0, 100), role: /** @type {string} */ (u.role) }; });
     return { people };
 }
 
-/** The directory as the list the pages use: `[{ id, name, role }]`. */
+/**
+ * The directory as the list the pages use: `[{ id, name, role }]`.
+ * @param {?Rec|undefined} doc
+ * @returns {Array<{id: string, name: string, role: string}>}
+ */
 export function teamPeople(doc) {
     const people = doc && typeof doc.people === 'object' && doc.people ? doc.people : {};
     return Object.entries(people)
@@ -34,8 +40,13 @@ export function teamPeople(doc) {
         .map(([id, p]) => ({ id, name: String(p.name || ''), role: p.role }));
 }
 
-/** True when two directories list the same people with the same names and roles. */
+/**
+ * True when two directories list the same people with the same names and roles.
+ * @param {?Rec|undefined} a
+ * @param {?Rec|undefined} b
+ * @returns {boolean}
+ */
 export function sameTeam(a, b) {
-    const key = (d) => JSON.stringify(teamPeople(d).sort((x, y) => x.id.localeCompare(y.id)));
+    const key = (/** @type {?Rec|undefined} */ d) => JSON.stringify(teamPeople(d).sort((x, y) => x.id.localeCompare(y.id)));
     return key(a) === key(b);
 }

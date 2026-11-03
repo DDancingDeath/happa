@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Ask (#88): answers short typed questions ("aaj ki bikri",
  * "Ramesh ka baaki", "chawal ka stock") from the data already on the phone,
@@ -28,7 +29,7 @@ export const MEMBER_STOCK_LIMIT_KG = 100;
 /** Most names offered when a question matches several parties or items. */
 export const ASK_MATCH_LIMIT = 5;
 
-const words = (list) => new Set(list);
+const words = (/** @type {string[]} */ list) => new Set(list);
 const TODAY = words(['aaj', 'aj', 'today', 'todays', 'आज']);
 const SALES = words(['bikri', 'bikree', 'bechi', 'becha', 'beche', 'bechaa', 'sale', 'sales', 'sold', 'बिक्री', 'बिकी', 'बिका', 'बेचा', 'बेची', 'बेचे']);
 const PURCHASES = words(['kharid', 'khareed', 'kharida', 'kharidi', 'khareeda', 'khareedi', 'purchase', 'purchases', 'bought', 'खरीद', 'खरीदा', 'खरीदी']);
@@ -60,7 +61,7 @@ const MONEY_PLACES = words(['cash', 'bank', 'galla', 'gulla', 'drawer', 'नक�
 const OTHER_DAY = words(['kal', 'parso', 'parson', 'yesterday', 'tomorrow', 'week', 'hafta', 'hafte', 'mahina', 'mahine', 'month',
     'saal', 'year', 'pichle', 'pichhle', 'last', 'कल', 'परसों', 'हफ़्ता', 'हफ्ता', 'हफ़्ते', 'हफ्ते', 'महीना', 'महीने', 'साल', 'पिछले']);
 
-const hasAny = (tokens, set) => tokens.some(w => set.has(w));
+const hasAny = (/** @type {string[]} */ tokens, /** @type {Set<string>} */ set) => tokens.some(w => set.has(w));
 const DEVANAGARI = /[\u0900-\u097F]/;
 
 /**
@@ -87,7 +88,7 @@ export function parseQuestion(text) {
     const tokens = questionWords(text);
     if (!tokens.length || hasAny(tokens, HELP)) return { intent: 'help' };
     const KEYWORDS = [LINK, TODAY, TOTAL, NOISE, DUES, STOCK, GOODS, SALES, PURCHASES, EXPENSES];
-    const named = (i) => AMBIGUOUS.has(tokens[i]) && NAME_NEXT.has(tokens[i + 1]);
+    const named = (/** @type {number} */ i) => AMBIGUOUS.has(tokens[i]) && NAME_NEXT.has(tokens[i + 1]);
     const leftover = () => tokens.filter((w, i) => named(i) || (!AMBIGUOUS.has(w) && !KEYWORDS.some(s => s.has(w)))).join(' ');
 
     // Dues and stock are known as they are now, sales only for today: another day gets no figure.
@@ -112,7 +113,11 @@ export function parseQuestion(text) {
     return { intent: 'unknown' };
 }
 
-/** The spellings a name may be typed in: as written, and Latin ↔ Devanagari word by word. */
+/**
+ * The spellings a name may be typed in: as written, and Latin ↔ Devanagari word by word.
+ * @param {*} text
+ * @returns {string[]}
+ */
 function spellings(text) {
     const key = normalizePartyName(text);
     if (!key) return [];
@@ -140,13 +145,17 @@ function matchNames(list, namesOf, typed) {
 /**
  * Catalogue items (not archived) and "Unmatched" stock rows whose English or Hindi name matches
  * the typed one, also through the item-name table (#134: "chawal" = चावल = Rice).
+ * @param {?Array<Rec>|undefined} items
+ * @param {?Array<Rec>|undefined} rows stockRows()
+ * @param {string} text
+ * @returns {Array<{itemId: *, name: string, hindiName: string}>}
  */
 function matchItems(items, rows, text) {
     const entries = [
         ...(items || []).filter(i => i && !i.archived).map(i => ({ itemId: i.id, name: i.name, hindiName: i.hindiName || '' })),
         ...(rows || []).filter(r => r.isOrphan).map(r => ({ itemId: r.itemId, name: r.name, hindiName: '' }))
     ];
-    const namesOf = (e) => [e.name, e.hindiName, suggestHindiName(e.name), suggestEnglishName(e.hindiName)]
+    const namesOf = (/** @type {{name: string, hindiName: string}} */ e) => [e.name, e.hindiName, suggestHindiName(e.name), suggestEnglishName(e.hindiName)]
         .map(normalizePartyName).filter(Boolean);
     const subject = normalizePartyName(text);
     const typed = [...new Set([subject, normalizePartyName(suggestHindiName(subject)), normalizePartyName(suggestEnglishName(subject))].filter(Boolean))];
@@ -159,17 +168,17 @@ function matchItems(items, rows, text) {
  * (`wholesale`), members see "Available" above 100 kg on Stock.
  * @param {{intent: string, subject?: string}} q parseQuestion()
  * @param {Object} src
- * @param {{purchases?: Object[], retailSales?: Object[], wholesaleSales?: Object[]}} src.bills
- * @param {Object[]} [src.expenses]
+ * @param {{purchases?: Rec[], retailSales?: Rec[], wholesaleSales?: Rec[]}} [src.bills]
+ * @param {Rec[]} [src.expenses]
  * @param {Object<string, {quantity: number, rate: number}>} [src.stock]
- * @param {Object[]} [src.items] catalogue
- * @param {Object} [src.settings]
+ * @param {Array<{id: string, name: string, hindiName?: string}>} [src.items] catalogue
+ * @param {Rec} [src.settings]
  * @param {{role?: string, wholesale?: boolean, stockReady?: boolean, today?: Date}} [opts]
- * @returns {Object} answer; `intent` and `spec` always set, `page` = where the figure lives
+ * @returns {Rec} answer; `intent` and `spec` always set, `page` = where the figure lives
  */
 export function answerQuestion(q, src = {}, { role = 'staff', wholesale = false, stockReady = true, today = new Date() } = {}) {
     const intent = q?.intent || 'unknown';
-    const spec = ASK_SPEC[intent] || null;
+    const spec = /** @type {Rec} */ (ASK_SPEC)[intent] || null;
     const bills = src.bills || {};
 
     if (intent === 'sales_today' || intent === 'purchases_today' || intent === 'expenses_today') {
@@ -195,14 +204,14 @@ export function answerQuestion(q, src = {}, { role = 'staff', wholesale = false,
         }
         const typed = spellings(q.subject);
         const keys = new Map();
-        ['receive', 'pay'].forEach(side => lists[side].parties.forEach(p => {
+        /** @type {Array<'receive'|'pay'>} */ (['receive', 'pay']).forEach(side => lists[side].parties.forEach(p => {
             if (!keys.has(p.key)) keys.set(p.key, { key: p.key, name: p.name, names: spellings(p.name) });
         }));
         const hits = matchNames([...keys.values()], e => [e.key, ...e.names], typed);
         if (hits.length !== 1) {
             return { intent, spec, page: 'due', subject: q.subject, matches: hits.slice(0, ASK_MATCH_LIMIT).map(h => h.name), more: Math.max(0, hits.length - ASK_MATCH_LIMIT) };
         }
-        const side = (s) => {
+        const side = (/** @type {'receive'|'pay'} */ s) => {
             const p = lists[s].parties.find(x => x.key === hits[0].key);
             return p ? { total: p.total, count: p.bills.length, oldestDays: p.oldestDays } : null;
         };

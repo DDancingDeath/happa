@@ -87,5 +87,12 @@ interface CashSession {
     [key: string]: any;
 }
 
+/** Globals the app sets on window (main.js, keyboard-shortcuts.js). */
+interface Window {
+    app?: any;
+    FirebaseService?: any;
+    __aadhatShortcutsInstalled?: boolean;
+}
+
 /** Any plain record with string keys (settings, maps of totals, stock state). */
 type Rec = { [key: string]: any };

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Roles & access (#84): what each role may see and do, set by
  * the owner in Settings → Roles & access. Stored in settings/app.roleAccess
@@ -32,7 +33,15 @@ export const MAX_EDIT_DAYS = 30;
 export const MAX_HISTORY_DAYS = 3650;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Today's behaviour (and #87: bills editable for 2 days); used when settings/app has no roleAccess. */
+/**
+ * One role's access: a boolean per switch (SWITCH_PERMISSIONS, PERSONAL_CHOSEN) and the day limits.
+ * @typedef {{[key: string]: *, historyDays: number, editDays: number}} RoleAccess
+ */
+
+/**
+ * Today's behaviour (and #87: bills editable for 2 days); used when settings/app has no roleAccess.
+ * @type {Readonly<Object<string, Readonly<RoleAccess>>>}
+ */
 export const ROLE_ACCESS_DEFAULTS = Object.freeze({
     manager: Object.freeze({
         finance: true, reports: true, analytics: true, wholesale: true,
@@ -56,6 +65,7 @@ const OWNER_ACCESS = Object.freeze({
  * their old names when the pages were replaced (phase 5): 'finance' opens Money,
  * 'analytics' Insights and 'reports' Statements, so roles keep what they had.
  */
+/** @type {Readonly<Object<string, string>>} */
 export const TAB_PERMISSIONS = Object.freeze({
     money: 'finance',
     insights: 'analytics',
@@ -63,6 +73,12 @@ export const TAB_PERMISSIONS = Object.freeze({
     'wholesale-sales': 'wholesale'
 });
 
+/**
+ * @param {*} value
+ * @param {number} fallback
+ * @param {number} max
+ * @returns {number}
+ */
 function wholeDays(value, fallback, max) {
     const n = Number(value);
     if (value === null || value === undefined || value === '' || !Number.isFinite(n)) return fallback;
@@ -73,15 +89,17 @@ function wholeDays(value, fallback, max) {
  * Fills missing/invalid entries with the defaults; unknown keys are dropped. The result is
  * what the app uses and what Roles & access saves, so it carries PERSONAL_CHOSEN.
  * @param {*} raw - settings/app.roleAccess (may be missing)
- * @returns {{manager: Object, staff: Object}}
+ * @returns {{manager: RoleAccess, staff: RoleAccess}}
  */
 export function normalizeRoleAccess(raw) {
     const src = raw && typeof raw === 'object' ? raw : {};
+    /** @type {Object<string, RoleAccess>} */
     const out = {};
     for (const role of CONFIGURABLE_ROLES) {
         const def = ROLE_ACCESS_DEFAULTS[role];
         const r = src[role] && typeof src[role] === 'object' ? src[role] : {};
-        const entry = {};
+        /** @type {RoleAccess} */
+        const entry = /** @type {*} */ ({});
         for (const p of SWITCH_PERMISSIONS) entry[p] = typeof r[p] === 'boolean' ? r[p] : def[p];
         if (r[PERSONAL_CHOSEN] !== true) entry.personalExpenses = def.personalExpenses;
         entry[PERSONAL_CHOSEN] = true;
@@ -90,21 +108,27 @@ export function normalizeRoleAccess(raw) {
         entry.editDays = wholeDays(r.editDays, def.editDays, MAX_EDIT_DAYS);
         out[role] = entry;
     }
-    return out;
+    return /** @type {{manager: RoleAccess, staff: RoleAccess}} */ (out);
 }
 
 /**
  * Access of one role. Owner: everything, no edit limit. Unknown roles get the member defaults.
  * @param {string} role
  * @param {*} raw - settings/app.roleAccess
+ * @returns {RoleAccess}
  */
 export function accessFor(role, raw) {
     if (role === 'owner') return OWNER_ACCESS;
     const all = normalizeRoleAccess(raw);
-    return all[role] || all.staff;
+    return /** @type {Object<string, RoleAccess>} */ (all)[role] || all.staff;
 }
 
-/** @returns {boolean} */
+/**
+ * @param {string} role
+ * @param {string} permission
+ * @param {*} [raw] settings/app.roleAccess
+ * @returns {boolean}
+ */
 export function can(role, permission, raw) {
     return accessFor(role, raw)[permission] === true;
 }
@@ -115,6 +139,9 @@ export const WITHDRAWAL_PERMISSIONS = Object.freeze(['finance', 'reports', 'anal
 /**
  * firestore.rules (roleSeesMoneyPages) let a manager or member read withdrawals
  * only when one of those pages is on for the role; the owner always.
+ * @param {string} role
+ * @param {*} [raw]
+ * @returns {boolean}
  */
 export function canReadWithdrawals(role, raw) {
     if (role === 'owner') return true;
@@ -124,6 +151,9 @@ export function canReadWithdrawals(role, raw) {
 /**
  * Money › Worth's shared accounts (#74, settings/accounts): firestore.rules let only the
  * owner and managers with Money (finance) on read and change them; members never see bank balances.
+ * @param {string} role
+ * @param {*} [raw]
+ * @returns {boolean}
  */
 export function canReadWorthAccounts(role, raw) {
     return role === 'owner' || (role === 'manager' && can(role, 'finance', raw));
@@ -131,7 +161,10 @@ export function canReadWorthAccounts(role, raw) {
 
 export const canEditWorthAccounts = canReadWorthAccounts;
 
-/** Pages whose rules are fixed by role (not configurable in Roles & access). */
+/**
+ * Pages whose rules are fixed by role (not configurable in Roles & access).
+ * @type {Readonly<Object<string, ReadonlyArray<string>>>}
+ */
 export const TAB_ROLES = Object.freeze({
     admin: Object.freeze(['owner']),
     diagnostics: Object.freeze(['owner', 'manager']),
@@ -140,7 +173,12 @@ export const TAB_ROLES = Object.freeze({
     health: Object.freeze(['owner', 'manager'])
 });
 
-/** Whether the role's built-in level allows the page (TAB_ROLES). */
+/**
+ * Whether the role's built-in level allows the page (TAB_ROLES).
+ * @param {string} tabId
+ * @param {string} role
+ * @returns {boolean}
+ */
 export function roleMayOpenTab(tabId, role) {
     const roles = TAB_ROLES[tabId];
     return !roles || roles.includes(role);
@@ -149,6 +187,10 @@ export function roleMayOpenTab(tabId, role) {
 /**
  * Whether the role may open a page: its built-in role level (TAB_ROLES) and
  * its Roles & access switch (TAB_PERMISSIONS).
+ * @param {string} tabId
+ * @param {string} role
+ * @param {*} [raw]
+ * @returns {boolean}
  */
 export function canOpenTab(tabId, role, raw) {
     if (!roleMayOpenTab(tabId, role)) return false;
@@ -160,13 +202,21 @@ export function canOpenTab(tabId, role, raw) {
  * Sections of a page that show another page's data keep that page's rule:
  * Insights › Seasons hosts Rate trends and Product traffic (owner, manager).
  */
+/** @type {Readonly<Object<string, string>>} */
 export const SECTION_TABS = Object.freeze({
     'insights:seasons': 'rate-trends',
     'insights:trends': 'rate-trends',
     'insights:traffic': 'rate-trends'
 });
 
-/** canOpenTab for a page section (route): the page's rule and the hosted page's rule. */
+/**
+ * canOpenTab for a page section (route): the page's rule and the hosted page's rule.
+ * @param {string} tabId
+ * @param {?string|undefined} section
+ * @param {string} role
+ * @param {*} [raw]
+ * @returns {boolean}
+ */
 export function canOpenSection(tabId, section, role, raw) {
     const alsoBy = section ? SECTION_ALSO_ALLOWED[`${tabId}:${section}`] : null;
     const pageOk = canOpenTab(tabId, role, raw)
@@ -180,13 +230,20 @@ export function canOpenSection(tabId, section, role, raw) {
  * Back-compat (phase 5): Trends and Product traffic were tabs of Reports, so the old
  * Reports switch still opens them in Insights › Seasons (as does Insights' own switch).
  */
+/** @type {Readonly<Object<string, ReadonlyArray<string>>>} */
 export const SECTION_ALSO_ALLOWED = Object.freeze({
     'insights:seasons': Object.freeze(['reports']),
     'insights:trends': Object.freeze(['reports']),
     'insights:traffic': Object.freeze(['reports'])
 });
 
-/** The page opens at all: its own rule, or one of its sections opens by another switch (then only those sections show). */
+/**
+ * The page opens at all: its own rule, or one of its sections opens by another switch (then only those sections show).
+ * @param {string} tabId
+ * @param {string} role
+ * @param {*} [raw]
+ * @returns {boolean}
+ */
 export function canOpenPage(tabId, role, raw) {
     if (canOpenTab(tabId, role, raw)) return true;
     return Object.keys(SECTION_ALSO_ALLOWED).some(k => k.startsWith(`${tabId}:`) && canOpenSection(tabId, k.slice(tabId.length + 1), role, raw));
@@ -196,6 +253,8 @@ export function canOpenPage(tabId, role, raw) {
  * When the bill was first saved (ms): its server `createdAt` (Firestore
  * Timestamp, or the local estimate right after saving). null for bills saved
  * before #87 / by old apps — those are outside the window (owner only).
+ * @param {?Rec|undefined} bill
+ * @returns {?number}
  */
 export function billCreatedMs(bill) {
     const c = bill?.createdAt;
@@ -210,15 +269,23 @@ export function billCreatedMs(bill) {
 /**
  * The bill is inside the role's edit window (mirrors firestore.rules
  * withinBillWindow): now < createdAt + editDays days. 0 days = never. Owner: always.
+ * @param {?Rec|undefined} bill
+ * @param {{role?: string, now?: number, raw?: *}} [opts]
+ * @returns {boolean}
  */
 export function withinBillEditWindow(bill, { role, now = Date.now(), raw } = {}) {
     if (role === 'owner') return true;
-    const days = accessFor(role, raw).editDays;
+    const days = accessFor(/** @type {string} */ (role), raw).editDays;
     const created = billCreatedMs(bill);
     return created !== null && now < created + days * DAY_MS;
 }
 
-/** Full edit: owner; manager any bill, member own bill, both inside the window. Never a voided bill (#75). */
+/**
+ * Full edit: owner; manager any bill, member own bill, both inside the window. Never a voided bill (#75).
+ * @param {?Rec|undefined} bill
+ * @param {{uid?: ?string, role?: string, now?: number, raw?: *}} [opts]
+ * @returns {boolean}
+ */
 export function canEditBillWith(bill, { uid, role, now, raw } = {}) {
     if (bill && !isActiveBill(bill)) return false;
     if (role === 'owner') return true;
@@ -231,6 +298,9 @@ export function canEditBillWith(bill, { uid, role, now, raw } = {}) {
  * Void (#75), who could delete a bill before: the owner any bill; anyone else
  * only their own bill, inside the window. Not a bill that is already voided.
  * Payments recorded later block it too (bill-edits.voidBlocker), for everyone.
+ * @param {?Rec|undefined} bill
+ * @param {{uid?: ?string, role?: string, now?: number, raw?: *}} [opts]
+ * @returns {boolean}
  */
 export function canVoidBillWith(bill, { uid, role, now, raw } = {}) {
     if (!isActiveBill(bill)) return false;
@@ -243,6 +313,9 @@ export function canVoidBillWith(bill, { uid, role, now, raw } = {}) {
  * Void an expense (#99, firestore.rules expenseVoidOk): the owner any expense; a
  * manager any expense and a member their own, inside the role's edit window
  * (editDays) from the expense's save time (`timestamp`). Never one already voided.
+ * @param {?Rec|undefined} expense
+ * @param {{uid?: ?string, role?: string, now?: number, raw?: *}} [opts]
+ * @returns {boolean}
  */
 export function canVoidExpenseWith(expense, { uid, role, now = Date.now(), raw } = {}) {
     if (!isActiveExpense(expense)) return false;
@@ -250,23 +323,37 @@ export function canVoidExpenseWith(expense, { uid, role, now = Date.now(), raw }
     const creator = expense.userId !== undefined ? expense.userId : expense.createdBy;
     if (role !== 'manager' && !(uid && creator === uid)) return false;
     const t = expense.timestamp;
-    return typeof t === 'number' && now < t + accessFor(role, raw).editDays * DAY_MS;
+    return typeof t === 'number' && now < t + accessFor(/** @type {string} */ (role), raw).editDays * DAY_MS;
 }
 
-/** Delete for good: the owner only, and in the app only a voided bill (test data, mistakes). */
+/**
+ * Delete for good: the owner only, and in the app only a voided bill (test data, mistakes).
+ * @param {?Rec|undefined} bill
+ * @param {{role?: string}} [opts]
+ * @returns {boolean}
+ */
 export function canDeleteBillWith(bill, { role } = {}) {
     return role === 'owner' && !!bill && !isActiveBill(bill);
 }
 
 /**
  * Oldest time (ms) the role may see in History; null = no limit.
+ * @param {string} role
+ * @param {*} [raw]
+ * @param {number} [now]
+ * @returns {?number}
  */
 export function historyCutoff(role, raw, now = Date.now()) {
     const days = accessFor(role, raw).historyDays;
     return days > 0 ? now - days * DAY_MS : null;
 }
 
-/** CSS classes for <body> that hide `[data-perm~="<permission>"]` elements. */
+/**
+ * CSS classes for <body> that hide `[data-perm~="<permission>"]` elements.
+ * @param {string} role
+ * @param {*} [raw]
+ * @returns {string[]}
+ */
 export function hiddenPermissionClasses(role, raw) {
     const access = accessFor(role, raw);
     return SECTION_PERMISSIONS.filter(p => !access[p]).map(p => `no-perm-${p}`);

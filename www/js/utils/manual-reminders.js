@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Manual reminders on Today (#86): checks before saving and
  * how they are grouped. Pure: no DOM, no Firestore. "Today" is the phone's
@@ -20,6 +21,10 @@ const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 /** How a reminder repeats once marked done (absent = once). */
 export const REMINDER_REPEATS = Object.freeze(['daily', 'weekly', 'monthly']);
+/**
+ * @param {*} r
+ * @returns {r is 'daily'|'weekly'|'monthly'}
+ */
 export const isReminderRepeat = (r) => REMINDER_REPEATS.includes(r);
 
 /**
@@ -49,16 +54,16 @@ export function checkReminder({ title, dueDate, party, repeat } = {}, todayIso, 
     if (!t) return { ok: false, error: 'msg.reminders.title_needed' };
     if (t.length > REMINDER_TITLE_MAX) return { ok: false, error: 'msg.reminders.title_long' };
     if (p.length > REMINDER_PARTY_MAX) return { ok: false, error: 'msg.reminders.party_long' };
-    if (!ISO.test(String(dueDate || '')) || !parseLocalDate(dueDate) || toLocalISODate(parseLocalDate(dueDate)) !== dueDate) {
+    if (!ISO.test(String(dueDate || '')) || !parseLocalDate(dueDate) || toLocalISODate(/** @type {Date} */ (parseLocalDate(dueDate))) !== dueDate) {
         return { ok: false, error: 'msg.reminders.date_needed' };
     }
     const kept = keepDueDate !== undefined && dueDate === keepDueDate;
     if (!kept && dueDate < todayIso) return { ok: false, error: 'msg.reminders.date_past' };
-    if (!kept && dueDate > toLocalISODate(addLocalDays(parseLocalDate(todayIso), REMINDER_MAX_DAYS_AHEAD))) return { ok: false, error: 'msg.reminders.date_far' };
+    if (!kept && dueDate > toLocalISODate(/** @type {Date} */ (addLocalDays(parseLocalDate(todayIso), REMINDER_MAX_DAYS_AHEAD)))) return { ok: false, error: 'msg.reminders.date_far' };
     const r = isReminderRepeat(repeat) ? repeat : null;
-    const day = kept && r === 'monthly' && Number.isInteger(keepRepeatDay) && keepRepeatDay >= 1 && keepRepeatDay <= 31
-        ? keepRepeatDay : repeatDayFor(dueDate, r);
-    return { ok: true, value: { title: t, dueDate, party: p, repeat: r, repeatDay: day } };
+    const day = kept && r === 'monthly' && Number.isInteger(keepRepeatDay) && /** @type {number} */ (keepRepeatDay) >= 1 && /** @type {number} */ (keepRepeatDay) <= 31
+        ? /** @type {number} */ (keepRepeatDay) : repeatDayFor(/** @type {string} */ (dueDate), r);
+    return { ok: true, value: { title: t, dueDate: /** @type {string} */ (dueDate), party: p, repeat: r, repeatDay: day } };
 }
 
 /**
@@ -76,8 +81,8 @@ export function nextDueDate(dueIso, repeat, todayIso, repeatDay = null) {
     if (!isReminderRepeat(repeat) || !ISO.test(String(dueIso || '')) || !ISO.test(String(todayIso || ''))) return null;
     const due = parseLocalDate(dueIso);
     if (!due) return null;
-    const day = Number.isInteger(repeatDay) && repeatDay >= 1 && repeatDay <= 31 ? repeatDay : due.getDate();
-    const step = (k) => {
+    const day = Number.isInteger(repeatDay) && /** @type {number} */ (repeatDay) >= 1 && /** @type {number} */ (repeatDay) <= 31 ? /** @type {number} */ (repeatDay) : due.getDate();
+    const step = (/** @type {number} */ k) => {
         if (repeat === 'daily') return addLocalDays(due, k);
         if (repeat === 'weekly') return addLocalDays(due, 7 * k);
         const first = /** @type {Date} */ (monthStart(due, k));
@@ -86,7 +91,7 @@ export function nextDueDate(dueIso, repeat, todayIso, repeatDay = null) {
     const late = Math.max(0, daysUntil(todayIso, dueIso) || 0);
     let k = repeat === 'daily' ? Math.max(1, late) : repeat === 'weekly' ? Math.max(1, Math.floor(late / 7)) : Math.max(1, Math.floor(late / 31));
     for (let i = 0; i < 64; i++, k++) {
-        const iso = toLocalISODate(step(k));
+        const iso = toLocalISODate(/** @type {Date} */ (step(k)));
         if (iso > dueIso && iso >= todayIso) return iso;
     }
     return null;
@@ -94,6 +99,8 @@ export function nextDueDate(dueIso, repeat, todayIso, repeatDay = null) {
 
 /**
  * Whole local days from `todayIso` to `dueIso` (negative = late).
+ * @param {string} dueIso
+ * @param {string} todayIso
  * @returns {?number}
  */
 export function daysUntil(dueIso, todayIso) {
@@ -108,12 +115,13 @@ export function daysUntil(dueIso, todayIso) {
  * coming up (next 7 days, soonest first) and the count of later ones.
  * @param {Array<{id: string, title: string, dueDate: string, status?: string}>} list
  * @param {string} todayIso
- * @returns {{due: Array<Object>, soon: Array<Object>, later: number}} rows carry `days` (daysUntil)
+ * @returns {{due: Array<Rec>, soon: Array<Rec>, later: number}} rows carry `days` (daysUntil)
  */
 export function groupReminders(list, todayIso) {
-    const open = (list || []).filter(r => r && (r.status === undefined || r.status === 'open') && ISO.test(String(r.dueDate || '')))
+    // Rows whose date is not a real day (daysUntil null) are dropped before sorting
+    const open = /** @type {Array<Rec & {days: number}>} */ ((list || []).filter(r => r && (r.status === undefined || r.status === 'open') && ISO.test(String(r.dueDate || '')))
         .map(r => ({ ...r, days: daysUntil(r.dueDate, todayIso) }))
-        .filter(r => r.days !== null)
+        .filter(r => r.days !== null))
         .sort((a, b) => a.days - b.days || String(a.title).localeCompare(String(b.title)));
     return {
         due: open.filter(r => r.days <= 0),

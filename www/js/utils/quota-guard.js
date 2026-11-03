@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Firestore quota guards (#194): detects "daily free limit
  * reached" (resource-exhausted) errors, shows one clear banner (app language) per
@@ -36,7 +37,11 @@ export function isQuotaExhaustedError(err) {
     return QUOTA_TEXT_PATTERN.test(String(err.message || ''));
 }
 
-/** Quota banner text in the app language. */
+/**
+ * Quota banner text in the app language.
+ * @param {'en'|'hi'} [lang]
+ * @returns {string}
+ */
 export const quotaBannerText = (lang) => (lang ? t('ui.quota.banner', null, lang) : t('ui.quota.banner'));
 
 const BANNER_ID = 'quotaBanner';
@@ -44,7 +49,7 @@ const DISMISS_KEY = 'aadhatQuotaBannerDismissed';
 
 /**
  * Per-session estimate of billed document reads, grouped by source label.
- * @param {{now?: Function, threshold?: number, onHeavy?: Function}} [opts]
+ * @param {{now?: () => number, threshold?: number, onHeavy?: ?((total: number, top: Array<{source: string, reads: number}>) => void)}} [opts]
  */
 export function createReadCounter({ now = () => Date.now(), threshold = HEAVY_SESSION_READS, onHeavy = null } = {}) {
     const bySource = new Map();
@@ -52,6 +57,10 @@ export function createReadCounter({ now = () => Date.now(), threshold = HEAVY_SE
     let warned = false;
     const since = now();
     return {
+        /**
+         * @param {string} source
+         * @param {number} n
+         */
         add(source, n) {
             if (!(n > 0)) return;
             total += n;
@@ -75,13 +84,21 @@ export function createReadCounter({ now = () => Date.now(), threshold = HEAVY_SE
     };
 }
 
-/** Billed reads of a one-shot query result (an empty server result still costs 1). */
+/**
+ * Billed reads of a one-shot query result (an empty server result still costs 1).
+ * @param {*} snap
+ * @returns {number}
+ */
 export function readsForQueryGet(snap) {
     if (!snap || snap.metadata?.fromCache) return 0;
     return Math.max(1, snap.size || 0);
 }
 
-/** Billed reads of a one-shot document read. */
+/**
+ * Billed reads of a one-shot document read.
+ * @param {*} snap
+ * @returns {number}
+ */
 export function readsForDocGet(snap) {
     if (!snap || snap.metadata?.fromCache) return 0;
     return 1;
@@ -92,6 +109,9 @@ export function readsForDocGet(snap) {
  * the listener already received its initial server result: before that the
  * whole result is charged, after it only added/modified documents.
  * Snapshots from the offline cache and this device's own pending writes are free.
+ * @param {*} snap
+ * @param {{synced?: boolean}} state
+ * @returns {number}
  */
 export function readsForQuerySnapshot(snap, state) {
     if (!snap || snap.metadata?.fromCache) return 0;
@@ -101,10 +121,15 @@ export function readsForQuerySnapshot(snap, state) {
     }
     let changes = [];
     try { changes = typeof snap.docChanges === 'function' ? snap.docChanges() : []; } catch (_) { changes = []; }
-    return changes.filter(c => c.type !== 'removed' && !c.doc?.metadata?.hasPendingWrites).length;
+    return changes.filter((/** @type {*} */ c) => c.type !== 'removed' && !c.doc?.metadata?.hasPendingWrites).length;
 }
 
-/** Billed reads of one document-listener snapshot. */
+/**
+ * Billed reads of one document-listener snapshot.
+ * @param {*} snap
+ * @param {{synced?: boolean}} state
+ * @returns {number}
+ */
 export function readsForDocSnapshot(snap, state) {
     if (!snap || snap.metadata?.fromCache) return 0;
     if (state.synced && snap.metadata?.hasPendingWrites) return 0;
@@ -114,7 +139,7 @@ export function readsForDocSnapshot(snap, state) {
 
 /**
  * Session-wide guard state: read counter + quota events. One per page load.
- * @param {{doc?: Document, storage?: Storage, log?: Object, onQuota?: Function, onHeavy?: Function}} [env]
+ * @param {{doc?: ?Document, storage?: ?Storage, log?: {warn: Function}, onQuota?: Function, onHeavy?: Function, cap?: number, threshold?: number}} [env]
  */
 export function createQuotaGuard(env = {}) {
     const doc = env.doc !== undefined ? env.doc : (typeof document !== 'undefined' ? document : null);
@@ -196,7 +221,10 @@ export function createQuotaGuard(env = {}) {
             }
             return !backgroundPaused && quota.count === 0 && reads.total < cap;
         },
-        /** settings/app.pauseBackgroundReads (set by the owner in the Firebase console). */
+        /**
+         * settings/app.pauseBackgroundReads (set by the owner in the Firebase console).
+         * @param {*} value
+         */
         setBackgroundPaused(value) {
             backgroundPaused = value === true;
         },
