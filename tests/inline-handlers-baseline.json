@@ -1,4 +1,4 @@
 {
-  "_readme": "Inline on<event>= handlers left in www/ (#89, www/js/__tests__/inline-handlers.test.js). Counts only go down: INLINE_BASELINE=lower npx jest inline-handlers. At 0 the CSP can drop script-src 'unsafe-inline' (docs/security.md).",
+  "_readme": "Inline on<event>= handlers left in www/ (#89, www/js/__tests__/inline-handlers.test.js). Counts only go down: INLINE_BASELINE=lower npx jest inline-handlers. It is 0 and must stay 0: the enforced CSP has no script-src 'unsafe-inline' (docs/security.md).",
   "files": {}
 }

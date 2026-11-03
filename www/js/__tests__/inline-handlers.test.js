@@ -45,6 +45,16 @@ describe('inline event handlers (#89)', () => {
         expect(lower).toEqual([]);
     });
 
+    test('no tag in www/ has any on<event>= attribute (the enforced CSP blocks them all)', () => {
+        // Wider than INLINE: any on* name, quoted or not, inside a tag in the HTML or a JS string.
+        const ANY_ON = /<[a-z][^<>]*?[\s/]on[a-z]+\s*=/gi;
+        const hits = files(WWW).flatMap(f => {
+            const src = f.endsWith('.js') ? fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '') : fs.readFileSync(f, 'utf8');
+            return (src.match(ANY_ON) || []).map(m => `${rel(f)}: ${m.slice(-60)}`);
+        });
+        expect(hits).toEqual([]);
+    });
+
     test('every data-on* attribute parses (templates as written, JS with each ${…} as a value)', () => {
         const bad = [];
         for (const f of files(WWW)) {

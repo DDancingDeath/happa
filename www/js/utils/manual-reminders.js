@@ -23,7 +23,7 @@ const ISO = /^\d{4}-\d{2}-\d{2}$/;
 export const REMINDER_REPEATS = Object.freeze(['daily', 'weekly', 'monthly']);
 /**
  * @param {*} r
- * @returns {r is string}
+ * @returns {r is 'daily'|'weekly'|'monthly'}
  */
 export const isReminderRepeat = (r) => REMINDER_REPEATS.includes(r);
 
@@ -118,9 +118,10 @@ export function daysUntil(dueIso, todayIso) {
  * @returns {{due: Array<Rec>, soon: Array<Rec>, later: number}} rows carry `days` (daysUntil)
  */
 export function groupReminders(list, todayIso) {
-    const open = (list || []).filter(r => r && (r.status === undefined || r.status === 'open') && ISO.test(String(r.dueDate || '')))
-        .map(r => ({ ...r, days: /** @type {number} */ (daysUntil(r.dueDate, todayIso)) }))
-        .filter(r => r.days !== null)
+    // Rows whose date is not a real day (daysUntil null) are dropped before sorting
+    const open = /** @type {Array<Rec & {days: number}>} */ ((list || []).filter(r => r && (r.status === undefined || r.status === 'open') && ISO.test(String(r.dueDate || '')))
+        .map(r => ({ ...r, days: daysUntil(r.dueDate, todayIso) }))
+        .filter(r => r.days !== null))
         .sort((a, b) => a.days - b.days || String(a.title).localeCompare(String(b.title)));
     return {
         due: open.filter(r => r.days <= 0),
