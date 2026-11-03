@@ -669,8 +669,8 @@ permission list, defaults and which parts the rules enforce are in
    applied, so after a 503 it re-reads (rulesets / release) before writing again;
    everything is bounded to ~12 minutes. The indexes are then deployed alone
    (`--only firestore:indexes`, no rules compile) only if
-   `firestore.indexes.json` changed since the last deploy (plan output
-   `indexes`; always on a manual dispatch). The same live check follows.
+   `firestore.indexes.json`, `happa.config.json` or `firebase.json` changed
+   since the last deploy (plan output `indexes`; always on a manual dispatch). The same live check follows.
 
 To run the whole app against local emulators:
 `npx firebase-tools emulators:start --only auth,firestore`, serve `www/`

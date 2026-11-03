@@ -18,7 +18,8 @@
  * Env (set by the workflow): GITHUB_REPOSITORY, GITHUB_TOKEN, GITHUB_RUN_ID,
  * GITHUB_SHA, WORKFLOW_FILE. Writes
  * rules=true|false, base=<sha>, files=<changed rules files> and
- * indexes=true|false (firestore.indexes.json changed, or no confirmed base) to
+ * indexes=true|false (firestore.indexes.json, happa.config.json or
+ * firebase.json changed, or no confirmed base) to
  * $GITHUB_OUTPUT and a line to $GITHUB_STEP_SUMMARY.
  * Needs the full history (actions/checkout fetch-depth: 0).
  */
@@ -39,6 +40,8 @@ const RULES_FILES = [
     'tools/ci/rules-rest-deploy.js'
 ];
 const INDEXES_FILE = 'firestore.indexes.json';
+// A change to any of these can mean the live indexes are not the repo's.
+const INDEXES_TRIGGERS = [INDEXES_FILE, 'happa.config.json', 'firebase.json'];
 
 const HOSTING_JOB = 'Hosting';
 const HOSTING_STEP = 'Deploy to Firebase Hosting';
@@ -55,7 +58,7 @@ function rulesFilesIn(changed) {
  *   git: { isAncestor(sha: string): boolean, changedFiles(base: string): string[] } }} o
  *   deployedSha: commit of the last confirmed deploy (null = unknown)
  * @returns {{ rules: boolean, indexes: boolean, base: string, files: string[], reason: string }}
- *   indexes: firestore.indexes.json must be deployed (changed, or no confirmed base)
+ *   indexes: firestore.indexes.json must be deployed (it, the project or firebase.json changed, or no confirmed base)
  */
 function planDeploy({ deployedSha, git }) {
     if (!isSha(deployedSha)) {
@@ -67,7 +70,7 @@ function planDeploy({ deployedSha, git }) {
     const files = rulesFilesIn(git.changedFiles(deployedSha));
     return {
         rules: files.length > 0,
-        indexes: files.includes(INDEXES_FILE),
+        indexes: files.some(file => INDEXES_TRIGGERS.includes(file)),
         base: deployedSha,
         files,
         reason: files.length

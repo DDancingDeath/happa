@@ -21,7 +21,8 @@
 # byte-identical ruleset, read it back, point the cloud.firestore release at
 # it; 503s that were applied anyway are detected by re-reading; at most ~12
 # minutes). The indexes are then deployed on their own (firestore:indexes needs
-# no rules compile) when firestore.indexes.json changed since the last deploy
+# no rules compile) when firestore.indexes.json (or the project/firebase.json)
+# changed since the last deploy
 # (input "indexes"; true when unknown). The same live-ruleset check follows.
 #
 # The service account in FIREBASE_SERVICE_ACCOUNT_HAPPA needs, in

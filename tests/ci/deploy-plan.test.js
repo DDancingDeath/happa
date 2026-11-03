@@ -28,6 +28,11 @@ test.each([
     expect(planDeploy({ deployedSha: DEPLOYED, git })).toMatchObject({ rules: true, base: DEPLOYED, files: [file] });
 });
 
+test.each([['happa.config.json'], ['firebase.json']])('%s changed -> indexes too (project or index file may differ)', file => {
+    const git = fakeGit([DEPLOYED], { [DEPLOYED]: [file] });
+    expect(planDeploy({ deployedSha: DEPLOYED, git })).toMatchObject({ rules: true, indexes: true });
+});
+
 test('indexes are deployed only when firestore.indexes.json changed, or with no confirmed base', () => {
     const git = fakeGit([DEPLOYED], { [DEPLOYED]: ['firestore.rules'] });
     expect(planDeploy({ deployedSha: DEPLOYED, git })).toMatchObject({ rules: true, indexes: false });
