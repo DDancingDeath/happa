@@ -66,7 +66,9 @@ and the new one resumes (the server sends only changes; the read meter counts no
 first snapshot is compared with what the app has (`realtime.js` `resyncSnapshot`), so
 pages get only real changes, never a reload of the list. localStorage
 (`happa.listenTargets`) keeps per query when it was healed and per collection when a server
-read last returned documents, so a phone heals only after such a read or a new month.
+read last returned documents, so a phone heals only after such a read or a new month. It
+heals nothing on the memory cache (persistence off: the SDK would drop the documents) or
+with another tab of the app open (the SDK may keep the query, storing nothing).
 Probe on one CI runner (reopen, 4x CPU): cache answers 3.4 s → 1.9 s, first screen
 5.8–6.3 s → 4.4–4.6 s.
 

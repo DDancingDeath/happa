@@ -122,6 +122,7 @@ describe('healing the data listeners', () => {
 
     beforeEach(() => {
         localStorage.removeItem(HEAL_STORE_KEY);
+        window.firestorePersistence = true;
         AppState.currentUser = null;
         AppState.userRole = 'owner';
         jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -135,7 +136,33 @@ describe('healing the data listeners', () => {
         jest.useRealTimers();
         jest.restoreAllMocks();
         delete global.firebase;
+        delete window.firestorePersistence;
         AppState.userRole = null;
+    });
+
+    it('heals nothing on the memory cache', async () => {
+        delete window.firestorePersistence;
+        await openAndHeal();
+        expect(fake.stats.resumes || 0).toBe(0);
+        expect(loadHealRecord().synced).toEqual({});
+    });
+
+    it('sees another tab of the app (then the SDK may keep the queries, so nothing is healed)', async () => {
+        jest.useRealTimers();
+        const { BroadcastChannel: NodeChannel } = require('worker_threads');
+        global.BroadcastChannel = NodeChannel;
+        let isolated;
+        jest.isolateModules(() => { isolated = require('../firebase/core/target-heal.js'); });
+        const otherTab = new NodeChannel('happa-tabs');
+        otherTab.onmessage = (e) => { if (e.data === 'ping') otherTab.postMessage('pong'); };
+        try {
+            await expect(isolated.otherTabOpen(2000)).resolves.toBe(true);
+            otherTab.close();
+            await expect(isolated.otherTabOpen(100)).resolves.toBe(false);
+        } finally {
+            otherTab.close();
+            delete global.BroadcastChannel;
+        }
     });
 
     it('re-subscribes every history listener once, with no new read and the same records', async () => {

@@ -15,7 +15,9 @@
  *
  * Per phone, localStorage keeps when each query was last healed and when a server read of
  * each collection last returned documents; a query is healed once after startup only when
- * it was never healed or its collection was read since.
+ * it was never healed or its collection was read since. Not with the memory cache (the SDK
+ * would drop the query's documents) or with another tab of the app open (the SDK may keep
+ * the query, storing nothing).
  * @module firebase/core/target-heal
  */
 
@@ -120,17 +122,55 @@ export function healPending() {
 
 const nextIdle = () => new Promise(resolve => { whenIdle(resolve, { timeoutMs: 2000 }); });
 
+const TABS_CHANNEL = 'happa-tabs';
+let tabsChannel;
+const channel = () => {
+    if (tabsChannel === undefined) {
+        tabsChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel(TABS_CHANNEL) : null;
+        tabsChannel?.unref?.();
+        tabsChannel?.addEventListener('message', e => { if (e.data === 'ping') tabsChannel.postMessage('pong'); });
+    }
+    return tabsChannel;
+};
+channel();
+
+/**
+ * Whether another tab of the app is open. Then the SDK may keep a query of this tab's (the
+ * other tab listens to it too, or this tab isn't the one writing the cache) and a heal
+ * stores nothing.
+ * @returns {Promise<boolean>}
+ */
+export function otherTabOpen(waitMs = 300) {
+    const ch = channel();
+    if (!ch) return Promise.resolve(false);
+    return new Promise(resolve => {
+        const onMessage = (e) => { if (e.data === 'pong') finish(true); };
+        const timer = setTimeout(() => finish(false), waitMs);
+        function finish(open) {
+            clearTimeout(timer);
+            ch.removeEventListener('message', onMessage);
+            resolve(open);
+        }
+        ch.addEventListener('message', onMessage);
+        ch.postMessage('ping');
+    });
+}
+
+/** Healing only helps (and only stores anything) with the IndexedDB cache on (firebaseConfig.js). */
+const persistentCache = () => typeof window !== 'undefined' && window.firestorePersistence === true;
+
 async function heal(gen) {
     running = true;
     let waiting = false;
     try {
+        if (!persistentCache() || await otherTabOpen()) return;
         const keep = new Set(entries.map(e => e.key));
         for (const entry of [...entries]) {
             if (gen !== S.sessionGen) return;
             const record = loadHealRecord();
             if (!needsHeal(record, entry.key, entry.coll)) continue;
             const syncedAt = entry.syncedAt();
-            const done = syncedAt ? entry.relisten() : null;
+            const done = syncedAt && navigator.onLine !== false ? entry.relisten() : null;
             if (!done) {
                 waiting = true;
                 continue;
