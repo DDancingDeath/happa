@@ -1,242 +1,79 @@
 /**
- * @fileoverview Bills (purchases, retail and wholesale sales): the FirebaseService bill methods.
- * The work is in bill-save.js (first save, retry, create-only: #70, #93, #153), bill-edit.js
- * (checked edits, void, delete, the server copy: #121, #75, #127) and bill-fields.js; their
- * exports are re-exported here (docs/architecture.md, phase 5, #69).
+ * @fileoverview Bills (purchases, retail and wholesale sales), split by responsibility (#69):
+ * bill-save.js (first save with a client-made id and its retry: #70, #153; create-only: #93),
+ * bill-edit.js (checked edits with their edit records: #121; void and delete: #75),
+ * bill-fields.js (shared fields), and here the reads: the server copy before an edit (#127),
+ * voided bills and edit records. This module re-exports the others' functions
+ * (docs/architecture.md, phase 5).
  * @module firebase/repos/bills
  */
 
 import { col, getDb } from '../db.js';
-import { docIdOf, HISTORY_SPEC, LOADED_PAYMENT, mapDoc, paymentSignature } from '../core/records.js';
-import { findRecord, voidedOf } from '../core/history-window.js';
+import { editCountOf } from '../../utils/bill-edits.js';
+import { docIdOf, HISTORY_SPEC, mapDoc, paymentSignature, stableJson } from '../core/records.js';
+import {
+    findRecord, forgetRecord, liveIdSet, publishCollection, voidedOf
+} from '../core/history-window.js';
+import { noteObservedChange } from '../core/stock-checkpoint.js';
+import { isActiveBill } from '../../utils/money.js';
 import { getWithRetry } from '../core/reads.js';
+import { S } from '../core/session.js';
+import { markDirty } from '../core/realtime.js';
 import { billEditsRef } from './bill-fields.js';
-import {
-    keptServerPaymentBills, lateCreateStates, saveBill, savedOnPhoneBills, unconfirmedBills
-} from './bill-save.js';
-import {
-    adoptFreshBill, billContentJson, billStateKey, deleteBill, deleteVoidedBillDoc, dropGoneBill,
-    keptLiveFromServer, LATEST_BILL_TIMEOUT_MS, updateBillChecked, voidBillDoc
-} from './bill-edit.js';
 
-export {
-    BILL_EDITS, billEditsRef, BILL_MONEY_FIELDS, keepEditCount, keepStoredCreatedAt, logRetryEdit,
-    withServerCreatedAt
-} from './bill-fields.js';
+export * from './bill-fields.js';
 export {
     abandonedCreates, BILL_CREATE_WAIT_MS, billAttemptJson, keptServerPaymentBills, NO_ANSWER_SKIP_MS,
     offlineRetryOutcome, pendingFirstSaves, retriedBillSaves, retryBillSave, saveBill, savedOnPhoneBills,
     sentBillAttempts, sentBillPaymentSigs, startBillSaveRun, unconfirmedBills, unconfirmedFirstSaves
 } from './bill-save.js';
-export {
-    adoptFreshBill, billContentJson, billStateKey, deleteBill, deleteVoidedBillDoc, dropGoneBill,
-    keptLiveFromServer, LATEST_BILL_TIMEOUT_MS, updateBillChecked, voidBillDoc
-} from './bill-edit.js';
+export { deleteBill, deleteVoidedBillDoc, updateBillChecked, voidBillDoc } from './bill-edit.js';
 
-/** FirebaseService bill methods; spread into FirebaseService (`this` is FirebaseService). */
+/** What a stale copy of a bill would differ in (#127): payments, edits, void. */
+export const billStateKey = (b) => `${paymentSignature(b)}|${editCountOf(b) || 0}|${isActiveBill(b) ? 1 : 0}`;
+
+/** The read before an edit (#127): a failed read falls back to the copy in memory, so it waits less. */
+export const LATEST_BILL_TIMEOUT_MS = 5000;
+
+/** The whole stored bill, to spot any change (createdAt: an estimate locally). */
+export const billContentJson = (b) => {
+    const rest = { ...b };
+    delete rest.createdAt;
+    return stableJson(rest);
+};
+
+/** Whether a listener that has heard from the server keeps this bill (its copy is current). */
+export const keptLiveFromServer = (collKey, docId) => {
+    const c = S.windowState?.colls?.[collKey];
+    return !!c && [c.live, ...c.dues].some(l => l.server && l.docs.some(r => docIdOf(r) === docId));
+};
+
+/**
+ * Puts a bill just read from the server in memory when no listener keeps it (an older,
+ * on-demand bill), with the stock checkpoint check a listener change gets. @private
+ */
+export function adoptFreshBill(collKey, prev, fresh) {
+    const c = S.windowState?.colls?.[collKey];
+    if (!c) return;
+    const docId = docIdOf(fresh);
+    if (liveIdSet(c).has(docId)) return;
+    c.extended.set(docId, fresh);
+    if (c.spec.stock && prev) noteObservedChange(c, prev, fresh, 'modified');
+    publishCollection(c);
+    markDirty(c.spec.views, !!c.spec.stock);
+}
+
+/** Drops a bill the server no longer has from memory when no listener keeps it. @private */
+export function dropGoneBill(collKey, prev, docId) {
+    const c = S.windowState?.colls?.[collKey];
+    if (!c || liveIdSet(c).has(docId)) return;
+    if (c.spec.stock && prev) noteObservedChange(c, prev, null, 'deleted');
+    forgetRecord(collKey, docId);
+    markDirty(c.spec.views, !!c.spec.stock);
+}
+
+/** FirebaseService bill reads; spread into FirebaseService (`this` is FirebaseService). */
 export const billMethods = {
-    /**
-     * Saves a purchase to Firestore. Creates new if no ID, updates if ID exists.
-     * Automatically adds userId and userName from AppState.
-     * @async
-     * @param {Object} purchase - The purchase to save
-     * @param {string} [purchase.id] - Purchase ID (if updating existing)
-     * @param {string} purchase.partyName - Party/customer name
-     * @param {string} purchase.date - Purchase date
-     * @param {Array} purchase.items - Array of purchase items
-     * @param {number} purchase.total - Total purchase amount
-     * @returns {Promise<Object>} The saved purchase with ID
-     */
-    async savePurchase(purchase, options) {
-        return saveBill('purchases', purchase, 'savePurchase', options);
-    },
-
-    /**
-     * Updates an existing purchase in Firestore.
-     * @async
-     * @param {Object} purchase - The purchase to update
-     * @param {string} purchase.id - Purchase ID (required)
-     * @returns {Promise<Object>} The updated purchase
-     * @throws {Error} If purchase.id is not provided
-     */
-    async updatePurchase(purchase, options) {
-        return updateBillChecked('purchases', purchase, options);
-    },
-
-    /**
-     * Deletes a purchase from Firestore.
-     * @async
-     * @param {string} purchaseId - The ID of the purchase to delete
-     * @returns {Promise<void>}
-     */
-    async deletePurchase(purchaseId) {
-        await deleteBill('purchases', purchaseId);
-    },
-
-    /**
-     * Saves a wholesale sale to Firestore. Creates new if no ID, updates if ID exists.
-     * @async
-     * @param {Object} sale - The sale to save
-     * @param {string} [sale.id] - Sale ID (if updating existing)
-     * @param {string} sale.partyName - Party/customer name
-     * @param {string} sale.date - Sale date
-     * @param {Array} sale.items - Array of sale items
-     * @param {number} sale.total - Total sale amount
-     * @returns {Promise<Object>} The saved sale with ID
-     */
-    async saveWholesaleSale(sale, options) {
-        return saveBill('wholesaleSales', sale, 'saveWholesaleSale', options);
-    },
-
-    /**
-     * Updates an existing wholesale sale in Firestore.
-     * @async
-     * @param {Object} sale - The sale to update
-     * @param {string} sale.id - Sale ID (required)
-     * @returns {Promise<Object>} The updated sale
-     * @throws {Error} If sale.id is not provided
-     */
-    async updateWholesaleSale(sale, options) {
-        return updateBillChecked('wholesaleSales', sale, options);
-    },
-
-    /**
-     * Saves a retail sale to Firestore. Uses separate retailSales collection.
-     * @async
-     * @param {Object} sale - The retail sale to save
-     * @param {string} [sale.id] - Sale ID (if updating existing)
-     * @param {string} sale.customerName - Customer name
-     * @param {string} sale.date - Sale date
-     * @param {Array} sale.items - Array of sale items
-     * @param {number} sale.total - Total sale amount
-     * @returns {Promise<Object>} The saved sale with ID
-     */
-    async saveRetailSale(sale, options) {
-        return saveBill('retailSales', sale, 'saveRetailSale', options);
-    },
-
-    /**
-     * Updates an existing retail sale in Firestore.
-     * @async
-     * @param {Object} sale - The sale to update
-     * @param {string} sale.id - Sale ID (required)
-     * @returns {Promise<Object>} The updated sale
-     * @throws {Error} If sale.id is not provided
-     */
-    async updateRetailSale(sale, options) {
-        return updateBillChecked('retailSales', sale, options);
-    },
-
-    /**
-     * Deletes a retail sale from Firestore.
-     * @async
-     * @param {string} saleId - The ID of the sale to delete
-     * @returns {Promise<void>}
-     */
-    async deleteRetailSale(saleId) {
-        await deleteBill('retailSales', saleId);
-    },
-
-    /**
-     * Deletes a wholesale sale from Firestore.
-     * @async
-     * @param {string} saleId - The ID of the sale to delete
-     * @returns {Promise<void>}
-     */
-    async deleteWholesaleSale(saleId) {
-        await deleteBill('wholesaleSales', saleId);
-    },
-
-    /**
-     * True when a retried new-bill save found a payment recorded on the server
-     * since the first attempt and kept the server's money fields (#70).
-     * @param {Object} record - The bill passed to savePurchase/saveRetailSale/saveWholesaleSale
-     * @returns {boolean}
-     */
-    keptServerPayment(record) {
-        return !!record && keptServerPaymentBills.has(record);
-    },
-
-    /**
-     * True when a new bill was stored on this phone while offline and has not
-     * reached the server yet (#153: "Saved on this phone, will sync").
-     * @param {Object} record - The bill passed to savePurchase/saveRetailSale/saveWholesaleSale
-     * @returns {boolean}
-     */
-    savedOnPhoneOnly(record) {
-        return !!record && savedOnPhoneBills.has(record);
-    },
-
-    /**
-     * True when a new bill's write was neither acknowledged nor confirmed stored on
-     * this phone in time (#153): it may still be saved, so it must not be reported
-     * as saved or cleared from the form.
-     * @param {Object} record - The bill passed to savePurchase/saveRetailSale/saveWholesaleSale
-     * @returns {boolean}
-     */
-    saveUnconfirmed(record) {
-        return !!record && unconfirmedBills.has(record);
-    },
-
-    /**
-     * Payment-state signature of a bill as it was loaded. Bill editors capture it when they
-     * open so a later save can detect payments recorded on another device in the meantime.
-     * @param {Object} record
-     * @returns {?string}
-     */
-    loadedPaymentSignature(record) {
-        return record?.[LOADED_PAYMENT] ?? paymentSignature(record);
-    },
-
-    /**
-     * Sets the payment-state baseline the next update of `record` is checked against.
-     * @param {Object} record
-     * @param {?string} signature - Value from loadedPaymentSignature()
-     * @returns {Object} record
-     */
-    withLoadedPaymentSignature(record, signature) {
-        if (record && signature !== undefined) record[LOADED_PAYMENT] = signature;
-        return record;
-    },
-
-    /**
-     * Deletes a purchase / retail sale / wholesale sale shown in History, using its real
-     * Firestore document id (legacy docs may have an `id` field that differs from it).
-     * @param {'purchases'|'retailSales'|'wholesaleSales'} collKey
-     * @param {Object} bill - Record from the AppState history array
-     */
-    async deleteHistoryBill(collKey, bill) {
-        const docId = docIdOf(bill);
-        if (collKey === 'purchases') return this.deletePurchase(docId);
-        if (collKey === 'retailSales') return this.deleteRetailSale(docId);
-        if (collKey === 'wholesaleSales') return this.deleteWholesaleSale(docId);
-        throw new Error(`Unknown history collection: ${collKey}`);
-    },
-
-    /**
-     * Voids a bill shown in History (#75): kept, marked who / when / why, left out of
-     * every figure. Throws with `code` 'reason-required' | 'not-found' | 'already-voided' |
-     * 'has-payments' (payments recorded after it was saved), or the Firestore error.
-     * @param {'purchases'|'retailSales'|'wholesaleSales'} collKey
-     * @param {Object} bill
-     * @param {string} reason 3–300 characters
-     * @returns {Promise<Object>} the voided bill
-     */
-    async voidBill(collKey, bill, reason) {
-        if (!HISTORY_SPEC[collKey]?.dues) throw new Error(`Unknown bill collection: ${collKey}`);
-        return voidBillDoc(collKey, bill, reason);
-    },
-
-    /**
-     * Owner only: deletes a voided bill for good, with its edit records.
-     * @param {'purchases'|'retailSales'|'wholesaleSales'} collKey
-     * @param {Object} bill a voided bill
-     */
-    async deleteVoidedBill(collKey, bill) {
-        if (!HISTORY_SPEC[collKey]?.dues) throw new Error(`Unknown bill collection: ${collKey}`);
-        return deleteVoidedBillDoc(collKey, bill);
-    },
-
     /**
      * The server's copy of a bill before it is edited (#127): one read, never the cache.
      * An older bill isn't listened to, so its copy here may be stale; a payment, edit or
@@ -277,18 +114,6 @@ export const billMethods = {
      */
     billVersion(bill) {
         return bill ? billStateKey(bill) : null;
-    },
-
-    /**
-     * How a create-only save of this bill given up on (no answer in time) ended (#93):
-     * 'pending' (still unknown), 'own' (it landed), 'foreign' (another phone's bill was
-     * there), 'none' (it failed), or null when there was none.
-     * @param {'purchases'|'retailSales'} collKey
-     * @param {string} id
-     * @returns {?string}
-     */
-    lateCreateState(collKey, id) {
-        return lateCreateStates.get(`${collKey}/${id}`) || null;
     },
 
     /**

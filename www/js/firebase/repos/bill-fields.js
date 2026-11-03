@@ -1,7 +1,7 @@
 /**
  * @fileoverview Bill fields shared by the save and the edit paths: the edit records'
  * sub-collection (#121), the money fields, the server `createdAt` (#115) and what an
- * overwrite keeps. Moved verbatim out of repos/bills.js (#69).
+ * overwrite keeps. Moved out of repos/bills.js (#69).
  * @module firebase/repos/bill-fields
  */
 

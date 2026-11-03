@@ -1,7 +1,6 @@
 /**
  * @fileoverview Changes to a saved bill: checked edits with their edit records (#121), void and
- * delete (#75), and the server copy read before an edit (#127). Moved verbatim out of
- * repos/bills.js (#69).
+ * delete (#75). Moved out of repos/bills.js (#69).
  * @module firebase/repos/bill-edit
  */
 
@@ -10,16 +9,13 @@ import {
     billEditChanges, cleanReason, editCountOf, editRecord, hasEditChanges, nextEditNumber, voidBlocker
 } from '../../utils/bill-edits.js';
 import { AppState } from '../../utils/state.js';
-import { docIdOf, LOADED_PAYMENT, paymentSignature, stableJson } from '../core/records.js';
+import { docIdOf, HISTORY_SPEC, LOADED_PAYMENT, paymentSignature } from '../core/records.js';
 import {
-    findRecord, forgetRecord, liveIdSet, noteLocalRecordWrite, noteMonthWrite, prepareStockRecord,
-    publishCollection
+    findRecord, forgetRecord, noteLocalRecordWrite, noteMonthWrite, prepareStockRecord
 } from '../core/history-window.js';
-import { noteObservedChange, noteStockWrite } from '../core/stock-checkpoint.js';
+import { noteStockWrite } from '../core/stock-checkpoint.js';
 import { isActiveBill } from '../../utils/money.js';
 import { getWithRetry } from '../core/reads.js';
-import { S } from '../core/session.js';
-import { markDirty } from '../core/realtime.js';
 import { billEditsRef, keepEditCount, keepStoredCreatedAt } from './bill-fields.js';
 
 /**
@@ -148,45 +144,130 @@ export async function deleteVoidedBillDoc(collKey, bill) {
     noteLocalRecordWrite(collKey, docId, null);
 }
 
-/** What a stale copy of a bill would differ in (#127): payments, edits, void. */
-export const billStateKey = (b) => `${paymentSignature(b)}|${editCountOf(b) || 0}|${isActiveBill(b) ? 1 : 0}`;
+/** FirebaseService methods that change a saved bill; spread into FirebaseService (`this` is FirebaseService). */
+export const billEditMethods = {
+    /**
+     * Updates an existing purchase in Firestore.
+     * @async
+     * @param {Object} purchase - The purchase to update
+     * @param {string} purchase.id - Purchase ID (required)
+     * @returns {Promise<Object>} The updated purchase
+     * @throws {Error} If purchase.id is not provided
+     */
+    async updatePurchase(purchase, options) {
+        return updateBillChecked('purchases', purchase, options);
+    },
 
-/** The read before an edit (#127): a failed read falls back to the copy in memory, so it waits less. */
-export const LATEST_BILL_TIMEOUT_MS = 5000;
+    /**
+     * Deletes a purchase from Firestore.
+     * @async
+     * @param {string} purchaseId - The ID of the purchase to delete
+     * @returns {Promise<void>}
+     */
+    async deletePurchase(purchaseId) {
+        await deleteBill('purchases', purchaseId);
+    },
 
-/** The whole stored bill, to spot any change (createdAt: an estimate locally). */
-export const billContentJson = (b) => {
-    const rest = { ...b };
-    delete rest.createdAt;
-    return stableJson(rest);
+    /**
+     * Updates an existing wholesale sale in Firestore.
+     * @async
+     * @param {Object} sale - The sale to update
+     * @param {string} sale.id - Sale ID (required)
+     * @returns {Promise<Object>} The updated sale
+     * @throws {Error} If sale.id is not provided
+     */
+    async updateWholesaleSale(sale, options) {
+        return updateBillChecked('wholesaleSales', sale, options);
+    },
+
+    /**
+     * Updates an existing retail sale in Firestore.
+     * @async
+     * @param {Object} sale - The sale to update
+     * @param {string} sale.id - Sale ID (required)
+     * @returns {Promise<Object>} The updated sale
+     * @throws {Error} If sale.id is not provided
+     */
+    async updateRetailSale(sale, options) {
+        return updateBillChecked('retailSales', sale, options);
+    },
+
+    /**
+     * Deletes a retail sale from Firestore.
+     * @async
+     * @param {string} saleId - The ID of the sale to delete
+     * @returns {Promise<void>}
+     */
+    async deleteRetailSale(saleId) {
+        await deleteBill('retailSales', saleId);
+    },
+
+    /**
+     * Deletes a wholesale sale from Firestore.
+     * @async
+     * @param {string} saleId - The ID of the sale to delete
+     * @returns {Promise<void>}
+     */
+    async deleteWholesaleSale(saleId) {
+        await deleteBill('wholesaleSales', saleId);
+    },
+
+    /**
+     * Payment-state signature of a bill as it was loaded. Bill editors capture it when they
+     * open so a later save can detect payments recorded on another device in the meantime.
+     * @param {Object} record
+     * @returns {?string}
+     */
+    loadedPaymentSignature(record) {
+        return record?.[LOADED_PAYMENT] ?? paymentSignature(record);
+    },
+
+    /**
+     * Sets the payment-state baseline the next update of `record` is checked against.
+     * @param {Object} record
+     * @param {?string} signature - Value from loadedPaymentSignature()
+     * @returns {Object} record
+     */
+    withLoadedPaymentSignature(record, signature) {
+        if (record && signature !== undefined) record[LOADED_PAYMENT] = signature;
+        return record;
+    },
+
+    /**
+     * Deletes a purchase / retail sale / wholesale sale shown in History, using its real
+     * Firestore document id (legacy docs may have an `id` field that differs from it).
+     * @param {'purchases'|'retailSales'|'wholesaleSales'} collKey
+     * @param {Object} bill - Record from the AppState history array
+     */
+    async deleteHistoryBill(collKey, bill) {
+        const docId = docIdOf(bill);
+        if (collKey === 'purchases') return this.deletePurchase(docId);
+        if (collKey === 'retailSales') return this.deleteRetailSale(docId);
+        if (collKey === 'wholesaleSales') return this.deleteWholesaleSale(docId);
+        throw new Error(`Unknown history collection: ${collKey}`);
+    },
+
+    /**
+     * Voids a bill shown in History (#75): kept, marked who / when / why, left out of
+     * every figure. Throws with `code` 'reason-required' | 'not-found' | 'already-voided' |
+     * 'has-payments' (payments recorded after it was saved), or the Firestore error.
+     * @param {'purchases'|'retailSales'|'wholesaleSales'} collKey
+     * @param {Object} bill
+     * @param {string} reason 3–300 characters
+     * @returns {Promise<Object>} the voided bill
+     */
+    async voidBill(collKey, bill, reason) {
+        if (!HISTORY_SPEC[collKey]?.dues) throw new Error(`Unknown bill collection: ${collKey}`);
+        return voidBillDoc(collKey, bill, reason);
+    },
+
+    /**
+     * Owner only: deletes a voided bill for good, with its edit records.
+     * @param {'purchases'|'retailSales'|'wholesaleSales'} collKey
+     * @param {Object} bill a voided bill
+     */
+    async deleteVoidedBill(collKey, bill) {
+        if (!HISTORY_SPEC[collKey]?.dues) throw new Error(`Unknown bill collection: ${collKey}`);
+        return deleteVoidedBillDoc(collKey, bill);
+    }
 };
-
-/** Whether a listener that has heard from the server keeps this bill (its copy is current). */
-export const keptLiveFromServer = (collKey, docId) => {
-    const c = S.windowState?.colls?.[collKey];
-    return !!c && [c.live, ...c.dues].some(l => l.server && l.docs.some(r => docIdOf(r) === docId));
-};
-
-/**
- * Puts a bill just read from the server in memory when no listener keeps it (an older,
- * on-demand bill), with the stock checkpoint check a listener change gets. @private
- */
-export function adoptFreshBill(collKey, prev, fresh) {
-    const c = S.windowState?.colls?.[collKey];
-    if (!c) return;
-    const docId = docIdOf(fresh);
-    if (liveIdSet(c).has(docId)) return;
-    c.extended.set(docId, fresh);
-    if (c.spec.stock && prev) noteObservedChange(c, prev, fresh, 'modified');
-    publishCollection(c);
-    markDirty(c.spec.views, !!c.spec.stock);
-}
-
-/** Drops a bill the server no longer has from memory when no listener keeps it. @private */
-export function dropGoneBill(collKey, prev, docId) {
-    const c = S.windowState?.colls?.[collKey];
-    if (!c || liveIdSet(c).has(docId)) return;
-    if (c.spec.stock && prev) noteObservedChange(c, prev, null, 'deleted');
-    forgetRecord(collKey, docId);
-    markDirty(c.spec.views, !!c.spec.stock);
-}

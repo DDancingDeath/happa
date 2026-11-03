@@ -1,7 +1,7 @@
 /**
  * @fileoverview A new bill's first save with a client-made id and its retry (#70, #153), and the
- * create-only save of a new or restored bill (#93): the session's record of what this phone sent.
- * Moved verbatim out of repos/bills.js (#69).
+ * create-only save of a new or restored bill (#93, #317), with the session's record of what this
+ * phone sent. Moved out of repos/bills.js (#69).
  * @module firebase/repos/bill-save
  */
 
@@ -83,7 +83,7 @@ function noteSentAttempt(key, record) {
 const isOwnBillShape = (key, bill) => !!bill && !!sentBillShapes.get(key)?.has(billShapeJson(bill));
 
 /** State of create-only transactions given up on, by key: 'pending' | 'own' | 'foreign' | 'none' (#93). */
-export const lateCreateStates = new Map();
+const lateCreateStates = new Map();
 
 /** How long a new bill's create-only save waits for the server before it is saved like an offline one. */
 export const BILL_CREATE_WAIT_MS = 3000;
@@ -442,3 +442,94 @@ export async function retryBillSave(collKey, record, ref, previous, key, { creat
     return record;
 }
 
+/** FirebaseService methods that save a new bill; spread into FirebaseService (`this` is FirebaseService). */
+export const billSaveMethods = {
+    /**
+     * Saves a purchase to Firestore. Creates new if no ID, updates if ID exists.
+     * Automatically adds userId and userName from AppState.
+     * @async
+     * @param {Object} purchase - The purchase to save
+     * @param {string} [purchase.id] - Purchase ID (if updating existing)
+     * @param {string} purchase.partyName - Party/customer name
+     * @param {string} purchase.date - Purchase date
+     * @param {Array} purchase.items - Array of purchase items
+     * @param {number} purchase.total - Total purchase amount
+     * @returns {Promise<Object>} The saved purchase with ID
+     */
+    async savePurchase(purchase, options) {
+        return saveBill('purchases', purchase, 'savePurchase', options);
+    },
+
+    /**
+     * Saves a wholesale sale to Firestore. Creates new if no ID, updates if ID exists.
+     * @async
+     * @param {Object} sale - The sale to save
+     * @param {string} [sale.id] - Sale ID (if updating existing)
+     * @param {string} sale.partyName - Party/customer name
+     * @param {string} sale.date - Sale date
+     * @param {Array} sale.items - Array of sale items
+     * @param {number} sale.total - Total sale amount
+     * @returns {Promise<Object>} The saved sale with ID
+     */
+    async saveWholesaleSale(sale, options) {
+        return saveBill('wholesaleSales', sale, 'saveWholesaleSale', options);
+    },
+
+    /**
+     * Saves a retail sale to Firestore. Uses separate retailSales collection.
+     * @async
+     * @param {Object} sale - The retail sale to save
+     * @param {string} [sale.id] - Sale ID (if updating existing)
+     * @param {string} sale.customerName - Customer name
+     * @param {string} sale.date - Sale date
+     * @param {Array} sale.items - Array of sale items
+     * @param {number} sale.total - Total sale amount
+     * @returns {Promise<Object>} The saved sale with ID
+     */
+    async saveRetailSale(sale, options) {
+        return saveBill('retailSales', sale, 'saveRetailSale', options);
+    },
+
+    /**
+     * True when a retried new-bill save found a payment recorded on the server
+     * since the first attempt and kept the server's money fields (#70).
+     * @param {Object} record - The bill passed to savePurchase/saveRetailSale/saveWholesaleSale
+     * @returns {boolean}
+     */
+    keptServerPayment(record) {
+        return !!record && keptServerPaymentBills.has(record);
+    },
+
+    /**
+     * True when a new bill was stored on this phone while offline and has not
+     * reached the server yet (#153: "Saved on this phone, will sync").
+     * @param {Object} record - The bill passed to savePurchase/saveRetailSale/saveWholesaleSale
+     * @returns {boolean}
+     */
+    savedOnPhoneOnly(record) {
+        return !!record && savedOnPhoneBills.has(record);
+    },
+
+    /**
+     * True when a new bill's write was neither acknowledged nor confirmed stored on
+     * this phone in time (#153): it may still be saved, so it must not be reported
+     * as saved or cleared from the form.
+     * @param {Object} record - The bill passed to savePurchase/saveRetailSale/saveWholesaleSale
+     * @returns {boolean}
+     */
+    saveUnconfirmed(record) {
+        return !!record && unconfirmedBills.has(record);
+    },
+
+    /**
+     * How a create-only save of this bill given up on (no answer in time) ended (#93):
+     * 'pending' (still unknown), 'own' (it landed), 'foreign' (another phone's bill was
+     * there), 'none' (it failed), or null when there was none.
+     * @param {'purchases'|'retailSales'} collKey
+     * @param {string} id
+     * @returns {?string}
+     */
+    lateCreateState(collKey, id) {
+        return lateCreateStates.get(`${collKey}/${id}`) || null;
+    }
+};
