@@ -21,10 +21,20 @@ function fakeGit(history, changes) {
 
 test.each([
     ['firestore.rules'], ['firestore.indexes.json'], ['happa.config.json'], ['firebase.json'],
-    ['.github/workflows/firestore-rules-deploy.yml'], ['tools/ci/deploy-with-retry.js'], ['tools/ci/live-rules.js']
+    ['.github/workflows/firestore-rules-deploy.yml'], ['tools/ci/deploy-with-retry.js'], ['tools/ci/live-rules.js'],
+    ['tools/ci/rules-rest-deploy.js']
 ])('%s changed since the last deploy -> rules first', file => {
     const git = fakeGit([DEPLOYED], { [DEPLOYED]: ['www/js/main.js', file] });
     expect(planDeploy({ deployedSha: DEPLOYED, git })).toMatchObject({ rules: true, base: DEPLOYED, files: [file] });
+});
+
+test('indexes are deployed only when firestore.indexes.json changed, or with no confirmed base', () => {
+    const git = fakeGit([DEPLOYED], { [DEPLOYED]: ['firestore.rules'] });
+    expect(planDeploy({ deployedSha: DEPLOYED, git })).toMatchObject({ rules: true, indexes: false });
+    const git2 = fakeGit([DEPLOYED], { [DEPLOYED]: ['firestore.rules', 'firestore.indexes.json'] });
+    expect(planDeploy({ deployedSha: DEPLOYED, git: git2 })).toMatchObject({ rules: true, indexes: true });
+    expect(planDeploy({ deployedSha: null, git })).toMatchObject({ rules: true, indexes: true });
+    expect(planDeploy({ deployedSha: DEPLOYED, git: fakeGit([], {}) })).toMatchObject({ rules: true, indexes: true });
 });
 
 test('app-only changes since a confirmed deploy -> Hosting without a rules deploy', () => {

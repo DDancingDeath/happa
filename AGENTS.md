@@ -491,8 +491,8 @@ backward-compatible by design, so they go live first):
 
 1. **Plan** (`tools/ci/deploy-plan.js`): the rules are deployed when any of
    `firestore.rules`, `firestore.indexes.json`, `happa.config.json`,
-   `firebase.json`, `firestore-rules-deploy.yml`, `tools/ci/deploy-with-retry.js`
-   or `tools/ci/live-rules.js` changed since the **last confirmed deploy**: the
+   `firebase.json`, `firestore-rules-deploy.yml`, `tools/ci/deploy-with-retry.js`,
+   `tools/ci/live-rules.js` or `tools/ci/rules-rest-deploy.js` changed since the **last confirmed deploy**: the
    newest successful run of this workflow whose Hosting job really ran its
    "Deploy to Firebase Hosting" step (so a rules change whose deploy failed is
    redeployed by the next push). **Fail safe:** if that can't be confirmed (GitHub
@@ -659,6 +659,18 @@ permission list, defaults and which parts the rules enforce are in
    ruleset from the Firebase Rules API (read-only, with the service account)
    and fails unless its source equals the repo's, so Hosting never deploys on
    rules that are not live.
+   **Rules API fallback:** if `firebase deploy` fails twice with a 503 from the
+   Firebase Rules API (its `:test` compile check times out on large rules), the
+   job publishes the commit's exact `firestore.rules` through the Rules REST API
+   (`tools/ci/rules-rest-deploy.js`): it reuses or creates a ruleset whose source
+   is byte-identical to the file (checked against `git show <sha>:firestore.rules`
+   and read back before the release is touched; a mismatch aborts), then points
+   the `cloud.firestore` release at it. Both writes can answer 503 yet still be
+   applied, so after a 503 it re-reads (rulesets / release) before writing again;
+   everything is bounded to ~12 minutes. The indexes are then deployed alone
+   (`--only firestore:indexes`, no rules compile) only if
+   `firestore.indexes.json` changed since the last deploy (plan output
+   `indexes`; always on a manual dispatch). The same live check follows.
 
 To run the whole app against local emulators:
 `npx firebase-tools emulators:start --only auth,firestore`, serve `www/`
