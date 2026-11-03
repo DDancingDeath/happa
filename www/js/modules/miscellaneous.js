@@ -466,7 +466,7 @@ export class ExpensesManager {
             this.templates[category] = templates;
             chips.hidden = templates.length === 0;
             chips.innerHTML = templates.length === 0 ? '' : `<span class="expense-templates__label">${tx('ui.expenses.templates_label')}</span>`
-                + templates.map((tpl, i) => `<button type="button" class="expense-template-chip" onclick="window.app.expenses.applyTemplate('${category}', ${i})">${Helpers.escapeHtml(tpl.type)}${tpl.personName ? ` · ${Helpers.escapeHtml(tpl.personName)}` : ''} · ${formatRupees(tpl.amount, { small: true })}</button>`).join('');
+                + templates.map((tpl, i) => `<button type="button" class="expense-template-chip" data-onclick="expenses.applyTemplate('${category}', ${i})">${Helpers.escapeHtml(tpl.type)}${tpl.personName ? ` · ${Helpers.escapeHtml(tpl.personName)}` : ''} · ${formatRupees(tpl.amount, { small: true })}</button>`).join('');
         }
     }
 
@@ -504,10 +504,8 @@ export class ExpensesManager {
         container.innerHTML = expenses.map(payment => {
             const voided = !isActiveExpense(payment);
             return `
-            <div class="expense-card${voided ? ' expense-card--voided' : ''}" style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.2s ease;"
-                 onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'; this.style.transform='translateY(-2px)'"
-                 onmouseout="this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'; this.style.transform='translateY(0)'"
-                 onclick="window.app.expenses.viewExpenseDetails('${Helpers.escapeJsAttr(payment.id)}', '${category}')">
+            <div class="expense-card${voided ? ' expense-card--voided' : ''}" style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px;"
+                 data-onclick="expenses.viewExpenseDetails('${Helpers.escapeJsAttr(payment.id)}', '${category}')">
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
                     <div>
                         ${payment.personName ? `<div style="font-weight: 600; font-size: 16px; color: #333;">${Helpers.escapeHtml(payment.personName)}</div>` : ''}
