@@ -447,10 +447,11 @@ in `.github/review-rules-examples/`.
 - **Multi-year load benchmark (#59)**: `npm run bench` (`playwright.bench.config.js`, its own
   emulators: demo-happa-bench on 9299 / 8381, static server 8199) seeds a synthetic 3-year shop
   (`tests/bench/dataset.js`, from `tests/fixtures/generator.js`) and measures, with a 4× slower CPU,
-  the first sign-in, the first Today render (reopen → Today drawn) and the whole history window
+  the first sign-in (until the stock checkpoint is stored), the first Today render (reopen → Today
+  drawn, with the reads and their top sources) and the whole history window
   (`ensureHistoryFrom(null)`), with the read meter's counts. Not part of the E2E suite: the nightly
   `bench.yml` adds each result to `bench-trend.csv` on the `bench-trend` branch and warns (never
-  fails) above `tools/bench/budgets.json`. `BENCH_YEARS`, `BENCH_ACTIVITY`, `BENCH_RUNS` size a local run.
+  fails) above `tools/bench/budgets.json`; a manual run on another branch leaves the trend alone. `BENCH_YEARS`, `BENCH_ACTIVITY`, `BENCH_RUNS` size a local run.
 - **Contrast (#68)**: `tests/e2e/a11y-contrast.spec.js` runs axe-core's WCAG AA
   `color-contrast` rule on the main pages (owner, en / hi, phone / desktop) and fails on
   any finding. Text on a page card uses the theme variables (`--success-color`,

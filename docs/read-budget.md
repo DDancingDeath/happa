@@ -34,6 +34,25 @@ localhost use the `dev_` test data, the cash page reads 5–38 documents instead
 | Alerts | TIP check `SessionReads`: every sign-in records its reads until the first screen (warn above 1,000, fail above 2,500; listeners answered from the offline copy are counted later, so this can be low); a heavy session and a quota error are failures. The daily TIP job opens a `tip-auto` issue when they repeat, and App health shows them | `tip/scenarios/session-reads.js` |
 | Read budget in CI | The E2E smoke fails a page that reads more than its baseline (+25%) | `tests/e2e/read-baselines.json` |
 
+## What one app start reads (#159)
+
+The multi-year benchmark (`npm run bench`, 3-year synthetic shop, owner) records the
+meter's top sources of a reopen (`startupTop` in `bench-result.json`). On 3 Nov 2026
+(8,303 documents) a reopen read about 1,600 documents:
+
+| Source | Reads | Why |
+|---|---|---|
+| Old bills with money due (`openDue == true`, older than the window), 3 bill collections | ~1,350 | Outstanding, the "Already owes" line on the bill forms and the Money / Statements dues need every open due; the query already returns only unpaid bills |
+| The recent window (1st of last month onwards), all history collections | ~220 | Today, History, Money of this and last month |
+| Items, settings, profile, checkpoint, drafts, the `paidAt` dues queries (1 each when empty), … | ~25 | |
+
+The nightly figure of ~2,940–3,020 before #159 was the benchmark reopening before the
+first sign-in's stock-checkpoint rebuild was stored: each reopen then started that
+full read again (the first collection, purchases, ~1,420 reads, fell inside the
+measured start). The benchmark now waits for the checkpoint after the first sign-in.
+The same happens on a phone that is closed during a rebuild (first sign-in, or the weekly
+forced rebuild): the next open starts the full read again.
+
 ## When the quota runs out
 
 1. Tell the shop to keep billing: bills save on the phone and sync after the reset.
