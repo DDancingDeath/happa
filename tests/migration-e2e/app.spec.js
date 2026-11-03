@@ -303,8 +303,8 @@ test('migrated member: original password, role gating holds', async ({ page }) =
     const role = expected.users[logins.member.uid].role;
     const hidden = await page.evaluate(() => {
         const out = {};
-        document.querySelectorAll('.nav-menu a[onclick]').forEach(a => {
-            const tab = a.getAttribute('onclick').match(/showTab\('([^']+)'/)?.[1];
+        document.querySelectorAll('.nav-menu a[data-onclick]').forEach(a => {
+            const tab = a.getAttribute('data-onclick').match(/showTab\('([^']+)'/)?.[1];
             if (tab) out[tab] = a.style.display === 'none';
         });
         return out;
