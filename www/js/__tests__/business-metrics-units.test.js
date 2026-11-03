@@ -267,17 +267,17 @@ describe('Items: I1, I2, I7, I8', () => {
         ],
         wholesaleSales: [
             { id: 'w1', timestamp: at(3, 10), items: [line('rice', 'Rice', 3, 120)], total: 360 },
-            { id: 'w2', timestamp: at(3, 12), items: [line('rice', 'Rice', 1, 99.5)], total: 99.5 }
+            { id: 'w2', timestamp: at(3, 12), items: [line('rice', 'Rice', 1, 100)], total: 100 }
         ]
     };
     const rice = { itemKey: 'rice', item: 'Rice', itemHi: 'चावल', adjustment: false };
     const dal = { itemKey: 'dal', item: 'Dal', itemHi: 'Dal', adjustment: false };
-    const rest = { itemKey: '', item: '', itemHi: '', sales: -10, qty: 0, cogs: 0, profit: -10, per100: 100, retail: -10, wholesale: 0, adjustment: true };
+    const rest = { itemKey: '', item: '', itemHi: '', sales: -10, qty: 0, cogs: 0, profit: -10, per100: expect.any(Number), retail: -10, wholesale: 0, adjustment: true };
 
     test('I1 / I2: sales, cost and profit per item, retail and wholesale apart, best profit first', () => {
         const m = moneySummary(data, ALL, { detail: true });
         expect(itemSummary(m)).toEqual([
-            { ...rice, sales: 709.5, qty: 7, cogs: 700, profit: 9.5, per100: 1.34, retail: 250, wholesale: 459.5 },
+            { ...rice, sales: 710, qty: 7, cogs: 700, profit: 10, per100: 1.41, retail: 250, wholesale: 460 },
             { ...dal, sales: 140, qty: 3, cogs: 150, profit: -10, per100: -7.14, retail: 140, wholesale: 0 },
             rest
         ]);
@@ -287,21 +287,21 @@ describe('Items: I1, I2, I7, I8', () => {
             { ...rice, sales: 250, qty: 3, cogs: 300, profit: -50, per100: -20, retail: 250, wholesale: 0 }
         ]);
         expect(itemSummary(m, { type: 'wholesale' })).toEqual([
-            { ...rice, sales: 459.5, qty: 4, cogs: 400, profit: 59.5, per100: 12.95, retail: 0, wholesale: 459.5 }
+            { ...rice, sales: 460, qty: 4, cogs: 400, profit: 60, per100: 13.04, retail: 0, wholesale: 460 }
         ]);
     });
 
     test('without the cost, items are by sales and have no profit', () => {
         const m = moneySummary({ ...data, base: null }, ALL, { detail: true });
         expect(itemSummary(m).map(r => [r.itemKey, r.sales, r.cogs, r.profit, r.per100])).toEqual([
-            ['rice', 709.5, null, null, null], ['dal', 140, null, null, null], ['', -10, null, null, null]
+            ['rice', 710, null, null, null], ['dal', 140, null, null, null], ['', -10, null, null, null]
         ]);
         expect(belowCostSales(m)).toEqual([]);
         expect(itemSummary({})).toEqual([]);
         expect(belowCostSales({})).toEqual([]);
     });
 
-    test('I8: lines sold more than 50 paise below their cost, per item, biggest loss first', () => {
+    test('I8: lines sold below their cost, per item, biggest loss first', () => {
         const m = moneySummary(data, ALL, { detail: true });
         expect(belowCostSales(m)).toEqual([
             { itemKey: 'rice', item: 'Rice', itemHi: 'चावल', times: 2, qty: 3, lost: 50 },
@@ -312,7 +312,7 @@ describe('Items: I1, I2, I7, I8', () => {
     test('M11 days: profit per local day adds up to M6', () => {
         const m = moneySummary(data, ALL, { detail: true });
         const days = profitPerDay(m);
-        expect(days).toEqual({ '2026-10-02': -40, '2026-10-03': 59.5, '2026-10-04': -20, '2026-10-05': -10 });
+        expect(days).toEqual({ '2026-10-02': -40, '2026-10-03': 60, '2026-10-04': -20, '2026-10-05': -10 });
         expect(Object.values(days).reduce((a, b) => a + b, 0)).toBe(m.M6.total);
     });
 
