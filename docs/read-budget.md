@@ -50,8 +50,17 @@ The nightly figure of ~2,940–3,020 before #159 was the benchmark reopening bef
 first sign-in's stock-checkpoint rebuild was stored: each reopen then started that
 full read again (the first collection, purchases, ~1,420 reads, fell inside the
 measured start). The benchmark now waits for the checkpoint after the first sign-in.
-The same happens on a phone that is closed during a rebuild (first sign-in, or the weekly
-forced rebuild): the next open starts the full read again.
+A phone closed during a rebuild (first sign-in, or the weekly forced rebuild) used to
+start that full read again on its next open (~8,800 reads for this shop each time). Since
+#159 the rebuild reads each collection in pages of 500 (document id order, the same
+documents as one read) and keeps on the phone (localStorage) which documents each page
+returned; the next rebuild takes those pages from the phone's Firestore cache, when every
+one of their documents is still there, and reads only the rest
+(`firebase/core/rebuild-progress.js`). The progress is used only for the same user and
+data set, the same window month and the same checkpoint `staleCount` (an older stock change
+on any phone bumps it), and for at most a day; otherwise it is dropped and everything is
+read again. In the benchmark's shop, closing the app once mid-rebuild cost 16,118 reads
+until the checkpoint was stored before, and 10,456 with the resume.
 
 ## When the quota runs out
 

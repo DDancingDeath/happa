@@ -4,7 +4,10 @@
  * startAfter(doc) queries,
  * get(), onSnapshot() with sequential docChanges(), set (merge) / update
  * (dotted paths) / delete / add, batches, transactions and
- * FieldValue.increment / delete. Also counts billed document reads.
+ * FieldValue.increment / delete. Also counts billed document reads. A query
+ * `get({ source: 'cache' })` reads this device's cache: every document a read or
+ * listener returned, or a write of this client made (`raw()` changes bypass it,
+ * like another device's writes; `cached()` lets a test evict).
  */
 import { compareFirestoreValues } from '../../utils/history-range.js';
 
@@ -99,6 +102,12 @@ export function createFakeFirestore(options = {}) {
         if (!store.has(name)) store.set(name, new Map());
         return store.get(name);
     };
+    const cache = new Map();
+    const cacheColl = (name) => {
+        if (!cache.has(name)) cache.set(name, new Map());
+        return cache.get(name);
+    };
+    const cachePut = (name, rows) => rows.forEach(r => (r.data === undefined ? cacheColl(name).delete(r.id) : cacheColl(name).set(r.id, r.data)));
 
     const docSnap = (collName, id, data) => ({
         id,
@@ -111,8 +120,8 @@ export function createFakeFirestore(options = {}) {
     // orderBy(FieldPath.documentId()) orders by the document id.
     const fieldOf = (row, field) => (field === '__name__' ? row[0] : getPath(row[1], field));
 
-    const evaluate = (q) => {
-        let rows = [...coll(q.coll).entries()].filter(([id, d]) => q.filters.every(f => matches(d, f, id)));
+    const evaluate = (q, src = coll(q.coll)) => {
+        let rows = [...src.entries()].filter(([id, d]) => q.filters.every(f => matches(d, f, id)));
         rows = rows.filter(row => q.order.every(o => fieldOf(row, o.field) !== undefined));
         const lastDir = q.order.length ? q.order[q.order.length - 1].dir : 'asc';
         rows.sort((a, b) => {
@@ -188,6 +197,7 @@ export function createFakeFirestore(options = {}) {
             if (!changes.length) return;
             stats.reads += changes.filter(c => c.type !== 'removed').length;
             l.last = rows;
+            cachePut(l.coll, rows);
             l.next(querySnap(l.q, rows, changes));
         });
     };
@@ -202,6 +212,7 @@ export function createFakeFirestore(options = {}) {
         stats.writes++;
         if (data === undefined) coll(collName).delete(id);
         else coll(collName).set(id, data);
+        cachePut(collName, [{ id, data }]);
         scheduleFlush();
     };
 
@@ -226,6 +237,7 @@ export function createFakeFirestore(options = {}) {
                 return;
             }
             l.last = evaluate(l.q);
+            cachePut(l.coll, l.last);
             stats.reads += Math.max(1, l.last.length);
             if (serverHeld) l.held = true;
             l.next(querySnap(l.q, l.last, l.last.map((r, i) => ({ type: 'added', oldIndex: -1, newIndex: i, doc: docSnap(l.q.coll, r.id, r.data) })), serverHeld));
@@ -253,12 +265,15 @@ export function createFakeFirestore(options = {}) {
             startAt: (value) => makeQuery({ ...q, startAtValue: value }),
             endAt: (value) => makeQuery({ ...q, endAtValue: value }),
             endBefore: (value) => makeQuery({ ...q, endBeforeValue: value }),
-            get: async () => {
+            get: async (opts) => {
+                if (opts?.source === 'cache') return querySnap(q, evaluate(q, cacheColl(q.coll)), [], true);
                 stats.gets++;
                 stats.queryLog.push(q);
+                if (options.beforeGet) await options.beforeGet(q, stats);
                 const fail = failures[q.coll];
                 if (fail) throw fail;
                 const rows = evaluate(q);
+                cachePut(q.coll, rows);
                 stats.reads += Math.max(1, rows.length);
                 return querySnap(q, rows, []);
             },
@@ -371,6 +386,7 @@ export function createFakeFirestore(options = {}) {
             docs.forEach(({ id, ...data }) => coll(collName).set(String(id), deepClone(data)));
         },
         raw: (collName) => coll(collName),
+        cached: (collName) => cacheColl(collName),
         /** Ends every query listener on a collection with an error (e.g. permission-denied after a rules change). */
         failListeners(collName, error) {
             [...listeners].filter(l => l.kind === 'query' && l.coll === collName).forEach(l => {

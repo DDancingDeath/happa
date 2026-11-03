@@ -3929,11 +3929,27 @@
       "dev_purchases"
     ],
     [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "limit",
+      500
+    ],
+    [
       "get"
     ],
     [
       "collection",
       "dev_retailSales"
+    ],
+    [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "limit",
+      500
     ],
     [
       "get"
@@ -3943,11 +3959,27 @@
       "dev_wholesaleSales"
     ],
     [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "limit",
+      500
+    ],
+    [
       "get"
     ],
     [
       "collection",
       "dev_expenses"
+    ],
+    [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "limit",
+      500
     ],
     [
       "get"
@@ -3957,6 +3989,14 @@
       "dev_personalExpenses"
     ],
     [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "limit",
+      500
+    ],
+    [
       "get"
     ],
     [
@@ -3964,11 +4004,27 @@
       "dev_stockAdjustments"
     ],
     [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "limit",
+      500
+    ],
+    [
       "get"
     ],
     [
       "collection",
       "dev_withdrawals"
+    ],
+    [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "limit",
+      500
     ],
     [
       "get"
@@ -6270,11 +6326,27 @@
       "dev_purchases"
     ],
     [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "limit",
+      500
+    ],
+    [
       "get"
     ],
     [
       "collection",
       "dev_retailSales"
+    ],
+    [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "limit",
+      500
     ],
     [
       "get"
@@ -6284,11 +6356,27 @@
       "dev_wholesaleSales"
     ],
     [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "limit",
+      500
+    ],
+    [
       "get"
     ],
     [
       "collection",
       "dev_expenses"
+    ],
+    [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "limit",
+      500
     ],
     [
       "get"
@@ -6298,6 +6386,14 @@
       "dev_personalExpenses"
     ],
     [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "limit",
+      500
+    ],
+    [
       "get"
     ],
     [
@@ -6305,11 +6401,27 @@
       "dev_stockAdjustments"
     ],
     [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "limit",
+      500
+    ],
+    [
       "get"
     ],
     [
       "collection",
       "dev_withdrawals"
+    ],
+    [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "limit",
+      500
     ],
     [
       "get"
