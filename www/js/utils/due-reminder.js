@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Pure builders for the Outstanding party actions (#77): the
  * WhatsApp due reminder (app language), the wa.me link, and the read-only
@@ -9,7 +10,7 @@
 import { round2, formatRupees } from './money.js';
 import { t } from '../i18n/index.js';
 
-const pad2 = (n) => String(n).padStart(2, '0');
+const pad2 = (/** @type {number} */ n) => String(n).padStart(2, '0');
 
 /** Most bills listed in one reminder; the rest are summarised. */
 export const REMINDER_MAX_BILLS = 20;
@@ -23,7 +24,11 @@ export function formatINR(amount) {
     return formatRupees(amount);
 }
 
-/** DD/MM/YYYY in local time, '' for no date. */
+/**
+ * DD/MM/YYYY in local time, '' for no date.
+ * @param {*} date
+ * @returns {string}
+ */
 export function formatDMY(date) {
     if (!(date instanceof Date) || isNaN(date.getTime())) return '';
     return `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()}`;
@@ -106,7 +111,7 @@ export function buildReminderText(party, { shopName = '', upiId = '' } = {}) {
 /**
  * Read-only statement of a party's open bills, ready for the printer's
  * image path.
- * @param {Object} party Party from buildAging()
+ * @param {?{name?: string, bills?: Array<{billNumber?: string, date?: *, days?: ?number, due?: *}>}} party Party from buildAging()
  * @param {{kind?: 'receivable'|'payable', shopName?: string, today?: Date}} [opts]
  * @returns {{title: string, shopName: string, partyName: string, asOf: string,
  *   rows: Array<{billNumber: string, date: string, days: ?number, due: number}>,

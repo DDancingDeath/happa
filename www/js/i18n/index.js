@@ -76,7 +76,7 @@ export function formatMessage(template, params) {
 /**
  * Text for `key` in the current language (falls back to English, then to the key).
  * @param {string} key
- * @param {Object<string, *>} [params] values for {name} placeholders
+ * @param {?Object<string, *>} [params] values for {name} placeholders
  * @param {'en'|'hi'} [lang]
  * @returns {string}
  */

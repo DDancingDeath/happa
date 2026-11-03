@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Scheduling of startup work that must not hold the first
  * screen (#13): stock after the first paint, the legacy-timestamp scan when
@@ -14,11 +15,12 @@ export const LEGACY_SCAN_IDLE_TIMEOUT_MS = 10000;
  * Runs `fn` once the browser is idle (requestIdleCallback, falling back to
  * setTimeout), but not before `minDelayMs`.
  * @param {Function} fn
- * @param {{minDelayMs?: number, timeoutMs?: number, win?: Object}} [opts]
+ * @param {{minDelayMs?: number, timeoutMs?: number, win?: Rec}} [opts]
  * @returns {Function} cancel
  */
 export function whenIdle(fn, { minDelayMs = 0, timeoutMs = LEGACY_SCAN_IDLE_TIMEOUT_MS, win = globalThis } = {}) {
     let cancelled = false;
+    /** @type {*} */
     let idleHandle = null;
     const fire = () => {
         if (!cancelled) fn();
@@ -45,7 +47,7 @@ export function whenIdle(fn, { minDelayMs = 0, timeoutMs = LEGACY_SCAN_IDLE_TIME
  * Runs `fn` right after the next frame is painted (rAF + task), or after
  * `maxWaitMs` when frames don't run (background tab, old WebView).
  * @param {Function} fn
- * @param {{maxWaitMs?: number, win?: Object}} [opts]
+ * @param {{maxWaitMs?: number, win?: Rec}} [opts]
  */
 export function afterFirstPaint(fn, { maxWaitMs = 100, win = globalThis } = {}) {
     let done = false;

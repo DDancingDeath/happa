@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Pure helpers for JSON data backups (Clear Data "download a
  * backup first"). Firestore special values are converted to plain JSON so the
@@ -24,6 +25,7 @@ export function serializeForBackup(value) {
     if (typeof value.latitude === 'number' && typeof value.longitude === 'number' && Object.keys(value).length <= 2) {
         return { __type: 'geopoint', latitude: value.latitude, longitude: value.longitude };
     }
+    /** @type {Rec} */
     const out = {};
     Object.keys(value).forEach(k => { out[k] = serializeForBackup(value[k]); });
     return out;
@@ -42,7 +44,7 @@ export function buildBackup(collections, meta = {}) {
         exportedAt: now.toISOString(),
         env: meta.env || 'prod',
         exportedBy: meta.exportedBy || null,
-        collections: {}
+        collections: /** @type {Rec} */ ({})
     };
     Object.keys(collections || {}).forEach(name => {
         out.collections[name] = (collections[name] || []).map(d => ({ id: d.id, data: serializeForBackup(d.data) }));
