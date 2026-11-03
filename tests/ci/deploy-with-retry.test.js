@@ -6,7 +6,7 @@
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { classify, deployWithRetry } = require('../../tools/ci/deploy-with-retry');
+const { classify, isRulesApiOutage, deployWithRetry, FALLBACK_EXIT } = require('../../tools/ci/deploy-with-retry');
 
 const SCRIPT = path.join(__dirname, '../../tools/ci/deploy-with-retry.js');
 const FAKE = path.join(__dirname, 'fake-firebase.js');
@@ -15,11 +15,11 @@ let dir;
 beforeEach(() => { dir = fs.mkdtempSync(path.join(__dirname, '.work-')); });
 afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
 
-function deploy(outcomes, { project = 'happa-test', extraArgs = [] } = {}) {
+function deploy(outcomes, { project = 'happa-test', extraArgs = [], flags = [] } = {}) {
     const log = path.join(dir, 'deploy.log');
     const argsLog = path.join(dir, 'args.log');
     const res = spawnSync(process.execPath, [
-        SCRIPT, '--log', log, '--project', project, '--sa-email', 'ci@happa-test.iam.gserviceaccount.com',
+        SCRIPT, '--log', log, '--project', project, '--sa-email', 'ci@happa-test.iam.gserviceaccount.com', ...flags,
         '--', process.execPath, FAKE, 'deploy', '--only', 'firestore:rules,firestore:indexes', ...extraArgs
     ], {
         encoding: 'utf8',
@@ -87,6 +87,35 @@ test('the "checking ... for compilation errors" progress line is not a compile e
         'Error: Request to https://firebaserules.googleapis.com/v1/projects/happa-bfc07:test had HTTP Error: 503, The service is currently unavailable.';
     expect(classify(log)).toBe('transient');
     expect(classify('Error: 4 DEADLINE_EXCEEDED: Deadline exceeded')).toBe('transient');
+});
+
+describe('--rules-api-fallback', () => {
+    test('two Rules API 503s exit 75 so the workflow switches to the REST fallback', () => {
+        const r = deploy(['503', '503', 'ok'], { flags: ['--rules-api-fallback'] });
+        expect(r.code).toBe(FALLBACK_EXIT);
+        expect(r.calls).toBe(2);
+        expect(r.out).toMatch(/::warning title=Firebase Rules API unavailable::.*falling back to the Rules REST API/);
+    });
+
+    test('other transient errors keep the normal retries', () => {
+        const r = deploy(['429', '429', '429', 'ok'], { flags: ['--rules-api-fallback'] });
+        expect(r.code).toBe(0);
+        expect(r.calls).toBe(4);
+    });
+
+    test('a single Rules API 503 is just retried', () => {
+        const r = deploy(['503', 'ok'], { flags: ['--rules-api-fallback'] });
+        expect(r.code).toBe(0);
+        expect(r.calls).toBe(2);
+    });
+
+    test('which errors count as a Rules API outage', () => {
+        expect(isRulesApiOutage('Error: Request to https://firebaserules.googleapis.com/v1/projects/happa-bfc07:test had HTTP Error: 503, The service is currently unavailable.')).toBe(true);
+        expect(isRulesApiOutage('Error: Request to https://firebaserules.googleapis.com/v1/projects/happa-bfc07:test had HTTP Error: 504, Deadline exceeded')).toBe(true);
+        expect(isRulesApiOutage('Error: Request to https://firebaserules.googleapis.com/v1/projects/happa-bfc07/rulesets had HTTP Error: 503, unavailable')).toBe(true);
+        expect(isRulesApiOutage('Error: Request to https://firestore.googleapis.com/v1/projects/p/databases/(default)/collectionGroups/-/indexes had HTTP Error: 503')).toBe(false);
+        expect(isRulesApiOutage('Error: HTTP Error: 429, Quota exceeded for quota metric.')).toBe(false);
+    });
 });
 
 describe('409 "Release ... already exists"', () => {

@@ -202,7 +202,7 @@ export class RolesAccessManager {
             .map(u => {
                 const owner = u.role === 'owner';
                 const rent = owner ? e(t('ui.role.owner'))
-                    : `<select aria-label="${e(t('ui.roles.rentals_role'))}" onchange="window.app.roles.setRentRole('${Helpers.escapeJsAttr(u.id)}', this.value)">${rentOptions.map(([v, k]) => `<option value="${v}"${(u.rentRole || '') === v ? ' selected' : ''}>${e(t(k))}</option>`).join('')}</select>`;
+                    : `<select aria-label="${e(t('ui.roles.rentals_role'))}" data-onchange="roles.setRentRole('${Helpers.escapeJsAttr(u.id)}', this.value)">${rentOptions.map(([v, k]) => `<option value="${v}"${(u.rentRole || '') === v ? ' selected' : ''}>${e(t(k))}</option>`).join('')}</select>`;
                 return `<tr><td>${e(u.name || u.email || '')}</td><td>${e(shopRole(u.role))}</td><td>${rent}</td></tr>`;
             }).join('');
         box.innerHTML = `<table class="role-access-table role-people-table">

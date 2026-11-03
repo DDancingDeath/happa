@@ -8,8 +8,8 @@
                 <div id="modalMessage"><span data-i18n="ui.modals.this_is_a_message">This is a message</span></div>
             </div>
             <div class="modal-footer" id="modalFooter">
-                <button class="modal-btn modal-btn-cancel" id="modalCancel" onclick="window.app.ui.closeModal(false)" data-i18n="ui.modals.cancel">Cancel</button>
-                <button class="modal-btn modal-btn-confirm" id="modalConfirm" onclick="window.app.ui.closeModal(true)" data-i18n="ui.modals.ok">OK</button>
+                <button class="modal-btn modal-btn-cancel" id="modalCancel" data-onclick="ui.closeModal(false)" data-i18n="ui.modals.cancel">Cancel</button>
+                <button class="modal-btn modal-btn-confirm" id="modalConfirm" data-onclick="ui.closeModal(true)" data-i18n="ui.modals.ok">OK</button>
             </div>
         </div>
     </div>
@@ -21,12 +21,12 @@
                 <!-- Bill content will be inserted here -->
             </div>
             <div class="bill-details-footer">
-                <button class="bill-action-btn btn-delete" id="billVoidBtn" onclick="window.app.history.confirmVoidBill()" data-i18n="ui.void.button">Void</button>
-                <button class="bill-action-btn btn-delete" id="billDeleteBtn" style="display: none;" onclick="window.app.history.confirmDeleteBill()" data-i18n="ui.void.delete_permanently">Delete permanently</button>
-                <button class="bill-action-btn btn-edit" id="billEditBtn" onclick="window.app.history.editBillDetails(window.currentBillIndex)" data-i18n="ui.modals.edit">Edit</button>
-                <button class="bill-action-btn btn-reprint" id="billReprintBtn" onclick="window.app.history.reprintBill()" title="Print a copy with the bill's date" data-i18n="ui.modals.reprint" data-i18n-title="ui.modals.print_copy_with_bill">Reprint</button>
-                <button class="bill-action-btn btn-share" id="billShareBtn" onclick="window.app.history.shareBill()" title="Share on WhatsApp" data-i18n="ui.modals.share" data-i18n-title="ui.modals.share_on_whatsapp">Share</button>
-                <button class="bill-action-btn btn-close" onclick="window.app.history.closeBillDetails()" data-i18n="ui.common.close">Close</button>
+                <button class="bill-action-btn btn-delete" id="billVoidBtn" data-onclick="history.confirmVoidBill()" data-i18n="ui.void.button">Void</button>
+                <button class="bill-action-btn btn-delete" id="billDeleteBtn" style="display: none;" data-onclick="history.confirmDeleteBill()" data-i18n="ui.void.delete_permanently">Delete permanently</button>
+                <button class="bill-action-btn btn-edit" id="billEditBtn" data-onclick="history.editCurrentBill()" data-i18n="ui.modals.edit">Edit</button>
+                <button class="bill-action-btn btn-reprint" id="billReprintBtn" data-onclick="history.reprintBill()" title="Print a copy with the bill's date" data-i18n="ui.modals.reprint" data-i18n-title="ui.modals.print_copy_with_bill">Reprint</button>
+                <button class="bill-action-btn btn-share" id="billShareBtn" data-onclick="history.shareBill()" title="Share on WhatsApp" data-i18n="ui.modals.share" data-i18n-title="ui.modals.share_on_whatsapp">Share</button>
+                <button class="bill-action-btn btn-close" data-onclick="history.closeBillDetails()" data-i18n="ui.common.close">Close</button>
             </div>
         </div>
     </div>
@@ -36,7 +36,7 @@
         <div class="bill-details-container">
             <div class="bill-details-header">
                 <h2 data-i18n="ui.modals.saved_drafts">Saved Drafts</h2>
-                <button class="bill-details-close" onclick="window.app.billing.closeDrafts()">✕</button>
+                <button class="bill-details-close" data-onclick="billing.closeDrafts()">✕</button>
             </div>
             <div class="bill-details-content" id="draftsContent" style="max-height: 60vh; overflow-y: auto;">
                 <!-- Drafts will be inserted here -->
@@ -51,7 +51,7 @@
                 <div style="margin-bottom: 20px;">
                     <label style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px; display: block;" data-i18n="ui.modals.item_name_english">Item Name (English)*</label>
                     <input type="text" id="itemModalName" 
-                           oninput="window.app.items.onModalNameInput('name')" onfocus="window.app.items.acceptNameSuggestion('name')"
+                           data-oninput="items.onModalNameInput('name')" data-onfocus="items.acceptNameSuggestion('name')"
                            placeholder="Enter item name"
                            style="width: 100%; padding: 12px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 15px;" data-i18n-placeholder="ui.modals.enter_item_name">
                 </div>
@@ -59,7 +59,7 @@
                 <div style="margin-bottom: 20px;">
                     <label style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px; display: block;" data-i18n="ui.items.hindi_name_label">Hindi name</label>
                     <input type="text" id="itemModalHindiName" 
-                           oninput="window.app.items.onModalNameInput('hindiName')" onfocus="window.app.items.acceptNameSuggestion('hindiName')"
+                           data-oninput="items.onModalNameInput('hindiName')" data-onfocus="items.acceptNameSuggestion('hindiName')"
                            placeholder="Hindi name (optional)" data-i18n-placeholder="ui.items.hindi_name_optional"
                            style="width: 100%; padding: 12px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 15px;">
                 </div>
@@ -68,7 +68,7 @@
                     <label style="font-size: 14px; font-weight: 600; color: #0058b8; margin-bottom: 8px; display: block;" data-i18n="ui.modals.purchase_rates_kg">Purchase Rates (₹/kg)</label>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <div id="itemModalPurchaseRates" class="rates-container" style="flex: 1;"></div>
-                        <button class="add-rate-plus purchase" onclick="window.app.items.addModalRate('purchase')">+</button>
+                        <button class="add-rate-plus purchase" data-onclick="items.addModalRate('purchase')">+</button>
                     </div>
                 </div>
                 
@@ -76,7 +76,7 @@
                     <label style="font-size: 14px; font-weight: 600; color: #9333ea; margin-bottom: 8px; display: block;" data-i18n="ui.modals.wholesale_rates_kg">Wholesale Rates (₹/kg)</label>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <div id="itemModalWholesaleRates" class="rates-container" style="flex: 1;"></div>
-                        <button class="add-rate-plus wholesale" onclick="window.app.items.addModalRate('wholesale')">+</button>
+                        <button class="add-rate-plus wholesale" data-onclick="items.addModalRate('wholesale')">+</button>
                     </div>
                 </div>
                 
@@ -84,7 +84,7 @@
                     <label style="font-size: 14px; font-weight: 600; color: #1c7430; margin-bottom: 8px; display: block;" data-i18n="ui.modals.retail_sale_rates_kg">Retail Rates (₹/kg)</label>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <div id="itemModalSaleRates" class="rates-container" style="flex: 1;"></div>
-                        <button class="add-rate-plus sale" onclick="window.app.items.addModalRate('sale')">+</button>
+                        <button class="add-rate-plus sale" data-onclick="items.addModalRate('sale')">+</button>
                     </div>
                 </div>
                 
@@ -97,16 +97,16 @@
 
                 <div id="itemModalHistorySection" style="display: none; margin-bottom: 8px;">
                     <label style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px; display: block;" data-i18n="ui.modals.change_history">Change history</label>
-                    <button type="button" id="itemModalHistoryBtn" class="filter-btn" onclick="window.app.items.loadModalHistory()" data-i18n="ui.modals.show_rate_name_changes">Show rate &amp; name changes</button>
+                    <button type="button" id="itemModalHistoryBtn" class="filter-btn" data-onclick="items.loadModalHistory()" data-i18n="ui.modals.show_rate_name_changes">Show rate &amp; name changes</button>
                     <div id="itemModalHistoryList"></div>
                 </div>
                 <div class="item-modal-danger">
-                    <button type="button" class="item-delete-btn" id="itemModalArchiveBtn" onclick="window.app.items.archiveFromModal()" style="display: none;" data-i18n="ui.items.archive_item">Archive item</button>
+                    <button type="button" class="item-delete-btn" id="itemModalArchiveBtn" data-onclick="items.archiveFromModal()" style="display: none;" data-i18n="ui.items.archive_item">Archive item</button>
                 </div>
             </div>
             <div class="bill-details-footer">
-                <button class="bill-action-btn btn-edit" onclick="window.app.items.saveItemFromModal()" data-i18n="ui.common.save">Save</button>
-                <button class="bill-action-btn btn-close" onclick="window.app.items.closeItemModal()" data-i18n="ui.modals.cancel">Cancel</button>
+                <button class="bill-action-btn btn-edit" data-onclick="items.saveItemFromModal()" data-i18n="ui.common.save">Save</button>
+                <button class="bill-action-btn btn-close" data-onclick="items.closeItemModal()" data-i18n="ui.modals.cancel">Cancel</button>
             </div>
         </div>
     </div>

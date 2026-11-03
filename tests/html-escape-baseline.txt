@@ -1,6 +1,6 @@
 # innerHTML audit baseline (#89): the lines scripts/html-escape-audit.js lists today, each checked by hand.
 # CI fails on a line not here. Fix it (escape / safeUrl) or, once checked, run: npm run check:html-escape -- --update-baseline
-www/js/modules/admin.js: ACTIVITY_RANGES (markup via map(r => `<button type="button" class="filter-btn" data-range="${r}" onclick="window.app.admin.showActivity('${r}')">${tx(`ui.admin.range_${r}`)))
+www/js/modules/admin.js: ACTIVITY_RANGES (markup via map(r => `<button type="button" class="filter-btn" data-range="${r}" data-onclick="admin.showActivity('${r}')">${tx(`ui.admin.range_${r}`)}</but))
 www/js/modules/admin.js: col.id
 www/js/modules/admin.js: r
 www/js/modules/admin.js: r
