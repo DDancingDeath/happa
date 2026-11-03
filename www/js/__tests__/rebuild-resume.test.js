@@ -218,6 +218,24 @@ describe('resumable stock checkpoint rebuild (#159)', () => {
         expect(comparable(cpDoc())).toEqual(ref.cp);
     });
 
+    it('a recent document deleted on another phone does not come back from a cached page', async () => {
+        await referenceBuild(30);
+        const purchasePages = fake.stats.queryLog.filter(q => isPage(q) && q.coll === 'purchases').length;
+        localStorage.clear();
+        install(30);
+        await openAndCloseAfter(purchasePages + 1);
+        const read = JSON.parse(localStorage.getItem(PROGRESS_KEY)).colls.purchases.pages.flatMap(p => p.ids);
+        const id = read.find(i => fake.raw('purchases').get(i).timestamp >= W);
+        expect(id).toBeTruthy();
+        // Deleted on the server only: this phone's cache keeps its copy
+        fake.raw('purchases').delete(id);
+        expect(fake.cached('purchases').has(id)).toBe(true);
+        await open();
+        expect(cpDoc()).toMatchObject({ stale: false, asOf: W });
+        expect(AppState.purchaseHistory.some(p => p.id === id)).toBe(false);
+        expect(AppState.stock).toEqual(computeStock(serverSources(), ITEMS));
+    });
+
     it('a stored page whose documents left the cache is read again, with the pages after it', async () => {
         const ref = await referenceBuild(23);
         localStorage.clear();

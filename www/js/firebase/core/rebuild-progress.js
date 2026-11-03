@@ -12,6 +12,7 @@
 
 import { col, getDb } from '../db.js';
 import { getWithRetry } from './reads.js';
+import { S } from './session.js';
 import { eventTime, STOCK_REPLAY_FORMAT } from '../../utils/stock-replay.js';
 import { outstandingDue } from '../../utils/money.js';
 import { deletesIssued } from '../firestore-meter.js';
@@ -182,10 +183,17 @@ export async function readCollectionResumable(spec, data, keepProgress, alive = 
         const snap = await ref.orderBy(docIdPath).endAt(last).get({ source: 'cache' }).catch(() => null);
         if (snap) cached = new Map(snap.docs.map(d => [d.id, d]));
     }
+    // The window listener owns documents from its start: a cached copy of one deleted since on
+    // another phone must not come back (one the server still has is in memory from the listener)
+    const liveFrom = S.windowState?.liveFrom ?? Infinity;
+    const windowOwned = (doc) => {
+        const t = doc.data()?.timestamp;
+        return typeof t === 'number' && t >= liveFrom;
+    };
     for (const page of chain) {
         const got = page.ids.map(id => cached.get(id));
         if (!got.every(doc => doc && !needsLegacyFields(spec, doc.data()))) break;
-        docs.push(...got);
+        docs.push(...got.filter(doc => !windowOwned(doc)));
         if (page.ids.length) after = page.ids[page.ids.length - 1];
         readAt = Math.min(readAt, page.readAt);
         kept++;
