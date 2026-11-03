@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Pure dues-aging helpers for Outstanding (#46): bucket each
  * open bill by its age in local (IST) calendar days, total the buckets, group
@@ -32,16 +33,17 @@ export const DUE_FILTERS = Object.freeze(['purchase', 'sale', 'retail', 'wholesa
  * The open bills of one Outstanding list, each with its BILL-DUE (`outstanding`, > ₹0.005,
  * as the aging panel and Money count it), total and paid. Voided and cleared bills owe
  * nothing (`outstandingDue`); OPENING records are kept (a balance only).
- * @param {{purchases?: Array<Object>, retailSales?: Array<Object>, wholesaleSales?: Array<Object>}} src
+ * @param {{purchases?: Array<Rec>, retailSales?: Array<Rec>, wholesaleSales?: Array<Rec>}} src
  * @param {string} filter one of DUE_FILTERS (anything else = `purchase`)
  * @param {{wholesale?: boolean}} [opts] wholesale false: the role can't open Wholesale, so `sale` is retail only
- * @returns {Array<Object>} copies of the bills with transactionType, outstanding, totalAmount, paidAmount
+ * @returns {Array<Rec>} copies of the bills with transactionType, outstanding, totalAmount, paidAmount
  */
 export function dueRows(src, filter, { wholesale = true } = {}) {
-    const lists = filter === 'retail' ? [['retail', src.retailSales]]
+    const lists = /** @type {Array<[string, Array<Rec>|undefined]>} */ (filter === 'retail' ? [['retail', src.retailSales]]
         : filter === 'wholesale' ? (wholesale ? [['wholesale', src.wholesaleSales]] : [])
             : filter === 'sale' ? [['retail', src.retailSales], ...(wholesale ? [['wholesale', src.wholesaleSales]] : [])]
-                : [['purchase', src.purchases]];
+                : [['purchase', src.purchases]]);
+    /** @type {Array<Rec>} */
     const rows = [];
     lists.forEach(([type, bills]) => (bills || []).forEach(bill => {
         const due = round2(outstandingDue(bill));
@@ -91,7 +93,7 @@ export function normalizePartyName(name) {
     return String(name ?? '').normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
-const capitals = (s) => (String(s).match(/(^|\s)\p{Lu}/gu) || []).length;
+const capitals = (/** @type {string} */ s) => (String(s).match(/(^|\s)\p{Lu}/gu) || []).length;
 
 /**
  * The spelling to show for a party seen under several spellings ("test party",
@@ -102,6 +104,7 @@ const capitals = (s) => (String(s).match(/(^|\s)\p{Lu}/gu) || []).length;
  */
 export function pickPartyName(spellings) {
     let best = '';
+    /** @type {?{count: number, last: number}} */
     let bestInfo = null;
     (spellings || new Map()).forEach((info, name) => {
         if (!name) return;
@@ -138,26 +141,34 @@ export function partyDisplayNames(names) {
     return out;
 }
 
-/** Phone stored on a bill, if any. */
+/**
+ * Phone stored on a bill, if any.
+ * @param {Rec} bill
+ * @returns {string}
+ */
 function billPhone(bill) {
     const p = bill.customerPhone || bill.phone || bill.mobile || '';
     return String(p).trim();
 }
 
 /**
+ * @typedef {{key: string, name: string, phone: string, total: number, oldestDays: ?number, bucket: number, longOverdue: boolean,
+ *   bills: Array<{id: *, billNumber: string, date: ?Date, days: ?number, bucket: number, due: number}>}} AgingParty
+ */
+
+/**
  * Age every open bill and group by party.
- * @param {Array<Object>} bills Bills of ONE kind (receivables or payables)
+ * @param {Array<Rec>} bills Bills of ONE kind (receivables or payables)
  * @param {{today?: Date}} [opts]
  * @returns {{
  *   total: number, count: number,
  *   buckets: Array<{key: string, label: string, total: number, count: number}>,
- *   parties: Array<{key: string, name: string, phone: string, total: number,
- *     oldestDays: ?number, bucket: number, longOverdue: boolean,
- *     bills: Array<{id: *, billNumber: string, date: ?Date, days: ?number, bucket: number, due: number}>}>
+ *   parties: Array<AgingParty>
  * }}
  */
 export function buildAging(bills, { today = new Date() } = {}) {
     const buckets = AGING_BUCKETS.map(b => ({ key: b.key, label: b.label, total: 0, count: 0 }));
+    /** @type {Map<string, Rec>} */
     const byKey = new Map();
     let total = 0;
     let count = 0;
@@ -198,9 +209,9 @@ export function buildAging(bills, { today = new Date() } = {}) {
         party.bills.push({ id: bill.id, billNumber: String(bill.billNumber || ''), date, days, bucket, due });
     });
 
-    const parties = [...byKey.values()].map(p => {
+    const parties = /** @type {AgingParty[]} */ ([...byKey.values()].map(p => {
         // Oldest first; undated bills (unknown age) lead
-        p.bills.sort((a, b) => (a.date ? a.date.getTime() : -Infinity) - (b.date ? b.date.getTime() : -Infinity));
+        p.bills.sort((/** @type {Rec} */ a, /** @type {Rec} */ b) => (a.date ? a.date.getTime() : -Infinity) - (b.date ? b.date.getTime() : -Infinity));
         const oldest = p.bills[0];
         p.oldestDays = oldest.days;
         p.bucket = oldest.bucket;
@@ -209,24 +220,27 @@ export function buildAging(bills, { today = new Date() } = {}) {
         delete p._latest;
         delete p._names;
         return p;
-    });
+    }));
 
     return { total, count, buckets, parties };
 }
 
 /** Age used for sorting: unknown counts as oldest. */
-const sortAge = (p) => (p.oldestDays === null ? Infinity : p.oldestDays);
+const sortAge = (/** @type {Rec} */ p) => (p.oldestDays === null ? Infinity : p.oldestDays);
 
 /**
  * Parties sorted by 'amount' (largest due first) or 'age' (oldest due first).
  * Ties fall back to the other measure, then name. Returns a new array.
- * @param {Array<Object>} parties
+ * @param {Array<Rec>} parties
  * @param {'amount'|'age'} [by='amount']
- * @returns {Array<Object>}
+ * @returns {Array<Rec>}
  */
 export function sortParties(parties, by = 'amount') {
+    /** @type {(a: Rec, b: Rec) => number} */
     const byName = (a, b) => a.name.localeCompare(b.name);
+    /** @type {(a: Rec, b: Rec) => number} */
     const byAmount = (a, b) => b.total - a.total;
+    /** @type {(a: Rec, b: Rec) => number} */
     const byAge = (a, b) => sortAge(b) - sortAge(a);
     const order = by === 'age' ? [byAge, byAmount, byName] : [byAmount, byAge, byName];
     return [...(parties || [])].sort((a, b) => {
@@ -241,9 +255,9 @@ export function sortParties(parties, by = 'amount') {
 /**
  * Who to chase first: parties whose oldest due is older than 30 days, oldest
  * bucket first, then the biggest amount.
- * @param {Array<Object>} parties
+ * @param {Array<Rec>} parties
  * @param {number} [limit=5]
- * @returns {Array<Object>}
+ * @returns {Array<Rec>}
  */
 export function chaseFirst(parties, limit = 5) {
     return [...(parties || [])]
@@ -254,10 +268,10 @@ export function chaseFirst(parties, limit = 5) {
 
 /**
  * Bills (any shape with a date) that fall in one bucket; all when key is falsy.
- * @param {Array<Object>} bills
+ * @param {Array<Rec>} bills
  * @param {?string} bucketKey
  * @param {Date} [today=new Date()]
- * @returns {Array<Object>}
+ * @returns {Array<Rec>}
  */
 export function filterBillsByBucket(bills, bucketKey, today = new Date()) {
     const idx = AGING_BUCKETS.findIndex(b => b.key === bucketKey);

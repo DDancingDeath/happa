@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Validation Utility Module
  * Provides client-side form validation before Firebase calls
@@ -7,7 +8,7 @@ import { formatKg } from './money.js';
 
 /**
  * Validation result object
- * @typedef {Object} ValidationResult
+ * @typedef {Rec} ValidationResult
  * @property {boolean} valid - Whether validation passed
  * @property {string[]} errors - Array of error messages
  */
@@ -153,7 +154,7 @@ export const Validator = {
 
     /**
      * Validate bill data before saving
-     * @param {Object} billData - Bill data object
+     * @param {Rec} billData - Bill data object
      * @returns {ValidationResult}
      */
     validateBill(billData) {
@@ -164,7 +165,7 @@ export const Validator = {
         if (!billData.items || billData.items.length === 0) {
             checks.push({ valid: false, errors: ['Please add at least one item to the bill'] });
         } else {
-            billData.items.forEach((item, index) => {
+            billData.items.forEach((/** @type {Rec} */ item, /** @type {number} */ index) => {
                 checks.push(this.required(item.name, `Item ${index + 1} name`));
                 checks.push(this.positiveNumber(item.rate, `Item ${index + 1} rate`));
                 checks.push(this.positiveNumber(item.weight || item.quantity, `Item ${index + 1} weight`));
@@ -176,7 +177,7 @@ export const Validator = {
 
     /**
      * Validate sale data before saving
-     * @param {Object} saleData - Sale data object
+     * @param {Rec} saleData - Sale data object
      * @returns {ValidationResult}
      */
     validateSale(saleData) {
@@ -185,7 +186,7 @@ export const Validator = {
         if (!saleData.items || saleData.items.length === 0) {
             checks.push({ valid: false, errors: ['Please add at least one item to the sale'] });
         } else {
-            saleData.items.forEach((item, index) => {
+            saleData.items.forEach((/** @type {Rec} */ item, /** @type {number} */ index) => {
                 checks.push(this.required(item.name, `Item ${index + 1} name`));
                 checks.push(this.positiveNumber(item.rate, `Item ${index + 1} rate`));
                 checks.push(this.positiveNumber(item.qty || item.quantity, `Item ${index + 1} quantity`));
@@ -197,7 +198,7 @@ export const Validator = {
 
     /**
      * Validate expense data before saving
-     * @param {Object} expenseData - Expense data object
+     * @param {Rec} expenseData - Expense data object
      * @returns {ValidationResult}
      */
     validateExpense(expenseData) {
@@ -209,7 +210,7 @@ export const Validator = {
 
     /**
      * Validate item data before saving
-     * @param {Object} itemData - Item data object
+     * @param {Rec} itemData - Item data object
      * @returns {ValidationResult}
      */
     validateItem(itemData) {
@@ -221,7 +222,7 @@ export const Validator = {
 
     /**
      * Validate stock adjustment data
-     * @param {Object} adjustmentData - Adjustment data object
+     * @param {Rec} adjustmentData - Adjustment data object
      * @returns {ValidationResult}
      */
     validateStockAdjustment(adjustmentData) {
@@ -234,7 +235,7 @@ export const Validator = {
 
     /**
      * Validate payment data
-     * @param {Object} paymentData - Payment data object
+     * @param {Rec} paymentData - Payment data object
      * @returns {ValidationResult}
      */
     validatePayment(paymentData) {
@@ -245,7 +246,7 @@ export const Validator = {
 
     /**
      * Validate withdrawal data
-     * @param {Object} withdrawalData - Withdrawal data object
+     * @param {Rec} withdrawalData - Withdrawal data object
      * @returns {ValidationResult}
      */
     validateWithdrawal(withdrawalData) {

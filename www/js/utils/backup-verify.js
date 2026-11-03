@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Checks a backup file on the phone, read-only (#63): the JSON of
  * a nightly / weekly backup (after decrypting it, tools/backup/README.md) or
@@ -15,9 +16,13 @@ export const MAX_PROBLEMS = 20;
 /** Collections whose newest record says how recent the backup's business data is. */
 const BILL_COLLECTIONS = ['purchases', 'retailSales', 'wholesaleSales'];
 
-const finite = (v) => typeof v === 'number' && Number.isFinite(v);
+const finite = (/** @type {*} */ v) => typeof v === 'number' && Number.isFinite(v);
 
-/** True when a tagged value is malformed. */
+/**
+ * True when a tagged value is malformed.
+ * @param {Rec} v
+ * @returns {boolean}
+ */
 function tagProblem(v) {
     switch (v.__type) {
         case 'timestamp':
@@ -35,7 +40,12 @@ function tagProblem(v) {
 
 const TAGS = ['timestamp', 'geopoint', 'ref', 'bytes'];
 
-/** True when a document's data holds a malformed tagged value (or is nested absurdly deep). */
+/**
+ * True when a document's data holds a malformed tagged value (or is nested absurdly deep).
+ * @param {*} value
+ * @param {number} [depth]
+ * @returns {boolean}
+ */
 function dataProblem(value, depth = 0) {
     if (depth > 64) return true;
     if (value === null || typeof value !== 'object') return false;
@@ -44,7 +54,11 @@ function dataProblem(value, depth = 0) {
     return Object.keys(value).some(k => dataProblem(value[k], depth + 1));
 }
 
-/** ms of a document's own time (`timestamp`, else `createdAt`), or NaN. */
+/**
+ * ms of a document's own time (`timestamp`, else `createdAt`), or NaN.
+ * @param {?Rec|undefined} data
+ * @returns {number}
+ */
 function docTime(data) {
     const v = data?.timestamp ?? data?.createdAt;
     if (finite(v)) return v;
@@ -55,17 +69,19 @@ function docTime(data) {
 /**
  * @param {*} backup parsed JSON
  * @param {number} now ms
- * @returns {{ok: boolean, problems: Array<{code: string, coll?: string, at?: number, id?: string, file?: number, manifest?: number}>, problemCount: number, exportedAt: ?string, ageDays: ?number,
+ * @returns {{ok: boolean, problems: Array<{code: string, coll?: string, at?: number, id?: string, file?: number, manifest?: number|string}>, problemCount: number, exportedAt: ?string, ageDays: ?number,
  *   source: string, collections: Array<{name: string, docs: number}>, subcollections: Array<{name: string, docs: number}>,
  *   totalDocs: number, newestBillAt: ?number}}
  */
 export function verifyBackup(backup, now) {
+    /** @type {ReturnType<typeof verifyBackup>['problems']} */
     const problems = [];
+    /** @type {ReturnType<typeof verifyBackup>} */
     const out = {
         ok: false, problems, problemCount: 0, exportedAt: null, ageDays: null, source: '',
         collections: [], subcollections: [], totalDocs: 0, newestBillAt: null
     };
-    const note = (code, extra = {}) => {
+    const note = (/** @type {string} */ code, /** @type {Rec} */ extra = {}) => {
         out.problemCount++;
         if (problems.length < MAX_PROBLEMS) problems.push({ code, ...extra });
     };
@@ -83,6 +99,7 @@ export function verifyBackup(backup, now) {
         out.ageDays = Math.max(0, Math.floor((now - exported) / 86400000));
     } else note('no_time');
     out.source = backup.mode ? String(backup.mode) : backup.exportedBy !== undefined ? 'app' : '';
+    /** @type {(label: string, docs: *, key: string, list: Array<{name: string, docs: number}>) => void} */
     const check = (label, docs, key, list) => {
         if (!Array.isArray(docs)) {
             note('not_list', { coll: label });
@@ -105,7 +122,7 @@ export function verifyBackup(backup, now) {
     Object.keys(subs).sort().forEach(n => check(n, subs[n], 'path', out.subcollections));
     const m = backup.manifest;
     if (m && typeof m === 'object') {
-        [['collections', out.collections], ['subcollections', out.subcollections]].forEach(([kind, list]) => {
+        /** @type {Array<[string, Array<{name: string, docs: number}>]>} */ ([['collections', out.collections], ['subcollections', out.subcollections]]).forEach(([kind, list]) => {
             const want = m[kind] || {};
             const got = Object.fromEntries(list.map(c => [c.name, c.docs]));
             new Set([...Object.keys(want), ...Object.keys(got)]).forEach(n => {

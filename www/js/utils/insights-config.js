@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Owner choices behind the Money, Insights and Statements pages
  * (docs/insights-redesign.md §11). Each choice is one constant here; the owner
@@ -6,6 +7,13 @@
  * @module utils/insights-config
  */
 
+/**
+ * @typedef {{monthMode: 'calendar'|'last30', yearStartMonth: number, labourInCost: boolean, netWorthTerms: ReadonlyArray<string>,
+ *   overdueDays: number, lowMarginPer100: number, lowMarginMinSales: number, stoppedComingDays: number, seasonBusy: number,
+ *   seasonQuiet: number, sameWithinPct: number, expenseNudgePer100: number}} InsightsConfig
+ */
+
+/** @type {Readonly<InsightsConfig>} */
 export const INSIGHTS_DEFAULTS = Object.freeze({
     /** #43: "This month" = calendar month to today ('calendar') or the last 30 days ('last30'). */
     monthMode: 'calendar',
@@ -32,12 +40,12 @@ export const INSIGHTS_DEFAULTS = Object.freeze({
     expenseNudgePer100: 10
 });
 
-const num = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
+const num = (/** @type {*} */ v, /** @type {number} */ d) => (Number.isFinite(Number(v)) ? Number(v) : d);
 
 /**
  * The owner's settings over the defaults; unknown or invalid values fall back.
- * @param {Object} [raw] `settings/app.insights`
- * @returns {typeof INSIGHTS_DEFAULTS}
+ * @param {Rec} [raw] `settings/app.insights`
+ * @returns {Readonly<InsightsConfig>}
  */
 export function insightsSettings(raw = {}) {
     const r = raw && typeof raw === 'object' ? raw : {};

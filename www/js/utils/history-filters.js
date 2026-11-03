@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Pure helpers for the History screen filters (#160):
  * bill tab (Purchase / Sale; Sale = retail sales, wholesale bills are on the
@@ -65,7 +66,7 @@ export const WIDE_LOAD_MONTHS = 3;
 export function validateCustomRange(from, to, now = new Date()) {
     const values = [String(from || '').trim(), String(to || '').trim()];
     if (!values[0] && !values[1]) return { ok: false, error: t('msg.history.pick_from_or_to') };
-    const min = parseLocalDate(MIN_HISTORY_DATE);
+    const min = /** @type {Date} */ (parseLocalDate(MIN_HISTORY_DATE));
     const max = dayStart(now, 1);
     for (const v of values) {
         if (!v) continue;
@@ -94,7 +95,7 @@ export function olderMonthsToLoad(fromMs, loadedFrom) {
 /**
  * Bill date as a Date: numeric/Firestore `timestamp` first (what the history
  * window queries on), then `date` (ISO or legacy DD/MM/YYYY), then `createdAt`.
- * @param {Object} bill
+ * @param {Rec} bill
  * @returns {Date|null}
  */
 export function billDateOf(bill) {
@@ -107,7 +108,7 @@ export function billDateOf(bill) {
 }
 
 /**
- * @param {Object} bill
+ * @param {Rec} bill
  * @returns {number|null} ms epoch, or null when the bill has no usable date
  */
 export function billTimeMs(bill) {
@@ -134,6 +135,11 @@ export function matchesHistoryType(bill, type) {
     }
 }
 
+/**
+ * @param {Date} d
+ * @param {number} [offsetDays]
+ * @returns {Date}
+ */
 const dayStart = (d, offsetDays = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + offsetDays);
 
 /**
@@ -182,8 +188,8 @@ export function resolveHistoryRange(preset, now = new Date(), custom = {}) {
 
 /**
  * Is the bill inside the range? Bills without a date only show for "All dates".
- * @param {Object} bill
- * @param {{from: number|null, to: number|null}} range
+ * @param {Rec} bill
+ * @param {?{from: number|null, to: number|null}} range
  * @returns {boolean}
  */
 export function isBillInRange(bill, range) {
@@ -197,7 +203,7 @@ export function isBillInRange(bill, range) {
 
 /**
  * Text search over bill number / customer / item names (case-insensitive).
- * @param {Object} bill
+ * @param {Rec} bill
  * @param {string} term
  * @returns {boolean}
  */
@@ -212,13 +218,13 @@ export function matchesHistorySearch(bill, term) {
 
 /**
  * Filter by type, range and search, newest first.
- * @param {Array<Object>} bills - type-tagged bills ({type: 'purchase'|'retail'|'wholesale'})
+ * @param {Array<Rec>} bills - type-tagged bills ({type: 'purchase'|'retail'|'wholesale'})
  *   ('all' type = no type filter, used by Wholesale › History)
- * @param {{type?: string, range?: {from: number|null, to: number|null}, search?: string}} filter
- * @returns {Array<Object>} new array
+ * @param {{type?: string, range?: ?{from: number|null, to: number|null}, search?: string}} filter
+ * @returns {Array<Rec>} new array
  */
 export function filterHistoryBills(bills, { type = 'all', range = null, search = '' } = {}) {
-    const timeOf = (b) => billTimeMs(b) ?? 0;
+    const timeOf = (/** @type {Rec} */ b) => billTimeMs(b) ?? 0;
     return (bills || [])
         .filter(b => matchesHistoryType(b, type) && isBillInRange(b, range) && matchesHistorySearch(b, search))
         .sort((a, b) => timeOf(b) - timeOf(a));
@@ -235,9 +241,9 @@ export function normalizeHistoryFilter(value) {
         try { obj = JSON.parse(value); } catch { obj = null; }
     }
     if (!obj || typeof obj !== 'object') return { ...DEFAULT_HISTORY_FILTER };
-    const isoOrEmpty = (s) => {
+    const isoOrEmpty = (/** @type {*} */ s) => {
         const d = typeof s === 'string' ? parseLocalDate(s) : null;
-        return d && d >= parseLocalDate(MIN_HISTORY_DATE) ? s : '';
+        return d && d >= /** @type {Date} */ (parseLocalDate(MIN_HISTORY_DATE)) ? s : '';
     };
     return {
         type: normalizeHistoryTab(obj.type),
@@ -254,7 +260,7 @@ export function normalizeHistoryFilter(value) {
  */
 export function formatHistoryRange(range) {
     if (!range || (range.from === null && range.to === null)) return '';
-    const fmt = (ms) => toLocalISODate(new Date(ms)).split('-').reverse().join('/');
+    const fmt = (/** @type {number} */ ms) => toLocalISODate(new Date(ms)).split('-').reverse().join('/');
     const from = range.from !== null ? fmt(range.from) : '…';
     const to = range.to !== null ? fmt(range.to - 1) : '…';
     return from === to ? from : `${from} – ${to}`;

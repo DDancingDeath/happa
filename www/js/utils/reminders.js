@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Reminders on Today (#86), read-cheap: who to collect udhaar
  * from / pay (Outstanding's "chase first": dues older than 30 days, from the
@@ -23,7 +24,7 @@ export const LEASE_REMINDER_LIMIT = 20;
 /**
  * REM-1: parties whose oldest open due is older than 30 days (Outstanding's
  * chase-first order: oldest bucket, then the biggest amount), top `limit`.
- * @param {Array<Object>} bills open bills of one side (receivables or payables)
+ * @param {Array<Rec>} bills open bills of one side (receivables or payables)
  * @param {{today?: Date, limit?: number}} [opts]
  * @returns {{parties: Array<{key: string, name: string, phone: string, total: number, oldestDays: ?number}>, more: number, total: number}}
  */
@@ -67,7 +68,11 @@ export function rentReminder(store, uid, month) {
     }
 }
 
-/** Units of RENT-10 rows that owe anything (REM-2 "units"). */
+/**
+ * Units of RENT-10 rows that owe anything (REM-2 "units").
+ * @param {?Array<Rec>} rows
+ * @returns {number}
+ */
 export function unitsWithDue(rows) {
     return (rows || []).filter(r => r && r.due > 0).length;
 }
@@ -75,8 +80,8 @@ export function unitsWithDue(rows) {
 /**
  * Called by the Rent page on every render: keeps REM-2 for Today when it shows
  * the current month with complete data (no load error, nothing truncated).
- * @param {{month: string, errors: Set}} state Rentals page state
- * @param {Array<Object>} rows RENT-10 rows
+ * @param {{month: string, errors?: Set<*>}} state Rentals page state
+ * @param {Array<Rec>} rows RENT-10 rows
  * @param {Array<string>} [truncated] rent-store keys cut at their limit
  */
 export function noteRent(state, rows, truncated = []) {
@@ -85,7 +90,7 @@ export function noteRent(state, rows, truncated = []) {
         let due = 0;
         let late = 0;
         rows.forEach(r => { due += Number(r.due) || 0; if (r.late) late++; });
-        saveRentReminder(localStorage, { uid: AppState.currentUser?.uid, month: state.month, due: round2(due), late, dueUnits: unitsWithDue(rows) });
+        saveRentReminder(localStorage, { uid: /** @type {Rec} */ (AppState).currentUser?.uid, month: state.month, due: round2(due), late, dueUnits: unitsWithDue(rows) });
     } catch (_) { /* never break the Rent page */ }
 }
 
@@ -93,7 +98,7 @@ export function noteRent(state, rows, truncated = []) {
  * Rentals keeps its lease reminders for Today (REM-4, worked out by rent-math-report.leaseReminders
  * when the Rent page shows this month with complete data).
  * @param {Storage} store
- * @param {{uid: string, month: string, items: Array<Object>, at?: number}} s
+ * @param {{uid: string, month: string, items: Array<Rec>, at?: number}} s
  */
 export function saveLeaseReminders(store, { uid, month, items, at = Date.now() }) {
     const list = (items || []).slice(0, LEASE_REMINDER_LIMIT).map(x => ({
@@ -108,7 +113,10 @@ export function saveLeaseReminders(store, { uid, month, items, at = Date.now() }
 /**
  * REM-4: this person's lease reminders for this month, or null (Rentals not opened this
  * month on this phone, or nothing to remind).
- * @returns {?{items: Array<Object>, more: number, at: number}}
+ * @param {Storage} store
+ * @param {string} uid
+ * @param {string} month
+ * @returns {?{items: Array<Rec>, more: number, at: number}}
  */
 export function leaseReminder(store, uid, month) {
     try {

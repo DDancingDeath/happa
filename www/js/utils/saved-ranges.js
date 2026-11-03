@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Saved period ranges (#140): period A and, optionally, the
  * period B it is compared with, per person. The list lives on the person's own
@@ -15,7 +16,7 @@ export const SAVED_RANGES_KEY = 'happa.savedRanges';
 /** Most ranges kept; saving one more drops the oldest. */
 export const MAX_SAVED_RANGES = 10;
 
-const idOf = (a, b) => `${a}|${b || ''}`;
+const idOf = (/** @type {string} */ a, /** @type {?string|undefined} */ b) => `${a}|${b || ''}`;
 
 /**
  * @param {?Storage} store
@@ -34,6 +35,11 @@ export function readSavedRanges(store) {
     }
 }
 
+/**
+ * @param {?Storage} store
+ * @param {Array<{a: string, b: ?string}>} list
+ * @returns {{ok: boolean, full: boolean}}
+ */
 function write(store, list) {
     return safeSetItem(SAVED_RANGES_KEY, JSON.stringify(list.map(({ a, b }) => ({ a, b }))), store);
 }
@@ -50,6 +56,8 @@ export function writeSavedRanges(store, list) {
 /**
  * A list with A (and B) first; the same pair moves to the top; at most 10 (pure).
  * @param {Array<{id: string, a: string, b: ?string}>} list
+ * @param {string} a
+ * @param {?string} [b]
  * @returns {Array<{id: string, a: string, b: ?string}>}
  */
 export function withSavedRange(list, a, b = null) {
@@ -60,6 +68,9 @@ export function withSavedRange(list, a, b = null) {
 
 /**
  * Saves A (and B) first in the list; the same pair saved again moves to the top.
+ * @param {?Storage} store
+ * @param {string} a
+ * @param {?string} [b]
  * @returns {{ok: boolean, full?: boolean, list: Array<{id: string, a: string, b: ?string}>}} ok false: invalid preset or storage full
  */
 export function addSavedRange(store, a, b = null) {
@@ -69,7 +80,11 @@ export function addSavedRange(store, a, b = null) {
     return { ok: res.ok, full: res.full, list: res.ok ? list : readSavedRanges(store) };
 }
 
-/** @returns {Array<{id: string, a: string, b: ?string}>} the list without `id` */
+/**
+ * @param {?Storage} store
+ * @param {string} id
+ * @returns {Array<{id: string, a: string, b: ?string}>} the list without `id`
+ */
 export function removeSavedRange(store, id) {
     const list = readSavedRanges(store).filter(x => x.id !== id);
     write(store, list);
@@ -88,11 +103,11 @@ export const savedRangeId = idOf;
  */
 export function userRangesStore(store, uid) {
     if (!store || !uid) return store;
-    const k = (key) => `${key}:${uid}`;
+    const k = (/** @type {string} */ key) => `${key}:${uid}`;
     return /** @type {Storage} */ (/** @type {unknown} */ ({
-        getItem: (key) => store.getItem(k(key)),
-        setItem: (key, value) => store.setItem(k(key), value),
-        removeItem: (key) => store.removeItem(k(key))
+        getItem: (/** @type {string} */ key) => store.getItem(k(key)),
+        setItem: (/** @type {string} */ key, /** @type {string} */ value) => store.setItem(k(key), value),
+        removeItem: (/** @type {string} */ key) => store.removeItem(k(key))
     }));
 }
 
@@ -113,7 +128,7 @@ export function decodeSavedRanges(text) {
     if (typeof text !== 'string' || !text) return [];
     const raw = text.split(';').map(s => s.split('|')).map(([a, b]) => ({ a, b: b || null }));
     const mem = new Map([[SAVED_RANGES_KEY, JSON.stringify(raw)]]);
-    return readSavedRanges(/** @type {Storage} */ (/** @type {unknown} */ ({ getItem: (k) => mem.get(k) ?? null })));
+    return readSavedRanges(/** @type {Storage} */ (/** @type {unknown} */ ({ getItem: (/** @type {string} */ k) => mem.get(k) ?? null })));
 }
 
 /**
