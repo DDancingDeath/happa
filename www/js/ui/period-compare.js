@@ -113,7 +113,7 @@ function datesHtml(page, which, preset) {
         + `<input type="date" id="${id}From" max="${today}" value="${esc(r?.first || '')}" aria-label="${esc(t('ui.cmp.from'))}">`
         + `<span aria-hidden="true">–</span>`
         + `<input type="date" id="${id}To" max="${today}" value="${esc(r?.last || '')}" aria-label="${esc(t('ui.cmp.to'))}">`
-        + `<button type="button" class="btn btn-secondary" onclick="window.app.${page}.applyDates('${which}')">${esc(t('ui.cmp.show'))}</button></div>`;
+        + `<button type="button" class="btn btn-secondary" data-onclick="${page}.applyDates('${which}')">${esc(t('ui.cmp.show'))}</button></div>`;
 }
 
 /**
@@ -136,15 +136,15 @@ export function compareBarHtml(page, { share = false } = {}) {
     return (isEditing('a') || /^range:/.test(preset) ? datesHtml(page, 'a', preset) : '')
         + `<div class="ins-ab-bar">`
         + `<label class="ins-ab-pick"><span>${esc(t('ui.cmp.compare_with'))}</span>`
-        + `<select id="${page}Compare" onchange="window.app.${page}.setCompare(this.value)">${options}</select></label>`
-        + (saved.length ? `<select id="${page}Saved" class="ins-ab-saved" onchange="window.app.${page}.applySaved(this.value)" aria-label="${esc(t('ui.cmp.saved'))}">`
+        + `<select id="${page}Compare" data-onchange="${page}.setCompare(this.value)">${options}</select></label>`
+        + (saved.length ? `<select id="${page}Saved" class="ins-ab-saved" data-onchange="${page}.applySaved(this.value)" aria-label="${esc(t('ui.cmp.saved'))}">`
             + `<option value="">${esc(t('ui.cmp.saved'))}</option>`
             + saved.map(x => `<option value="${esc(x.id)}">${esc(savedLabel(x))}</option>`).join('') + '</select>' : '')
         + (isSaved
-            ? `<button type="button" class="btn btn-secondary" onclick="window.app.${page}.removeRange()">${esc(t('ui.cmp.remove'))}</button>`
-            : `<button type="button" class="btn btn-secondary" onclick="window.app.${page}.saveRange()">${esc(t('ui.cmp.save'))}</button>`)
-        + (share ? `<button type="button" class="btn btn-secondary" onclick="window.app.${page}.shareSummary()">${esc(t('ui.cmp.share'))}</button>`
-            + `<button type="button" class="btn btn-secondary" onclick="window.app.${page}.printSummary()">${esc(t('ui.cmp.print'))}</button>` : '')
+            ? `<button type="button" class="btn btn-secondary" data-onclick="${page}.removeRange()">${esc(t('ui.cmp.remove'))}</button>`
+            : `<button type="button" class="btn btn-secondary" data-onclick="${page}.saveRange()">${esc(t('ui.cmp.save'))}</button>`)
+        + (share ? `<button type="button" class="btn btn-secondary" data-onclick="${page}.shareSummary()">${esc(t('ui.cmp.share'))}</button>`
+            + `<button type="button" class="btn btn-secondary" data-onclick="${page}.printSummary()">${esc(t('ui.cmp.print'))}</button>` : '')
         + '</div>'
         + (bValue === 'custom' ? datesHtml(page, 'b', compare) : '');
 }
