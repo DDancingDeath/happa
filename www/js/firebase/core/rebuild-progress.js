@@ -12,10 +12,20 @@
 
 import { col, getDb } from '../db.js';
 import { getWithRetry } from './reads.js';
-import { STOCK_REPLAY_FORMAT } from '../../utils/stock-replay.js';
+import { eventTime, STOCK_REPLAY_FORMAT } from '../../utils/stock-replay.js';
+import { outstandingDue } from '../../utils/money.js';
+import { getIoCounts } from '../firestore-meter.js';
 
-/** Documents per page of the rebuild's read (an object so tests can use small pages). */
-export const REBUILD_PAGING = { pageSize: 500 };
+/**
+ * Documents per page of the rebuild's read, and the count of writes this app has issued (the
+ * read meter's); an object so tests can use small pages and count their own writes.
+ */
+export const REBUILD_PAGING = { pageSize: 500, writeCount: () => getIoCounts().writes };
+
+/** Wait for this phone's unsent writes before a page; longer and the read stops for now. */
+export const PENDING_WRITES_WAIT_MS = 15000;
+
+const PAGE_ATTEMPTS = 3;
 
 export const PROGRESS_VERSION = 1;
 
@@ -85,23 +95,56 @@ export function openRebuildProgress({ uid, staleCount, windowStart, now = Date.n
     };
 }
 
-/** A stored page from this phone's cache, in its order; null unless every document is there. */
-async function cachedPage(ref, docIdPath, page) {
-    if (!page.ids.length) return [];
-    let q = ref.orderBy(docIdPath);
-    if (page.after !== null) q = q.startAfter(page.after);
-    const snap = await q.endAt(page.ids[page.ids.length - 1]).get({ source: 'cache' }).catch(() => null);
-    if (!snap) return null;
-    const byId = new Map(snap.docs.map(d => [d.id, d]));
-    const docs = page.ids.map(id => byId.get(id));
-    return docs.every(Boolean) ? docs : null;
+/**
+ * Whether the timestamp backfill (legacy-scan.js backfillLegacyTimestampsNow) would write to this
+ * document: such a page is read from the server again, so the backfill never writes from a copy
+ * that may be a day old.
+ */
+export function needsLegacyFields(spec, data) {
+    if (!data || data.date === undefined) return false;
+    if (typeof data.timestamp !== 'number' && (spec.stock || eventTime(data) !== Number.MAX_SAFE_INTEGER)) return true;
+    return !!spec.dues && data.openDue !== (outstandingDue(data) > 0);
+}
+
+/** Resolves false when this phone still has unsent writes after PENDING_WRITES_WAIT_MS. */
+async function writesSent() {
+    const db = getDb();
+    if (typeof db.waitForPendingWrites !== 'function') return true;
+    let timer;
+    const sent = await Promise.race([
+        db.waitForPendingWrites().then(() => true, () => false),
+        new Promise(resolve => { timer = setTimeout(() => resolve(false), PENDING_WRITES_WAIT_MS); })
+    ]);
+    clearTimeout(timer);
+    return sent;
+}
+
+/**
+ * One server page after `from`. The SDK lays this phone's unsent writes over a query result and
+ * refills a limit query from its cache, so a page read while a delete is pending could end past
+ * documents the server holds: a page is read only once every write has been sent, and read again
+ * when one was made meanwhile. null: writes kept coming (or never sent); stop for now.
+ */
+async function serverPage(ref, docIdPath, from, spec, pageSize) {
+    for (let attempt = 0; attempt < PAGE_ATTEMPTS; attempt++) {
+        if (!(await writesSent())) return null;
+        const writes = REBUILD_PAGING.writeCount();
+        const snap = await getWithRetry(a => {
+            let q = ref.orderBy(docIdPath);
+            if (from !== null) q = q.startAfter(from);
+            return q.limit(pageSize + a);
+        }, `${spec.label} history`);
+        if (REBUILD_PAGING.writeCount() === writes) return snap;
+    }
+    return null;
 }
 
 /**
  * Every document of a history collection, like one unfiltered server `get()`: stored pages from
  * the cache, the rest from the server a page at a time (each page saved once read). `readAt` is
- * when the oldest page was read. A page served from the cache by the SDK (offline) or a session
- * that ended stops the read: the result is then marked `fromCache` (not a full server read).
+ * when the oldest page was read. A page served from the cache by the SDK (offline), writes that
+ * keep a page from being read, or a session that ended stop the read: the result is then marked
+ * `fromCache` (not a full server read).
  * @private
  */
 export async function readCollectionResumable(spec, data, keepProgress, alive = () => true) {
@@ -117,10 +160,22 @@ export async function readCollectionResumable(spec, data, keepProgress, alive = 
     let after = null;
     let readAt = Infinity;
     let kept = 0;
+    // Stored pages that follow on from the start; one cache query for all of them
+    const chain = [];
+    let last = null;
     for (const page of entry.pages) {
-        if (!validPage(page) || page.after !== after) break;
-        const got = await cachedPage(ref, docIdPath, page);
-        if (!got) break;
+        if (!validPage(page) || page.after !== last) break;
+        chain.push(page);
+        if (page.ids.length) last = page.ids[page.ids.length - 1];
+    }
+    let cached = new Map();
+    if (last !== null) {
+        const snap = await ref.orderBy(docIdPath).endAt(last).get({ source: 'cache' }).catch(() => null);
+        if (snap) cached = new Map(snap.docs.map(d => [d.id, d]));
+    }
+    for (const page of chain) {
+        const got = page.ids.map(id => cached.get(id));
+        if (!got.every(doc => doc && !needsLegacyFields(spec, doc.data()))) break;
         docs.push(...got);
         if (page.ids.length) after = page.ids[page.ids.length - 1];
         readAt = Math.min(readAt, page.readAt);
@@ -135,16 +190,13 @@ export async function readCollectionResumable(spec, data, keepProgress, alive = 
     while (!entry.done) {
         if (!alive()) return partial();
         const from = after;
-        const snap = await getWithRetry(a => {
-            let q = ref.orderBy(docIdPath);
-            if (from !== null) q = q.startAfter(from);
-            return q.limit(pageSize + a);
-        }, `${spec.label} history`);
+        const snap = await serverPage(ref, docIdPath, from, spec, pageSize);
+        if (!snap) return partial();
         if (snap.metadata?.fromCache) {
             docs.push(...snap.docs);
             return partial();
         }
-        const ids = snap.docs.map(d => d.id);
+        const ids = snap.docs.map(doc => doc.id);
         const at = Date.now();
         entry.pages.push({ after: from, ids, readAt: at });
         entry.done = ids.length < pageSize;

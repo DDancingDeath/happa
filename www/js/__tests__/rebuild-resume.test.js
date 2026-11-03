@@ -9,9 +9,10 @@ import { AppState } from '../utils/state.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 import { ITEMS, generateHistory } from './__mocks__/history-data.js';
 import { defaultWindowStart, dateDescComparator } from '../utils/history-range.js';
-import { buildCheckpointState, computeStock, serializeState, STOCK_REPLAY_FORMAT } from '../utils/stock-replay.js';
+import { buildCheckpointState, computeStock, eventTime, serializeState, STOCK_REPLAY_FORMAT } from '../utils/stock-replay.js';
 import { outstandingDue } from '../utils/money.js';
-import { PROGRESS_MAX_AGE_MS, PROGRESS_VERSION, REBUILD_PAGING, usableProgress } from '../firebase/core/rebuild-progress.js';
+import { needsLegacyFields, PROGRESS_MAX_AGE_MS, PROGRESS_VERSION, REBUILD_PAGING, usableProgress } from '../firebase/core/rebuild-progress.js';
+import { HISTORY_SPEC } from '../firebase/core/records.js';
 
 const NOW = Date.now();
 const W = defaultWindowStart(NOW);
@@ -21,6 +22,7 @@ const PROGRESS_KEY = 'happa.rebuildProgress:stockCheckpoints:u1';
 
 let fake;
 let hook = null;
+const { writeCount } = REBUILD_PAGING;
 
 const settle = async (rounds = 10) => {
     for (let i = 0; i < rounds; i++) await fake.settle();
@@ -35,12 +37,23 @@ const serverSources = () => Object.fromEntries(STOCK_COLLS.map(c => [c, docsOf(c
 
 const isPage = (q) => q.order[0]?.field === '__name__' && q.limitN > 0;
 
-function install(seed) {
+/** The fields the timestamp backfill gives old documents (a shop whose legacy documents were all backfilled). */
+const backfilled = (key, doc) => {
+    const spec = HISTORY_SPEC[key];
+    if (doc.date === undefined) return doc;
+    const out = { ...doc };
+    if (typeof out.timestamp !== 'number' && (spec.stock || eventTime(out) !== Number.MAX_SAFE_INTEGER)) out.timestamp = eventTime(out);
+    if (spec.dues) out.openDue = outstandingDue(out) > 0;
+    return out;
+};
+
+/** The generated shop; `legacy: false` = after the backfill (no document needs it). */
+function install(seed, { legacy = false } = {}) {
     fake = createFakeFirestore({ beforeGet: (q, stats) => (hook ? hook(q, stats) : undefined) });
     global.firebase = fake.firebase;
     fake.seed('items', ITEMS);
     const h = generateHistory(seed, NOW);
-    COLLS.forEach(c => fake.seed(c, h[c]));
+    COLLS.forEach(c => fake.seed(c, legacy ? h[c] : h[c].map(doc => backfilled(c, doc))));
 }
 
 async function open() {
@@ -61,6 +74,22 @@ const comparable = (cp) => {
 
 const pageGets = () => fake.stats.queryLog.filter(isPage).length;
 
+/**
+ * Stored pages the next rebuild can take from this phone's cache: in order, up to the first one
+ * with a document missing there or still needing the timestamp backfill (read again).
+ */
+function usablePages() {
+    const progress = JSON.parse(localStorage.getItem(PROGRESS_KEY));
+    let n = 0;
+    Object.entries(progress.colls).forEach(([key, c]) => {
+        for (const page of c.pages) {
+            if (!page.ids.every(id => fake.cached(key).has(id) && !needsLegacyFields(HISTORY_SPEC[key], fake.cached(key).get(id)))) break;
+            n++;
+        }
+    });
+    return n;
+}
+
 /** Opens the app (a rebuild starts: no checkpoint) and closes it once `pages` pages of the rebuild's read are in. */
 async function openAndCloseAfter(pages) {
     let seen = 0;
@@ -76,8 +105,8 @@ async function openAndCloseAfter(pages) {
 }
 
 /** One uninterrupted first build of the shop of `seed`: its checkpoint and how many pages it read. */
-async function referenceBuild(seed) {
-    install(seed);
+async function referenceBuild(seed, opts) {
+    install(seed, opts);
     await open();
     const cp = cpDoc();
     expect(cp).toMatchObject({ stale: false, asOf: W, formatVersion: STOCK_REPLAY_FORMAT });
@@ -101,6 +130,7 @@ describe('resumable stock checkpoint rebuild (#159)', () => {
         FirebaseService.cleanup();
         jest.restoreAllMocks();
         REBUILD_PAGING.pageSize = 500;
+        REBUILD_PAGING.writeCount = writeCount;
         delete global.firebase;
         AppState.currentUser = null;
     });
@@ -114,7 +144,7 @@ describe('resumable stock checkpoint rebuild (#159)', () => {
             localStorage.clear();
             install(21);
             await openAndCloseAfter(cut);
-            expect(JSON.parse(localStorage.getItem(PROGRESS_KEY)).colls).toBeTruthy();
+            expect(usablePages()).toBe(cut);
 
             fake.stats.queryLog.length = 0;
             await open();
@@ -140,6 +170,40 @@ describe('resumable stock checkpoint rebuild (#159)', () => {
         expect(comparable(cpDoc())).toEqual(ref.cp);
     });
 
+    it('with documents still needing the timestamp backfill, their pages are read from the server again (same checkpoint)', async () => {
+        const ref = await referenceBuild(27, { legacy: true });
+        for (const cut of [3, Math.floor(ref.pages / 2)]) {
+            localStorage.clear();
+            install(27, { legacy: true });
+            await openAndCloseAfter(cut);
+            const usable = usablePages();
+            // The collection being read when the app closed was not backfilled yet
+            expect(usable).toBeLessThan(cut);
+            fake.stats.queryLog.length = 0;
+            await open();
+            expect(pageGets()).toBe(ref.pages - usable);
+            expect(comparable(cpDoc())).toEqual(ref.cp);
+            expect(AppState.stock).toEqual(ref.stock);
+        }
+    });
+
+    it('a page read while this phone issued a write is read again', async () => {
+        const ref = await referenceBuild(28);
+        localStorage.clear();
+        install(28);
+        let writes = 0;
+        REBUILD_PAGING.writeCount = () => writes;
+        let seen = 0;
+        hook = (q) => {
+            if (isPage(q) && ++seen === 2) writes++;
+        };
+        fake.stats.queryLog.length = 0;
+        await open();
+        hook = null;
+        expect(pageGets()).toBe(ref.pages + 1);
+        expect(comparable(cpDoc())).toEqual(ref.cp);
+    });
+
     it('a stored page whose documents left the cache is read again, with the pages after it', async () => {
         const ref = await referenceBuild(23);
         localStorage.clear();
@@ -150,6 +214,7 @@ describe('resumable stock checkpoint rebuild (#159)', () => {
         expect(progress.colls[first].pages.length).toBeGreaterThan(2);
         // Evicted from the phone's cache (the SDK's cache has a size limit)
         fake.cached(first).delete(progress.colls[first].pages[1].ids[0]);
+        expect(usablePages()).toBe(1);
 
         fake.stats.queryLog.length = 0;
         await open();
