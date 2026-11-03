@@ -40,4 +40,20 @@ describe('Sold below cost: 50-paise allowance, the same in Insights (I8) and the
         const sales = itemLedger(src, ITEMS, 'rice').rows.filter(r => r.kind === 'retail');
         expect(sales.map(r => [r.billNo, r.cost, r.belowCost])).toEqual([['R-49', 100, false], ['R-51', 100, true]]);
     });
+
+    test('an item\'s lines on one bill are judged together, in both views', () => {
+        const two = {
+            ...src,
+            retailSales: [
+                // 30 paise under twice: 60 paise under for the bill
+                { id: 'a', billNo: 'R-A', timestamp: at(2), items: [line(1, 99.7, 99.7), line(1, 99.7, 99.7)], total: 199.4 },
+                // ₹1 under and ₹1 over: even for the bill
+                { id: 'b', billNo: 'R-B', timestamp: at(3), items: [line(1, 99, 99), line(1, 101, 101)], total: 200 }
+            ]
+        };
+        const m = moneySummary(two, { from: -Infinity, to: Infinity }, { detail: true });
+        expect(belowCostSales(m)).toEqual([{ itemKey: 'rice', item: 'Rice', itemHi: 'चावल', times: 1, qty: 2, lost: 0.6 }]);
+        const sales = itemLedger(two, ITEMS, 'rice').rows.filter(r => r.kind === 'retail');
+        expect(sales.map(r => [r.billNo, r.belowCost])).toEqual([['R-A', true], ['R-A', true], ['R-B', false], ['R-B', false]]);
+    });
 });

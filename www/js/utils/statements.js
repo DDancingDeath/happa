@@ -200,6 +200,8 @@ export function itemLedger(src, items, itemKey, { from = -Infinity, to = Infinit
     });
     const state = {};
     const rows = [];
+    // I8 judges the item's lines of one bill together: sale value and cost per bill
+    const billGroups = new Map();
     let opening = { qty: 0, value: 0 };
     let openingTaken = false;
     replayWithValues(state, events, getKey, (ev, key, delta, prevQty) => {
@@ -226,10 +228,19 @@ export function itemLedger(src, items, itemKey, { from = -Infinity, to = Infinit
         if (ev.kind === 'sale') {
             const cost = qty > 0 ? -delta / qty : 0;
             row.cost = round2(cost);
-            row.belowCost = soldBelowCost(line.total, -delta);
+            row.belowCost = false;
+            const g = billGroups.get(ev.bill) || { sales: 0, cost: 0, rows: [] };
+            g.sales += line.total;
+            g.cost += -delta;
+            g.rows.push(row);
+            billGroups.set(ev.bill, g);
             row.beforeBought = qty - Math.max(0, num(prevQty)) > 1e-9;
         }
         rows.push(row);
+    });
+    billGroups.forEach(g => {
+        const below = soldBelowCost(g.sales, g.cost);
+        g.rows.forEach(r => { r.belowCost = below; });
     });
     const s = state[itemKey] || { quantity: 0, totalValue: 0 };
     if (!openingTaken) opening = { qty: round2(s.quantity), value: round2(Math.max(0, s.totalValue)) };
