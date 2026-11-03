@@ -235,41 +235,36 @@ export const legacyScanMethods = {
 /** DUE-BACKFILL: its entry in stockCheckpoints/legacyScan ({v, at, checked, written, failed, complete, byUserId}). */
 export const DUE_BACKFILL_KEY = 'dueFields';
 export const DUE_BACKFILL_VERSION = 1;
-/** Bills re-read and written per transaction. */
-export const BILLS_PER_TRANSACTION = 100;
 
 const ownerOnly = () => {
     if (AppState.userRole !== 'owner') throw Object.assign(new Error('Only the owner can do this'), { code: 'owner-only' });
 };
 
 /**
- * One DUE-BACKFILL transaction: re-reads `ids` and writes, on each that still needs it
- * (dueBackfillFields, from this fresh copy), the due fields with clientVersion and its edit record
- * (#121: before/after of payment / dueAmount, the owner, a fixed reason), so what was replaced is
- * kept on the bill. A bill gone meanwhile is skipped.
- * @returns {Promise<Array<{id: string, record: Object}>>} the bills written, as stored now
+ * One DUE-BACKFILL write, in its own transaction (a bill update with its edit record costs the
+ * rules about 60 expressions and 5 document reads; several bills in one request would pass their
+ * limits): re-reads the bill and, when it still needs it (dueBackfillFields, from this fresh copy),
+ * writes the due fields with clientVersion and its edit record (#121: before/after of payment /
+ * dueAmount, the owner, a fixed reason), so what was replaced stays on the bill.
+ * @returns {Promise<?Object>} the bill as stored now when written; null when gone or not needed
  */
-async function writeDueChunk(collKey, ids) {
+async function writeDueBill(collKey, id) {
     const db = getDb();
-    const refs = ids.map(id => db.collection(col(collKey)).doc(String(id)));
+    const ref = db.collection(col(collKey)).doc(String(id));
     return db.runTransaction(async (tx) => {
-        const snaps = await Promise.all(refs.map(ref => tx.get(ref)));
-        const done = [];
-        snaps.forEach((snap, i) => {
-            if (!snap.exists) return;
-            const fresh = snap.data() || {};
-            const need = dueBackfillFields(fresh);
-            if (!need?.fields) return;
-            const n = nextEditNumber(fresh);
-            const fields = { ...need.fields, clientVersion: CLIENT_VERSION, editCount: n };
-            tx.update(refs[i], fields);
-            tx.set(billEditsRef(refs[i]).doc(String(n)), editRecord({
-                n, at: serverCreatedAt(), by: AppState.currentUser?.uid || null, byName: AppState.userName,
-                reason: t('ui.edits.due_backfill_reason'), changes: billEditChanges(fresh, { ...fresh, ...fields })
-            }));
-            done.push({ id: String(ids[i]), record: { id: String(ids[i]), ...fresh, ...fields } });
-        });
-        return done;
+        const snap = await tx.get(ref);
+        if (!snap.exists) return null;
+        const fresh = snap.data() || {};
+        const need = dueBackfillFields(fresh);
+        if (!need?.fields) return null;
+        const n = nextEditNumber(fresh);
+        const fields = { ...need.fields, clientVersion: CLIENT_VERSION, editCount: n };
+        tx.update(ref, fields);
+        tx.set(billEditsRef(ref).doc(String(n)), editRecord({
+            n, at: serverCreatedAt(), by: AppState.currentUser?.uid || null, byName: AppState.userName,
+            reason: t('ui.edits.due_backfill_reason'), changes: billEditChanges(fresh, { ...fresh, ...fields })
+        }));
+        return { id: String(id), ...fresh, ...fields };
     });
 }
 /** FirebaseService methods of the owner's due backfill (#126); spread into FirebaseService. */
@@ -303,10 +298,10 @@ export const dueBackfillMethods = {
     },
 
     /**
-     * DUE-BACKFILL: writes the bills a check listed. Each is re-read in a transaction
-     * (BILLS_PER_TRANSACTION bills each) and written only if it still needs it, from that fresh copy,
-     * so a payment recorded meanwhile is never undone; a second run writes nothing. Each write has its
-     * edit record (writeDueChunk). Records the outcome in stockCheckpoints/legacyScan. Owner only;
+     * DUE-BACKFILL: writes the bills a check listed, one transaction each (writeDueBill): re-read and
+     * written only if it still needs it, from that fresh copy, so a payment recorded meanwhile is never
+     * undone; a second run writes nothing; each write has its edit record. A bill that fails is counted
+     * and the others go on. Records the outcome in stockCheckpoints/legacyScan. Owner only;
      * needs a connection.
      * @param {Array<{collKey: string, id: string}>} todo - checkDueFields().todo
      * @param {number} checked - checkDueFields().checked
@@ -316,19 +311,15 @@ export const dueBackfillMethods = {
         ownerOnly();
         const written = [];
         const failed = [];
-        const byColl = new Map();
-        (todo || []).forEach(t => byColl.set(t.collKey, [...(byColl.get(t.collKey) || []), t.id]));
-        for (const [collKey, ids] of byColl) {
-            for (let i = 0; i < ids.length; i += BILLS_PER_TRANSACTION) {
-                const chunk = ids.slice(i, i + BILLS_PER_TRANSACTION);
-                try {
-                    const done = await writeDueChunk(collKey, chunk);
-                    written.push(...done.map(d => d.id));
-                    done.forEach(d => { if (findRecord(collKey, d.id)) noteLocalRecordWrite(collKey, d.id, d.record); });
-                } catch (e) {
-                    console.warn(`Due backfill (${collKey}) failed for ${chunk.length} bills:`, e?.code || e);
-                    failed.push(...chunk);
-                }
+        for (const { collKey, id } of todo || []) {
+            try {
+                const record = await writeDueBill(collKey, id);
+                if (!record) continue;
+                written.push(id);
+                if (findRecord(collKey, id)) noteLocalRecordWrite(collKey, id, record);
+            } catch (e) {
+                console.warn(`Due backfill: ${collKey}/${id} not written:`, e?.code || e);
+                failed.push(id);
             }
         }
         const entry = { v: DUE_BACKFILL_VERSION, at: Date.now(), checked, written: written.length, failed: failed.length, complete: !failed.length, byUserId: AppState.currentUser?.uid || null };

@@ -58,11 +58,14 @@ describe('DUE-BACKFILL', () => {
         expect(backfill(once.bills)).toEqual({ bills: once.bills, writes: 0 });
     });
 
-    test('a payment stored as something else than a map is never written; reported as changes', () => {
+    test('a payment stored as something else than a map, or a NaN where the write goes, is never written; reported as changes', () => {
+        const base = legacyBill({ id: 'x', type: 'retail', shape: 'topOnly', total: 1000, cash: 400, online: 0 });
         for (const payment of ['cash', [{ amount: 400 }], 7]) {
-            const bill = { ...legacyBill({ id: 'x', type: 'retail', shape: 'topOnly', total: 1000, cash: 400, online: 0 }), payment };
-            expect(dueBackfillFields(bill)).toEqual({ reason: 'changes', fields: null });
+            expect(dueBackfillFields({ ...base, payment })).toEqual({ reason: 'changes', fields: null });
         }
+        expect(dueBackfillFields({ ...base, payment: { cash: 400, due: NaN } })).toEqual({ reason: 'changes', fields: null });
+        expect(dueBackfillFields({ ...base, payment: { cash: 400, online: 0, due: 600 }, dueAmount: NaN })).toEqual({ reason: 'changes', fields: null });
+        expect(dueBackfillFields({ ...base, payment: { cash: NaN, online: 0, due: 600 }, dueAmount: 600 })).toBeNull();
     });
 
     test('property: mixed old and new bills: same figures after the backfill, nothing left on a second run, a payment is the same before or after it', () => {

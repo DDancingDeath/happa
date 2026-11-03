@@ -65,14 +65,16 @@ export const DUE_BACKFILL_REASONS = Object.freeze(['missing', 'notNumber', 'mirr
  */
 export function dueBackfillFields(bill) {
     if (!isMap(bill) || bill.voided === true) return null;
-    // A `payment` stored as something else than a map is left for a person to look at
-    if (bill.payment !== undefined && bill.payment !== null && !isMap(bill.payment)) return { reason: 'changes', fields: null };
     const p = isMap(bill.payment) ? bill.payment : null;
     const stored = p && Object.prototype.hasOwnProperty.call(p, 'due') ? p.due : undefined;
     const numeric = typeof stored === 'number' && Number.isFinite(stored);
     const due = numeric ? stored : readPayment(bill).due;
     const mirrorOff = Object.prototype.hasOwnProperty.call(bill, 'dueAmount') && bill.dueAmount !== due;
     if (numeric && !mirrorOff) return null;
+    // A `payment` stored as something else than a map, or a NaN / Infinity where the write goes (no
+    // edit record can match it: the rules see NaN != NaN), is left for a person to look at
+    const nonFinite = (v) => typeof v === 'number' && !Number.isFinite(v);
+    if ((bill.payment != null && !p) || nonFinite(bill.dueAmount) || (p && Object.values(p).some(nonFinite))) return { reason: 'changes', fields: null };
     const reason = numeric ? 'mirror' : stored === undefined ? 'missing' : 'notNumber';
     const fields = withCanonicalDue({ payment: { ...(p || {}), due } }, bill);
     const after = { ...bill, ...fields };
