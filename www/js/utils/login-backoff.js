@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Sign-in backoff on this phone (#105): after a few wrong tries the
  * Login button waits before trying again, doubling each time. Firebase Auth has
@@ -22,7 +23,7 @@ export const COUNTED_LOGIN_ERRORS = Object.freeze([
     'auth/user-not-found', 'auth/too-many-requests'
 ]);
 
-const clean = (state) => ({
+const clean = (/** @type {?Rec|undefined} */ state) => ({
     fails: Math.max(0, Math.floor(Number(state?.fails) || 0)),
     last: Number(state?.last) || 0,
     until: Number(state?.until) || 0

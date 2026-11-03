@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Removes personal data and secrets from error text before it is
  * stored (#116): error reports (telemetry) are read by the owner in Diagnostics,
@@ -6,6 +7,7 @@
  * @module utils/scrub
  */
 
+/** @type {Array<[RegExp, string]>} */
 const RULES = [
     // JSON Web Tokens (Firebase ID tokens) and Google API keys
     [/\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}/g, '<token>'],
@@ -40,7 +42,11 @@ export function scrubText(value) {
     return RULES.reduce((s, [re, to]) => s.replace(re, to), value.slice(0, MAX_SCRUB));
 }
 
-/** A page address without its query string (where tokens and codes travel); the #route is kept. */
+/**
+ * A page address without its query string (where tokens and codes travel); the #route is kept.
+ * @param {*} value
+ * @returns {*}
+ */
 export function scrubUrl(value) {
     if (typeof value !== 'string' || !value) return value;
     const [beforeHash, ...hash] = value.split('#');

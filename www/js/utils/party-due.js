@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Existing due of the party on the bill being entered (#166):
  * what the customer already owes us (sales) or what we already owe the
@@ -15,20 +16,20 @@ import { getLang, t } from '../i18n/index.js';
 /**
  * Open bills that make up the Outstanding list for a billing form.
  * Wholesale dues live on the Wholesale page's Outstanding list (sales-tab bills only).
- * @param {Object} state AppState-like
+ * @param {?Rec} state AppState-like
  * @param {'purchase'|'retail'|'wholesale'} kind
- * @returns {Array<Object>}
+ * @returns {Array<Bill>}
  */
 export function billsForKind(state, kind) {
     if (kind === 'purchase') return state?.purchaseHistory || [];
     if (kind === 'retail') return state?.retailSalesHistory || [];
-    if (kind === 'wholesale') return (state?.salesHistory || []).filter(s => s && s.source === 'sales-tab');
+    if (kind === 'wholesale') return (state?.salesHistory || []).filter((/** @type {?Bill} */ s) => s && s.source === 'sales-tab');
     return [];
 }
 
 /**
  * Existing due of one party (exact normalized name match).
- * @param {Array<Object>} bills
+ * @param {Array<?Bill>} bills
  * @param {string} name Name typed on the bill
  * @param {{excludeId?: *, today?: Date}} [opts] excludeId: the bill being edited / retried
  * @returns {?{key: string, total: number, count: number, oldestDays: ?number, bucket: number}}
@@ -40,7 +41,7 @@ export function partyDue(bills, name, { excludeId = null, today = new Date() } =
     const skip = excludeId === null || excludeId === undefined ? null : String(excludeId);
     const mine = (bills || []).filter(b => b && normalizePartyName(b.customerName) === key
         && (skip === null || String(b.id) !== skip));
-    const party = buildAging(mine, { today }).parties.find(p => p.key === key);
+    const party = buildAging(/** @type {Bill[]} */ (mine), { today }).parties.find(p => p.key === key);
     if (!party || !(party.total > 0)) return null;
     return { key, total: party.total, count: party.bills.length, oldestDays: party.oldestDays, bucket: party.bucket };
 }
