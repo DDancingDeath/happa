@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview The date and payment mode of a new expense (#118): which days
  * may be picked, the check before saving and the stored fields. Pure: "now",
@@ -24,21 +25,21 @@ export const DEFAULT_EXPENSE_MODE = 'cash';
 
 /**
  * Days that may be picked for a new expense.
- * @param {{role?: string, roleAccess?: Object, now?: Date}} who
+ * @param {{role?: string, roleAccess?: Rec, now?: Date}} who
  * @returns {{max: string, min: ?string, days: number}} YYYY-MM-DD; min null = no limit (owner)
  */
 export function expenseDayRange({ role, roleAccess, now = new Date() } = {}) {
     const max = toLocalISODate(now);
     if (role === 'owner') return { max, min: null, days: Infinity };
-    const days = accessFor(role, roleAccess).editDays;
-    return { max, min: toLocalISODate(addLocalDays(now, -days)), days };
+    const days = accessFor(/** @type {string} */ (role), roleAccess).editDays;
+    return { max, min: toLocalISODate(/** @type {Date} */ (addLocalDays(now, -days))), days };
 }
 
 /**
  * Check the picked day and mode before saving.
  * @param {{day: string, mode: string}} entry
- * @param {{role?: string, roleAccess?: Object, now?: Date}} who
- * @returns {?{key: string, params?: Object}} null when fine, else the i18n message key
+ * @param {{role?: string, roleAccess?: Rec, now?: Date}} who
+ * @returns {?{key: string, params?: Rec}} null when fine, else the i18n message key
  */
 export function validateExpenseEntry({ day, mode }, who = {}) {
     if (!EXPENSE_MODES.includes(mode)) return { key: 'msg.expenses.choose_mode' };

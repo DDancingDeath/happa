@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Number-check mismatches as owner flags (#160): the daily TIP
  * NumberChecks run (Diagnostics › Number checks on this phone's loaded data,
@@ -17,7 +18,10 @@ import { t } from '../i18n/index.js';
 /** Checks about money on bills or the drawer are high; the rest medium. */
 const HIGH = new Set(['AC2', 'AC3', 'AC5', 'AC6']);
 
-/** Where a mismatch row points: a bill, an item's stock or a cash day. */
+/**
+ * Where a mismatch row points: a bill, an item's stock or a cash day.
+ * @param {Rec} row
+ */
 function refOf(row) {
     const r = row?.ref || {};
     if (r.kind) return r.id || r.number ? { refKind: 'bill', refId: String(r.id || r.number), billType: r.kind, billNumber: r.number || null, party: String(r.party || ''), item: '' } : null;
@@ -26,15 +30,16 @@ function refOf(row) {
     return null;
 }
 
-const shown = (row, v) => (row.unit === 'qty' ? `${formatKg(v)} kg` : formatRupees(Number(v) || 0, { small: true }));
+const shown = (/** @type {Rec} */ row, /** @type {*} */ v) => (row.unit === 'qty' ? `${formatKg(v)} kg` : formatRupees(Number(v) || 0, { small: true }));
 
 /**
  * Anomaly records for the mismatch rows of one run's failed checks.
- * @param {Array<{id: string, key: string, status: string, rows: Array}>} results runNumberChecks()
+ * @param {Array<{id: string, key: string, status: string, rows: Array<Rec>}>} results runNumberChecks()
  * @param {number} now ms
- * @returns {Array<Object>} anomalies (utils/anomalies.js shape), one per row
+ * @returns {Array<Rec>} anomalies (utils/anomalies.js shape), one per row
  */
 export function numberCheckFlags(results, now) {
+    /** @type {Array<Rec>} */
     const out = [];
     (Array.isArray(results) ? results : []).filter(r => r && r.status === 'fail' && /^AC\d+$/.test(String(r.id))).forEach(r => {
         const id = String(r.id);
@@ -42,7 +47,7 @@ export function numberCheckFlags(results, now) {
         (Array.isArray(r.rows) ? r.rows : []).forEach(row => {
             const ref = refOf(row);
             if (!ref) return;
-            const text = (lang) => `${t(r.key, null, lang)}: ${t('ui.numchecks.flag_found', { expected: shown(row, row.expected), actual: shown(row, row.actual) }, lang)}`;
+            const text = (/** @type {'en'|'hi'} */ lang) => `${t(r.key, null, lang)}: ${t('ui.numchecks.flag_found', { expected: shown(row, row.expected), actual: shown(row, row.actual) }, lang)}`;
             out.push({
                 id: anomalyId(type, ref.refKind, ref.refId),
                 type,

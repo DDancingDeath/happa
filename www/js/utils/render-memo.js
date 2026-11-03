@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Skip re-computing a screen whose inputs have not changed (#24).
  * Finance/Reports/Analytics re-ran every aggregate on each tab visit; with
@@ -15,7 +16,7 @@ const DATA_KEYS = [
 
 const ids = new WeakMap();
 let nextId = 1;
-const idOf = (value) => {
+const idOf = (/** @type {*} */ value) => {
     if (!value || typeof value !== 'object') return 0;
     if (!ids.has(value)) ids.set(value, nextId++);
     return ids.get(value);
@@ -30,10 +31,11 @@ const idOf = (value) => {
  */
 export function dataSignature(now = new Date()) {
     const parts = DATA_KEYS.map((key) => {
-        const value = AppState[key];
+        const value = /** @type {Rec} */ (AppState)[key];
         return `${idOf(value)}:${Array.isArray(value) ? value.length : ''}`;
     });
-    parts.push(AppState.dataVersion ?? '', AppState.historyLoadedFrom, AppState.stockReady, AppState.userRole,
+    parts.push(/** @type {Rec} */ (AppState).dataVersion ?? '', /** @type {Rec} */ (AppState).historyLoadedFrom,
+        /** @type {Rec} */ (AppState).stockReady, /** @type {Rec} */ (AppState).userRole,
         `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}`);
     return parts.join('|');
 }
@@ -43,8 +45,9 @@ export function dataSignature(now = new Date()) {
  *   `extra` = the screen's own filter state (JSON-serialisable).
  */
 export function createRenderMemo() {
+    /** @type {?string} */
     let last = null;
-    const key = (extra) => `${dataSignature()}#${JSON.stringify(extra ?? null)}`;
+    const key = (/** @type {*} */ extra) => `${dataSignature()}#${JSON.stringify(extra ?? null)}`;
     return {
         isCurrent: (extra) => last !== null && last === key(extra),
         record: (extra) => { last = key(extra); },

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Pure helpers for the recent-history window.
  * @module utils/history-window
@@ -39,6 +40,7 @@ export function normalizeFrom(from) {
 }
 
 // Firestore cross-type ordering: null < boolean < number < timestamp < string < others.
+/** @param {*} v */
 const typeRank = (v) => {
     if (v === null) return 0;
     if (typeof v === 'boolean') return 1;
@@ -49,6 +51,10 @@ const typeRank = (v) => {
     return 5;
 };
 
+/**
+ * @param {*} v
+ * @returns {number[]}
+ */
 const timestampParts = (v) => {
     if (v instanceof Date) return [Math.floor(v.getTime() / 1000), (v.getTime() % 1000) * 1e6];
     if (typeof v.seconds === 'number') return [v.seconds, v.nanoseconds || 0];
@@ -56,7 +62,7 @@ const timestampParts = (v) => {
     return [Math.floor(ms / 1000), (ms % 1000) * 1e6];
 };
 
-const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+const cmp = (/** @type {*} */ a, /** @type {*} */ b) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
  * Compares two Firestore field values in Firestore's ascending query order.
@@ -88,8 +94,8 @@ export function compareFirestoreValues(a, b) {
 /**
  * Comparator reproducing `orderBy('date', 'desc')` (ties: document id desc),
  * the order AppState history arrays have always had.
- * @param {(record: Object) => string} docIdOf
- * @returns {(a: Object, b: Object) => number}
+ * @param {(record: Rec) => string} docIdOf
+ * @returns {(a: Rec, b: Rec) => number}
  */
 export function dateDescComparator(docIdOf) {
     return (a, b) => compareFirestoreValues(b.date, a.date) || cmp(docIdOf(b), docIdOf(a));

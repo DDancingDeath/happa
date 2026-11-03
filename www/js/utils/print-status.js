@@ -1,3 +1,4 @@
+// @ts-check
 // Per-bill print status (#132), kept on this phone only: Printed / Print failed /
 // May have printed / Printed by hand. A print is a fact about the phone that has
 // the printer, so it costs no Firestore reads or writes and needs no rules change.
@@ -10,19 +11,29 @@ const MAX_ENTRIES = 1000;
 
 export const PRINT_STATES = Object.freeze(['printed', 'failed', 'uncertain', 'hand']);
 
+/** @type {?{store: Storage, map: Rec}} */
 let cache = null;
 
-/** Same key as the printer's job key for a bill (bill number, else id). */
+/**
+ * Same key as the printer's job key for a bill (bill number, else id).
+ * @param {?Bill|undefined} bill
+ * @returns {?string}
+ */
 export function printKey(bill) {
     const id = bill?.billNumber || bill?.id;
     return id ? `bill:${id}` : null;
 }
 
+/**
+ * @param {Storage} store
+ * @returns {Rec}
+ */
 function load(store) {
     if (cache && cache.store === store) return cache.map;
+    /** @type {Rec} */
     let map = {};
     try {
-        const raw = JSON.parse(store.getItem(KEY));
+        const raw = JSON.parse(/** @type {string} */ (store.getItem(KEY)));
         if (raw && typeof raw === 'object' && !Array.isArray(raw)) map = raw;
     } catch {
         map = {};
@@ -31,7 +42,12 @@ function load(store) {
     return map;
 }
 
-/** Drops entries older than 60 days and keeps the newest 1000. */
+/**
+ * Drops entries older than 60 days and keeps the newest 1000.
+ * @param {?Rec} map
+ * @param {number} [now]
+ * @returns {Rec}
+ */
 export function prunePrintStatuses(map, now = Date.now()) {
     return Object.fromEntries(Object.entries(map || {})
         .filter(([, e]) => e && PRINT_STATES.includes(e.s) && Number(e.at) > now - KEEP_MS)
@@ -63,6 +79,7 @@ export function recordPrint(bill, state, { errorKind = '', error = '', store = l
     const map = load(store);
     const prev = map[key];
     const tries = (prev?.n || 0) + (state === 'hand' ? 0 : 1);
+    /** @type {{s: string, at: number, n: number, k?: string, err?: string}} */
     const entry = { s: state, at: now, n: tries };
     if (state === 'failed' && errorKind) entry.k = String(errorKind).slice(0, 40);
     if (state === 'failed' && error) entry.err = String(error).slice(0, 120);

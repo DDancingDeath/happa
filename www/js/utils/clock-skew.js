@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Is the phone's clock wrong? (#184, #115)
  *
@@ -39,12 +40,13 @@ export function clockSkewMs(serverMs, sentAt, receivedAt) {
  * @returns {boolean}
  */
 export function isClockWrong(skewMs) {
-    return Number.isFinite(skewMs) && Math.abs(skewMs) >= CLOCK_WRONG_MS;
+    return Number.isFinite(skewMs) && Math.abs(/** @type {number} */ (skewMs)) >= CLOCK_WRONG_MS;
 }
 
+/** @returns {?Rec} */
 function currentUser() {
     try {
-        return globalThis.firebase?.auth?.().currentUser || null;
+        return /** @type {Rec} */ (globalThis).firebase?.auth?.().currentUser || null;
     } catch (_) {
         return null;
     }
@@ -52,7 +54,7 @@ function currentUser() {
 
 /**
  * Server time minus phone time, read from a freshly issued ID token.
- * @param {{user?: Object, now?: function(): number}} [opts] (tests)
+ * @param {{user?: ?Rec, now?: function(): number}} [opts] (tests)
  * @returns {Promise<?number>} ms, null when it can't be measured (offline, signed out)
  */
 export async function measureClockSkew({ user = currentUser(), now = Date.now } = {}) {
@@ -110,7 +112,7 @@ export function readClockCheck(storage) {
  * refresh, no Firestore read) and kept for that day. Offline or signed out nothing is
  * kept, so the next start tries again; a wrong clock is measured again at the next start
  * (it may have been fixed). `force` measures now (the banner's Check again).
- * @param {{storage?: Storage, now?: function(): number, measure?: function(): Promise<?number>, force?: boolean}} [opts]
+ * @param {{storage?: ?Storage, now?: function(): number, measure?: function(): Promise<?number>, force?: boolean}} [opts]
  * @returns {Promise<?number>} server time minus phone time (ms), null when unknown
  */
 export async function dailyClockSkew({ storage = null, now = Date.now, measure = measureClockSkew, force = false } = {}) {
@@ -122,7 +124,7 @@ export async function dailyClockSkew({ storage = null, now = Date.now, measure =
     const skew = await measure();
     if (!Number.isFinite(skew)) return null;
     try {
-        storage?.setItem?.(CLOCK_CHECK_KEY, JSON.stringify({ day, skewMs: Math.round(skew) }));
+        storage?.setItem?.(CLOCK_CHECK_KEY, JSON.stringify({ day, skewMs: Math.round(/** @type {number} */ (skew)) }));
     } catch (_) { /* storage full: checked again next start */ }
     return skew;
 }
@@ -142,7 +144,7 @@ export function skewMinutes(skewMs) {
  * CLOCK_WRONG_MS apart (a wrong phone clock, or a bill saved offline and sent later).
  * A bill not yet on the server (`waiting`, or `createdAt` still the phone's own number
  * stamp) has no server time.
- * @param {Object} bill
+ * @param {?Bill} bill
  * @param {{waiting?: boolean}} [opts]
  * @returns {{entered: ?Date, server: ?Date, far: boolean}}
  */

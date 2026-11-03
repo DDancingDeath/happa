@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Which Settings sections a user sees and may edit: Common for
  * everyone, Aadhat (internal id 'shop') for its owner/manager, Rentals for its
@@ -9,20 +10,29 @@ import { can } from './role-access.js';
 
 export const BUSINESSES = Object.freeze(['shop', 'rentals']);
 
-/** 'owner' | 'manager' | 'member' | null: the user's role in the Aadhat business. */
+/**
+ * 'owner' | 'manager' | 'member' | null: the user's role in the Aadhat business.
+ * @param {*} userRole
+ * @returns {?string}
+ */
 export function shopRoleOf(userRole) {
     if (userRole === 'owner' || userRole === 'manager') return userRole;
     return userRole === 'staff' ? 'member' : null;
 }
 
-/** 'owner' | 'manager' | 'member' | null: the user's role in Rentals (the shop owner owns every business). */
+/**
+ * 'owner' | 'manager' | 'member' | null: the user's role in Rentals (the shop owner owns every business).
+ * @param {*} userRole
+ * @param {*} rentRole
+ * @returns {?string}
+ */
 export function rentRoleOf(userRole, rentRole) {
     if (userRole === 'owner') return 'owner';
     return ['manager', 'member'].includes(rentRole) ? rentRole : null;
 }
 
 /**
- * @param {{userRole?: string, rentRole?: string, business?: string, choice?: string, roleAccess?: Object}} p
+ * @param {{userRole?: string, rentRole?: string, business?: string, choice?: ?string, roleAccess?: Rec}} p
  *   business: the business open in the switcher; choice: the section the user toggled to.
  * @returns {{shop: {visible: boolean, editable: boolean}, rentals: {visible: boolean, editable: boolean},
  *   active: ('shop'|'rentals'|null), other: ('shop'|'rentals'|null)}}
@@ -41,9 +51,9 @@ export function settingsView({ userRole, rentRole, business = 'shop', choice = n
             editable: rentalsRole === 'owner' || rentalsRole === 'manager'
         }
     };
-    const current = BUSINESSES.includes(business) ? business : 'shop';
-    const wanted = BUSINESSES.includes(choice) ? choice : current;
+    const current = /** @type {'shop'|'rentals'} */ (BUSINESSES.includes(business) ? business : 'shop');
+    const wanted = /** @type {'shop'|'rentals'} */ (BUSINESSES.includes(/** @type {string} */ (choice)) ? choice : current);
     const active = sections[wanted].visible ? wanted : (sections[current].visible ? current : null);
-    const other = BUSINESSES.find(b => b !== active && sections[b].visible) || null;
+    const other = /** @type {?('shop'|'rentals')} */ (BUSINESSES.find(b => b !== active && sections[/** @type {'shop'|'rentals'} */ (b)].visible) || null);
     return { ...sections, active, other };
 }
