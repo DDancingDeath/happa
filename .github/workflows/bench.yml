@@ -4,6 +4,7 @@
 # bench-trend.csv on the `bench-trend` branch (a data branch: no workflow runs on it,
 # nothing deploys). Over a budget (tools/bench/budgets.json) it warns; it never fails
 # for a slow night. A run that can't measure (the app broke) fails as usual.
+# A manual run on another branch (workflow_dispatch --ref) measures it without touching the trend.
 name: Multi-year load benchmark
 
 on:
@@ -63,6 +64,7 @@ jobs:
           FIREBASE_TOOLS_VERSION: ${{ steps.v.outputs.firebase }}
         run: npm run bench
       - name: Trend file (bench-trend branch)
+        if: github.ref == 'refs/heads/main'
         run: |
           if git fetch --depth=1 origin bench-trend; then
             git worktree add ../trend FETCH_HEAD
@@ -72,8 +74,9 @@ jobs:
             git -C ../trend rm -rfq .
           fi
       - name: Record the result (warns above budget)
-        run: node tools/bench/record.js --result test-results/bench-result.json --trend ../trend/bench-trend.csv --budgets tools/bench/budgets.json --sha "$GITHUB_SHA"
+        run: node tools/bench/record.js --result test-results/bench-result.json --trend "${{ github.ref == 'refs/heads/main' && '../trend/bench-trend.csv' || 'test-results/bench-trend.csv' }}" --budgets tools/bench/budgets.json --sha "$GITHUB_SHA"
       - name: Push the trend
+        if: github.ref == 'refs/heads/main'
         run: |
           cd ../trend
           git add bench-trend.csv
