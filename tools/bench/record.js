@@ -24,6 +24,9 @@ function appendRow(existing, row) {
     return `${body}${row}\n`;
 }
 
+/** Unit of a figure in messages: ms for timings, none for counts (startupReads). */
+const unit = (name) => (/Ms$/.test(name) ? ' ms' : '');
+
 /** Figures over budget: [{name, value, budget}]. */
 function overBudget(result, budgets) {
     return Object.entries(budgets || {})
@@ -38,7 +41,7 @@ function summary(trend, over, last = 10) {
     const table = [head, ...rows.slice(-last)].map(l => `| ${l.split(',').join(' | ')} |`);
     table.splice(1, 0, `|${head.split(',').map(() => '---').join('|')}|`);
     const notes = over.length
-        ? over.map(o => `- ⚠ ${o.name} ${o.value} ms is over its budget of ${o.budget} ms`)
+        ? over.map(o => `- ⚠ ${o.name} ${o.value}${unit(o.name)} is over its budget of ${o.budget}${unit(o.name)}`)
         : ['- All figures within budget.'];
     return ['## Multi-year load benchmark (#59)', '', ...notes, '', ...table, ''].join('\n');
 }
@@ -56,7 +59,7 @@ function main(argv = process.argv.slice(2), env = process.env) {
     const trend = appendRow(existing, trendRow(result, arg('sha', argv) || env.GITHUB_SHA || ''));
     fs.writeFileSync(trendPath, trend);
     const over = overBudget(result, budgets);
-    over.forEach(o => console.log(`::warning title=Benchmark over budget::${o.name} ${o.value} ms > ${o.budget} ms (#59)`));
+    over.forEach(o => console.log(`::warning title=Benchmark over budget::${o.name} ${o.value}${unit(o.name)} > ${o.budget}${unit(o.name)} (#59)`));
     if (env.GITHUB_STEP_SUMMARY) fs.appendFileSync(env.GITHUB_STEP_SUMMARY, summary(trend, over));
     console.log(`[bench] recorded in ${trendPath}${over.length ? `; over budget: ${over.map(o => o.name).join(', ')}` : ''}`);
 }
