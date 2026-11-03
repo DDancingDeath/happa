@@ -22,7 +22,7 @@ const PROGRESS_KEY = 'happa.rebuildProgress:stockCheckpoints:u1';
 
 let fake;
 let hook = null;
-const { writeCount } = REBUILD_PAGING;
+const { deleteCount } = REBUILD_PAGING;
 
 const settle = async (rounds = 10) => {
     for (let i = 0; i < rounds; i++) await fake.settle();
@@ -130,7 +130,7 @@ describe('resumable stock checkpoint rebuild (#159)', () => {
         FirebaseService.cleanup();
         jest.restoreAllMocks();
         REBUILD_PAGING.pageSize = 500;
-        REBUILD_PAGING.writeCount = writeCount;
+        REBUILD_PAGING.deleteCount = deleteCount;
         delete global.firebase;
         AppState.currentUser = null;
     });
@@ -187,15 +187,15 @@ describe('resumable stock checkpoint rebuild (#159)', () => {
         }
     });
 
-    it('a page read while this phone issued a write is read again', async () => {
+    it('a page read while this phone deleted a document of that collection is read again', async () => {
         const ref = await referenceBuild(28);
         localStorage.clear();
         install(28);
-        let writes = 0;
-        REBUILD_PAGING.writeCount = () => writes;
+        let deletes = 0;
+        REBUILD_PAGING.deleteCount = (path) => (path === 'purchases' ? deletes : 0);
         let seen = 0;
         hook = (q) => {
-            if (isPage(q) && ++seen === 2) writes++;
+            if (isPage(q) && ++seen === 2) deletes++;
         };
         fake.stats.queryLog.length = 0;
         await open();

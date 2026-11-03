@@ -14,13 +14,13 @@ import { col, getDb } from '../db.js';
 import { getWithRetry } from './reads.js';
 import { eventTime, STOCK_REPLAY_FORMAT } from '../../utils/stock-replay.js';
 import { outstandingDue } from '../../utils/money.js';
-import { getIoCounts } from '../firestore-meter.js';
+import { deletesIssued } from '../firestore-meter.js';
 
 /**
- * Documents per page of the rebuild's read, and the count of writes this app has issued (the
- * read meter's); an object so tests can use small pages and count their own writes.
+ * Documents per page of the rebuild's read, and the deletes this app has issued in a collection
+ * (the read meter's count); an object so tests can use small pages and count their own deletes.
  */
-export const REBUILD_PAGING = { pageSize: 500, writeCount: () => getIoCounts().writes };
+export const REBUILD_PAGING = { pageSize: 500, deleteCount: (collection) => deletesIssued(collection) };
 
 /** Wait for this phone's unsent writes before a page; longer and the read stops for now. */
 export const PENDING_WRITES_WAIT_MS = 15000;
@@ -123,18 +123,19 @@ async function writesSent() {
  * One server page after `from`. The SDK lays this phone's unsent writes over a query result and
  * refills a limit query from its cache, so a page read while a delete is pending could end past
  * documents the server holds: a page is read only once every write has been sent, and read again
- * when one was made meanwhile. null: writes kept coming (or never sent); stop for now.
+ * when a document of the collection was deleted meanwhile (creates and updates can't open a gap).
+ * null: deletes kept coming (or writes were never sent); stop for now.
  */
 async function serverPage(ref, docIdPath, from, spec, pageSize) {
     for (let attempt = 0; attempt < PAGE_ATTEMPTS; attempt++) {
         if (!(await writesSent())) return null;
-        const writes = REBUILD_PAGING.writeCount();
+        const deletes = REBUILD_PAGING.deleteCount(col(spec.key));
         const snap = await getWithRetry(a => {
             let q = ref.orderBy(docIdPath);
             if (from !== null) q = q.startAfter(from);
             return q.limit(pageSize + a);
         }, `${spec.label} history`);
-        if (REBUILD_PAGING.writeCount() === writes) return snap;
+        if (REBUILD_PAGING.deleteCount(col(spec.key)) === deletes) return snap;
     }
     return null;
 }
