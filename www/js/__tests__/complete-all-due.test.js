@@ -30,6 +30,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { duePaymentUpdate, partyDues, settleDueUpdate, dueEvents } from '../utils/due-payments.js';
 import { normalizePartyName } from '../utils/aging.js';
+import { withCanonicalDue } from '../firebase/repos/bill-due.js';
 import { outstandingDue, readPayment } from '../utils/money.js';
 import { drawerDay } from '../utils/calc/cash.js';
 import { toLocalISODate } from '../utils/dates.js';
@@ -39,12 +40,12 @@ const bill = (id, customerName, due, extra = {}) => ({
     payment: { cash: 100, online: 0, due, total: 100 }, dueAmount: due, payments: [], ...extra
 });
 
-/** Runs the transaction's change on copies of `server` and applies its writes there. */
+/** Runs the transaction's change on copies of `server` and applies its writes there (through the repository's due writer). */
 function serverTx(server) {
     updateBillsInTransaction.mockImplementation(async (collKey, ids, change) => {
         const fresh = ids.map(id => JSON.parse(JSON.stringify(server[id])));
         const out = change(fresh);
-        out.bills.forEach((fields, i) => { if (fields) server[ids[i]] = { ...server[ids[i]], ...fields }; });
+        out.bills.forEach((fields, i) => { if (fields) server[ids[i]] = { ...server[ids[i]], ...withCanonicalDue(fields, fresh[i]) }; });
         return out.result;
     });
 }
@@ -77,8 +78,9 @@ describe('pure parts (DUE-ALL)', () => {
         const entry = { id: 'e', amount: 60, cash: 40, online: 20, at: 5 };
         expect(duePaymentUpdate(b, { cash: 40, online: 20 }, entry)).toEqual({
             ok: true, due: 40,
-            update: { payment: { cash: 140, online: 20, due: 40, total: 160 }, payments: [entry], paidAt: 5, dueAmount: 40 }
+            update: { payment: { cash: 140, online: 20, due: 40, total: 160 }, payments: [entry], paidAt: 5 }
         });
+        // The dueAmount mirror is the repository's (repos/bill-due.js), never the calc's
         const noTop = { payment: { cash: 0, online: 0, due: 10 } };
         expect(duePaymentUpdate(noTop, { cash: 9.999, online: 0 }, { at: 1 }).update).not.toHaveProperty('dueAmount');
         expect(duePaymentUpdate(noTop, { cash: 9.999, online: 0 }, { at: 1 }).due).toBe(0);

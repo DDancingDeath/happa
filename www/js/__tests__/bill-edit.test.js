@@ -11,6 +11,10 @@ import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { NAME_REQUIRED_FOR_DUE_KEY, round2 } from '../utils/money.js';
 import { t } from '../i18n/index.js';
+import { withCanonicalDue } from '../firebase/repos/bill-due.js';
+
+/** What the repository writes for an edit: the record with its dueAmount mirror (repos/bill-due.js). */
+const asRepo = (b, list) => withCanonicalDue(b, (list || []).find(x => x.id === b.id) || null, { full: true });
 
 const BILL = { id: 'b1', userId: 'creator', items: [{ itemId: 'x', qty: 1, rate: 1 }], payment: { due: 0 } };
 
@@ -284,7 +288,7 @@ describe('#129: editing a bill saved with paise', () => {
         AppState.settings = {};
         PurchaseManager.init(BillingManager);
         RetailSaleManager.init(BillingManager);
-        update = jest.spyOn(FirebaseService, 'updatePurchase').mockImplementation(async b => b);
+        update = jest.spyOn(FirebaseService, 'updatePurchase').mockImplementation(async b => asRepo(b, AppState.purchaseHistory));
     });
 
     afterEach(() => {
@@ -360,7 +364,7 @@ describe('#129: editing a bill saved with paise', () => {
         window.currentBillId = 's1';
         BillingManager.currentMode = 'sale';
         await BillingManager.editBill(0, 'retail');
-        const updateSale = jest.spyOn(FirebaseService, 'updateRetailSale').mockImplementation(async b => b);
+        const updateSale = jest.spyOn(FirebaseService, 'updateRetailSale').mockImplementation(async b => asRepo(b, AppState.retailSalesHistory));
         // A name-only edit keeps the stored paise
         setVal('saleCustomerName', 'Sita Devi');
         const kept = await BillingManager.saveEditedBill();

@@ -438,7 +438,7 @@ export class WholesaleSalesManager {
         const { total, profit, profitPercent } = totals;
         const { unknownCost } = totals;
         const split = this.readPaymentSplit();
-        const { cash, online, due } = split;
+        const { cash, online } = split;
         
         // The bill's day (#147), fixed by the first attempt (a retry is written identically)
         const day = pickedBillDay('wholesaleDate');
@@ -488,9 +488,9 @@ export class WholesaleSalesManager {
                 comments,
                 type: 'wholesale',
                 // Top-level copies keep readPayment(), the cash drawer and Outstanding in step
+                // (the dueAmount mirror is added by the repository, repos/bill-due.js)
                 onlinePayment: online,
                 cashPayment: cash,
-                dueAmount: due,
                 payment: buildPaymentSplit(split),
                 date: pending.date,
                 timestamp: pending.timestamp,

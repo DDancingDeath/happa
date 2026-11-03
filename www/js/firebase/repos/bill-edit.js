@@ -17,6 +17,7 @@ import { noteStockWrite } from '../core/stock-checkpoint.js';
 import { isActiveBill } from '../../utils/money.js';
 import { getWithRetry } from '../core/reads.js';
 import { billEditsRef, keepEditCount, keepStoredCreatedAt } from './bill-fields.js';
+import { withCanonicalDue } from './bill-due.js';
 
 /**
  * Overwrites an existing bill only if its payments did not change on the
@@ -48,6 +49,7 @@ export async function updateBillChecked(collKey, record, { reason = null } = {})
             );
         }
         if (stored) keepStoredCreatedAt(record, stored);
+        withCanonicalDue(record, stored, { full: true });
         const changes = stored ? billEditChanges(stored, record) : null;
         if (changes && hasEditChanges(changes)) {
             if (!why) throw Object.assign(new Error('A reason is needed to change this bill'), { code: 'reason-required' });

@@ -31,6 +31,7 @@ import { billAgeOrder, dueEvents, partyDues, sumDueEvents } from '../utils/due-p
 import { allocateOldestFirst, checkAllocation } from '../utils/calc/billing.js';
 import { normalizePartyName } from '../utils/aging.js';
 import { outstandingDue } from '../utils/money.js';
+import { withCanonicalDue } from '../firebase/repos/bill-due.js';
 
 const bill = (id, customerName, due, ts, extra = {}) => ({
     id, billNumber: `R-${id}`, customerName, total: due + 100, timestamp: ts, date: '01/10/2026',
@@ -41,7 +42,7 @@ function serverTx(server) {
     updateBillsInTransaction.mockImplementation(async (collKey, ids, change) => {
         const fresh = ids.map(id => JSON.parse(JSON.stringify(server[id])));
         const out = change(fresh);
-        out.bills.forEach((fields, i) => { if (fields) server[ids[i]] = { ...server[ids[i]], ...fields }; });
+        out.bills.forEach((fields, i) => { if (fields) server[ids[i]] = { ...server[ids[i]], ...withCanonicalDue(fields, fresh[i]) }; });
         return out.result;
     });
 }
@@ -246,7 +247,7 @@ describe('Receive payment dialog', () => {
         updateBillsInTransaction.mockImplementationOnce(async (collKey, ids, change) => {
             const fresh = ids.map(id => JSON.parse(JSON.stringify(server[id])));
             const out = change(fresh);
-            out.bills.forEach((fields, i) => { if (fields) server[ids[i]] = { ...server[ids[i]], ...fields }; });
+            out.bills.forEach((fields, i) => { if (fields) server[ids[i]] = { ...server[ids[i]], ...withCanonicalDue(fields, fresh[i]) }; });
             throw Object.assign(new Error('deadline'), { code: 'deadline-exceeded' });
         });
         AppState.retailSalesHistory = [server.r1, server.r2];

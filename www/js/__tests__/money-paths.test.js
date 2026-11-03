@@ -21,6 +21,10 @@ import { readPayment, NAME_REQUIRED_FOR_DUE_KEY, KEPT_SERVER_PAYMENT_KEY } from 
 import { t } from '../i18n/index.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 import { sampleItems } from '../../../tests/fixtures/sample-items.js';
+import { withCanonicalDue } from '../firebase/repos/bill-due.js';
+
+/** The repository's part of a new bill's save: the dueAmount mirror of payment.due (repos/bill-due.js). */
+const asSaved = (b) => withCanonicalDue(b, null, { full: true });
 
 const PURCHASE_DOM = `
   <select id="billItem"><option value=""></option><option value="0">Rice</option><option value="1">Wheat</option></select>
@@ -74,7 +78,7 @@ describe('new purchase save', () => {
     let savePurchase;
     beforeEach(() => {
         document.body.innerHTML = PURCHASE_DOM;
-        savePurchase = jest.spyOn(FirebaseService, 'savePurchase').mockResolvedValue(undefined);
+        savePurchase = jest.spyOn(FirebaseService, 'savePurchase').mockImplementation(async (b) => { asSaved(b); });
     });
 
     async function addLine(index, rate, weights) {
@@ -288,7 +292,7 @@ describe('new retail sale save', () => {
     let saveRetailSale;
     beforeEach(() => {
         document.body.innerHTML = SALE_DOM;
-        saveRetailSale = jest.spyOn(FirebaseService, 'saveRetailSale').mockResolvedValue(undefined);
+        saveRetailSale = jest.spyOn(FirebaseService, 'saveRetailSale').mockImplementation(async (b) => { asSaved(b); });
         // Enough stock so the oversell confirmation does not appear
         AppState.stock = { 'item-rice': { quantity: 500 }, 'item-wheat': { quantity: 500 } };
     });
