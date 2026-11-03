@@ -182,8 +182,8 @@ const NavigationManager = {
         const links = document.querySelectorAll('.nav-menu a');
         links.forEach(link => {
             link.classList.remove('active');
-            // Check if this link's onclick contains the tabId
-            const onclick = link.getAttribute('onclick');
+            // Check if this link's data-onclick contains the tabId
+            const onclick = link.getAttribute('data-onclick');
             if (onclick && onclick.includes(`'${tabId}'`)) {
                 link.classList.add('active');
             }

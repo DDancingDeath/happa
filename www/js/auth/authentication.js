@@ -581,7 +581,7 @@ const AuthManager = {
         // Hide/show nav menu items
         const navItems = document.querySelectorAll('.nav-menu a');
         navItems.forEach(item => {
-            const onclick = item.getAttribute('onclick');
+            const onclick = item.getAttribute('data-onclick');
             const tabId = onclick?.match(/showTab\('([^']+)'/)?.[1];
             if (tabId) {
                 if (['money', 'insights', 'statements', 'wholesale-sales'].includes(tabId)) {

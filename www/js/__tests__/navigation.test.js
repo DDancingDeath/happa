@@ -4,8 +4,8 @@ describe('setActiveNavLink (#111)', () => {
     test('highlights only the link for the given tab (startup Billing)', () => {
         document.body.innerHTML = `
             <ul class="nav-menu">
-                <li><a href="#" class="active" onclick="window.app.nav.showTab('day', event)">Day</a></li>
-                <li><a href="#" onclick="window.app.nav.showTab('billing', event)">Billing</a></li>
+                <li><a href="#" class="active" data-onclick="nav.showTab('day', event)">Day</a></li>
+                <li><a href="#" data-onclick="nav.showTab('billing', event)">Billing</a></li>
             </ul>`;
         NavigationManager.setActiveNavLink('billing');
         const active = [...document.querySelectorAll('.nav-menu a.active')].map(a => a.textContent);
@@ -19,9 +19,9 @@ describe('back button returns to the previous tab (F17)', () => {
         AppState.userRole = 'owner';
         document.body.innerHTML = `
             <div class="side-nav" id="sideNav"><nav class="nav-menu">
-                <a href="#" onclick="window.app.nav.showTab('billing', event)">Billing</a>
-                <a href="#" onclick="window.app.nav.showTab('stock', event)">Stock</a>
-                <a href="#" onclick="window.app.nav.showTab('history', event)">History</a>
+                <a href="#" data-onclick="nav.showTab('billing', event)">Billing</a>
+                <a href="#" data-onclick="nav.showTab('stock', event)">Stock</a>
+                <a href="#" data-onclick="nav.showTab('history', event)">History</a>
             </nav></div>
             <div class="overlay" id="overlay"></div>
             <div class="tab" id="billing"></div><div class="tab" id="stock"></div><div class="tab" id="history"></div>`;
