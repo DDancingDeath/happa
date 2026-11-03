@@ -416,7 +416,7 @@ export const InsightsManager = {
         let stoppedHtml;
         if (!lyCheck.known) {
             stoppedHtml = `<div class="ins-caveat">⚠ ${esc(t('ui.insights.stopped_unknown'))}</div>`
-                + `<button type="button" class="btn btn-secondary" onclick="window.app.insights.loadOlder()">${esc(t('ui.money.load_older'))}</button>`;
+                + `<button type="button" class="btn btn-secondary" data-onclick="insights.loadOlder()">${esc(t('ui.money.load_older'))}</button>`;
         } else if (stopped.length) {
             stoppedHtml = stopped.slice(0, 20).map(p => `<div class="ins-row"><span>${esc(p.name)}</span><span>${esc(p.last
                 ? t('ui.insights.last_on', { date: formatDay(p.last, { lang }) })

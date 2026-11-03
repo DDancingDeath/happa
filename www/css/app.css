@@ -4076,6 +4076,10 @@ body.dark-mode .stock-row__qty {
   white-space: nowrap;
 }
 
+/* Stock search box (was its inline style) and its focus ring, which was inline onfocus / onblur (#89) */
+#stockSearchInput { width: 100%; padding: 14px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 15px; transition: all 0.2s; }
+#stockSearchInput:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+
 /* ---- css/reports.css ---- */
 /* ==================== REPORTS PAGE STYLES ==================== */
 
