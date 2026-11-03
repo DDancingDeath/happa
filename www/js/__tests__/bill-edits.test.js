@@ -5,8 +5,11 @@
  * reads bills.
  */
 import {
-    billEditChanges, hasEditChanges, describeEdit, editHeading, editLines, cleanReason, voidBlocker, editCountOf, nextEditNumber, editRecord
+    billEditChanges, hasEditChanges, describeEdit, editHeading, editLines, cleanReason, voidBlocker, editCountOf, nextEditNumber, editRecord, isDueBackfillEdit
 } from '../utils/bill-edits.js';
+import { dueBackfillFields } from '../firebase/repos/bill-due.js';
+import { legacyBill, SHAPES, TYPES } from '../../../tests/fixtures/due-shapes.js';
+import { t } from '../i18n/index.js';
 import { activeBills, activityBills, isActiveBill, outstandingDue } from '../utils/money.js';
 import { saleTimePayment, dueEvents } from '../utils/due-payments.js';
 import { buildAging } from '../utils/aging.js';
@@ -146,5 +149,48 @@ describe('isActiveBill: a voided bill counts in no calculation (#75)', () => {
         expect(partyChoices(src, 'customer')).toEqual([{ key: 'ramesh', name: 'Ramesh', count: 1 }]);
         const bad = { ...VOIDED, payments: [{ amount: 999, cash: 999 }] };
         expect(checkPayments({ retailSales: [bad] }).checked).toBe(0);
+    });
+});
+
+describe('the due backfill\'s edit record (#126) reads as one line, not as a due change', () => {
+    const REASON_EN = t('ui.edits.due_backfill_reason', null, 'en');
+    const REASON_HI = t('ui.edits.due_backfill_reason', null, 'hi');
+    const LINE = 'Due stored in one place — no amount changed';
+
+    test('the three shapes it writes: a stale dueAmount, a due filled with a copy, a ₹0 due filled', () => {
+        const shapes = [
+            { dueAmount: { before: 650, after: 600 } },
+            { payment: { before: null, after: { due: 600 } }, dueAmount: { before: '600', after: 600 } },
+            { payment: { before: { cash: 500, online: 0 }, after: { cash: 500, online: 0, due: 0 } }, dueAmount: { before: '0', after: 0 } }
+        ];
+        // Before #126's display fix these read "Due: ₹650 → ₹600", "Due: — → ₹600", "Due: — → ₹0"
+        shapes.forEach(fields => {
+            expect(describeEdit({ reason: REASON_EN, fields }, 'en')).toEqual([LINE]);
+            expect(describeEdit({ reason: REASON_HI, fields }, 'hi')).toEqual([t('ui.edits.due_backfill_line', null, 'hi')]);
+            expect(describeEdit({ reason: 'Wrong due', fields }, 'en')).not.toEqual([LINE]);
+        });
+    });
+
+    test('every record the backfill writes is recognised', () => {
+        TYPES.forEach(type => SHAPES.forEach(shape => {
+            const bill = legacyBill({ id: 'x', type, shape, total: 1000, cash: 300, online: 100 });
+            const need = dueBackfillFields(bill);
+            if (!need?.fields) return;
+            const edit = editRecord({ n: 1, at: 1, by: 'o1', reason: REASON_EN, changes: billEditChanges(bill, { ...bill, ...need.fields }) });
+            expect([type, shape, isDueBackfillEdit(edit)]).toEqual([type, shape, true]);
+        }));
+    });
+
+    test('an edit with that reason that changes a number, or anything else, is described in full', () => {
+        const forged = [
+            { payment: { before: { cash: 0, due: 500 }, after: { cash: 0, due: 400 } } },
+            { payment: { before: { cash: 0 }, after: { cash: 100, due: 400 } } },
+            { payment: { before: null, after: { due: 600 } }, dueAmount: { before: 600, after: 500 } },
+            { dueAmount: { before: 650, after: 600 }, customerName: { before: 'A', after: 'B' } }
+        ];
+        forged.forEach(fields => {
+            expect(isDueBackfillEdit({ reason: REASON_EN, fields })).toBe(false);
+            expect(describeEdit({ reason: REASON_EN, fields }, 'en')).not.toEqual([LINE]);
+        });
     });
 });

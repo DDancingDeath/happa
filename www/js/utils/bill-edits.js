@@ -212,6 +212,35 @@ const valueText = (/** @type {*} */ v, /** @type {'en'|'hi'|undefined} */ lang) 
 const dayText = (/** @type {*} */ v, /** @type {'en'|'hi'|undefined} */ lang) => formatDayTime(v, { lang }) || t('ui.edits.empty_value', null, lang);
 const lineText = (/** @type {Rec} */ v, /** @type {'en'|'hi'|undefined} */ lang) => t('ui.edits.line_value', { qty: v.qty, rate: formatRupees(v.rate) }, lang);
 
+/** A finite number. */
+const isNum = (/** @type {*} */ v) => typeof v === 'number' && Number.isFinite(v);
+
+/**
+ * Whether a stored edit is the owner's due backfill (#126, DUE-BACKFILL): its reason in either
+ * language, and a change that only stores the due once (number-neutral): nothing but `payment` /
+ * `dueAmount`; `payment` changes only in `due`, filled where there was no number; every new due the
+ * same number. Any other edit with that reason is described in full.
+ * @param {Rec} edit stored edit record
+ * @returns {boolean}
+ */
+export function isDueBackfillEdit(edit) {
+    const reason = String(edit?.reason || '').trim();
+    if (!['en', 'hi'].some(l => t('ui.edits.due_backfill_reason', null, /** @type {'en'|'hi'} */ (l)) === reason)) return false;
+    const fields = edit?.fields || {};
+    const keys = Object.keys(fields);
+    if (!keys.length || keys.some(k => k !== 'payment' && k !== 'dueAmount')) return false;
+    /** @type {Array<*>} */
+    const dues = [];
+    if (fields.payment) {
+        const before = fields.payment.before && typeof fields.payment.before === 'object' ? fields.payment.before : {};
+        const after = fields.payment.after && typeof fields.payment.after === 'object' ? fields.payment.after : {};
+        const rest = (/** @type {Rec} */ m) => Object.keys(m).filter(k => k !== 'due').sort().map(k => `${k}:${JSON.stringify(m[k])}`).join('|');
+        if (isNum(before.due) || rest(before) !== rest(after)) return false;
+        dues.push(after.due);
+    }
+    if (fields.dueAmount) dues.push(fields.dueAmount.after);
+    return dues.every(d => isNum(d) && d === dues[0]);
+}
 /**
  * Plain-text lines for one stored edit (caller escapes): what changed, field
  * by field, then item by item. Totals stored in several fields show once.
@@ -220,6 +249,7 @@ const lineText = (/** @type {Rec} */ v, /** @type {'en'|'hi'|undefined} */ lang)
  * @returns {string[]}
  */
 export function describeEdit(edit, lang) {
+    if (isDueBackfillEdit(edit)) return [t('ui.edits.due_backfill_line', null, lang)];
     const fields = edit?.fields || {};
     const out = [];
     const change = (/** @type {string} */ labelKey, /** @type {*} */ before, /** @type {*} */ after) => {

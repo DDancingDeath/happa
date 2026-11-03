@@ -2782,6 +2782,7 @@ export default {
     'ui.diag.a_void_bill': "बिल रद्द",
     'ui.edits.retry_reason': "पहली बार सहेजने की पुष्टि से पहले बदला गया",
     'ui.edits.due_backfill_reason': "बकाया एक जगह दर्ज किया; कोई रकम नहीं बदली",
+    'ui.edits.due_backfill_line': "बकाया एक जगह दर्ज — कोई रकम नहीं बदली",
     'ui.status.tab': "स्थिति",
     'ui.status.intro': "यह फ़ोन अभी। यहाँ कुछ भी सर्वर से नहीं पढ़ा जाता।",
     'ui.status.copy': "स्थिति कॉपी करें",

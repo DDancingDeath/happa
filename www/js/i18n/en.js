@@ -2782,6 +2782,7 @@ export default {
     'ui.diag.a_void_bill': "Void Bill",
     'ui.edits.retry_reason': "Changed before the first save was confirmed",
     'ui.edits.due_backfill_reason': "Due stored in one place; no amount changed",
+    'ui.edits.due_backfill_line': "Due stored in one place — no amount changed",
     'ui.status.tab': "Status",
     'ui.status.intro': "This phone right now. Nothing here is read from the server.",
     'ui.status.copy': "Copy status",

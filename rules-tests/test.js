@@ -263,7 +263,8 @@ function defineSuite(prefix) {
 
     // ---- due backfill (#126: the owner stores each bill's due once, in payment.due) ----
 
-    t('due backfill: the owner writes payment.due (and its dueAmount mirror) on an old bill, with its edit record; a manager or member cannot', async () => {
+    // The rules don't single out the backfill: it is an edit-logged write. The app offers it to the owner only.
+    t('due backfill: the owner writes payment.due (and its dueAmount mirror) on any bill, with its edit record; a manager, or a member on their own bill, only inside the edit window', async () => {
         for (const coll of bills) {
             await seedBill(coll, 'legacy', { total: 1000, cashPayment: 400, onlinePayment: 0, dueAmount: '600' });
             await seedBill(coll, 'drift', { userId: 'staff1', total: 1000, payment: { cash: 400, online: 0, due: 600, total: 1000 }, dueAmount: 650, ...fresh() });
@@ -278,6 +279,11 @@ function defineSuite(prefix) {
             await assertSucceeds(logged('legacyOwner', coll, 'drift', 1, mirror, { cv: 5 }));
             await seedBill(coll, 'legacy2', { total: 1000, cashPayment: 400, onlinePayment: 0, dueAmount: '600' });
             for (const uid of ['staff1', 'manager1']) await assertFails(logged(uid, coll, 'legacy2', 1, fix, { cv: 5 }));
+            // Inside the edit window the same logged write is an ordinary edit: a member on their own bill, a manager on any
+            for (const uid of ['staff1', 'manager1']) {
+                await seedBill(coll, `in-${uid}`, { userId: 'staff1', total: 1000, payment: { cash: 400, online: 0, due: 600, total: 1000 }, dueAmount: 650, ...fresh() });
+                await assertSucceeds(logged(uid, coll, `in-${uid}`, 1, { dueAmount: 600 }, { cv: 5 }));
+            }
         }
     });
     t('members can\'t create a bill that is voided or has an edit count', async () => {

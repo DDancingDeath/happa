@@ -52,12 +52,21 @@ describe('DUE-BACKFILL', () => {
         const once = backfill(bills);
         expect(screenFigures(once.bills)).toEqual(screenFigures(bills));
         once.bills.filter(isActiveBill).forEach(b => {
+            // Left as they are: nothing owed and no dueAmount copy
+            if (!('dueAmount' in b) && readPayment(b).due === 0 && typeof b.payment?.due !== 'number') return;
             expect(typeof b.payment.due).toBe('number');
             if ('dueAmount' in b) expect(b.dueAmount).toBe(b.payment.due);
         });
         expect(backfill(once.bills)).toEqual({ bills: once.bills, writes: 0 });
     });
 
+    test('a bill with nothing owed and no dueAmount copy is not written (no noise)', () => {
+        expect(dueBackfillFields({ id: 'z', type: 'retail', total: 500 })).toBeNull();
+        expect(dueBackfillFields({ id: 'z', type: 'retail', total: 500, amountPaid: 500 })).toBeNull();
+        expect(dueBackfillFields({ id: 'z', type: 'retail', total: 500, payment: { cash: 500, due: null } })).toBeNull();
+        expect(dueBackfillFields({ id: 'z', type: 'retail', total: 500, cashPayment: 500, dueAmount: 0 })).toMatchObject({ reason: 'missing', fields: { payment: { due: 0 }, dueAmount: 0 } });
+        expect(dueBackfillFields({ id: 'z', type: 'retail', total: 500, amountPaid: 100 })).toMatchObject({ reason: 'missing', fields: { payment: { due: 400 } } });
+    });
     test('a payment stored as something else than a map, or a NaN where the write goes, is never written; reported as changes', () => {
         const base = legacyBill({ id: 'x', type: 'retail', shape: 'topOnly', total: 1000, cash: 400, online: 0 });
         for (const payment of ['cash', [{ amount: 400 }], 7]) {

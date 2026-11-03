@@ -71,6 +71,8 @@ export function dueBackfillFields(bill) {
     const due = numeric ? stored : readPayment(bill).due;
     const mirrorOff = Object.prototype.hasOwnProperty.call(bill, 'dueAmount') && bill.dueAmount !== due;
     if (numeric && !mirrorOff) return null;
+    // Nothing owed and no other copy: storing `due: 0` changes nothing anyone reads
+    if (!numeric && due === 0 && !Object.prototype.hasOwnProperty.call(bill, 'dueAmount')) return null;
     // A `payment` stored as something else than a map, or a NaN / Infinity where the write goes (no
     // edit record can match it: the rules see NaN != NaN), is left for a person to look at
     const nonFinite = (v) => typeof v === 'number' && !Number.isFinite(v);
