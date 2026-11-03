@@ -51,6 +51,8 @@ export class AuditService {
         HIDE_ERRORS: 'HIDE_ERRORS',
         // Owner checked a backup file on the phone, read-only (#63): details.recordsChecked, date
         BACKUP_CHECK: 'BACKUP_CHECK',
+        // Owner stored each bill's due once in payment.due (#126): details.checked, written, failed, missing, notNumber, mirror
+        DUE_BACKFILL: 'DUE_BACKFILL',
         // A file or shared text left the app (#103): details.exportKind, format, from, to, rows
         EXPORT: 'EXPORT',
         

@@ -515,6 +515,14 @@ const AdminManager = {
                 </details>
             </div>
 
+            <div class="settings-card" id="adminDueFields">
+                <h3>🧾 ${tx('ui.duefix.title')}</h3>
+                <p class="setting-description">${tx('ui.duefix.hint')}</p>
+                <button class="add-item-btn" data-onclick="admin.checkDueFields()" style="padding: 8px 16px; margin-bottom: 12px;">
+                    🔎 ${tx('ui.duefix.check')}
+                </button>
+                <div id="adminDueFieldsResult" aria-live="polite">${this.dueFieldsLastRunHtml()}</div>
+            </div>
             <div class="settings-card danger-zone">
                 <h4>⚠️ ${tx('ui.admin.danger_zone')}</h4>
                 <p>${tx('ui.admin.danger_hint')}</p>
@@ -530,6 +538,69 @@ const AdminManager = {
         }
     },
 
+    /** The last due backfill (DUE-BACKFILL, #126) as recorded, for the Data tab. */
+    dueFieldsLastRunHtml() {
+        const last = FirebaseService.dueBackfillState?.();
+        if (!last) return '';
+        return `<p class="setting-description">${tx('ui.duefix.last_run', { date: formatDayTime(last.at, { lang: getLang() }) || '', written: last.written || 0 })}</p>`;
+    },
+
+    /**
+     * DUE-BACKFILL check (#126), a dry run: reads every bill once and says how many store their due
+     * other than once, as a number in payment.due. Writes nothing.
+     */
+    async checkDueFields() {
+        if (AppState.userRole !== 'owner' || Helpers.isBusy('due-fields')) return;
+        if (!(await UIManager.showModal(t('msg.duefix.check_confirm'), t('ui.duefix.title'), true))) return;
+        const box = document.getElementById('adminDueFieldsResult');
+        await Helpers.runExclusive('due-fields', '#adminDueFields button', async () => {
+            try {
+                if (box) box.textContent = t('ui.duefix.checking');
+                const check = await FirebaseService.checkDueFields();
+                this.dueFieldsCheck = check;
+                if (!box) return;
+                const count = check.todo.length;
+                box.innerHTML = `<p>${tx('ui.duefix.checked', { checked: check.checked })}</p>`
+                    + (count
+                        ? `<p>${tx('ui.duefix.todo', { count, missing: check.byReason.missing, notNumber: check.byReason.notNumber, mirror: check.byReason.mirror })}</p>
+                           <button class="add-item-btn" data-onclick="admin.backfillDueFields()" style="padding: 8px 16px;">✅ ${tx('ui.duefix.run', { count })}</button>`
+                        : `<p>${tx('ui.duefix.none')}</p>`)
+                    + (check.changes.length ? `<p>${tx('ui.duefix.changes', { count: check.changes.length })}</p>` : '');
+            } catch (error) {
+                console.error('Due check failed:', error);
+                if (box) box.textContent = t(error?.code === 'unavailable' ? 'msg.duefix.offline' : 'msg.duefix.failed');
+            }
+        });
+    },
+
+    /**
+     * DUE-BACKFILL (#126): stores the due once in payment.due on the bills the check listed
+     * (each re-read in a transaction, so a payment meanwhile is kept), with one audit entry.
+     * No figure on any screen changes.
+     */
+    async backfillDueFields() {
+        const check = this.dueFieldsCheck;
+        if (AppState.userRole !== 'owner' || Helpers.isBusy('due-fields') || !check?.todo.length) return;
+        const count = check.todo.length;
+        if (!(await UIManager.showModal(t('msg.duefix.run_confirm', { count }), t('ui.duefix.title'), true))) return;
+        const box = document.getElementById('adminDueFieldsResult');
+        await Helpers.runExclusive('due-fields', '#adminDueFields button', async () => {
+            try {
+                if (box) box.textContent = t('ui.duefix.running');
+                const result = await FirebaseService.backfillDueFields(check.todo, check.checked);
+                this.dueFieldsCheck = null;
+                AuditService.note(AuditService.ACTIONS.DUE_BACKFILL, {
+                    checked: check.checked, listed: count, written: result.written, failed: result.failed, ...check.byReason
+                });
+                if (box) {
+                    box.textContent = t(result.failed ? 'ui.duefix.done_failed' : 'ui.duefix.done', { written: result.written, failed: result.failed });
+                }
+            } catch (error) {
+                console.error('Due backfill failed:', error);
+                if (box) box.textContent = t('msg.duefix.failed');
+            }
+        });
+    },
     /**
      * The text of a chosen backup file (#63): a .json, or a .json.gz unpacked on the
      * phone; an encrypted .enc file is refused (decrypt it first, tools/backup/README.md).

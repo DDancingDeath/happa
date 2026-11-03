@@ -11,7 +11,7 @@
  * @module utils/bill-edits
  */
 
-import { formatRupees, isActiveBill, readLineItem } from './money.js';
+import { formatRupees, isActiveBill, readLineItem, round2, toMoney } from './money.js';
 import { formatDayTime } from './dates.js';
 import { t } from '../i18n/index.js';
 
@@ -212,6 +212,48 @@ const valueText = (/** @type {*} */ v, /** @type {'en'|'hi'|undefined} */ lang) 
 const dayText = (/** @type {*} */ v, /** @type {'en'|'hi'|undefined} */ lang) => formatDayTime(v, { lang }) || t('ui.edits.empty_value', null, lang);
 const lineText = (/** @type {Rec} */ v, /** @type {'en'|'hi'|undefined} */ lang) => t('ui.edits.line_value', { qty: v.qty, rate: formatRupees(v.rate) }, lang);
 
+/** A finite number. */
+const isNum = (/** @type {*} */ v) => typeof v === 'number' && Number.isFinite(v);
+
+/**
+ * The fields of `keys` an edit record holds although the edit leaves them as they are ({before,
+ * after} equal; the rules allow any recorded field with its true values): what the due backfill
+ * adds so its record proves which due the bill showed before (isDueBackfillEdit).
+ * @param {ReturnType<typeof billEditChanges>} changes
+ * @param {Rec} bill the bill as stored
+ * @param {string[]} keys recorded fields (EDIT_FIELDS)
+ * @returns {ReturnType<typeof billEditChanges>}
+ */
+export function withUnchangedFields(changes, bill, keys) {
+    const fields = { ...(changes?.fields || {}) };
+    keys.filter(k => EDIT_FIELDS.includes(k) && !fields[k] && bill && Object.prototype.hasOwnProperty.call(bill, k))
+        .forEach(k => { fields[k] = { before: stored(bill[k]), after: stored(bill[k]) }; });
+    return { fields };
+}
+
+/**
+ * Whether a stored edit is the owner's due backfill (#126, DUE-BACKFILL) and provably moved no
+ * figure, so it can read as one line: its reason in either language; nothing but `payment` /
+ * `dueAmount` recorded; `payment` recorded and changed in `due` only; the due the bill showed
+ * before (BILL-PAY: `payment.due`, else `dueAmount`, as recorded) equal to the new `payment.due`;
+ * a recorded `dueAmount` ending equal to it. Anything else, also with that reason (any editor can
+ * type it), is described in full.
+ * @param {Rec} edit stored edit record
+ * @returns {boolean}
+ */
+export function isDueBackfillEdit(edit) {
+    const reason = String(edit?.reason || '').trim();
+    if (!['en', 'hi'].some(l => t('ui.edits.due_backfill_reason', null, /** @type {'en'|'hi'} */ (l)) === reason)) return false;
+    const fields = edit?.fields || {};
+    if (!fields.payment || Object.keys(fields).some(k => k !== 'payment' && k !== 'dueAmount')) return false;
+    const before = fields.payment.before && typeof fields.payment.before === 'object' ? fields.payment.before : {};
+    const after = fields.payment.after && typeof fields.payment.after === 'object' ? fields.payment.after : {};
+    const rest = (/** @type {Rec} */ m) => Object.keys(m).filter(k => k !== 'due').sort().map(k => `${k}:${JSON.stringify(m[k])}`).join('|');
+    if (rest(before) !== rest(after) || !isNum(after.due)) return false;
+    const shown = toMoney(before.due) ?? (fields.dueAmount ? toMoney(fields.dueAmount.before) : null);
+    if (shown === null || round2(shown) !== after.due) return false;
+    return !fields.dueAmount || fields.dueAmount.after === after.due;
+}
 /**
  * Plain-text lines for one stored edit (caller escapes): what changed, field
  * by field, then item by item. Totals stored in several fields show once.
@@ -220,6 +262,7 @@ const lineText = (/** @type {Rec} */ v, /** @type {'en'|'hi'|undefined} */ lang)
  * @returns {string[]}
  */
 export function describeEdit(edit, lang) {
+    if (isDueBackfillEdit(edit)) return [t('ui.edits.due_backfill_line', null, lang)];
     const fields = edit?.fields || {};
     const out = [];
     const change = (/** @type {string} */ labelKey, /** @type {*} */ before, /** @type {*} */ after) => {

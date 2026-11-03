@@ -23,7 +23,7 @@ import { settingsMethods } from './repos/settings.js';
 import { settleWrite } from './core/write-settle.js';
 import { installFirestoreMeter } from './firestore-meter.js';
 import { historyWindowMethods } from './core/history-window.js';
-import { legacyScanMethods } from './core/legacy-scan.js';
+import { dueBackfillMethods, legacyScanMethods } from './core/legacy-scan.js';
 import { stockCheckpointMethods } from './core/stock-checkpoint.js';
 import { stockMethods } from './core/stock.js';
 import { billMethods } from './repos/bills.js';
@@ -108,6 +108,7 @@ const FirebaseService = {
     ...stockCheckpointMethods,
 
     ...legacyScanMethods,
+    ...dueBackfillMethods,
 
     ...stockRecordMethods,
 

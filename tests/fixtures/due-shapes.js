@@ -100,6 +100,16 @@ export const byType = (bills) => ({
     wholesale: bills.filter(b => b.type === 'wholesale')
 });
 
+/** Figures only: a bill object inside a result (a list row's `bill`) stands for its id. */
+const figuresOnly = (v) => {
+    if (Array.isArray(v)) return v.map(figuresOnly);
+    if (v && typeof v === 'object') {
+        if ('id' in v && ('items' in v || 'customerName' in v)) return `bill:${v.id}`;
+        return Object.fromEntries(Object.keys(v).sort().map(k => [k, figuresOnly(v[k])]));
+    }
+    return v;
+};
+
 /**
  * Every due figure the screens show for these bills: Outstanding (O3/O4, aging per party),
  * the "Already owes ₹X" line, the party statements (ST3), Today (T*) and the cash day (C1–C6),
@@ -109,7 +119,7 @@ export function screenFigures(bills) {
     const t = byType(bills);
     const src = { purchases: t.purchase, retailSales: t.retail, wholesaleSales: t.wholesale };
     const parties = [...new Set(bills.map(b => normalizePartyName(b.customerName)))].sort();
-    return {
+    return figuresOnly({
         perBill: bills.map(b => [b.id, readPayment(b), outstandingDue(b)]),
         outstanding: outstandingTotals(src),
         aging: ['purchase', 'retail', 'wholesale'].map(k => buildAging(t[k], { today: TODAY }).parties.map(p => [p.key, p.total, p.bills.length])),
@@ -117,5 +127,5 @@ export function screenFigures(bills) {
         statements: parties.flatMap(key => ['customer', 'supplier'].map(kind => partyLedger(src, key, kind))),
         today: todaySummary({ bills: t, today: TODAY }),
         cashDay: drawerDay({ date: TODAY_ISO, bills: t })
-    };
+    });
 }

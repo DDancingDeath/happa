@@ -3,15 +3,16 @@
  * numeric `timestamp` (or `openDue`) are invisible to the window and dues queries; owner and
  * manager phones find them in the background after the first screen and write the missing
  * fields (stockCheckpoints/legacyScan records how far each collection got). Moved verbatim out
- * of firestore-service.js (docs/architecture.md, phase 5, #69).
+ * of firestore-service.js (docs/architecture.md, phase 5, #69). Also the owner's one-time due
+ * backfill (DUE-BACKFILL, #126): a check, then the bills whose due is not stored once in payment.due.
  * @module firebase/core/legacy-scan
  */
 
-import { CLIENT_VERSION, col, getDb } from '../db.js';
+import { CLIENT_VERSION, col, getDb, serverCreatedAt } from '../db.js';
 import { S } from './session.js';
 import { defaultWindowStart } from '../../utils/history-range.js';
 import { eventTime } from '../../utils/stock-replay.js';
-import { hasDue, liveIdSet, publishCollection, RETRY_LIMIT_BASE } from './history-window.js';
+import { findRecord, hasDue, liveIdSet, noteLocalRecordWrite, publishCollection, RETRY_LIMIT_BASE } from './history-window.js';
 import { HISTORY_COLLECTIONS, historySpecReadable, mapDoc } from './records.js';
 import { getWithRetry } from './reads.js';
 import { markDirty } from './realtime.js';
@@ -20,6 +21,11 @@ import { markStartup } from '../../utils/startup-timings.js';
 import { LEGACY_SCAN_DELAY_MS, whenIdle } from '../../utils/background-tasks.js';
 import { FirebaseService } from '../firestore-service.js';
 import { CHECKPOINT_COLLECTION } from './stock-checkpoint.js';
+import { dueBackfillChanges, dueBackfillFields } from '../repos/bill-due.js';
+import { billEditsRef } from '../repos/bill-fields.js';
+import { editRecord, nextEditNumber } from '../../utils/bill-edits.js';
+import { t } from '../../i18n/index.js';
+import { AppState } from '../../utils/state.js';
 
 export const LEGACY_SCAN_DOC_ID = 'legacyScan';
 
@@ -223,5 +229,110 @@ export const legacyScanMethods = {
      */
     runLegacyScanNow() {
         return S.legacyScanJob ? S.legacyScanJob.run() : Promise.resolve();
+    }
+};
+
+/** DUE-BACKFILL: its entry in stockCheckpoints/legacyScan ({v, at, checked, written, failed, complete, byUserId}). */
+export const DUE_BACKFILL_KEY = 'dueFields';
+export const DUE_BACKFILL_VERSION = 1;
+
+const ownerOnly = () => {
+    if (AppState.userRole !== 'owner') throw Object.assign(new Error('Only the owner can do this'), { code: 'owner-only' });
+};
+
+/**
+ * One DUE-BACKFILL write, in its own transaction (a bill update with its edit record costs the
+ * rules about 60 expressions and 5 document reads; several bills in one request would pass their
+ * limits): re-reads the bill and, when it still needs it (dueBackfillFields, from this fresh copy),
+ * writes the due fields with clientVersion and its edit record (#121: before/after of payment /
+ * dueAmount, the owner, a fixed reason), so what was replaced stays on the bill.
+ * @returns {Promise<?Object>} the bill as stored now when written; null when gone or not needed
+ */
+async function writeDueBill(collKey, id) {
+    const db = getDb();
+    const ref = db.collection(col(collKey)).doc(String(id));
+    return db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists) return null;
+        const fresh = snap.data() || {};
+        const need = dueBackfillFields(fresh);
+        if (!need?.fields) return null;
+        const n = nextEditNumber(fresh);
+        const fields = { ...need.fields, clientVersion: CLIENT_VERSION, editCount: n };
+        tx.update(ref, fields);
+        tx.set(billEditsRef(ref).doc(String(n)), editRecord({
+            n, at: serverCreatedAt(), by: AppState.currentUser?.uid || null, byName: AppState.userName,
+            reason: t('ui.edits.due_backfill_reason'),
+            changes: dueBackfillChanges(fresh, fields)
+        }));
+        return { id: String(id), ...fresh, ...fields };
+    });
+}
+/** FirebaseService methods of the owner's due backfill (#126); spread into FirebaseService. */
+export const dueBackfillMethods = {
+    /**
+     * DUE-BACKFILL check (a dry run): reads every bill from the server once (one read per bill)
+     * and lists the ones whose due is not stored once as a number in payment.due
+     * (dueBackfillFields). Writes nothing. Owner only; needs a connection.
+     * @returns {Promise<{checked: number, todo: Array<{collKey: string, id: string, reason: string}>, byReason: Object<string, number>, changes: Array<{collKey: string, id: string}>}>}
+     *   changes: bills the backfill would not write because a figure would move (expected: none)
+     */
+    async checkDueFields() {
+        ownerOnly();
+        const db = getDb();
+        const out = { checked: 0, todo: [], byReason: { missing: 0, notNumber: 0, mirror: 0 }, changes: [] };
+        const docs = [];
+        for (const spec of HISTORY_COLLECTIONS.filter(s => s.dues)) {
+            const snap = await getWithRetry(a => (a ? db.collection(col(spec.key)).limit(RETRY_LIMIT_BASE + a) : db.collection(col(spec.key))), `${spec.label} due check`);
+            if (snap.metadata?.fromCache) throw Object.assign(new Error('Offline: bills read from this phone only'), { code: 'unavailable' });
+            snap.docs.forEach(doc => {
+                docs.push(doc.id);
+                const need = dueBackfillFields(doc.data());
+                if (!need) return;
+                if (!need.fields) out.changes.push({ collKey: spec.key, id: doc.id });
+                else out.todo.push({ collKey: spec.key, id: doc.id, reason: need.reason });
+            });
+        }
+        out.checked = docs.length;
+        Object.keys(out.byReason).forEach(r => { out.byReason[r] = out.todo.filter(t => t.reason === r).length; });
+        return out;
+    },
+
+    /**
+     * DUE-BACKFILL: writes the bills a check listed, one transaction each (writeDueBill): re-read and
+     * written only if it still needs it, from that fresh copy, so a payment recorded meanwhile is never
+     * undone; a second run writes nothing; each write has its edit record. A bill that fails is counted
+     * and the others go on. Records the outcome in stockCheckpoints/legacyScan. Owner only;
+     * needs a connection.
+     * @param {Array<{collKey: string, id: string}>} todo - checkDueFields().todo
+     * @param {number} checked - checkDueFields().checked
+     * @returns {Promise<{written: number, failed: number}>}
+     */
+    async backfillDueFields(todo, checked = 0) {
+        ownerOnly();
+        const written = [];
+        const failed = [];
+        for (const { collKey, id } of todo || []) {
+            try {
+                const record = await writeDueBill(collKey, id);
+                if (!record) continue;
+                written.push(id);
+                if (findRecord(collKey, id)) noteLocalRecordWrite(collKey, id, record);
+            } catch (e) {
+                console.warn(`Due backfill: ${collKey}/${id} not written:`, e?.code || e);
+                failed.push(id);
+            }
+        }
+        const entry = { v: DUE_BACKFILL_VERSION, at: Date.now(), checked, written: written.length, failed: failed.length, complete: !failed.length, byUserId: AppState.currentUser?.uid || null };
+        S.legacyScanDoc = { ...(S.legacyScanDoc || {}), [DUE_BACKFILL_KEY]: entry };
+        // Not awaited: offline it is queued and would hold the run open until the phone is back online
+        legacyScanRef().set({ [DUE_BACKFILL_KEY]: entry }, { merge: true })
+            .catch(e => console.warn('Saving due backfill state failed:', e?.code || e));
+        return { written: written.length, failed: failed.length };
+    },
+
+    /** The last DUE-BACKFILL run as recorded in stockCheckpoints/legacyScan (no read), or null. */
+    dueBackfillState() {
+        return S.legacyScanDoc?.[DUE_BACKFILL_KEY] || null;
     }
 };

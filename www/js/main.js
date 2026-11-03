@@ -63,7 +63,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261103zzheal-listener-heal';
+const BUILD_ID = '20261103zzduec-due-backfill';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -1448,6 +1448,8 @@ window.app = {
         deleteUser: (userId, userName) => AdminManager.deleteUser(userId, userName),
         loadStorageStats: () => AdminManager.loadStorageStats(),
         clearAllData: () => AdminManager.clearAllData(),
+        checkDueFields: () => AdminManager.checkDueFields(),
+        backfillDueFields: () => AdminManager.backfillDueFields(),
         checkBackupFile: (file) => AdminManager.checkBackupFile(file),
         // The backup picker: check the chosen file, then clear the input so the same file can be picked again
         checkBackupInput: (input) => {

@@ -14,6 +14,9 @@ Part of the [owner guide](../owner-guide.md) (one file per page). Hindi: [settin
 - **Admin › Users**: approve, change role, Reset Password (emails the person a
   link), Delete (removes access; Restore brings them back as a pending
   registration).
+- **Admin › Data › Bill dues: stored in one place** (owner): **Check bills** reads every bill once
+  and says how many older bills keep their due in an old place; **Store the due** writes it in the one
+  place the app uses. No amount on any screen changes (BILL-PAY); check that a recent backup is good first.
 - **Anomalies**: bills that look wrong (a possible duplicate bill, a rate far off,
   a big cash gap…) and each mismatch the daily number checks found ("Number check: …", on
   its bill, item or cash day); tap "Mark OK" or "Mark fixed" on each.

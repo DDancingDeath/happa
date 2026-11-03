@@ -261,6 +261,36 @@ function defineSuite(prefix) {
         }
     });
 
+    // ---- due backfill (#126: the owner stores each bill's due once, in payment.due) ----
+
+    // The rules don't single out the backfill: it is an edit-logged write. The app offers it to the owner only.
+    t('due backfill: the owner writes payment.due (and its dueAmount mirror) on any bill, with its edit record; a manager, or a member on their own bill, only inside the edit window', async () => {
+        for (const coll of bills) {
+            await seedBill(coll, 'legacy', { total: 1000, cashPayment: 400, onlinePayment: 0, dueAmount: '600' });
+            await seedBill(coll, 'drift', { userId: 'staff1', total: 1000, payment: { cash: 400, online: 0, due: 600, total: 1000 }, dueAmount: 650, ...fresh() });
+            const fix = { payment: { due: 600 }, dueAmount: 600, clientVersion: 5 };
+            const mirror = { payment: { cash: 400, online: 0, due: 600, total: 1000 }, dueAmount: 600, clientVersion: 5 };
+            for (const uid of ['staff1', 'manager1']) {
+                await assertFails(as(uid).collection(coll).doc('legacy').update(fix));
+                await assertFails(as(uid).collection(coll).doc('drift').update(mirror));
+            }
+            // As the app writes it: with its edit record (#121)
+            await assertSucceeds(logged('legacyOwner', coll, 'legacy', 1, fix, { cv: 5 }));
+            await assertSucceeds(logged('legacyOwner', coll, 'drift', 1, mirror, { cv: 5 }));
+            // The app's record also holds the unchanged payment (it proves which due the bill showed)
+            const pay = { cash: 400, online: 0, due: 600, total: 1000 };
+            await seedBill(coll, 'drift2', { userId: 'staff1', total: 1000, payment: pay, dueAmount: 650, ...fresh() });
+            await assertSucceeds(logged('legacyOwner', coll, 'drift2', 1, { dueAmount: 600 }, { cv: 5,
+                rec: { fields: { dueAmount: { before: 650, after: 600 }, payment: { before: pay, after: pay } } } }));
+            await seedBill(coll, 'legacy2', { total: 1000, cashPayment: 400, onlinePayment: 0, dueAmount: '600' });
+            for (const uid of ['staff1', 'manager1']) await assertFails(logged(uid, coll, 'legacy2', 1, fix, { cv: 5 }));
+            // Inside the edit window the same logged write is an ordinary edit: a member on their own bill, a manager on any
+            for (const uid of ['staff1', 'manager1']) {
+                await seedBill(coll, `in-${uid}`, { userId: 'staff1', total: 1000, payment: { cash: 400, online: 0, due: 600, total: 1000 }, dueAmount: 650, ...fresh() });
+                await assertSucceeds(logged(uid, coll, `in-${uid}`, 1, { dueAmount: 600 }, { cv: 5 }));
+            }
+        }
+    });
     t('members can\'t create a bill that is voided or has an edit count', async () => {
         const c = as('staff1').collection(purchases);
         await assertFails(c.doc('n1').set({ userId: 'staff1', total: 5, createdAt: serverTimestamp(), ...voidFields('staff1') }));
