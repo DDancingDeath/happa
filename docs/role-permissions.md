@@ -214,8 +214,9 @@ canDeleteBill    = owner
   - **New bills** never carry `payments`, `paidAt` or `cleared` (the app doesn't send them; they come only
     with payments).
   - **Clearing** (`clearOk`, through `clearFieldsOk`): `cleared` only becomes true with the due settled
-    (≤ 1 paisa, read as `payment.due`, else `dueAmount`, else `due`; a bill with none of them is not
-    cleared) in the same write, `clearedBy` is the caller, and `openDue` goes false only when cleared or
+    (≤ 1 paisa, read as `payment.due`, else `dueAmount`, else `due`; a bill with none of them as a
+    number is not cleared, and `openDue` on it goes false only if it wasn't true) in the same write,
+    `clearedBy` is the caller, and `openDue` goes false only when cleared or
     settled. This holds inside the edit window too: `cleared` / `openDue` are not edit-logged fields, so a
     member's own bill or a manager's edit can't zero a due with them.
   - Limits: bills with no due field at all (very old shapes) take no member payments; the owner

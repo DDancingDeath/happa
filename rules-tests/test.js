@@ -2148,11 +2148,14 @@ function defineSuite(prefix) {
         if (allowed.length) throw new Error(`allowed:\n         ${allowed.join('\n         ')}`);
     });
 
-    t('cleared (#126): legacy bills whose due is a top-level due or worked out from the total are not cleared by flipping cleared', async () => {
+    t('cleared (#126): legacy bills whose due is a top-level due, worked out from the total or not a number are not cleared or hidden by the flags', async () => {
         const allowed = [];
         const legacy = {
             top: { userId: 'manager1', total: 100, due: 100, timestamp: 1, clientVersion: 3 },
-            derived: { userId: 'manager1', total: 100, cashPayment: 40, timestamp: 1, clientVersion: 3 }
+            derived: { userId: 'manager1', total: 100, cashPayment: 40, timestamp: 1, openDue: true, clientVersion: 3 },
+            paid: { userId: 'manager1', total: 100, amountPaid: 10, timestamp: 1, openDue: true, clientVersion: 3 },
+            text: { userId: 'manager1', total: 100, payment: { due: '100' }, timestamp: 1, openDue: true, clientVersion: 3 },
+            nullDue: { userId: 'manager1', total: 100, payment: { due: null }, dueAmount: 100, timestamp: 1, openDue: true, clientVersion: 3 }
         };
         for (const coll of bills) {
             for (const [id, write] of [
@@ -2160,7 +2163,13 @@ function defineSuite(prefix) {
                 ['top', { cleared: true, openDue: false, clientVersion: 3 }],
                 ['top', { openDue: false, clientVersion: 3 }],
                 ['derived', { cleared: true, clearedBy: 'staff1', clientVersion: 3 }],
-                ['derived', { cleared: true, openDue: false, clientVersion: 3 }]
+                ['derived', { cleared: true, openDue: false, clientVersion: 3 }],
+                ['derived', { openDue: false, clientVersion: 3 }],
+                ['paid', { openDue: false, clientVersion: 3 }],
+                ['text', { cleared: true, openDue: false, clientVersion: 3 }],
+                ['text', { openDue: false, clientVersion: 3 }],
+                ['nullDue', { cleared: true, openDue: false, clientVersion: 3 }],
+                ['nullDue', { openDue: false, clientVersion: 3 }]
             ]) {
                 await seedBill(coll, id, legacy[id]);
                 try {
@@ -2171,6 +2180,9 @@ function defineSuite(prefix) {
             }
             await seedBill(coll, 'top', legacy.top);
             await assertSucceeds(as('staff1').collection(coll).doc('top').update({ openDue: true, clientVersion: 3 }));
+            // the legacy backfill still marks a bill with no due field that owes nothing
+            await seedBill(coll, 'none', { userId: 'manager1', total: 100, timestamp: 1, clientVersion: 3 });
+            await assertSucceeds(as('staff1').collection(coll).doc('none').update({ openDue: false, clientVersion: 3 }));
         }
         if (allowed.length) throw new Error(`allowed:\n         ${allowed.join('\n         ')}`);
     });

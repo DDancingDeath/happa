@@ -198,7 +198,7 @@ service cloud.firestore {
       return (!changed.hasAny(['cleared']) || (d.get('cleared', false) == true && due is number && due <= 0.0101))
         && (!changed.hasAny(['clearedBy']) || d.clearedBy == request.auth.uid)
         && (!changed.hasAny(['openDue']) || d.openDue == true || d.get('cleared', false) == true
-            || !(due is number && due > 0.0101));
+            || (due is number ? due <= 0.0101 : resource.data.get('openDue', null) != true));
     }
 
     function clearFieldsOk(changed, d) {
