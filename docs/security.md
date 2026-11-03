@@ -87,7 +87,7 @@ emulator ports in `connect-src` / `frame-src`), and the E2E fixture fails on any
 violation, so every page × role is checked against the enforced policy on each PR.
 `tests/e2e/csp.spec.js` also checks that the header is really enforced (an injected inline
 script and an `onclick=` attribute don't run) and listens for `securitypolicyviolation`
-while the app loads, signs in and opens the main pages, `/download` and `/r/`.
+while the app loads, signs in and opens the main pages, `/download`, `/r/` and the printer test page `/spike/serial.html`. The CI checks cover every HTML file under `www/` (`spike/`, `r.html`, templates included).
 When you add a new external origin, add it to the CSP in
 `firebase.json` in the same PR. `frame-src` must name the project's `authDomain`
 (the test reads it from `www/firebaseConfig.js`), so a project change updates it too.

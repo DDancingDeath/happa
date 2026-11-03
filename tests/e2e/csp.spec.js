@@ -70,6 +70,11 @@ test('no CSP violation on load, sign-in and the main pages', async ({ page, prob
     await expect(page.locator('#rh')).toContainText('Tenant E2E');
     expect(await violations(page), '/r/<token>').toEqual([]);
 
+    // The owner's Windows printer test page (#133): its module script and imports run under the policy.
+    await page.goto('/spike/serial.html', { waitUntil: 'load' });
+    await expect(page.locator('#support')).not.toBeEmpty();
+    expect(await violations(page), '/spike/serial.html').toEqual([]);
+
     expect(problems.pageErrors).toEqual([]);
     expect(problems.consoleErrors).toEqual([]);
 });

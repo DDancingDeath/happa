@@ -79,8 +79,21 @@ function codeOrigins() {
 // Script types that are data, not code (anything else, importmap and speculationrules included, is governed by script-src).
 const DATA_SCRIPT = /^(application\/(ld\+)?json|text\/(template|html|plain|x-[\w-]+))$/i;
 
+/** Every HTML file under www/ at any depth (spike/, r/, templates/, vendor/ too), so a new page can't slip past the CSP checks. */
+function allHtml(dir = path.join(ROOT, 'www'), files = []) {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) {
+            if (e.name !== '__tests__' && e.name !== 'node_modules') allHtml(p, files);
+        } else if (/\.html?$/i.test(e.name)) {
+            files.push(p);
+        }
+    }
+    return files;
+}
+
 function scriptTags() {
-    return walk(path.join(ROOT, 'www')).filter((f) => f.endsWith('.html')).flatMap((file) =>
+    return allHtml().flatMap((file) =>
         [...fs.readFileSync(file, 'utf8').matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)].map((m) => ({ file, attrs: m[1], body: m[2] })));
 }
 
@@ -233,8 +246,19 @@ describe('app site CSP (enforced, #89)', () => {
         expect(scriptsWithSrcAndBody()).toEqual([]);
     });
 
+    test('the checks see every HTML page under www/, the printer test page and the tenant page included', () => {
+        const rel = allHtml().map((f) => path.relative(ROOT, f).split(path.sep).join('/'));
+        expect(rel).toEqual(expect.arrayContaining(['www/index.html', 'www/download.html', 'www/r.html', 'www/spike/serial.html', 'www/templates/billing.html']));
+    });
+
+    test('no on<event>= attribute in any www/ HTML file (the CSP blocks them)', () => {
+        const hits = allHtml().flatMap((f) => (fs.readFileSync(f, 'utf8').match(/<[a-z][^<>]*?[\s/]on[a-z]+\s*=/gi) || [])
+            .map((m) => `${path.relative(ROOT, f)}: ${m.slice(-60)}`));
+        expect(hits).toEqual([]);
+    });
+
     test('no javascript: URL in a www/ page, template or script', () => {
-        const hits = walk(path.join(ROOT, 'www')).filter((f) => /\.(html|js)$/.test(f))
+        const hits = [...allHtml(), ...walk(path.join(ROOT, 'www')).filter((f) => f.endsWith('.js'))]
             .filter((f) => /\b(href|src|action|formaction)\s*=\s*["'`]?\s*javascript:/i.test(fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')))
             .map((f) => path.relative(ROOT, f));
         expect(hits).toEqual([]);
