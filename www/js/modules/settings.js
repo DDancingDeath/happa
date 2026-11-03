@@ -385,7 +385,7 @@ export class SettingsManager {
                 <label for="settingCheck_${key}">${e(t(label))}</label>
                 <input type="number" inputmode="decimal" min="0" step="any" id="settingCheck_${key}"
                        placeholder="${e(DEFAULT_THRESHOLDS[key])}" value="${e(vals[key])}"${editable ? '' : ' disabled'}
-                       onchange="window.app.settings.saveCheckThresholds()" />`).join('');
+                       data-onchange="settings.saveCheckThresholds()" />`).join('');
     }
 
     /**

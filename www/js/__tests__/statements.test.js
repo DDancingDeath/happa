@@ -307,7 +307,7 @@ describe('Statements page', () => {
         AppState.settings = { roleAccess: { manager: { reports: true } } };
         StatementsManager.init();
         const ownerOnly = [...document.querySelectorAll('#statements [data-owner-only]')];
-        expect(ownerOnly.map(el => el.id || el.getAttribute('onclick'))).toEqual(expect.arrayContaining(['statementsActions']));
+        expect(ownerOnly.map(el => el.id || el.getAttribute('data-onclick'))).toEqual(expect.arrayContaining(['statementsActions']));
         expect(ownerOnly.length).toBe(3);
         ownerOnly.forEach(el => expect(el.hidden).toBe(true));
         StatementsManager.open('accountant');

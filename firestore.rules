@@ -1,80 +1,40 @@
 rules_version = '2';
+// Why the rules are shaped this way, and the notes per rule: docs/security.md, "Firestore rules".
+// The Rules API compile has a time limit: keep helpers shallow and this file under its size budget
+// (npm run check:rules-size).
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ============================================
-    // HELPERS
-    // Production collections use the 'users' collection as the source of a
-    // caller's profile; development (dev_ prefix) collections use 'dev_users'.
-    // ============================================
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function profilePath(usersCol) {
-      return /databases/$(database)/documents/$(usersCol)/$(request.auth.uid);
-    }
-
-    // Approved = has a profile whose status is not pending/rejected and whose role is known.
-    // Legacy approved profiles have status 'active', 'approved' or no status field at all.
+    // Roles: usersCol is 'users' (prod) or 'dev_users' (dev_ collections).
     function isApprovedIn(usersCol) {
-      return isSignedIn()
-        && exists(profilePath(usersCol))
-        && !(get(profilePath(usersCol)).data.get('status', '') in ['pending', 'rejected'])
-        && get(profilePath(usersCol)).data.get('role', '') in ['owner', 'manager', 'staff'];
+      return request.auth != null
+        && exists(/databases/$(database)/documents/$(usersCol)/$(request.auth.uid))
+        && !(get(/databases/$(database)/documents/$(usersCol)/$(request.auth.uid)).data.get('status', '') in ['pending', 'rejected'])
+        && get(/databases/$(database)/documents/$(usersCol)/$(request.auth.uid)).data.get('role', '') in ['owner', 'manager', 'staff'];
     }
 
     function isOwnerIn(usersCol) {
-      return isApprovedIn(usersCol) && get(profilePath(usersCol)).data.get('role', '') == 'owner';
+      return request.auth != null
+        && exists(/databases/$(database)/documents/$(usersCol)/$(request.auth.uid))
+        && !(get(/databases/$(database)/documents/$(usersCol)/$(request.auth.uid)).data.get('status', '') in ['pending', 'rejected'])
+        && get(/databases/$(database)/documents/$(usersCol)/$(request.auth.uid)).data.get('role', '') == 'owner';
     }
 
-    function isApproved() {
-      return isApprovedIn('users');
+    function isManagerIn(usersCol) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/$(usersCol)/$(request.auth.uid))
+        && !(get(/databases/$(database)/documents/$(usersCol)/$(request.auth.uid)).data.get('status', '') in ['pending', 'rejected'])
+        && get(/databases/$(database)/documents/$(usersCol)/$(request.auth.uid)).data.get('role', '') in ['owner', 'manager'];
     }
 
-    function isAdmin() {
-      return isOwnerIn('users');
-    }
+    // --- bills: edit window, void, edit records, payments ---
 
-    // Shared business data: every approved user (owner/manager/staff) can read/write.
-    function businessCollections() {
-      return [
-        'purchases', 'retailSales', 'wholesaleSales', 'items', 'expenses',
-        'stockAdjustments', 'withdrawals', 'cashManagement', 'cashSessions',
-        'settings', 'itemFrequency', 'notifications', 'autoSaves', 'drafts',
-        'counters', 'personalExpenses', 'personalExpenseDays'
-      ];
-    }
-
-    function devBusinessCollections() {
-      return [
-        'dev_purchases', 'dev_retailSales', 'dev_wholesaleSales', 'dev_items', 'dev_expenses',
-        'dev_stockAdjustments', 'dev_withdrawals', 'dev_cashManagement', 'dev_cashSessions',
-        'dev_settings', 'dev_itemFrequency', 'dev_notifications', 'dev_autoSaves', 'dev_drafts',
-        'dev_counters', 'dev_personalExpenses', 'dev_personalExpenseDays'
-      ];
-    }
-
-    // --- bills (purchases / retail / wholesale sales) ---
-
-    function billCollections() {
-      return ['purchases', 'retailSales', 'wholesaleSales'];
-    }
-
-    // --- bill edit window (#87; days per role in Roles & access, #84) ---
-    // Clock: the bill's `createdAt`, the server time of its first save
-    // (firestore-service.js saveBill; validBillCreate requires it to equal
-    // request.time and nobody but the owner can change it). Bills without a
-    // server createdAt (saved before #87 / by old apps) are owner-only.
-    // Days: settings/app.roleAccess.<role>.editDays (int 0-30, else 2).
-    // settings/app is already read for the clientVersion gate on bill writes.
     function settingsAppPath(usersCol) {
       return /databases/$(database)/documents/$(usersCol == 'users' ? 'settings' : 'dev_settings')/app;
     }
 
     function billEditDays(usersCol) {
-      return billEditDaysFor(usersCol, get(profilePath(usersCol)).data.get('role', ''));
+      return billEditDaysFor(usersCol, get(/databases/$(database)/documents/$(usersCol)/$(request.auth.uid)).data.get('role', ''));
     }
 
     function billEditDaysFor(usersCol, role) {
@@ -90,34 +50,15 @@ service cloud.firestore {
       return c is timestamp && request.time < c + duration.value(billEditDaysFor(usersCol, role), 'd');
     }
 
-    function canDeleteBill(usersCol) {
-      // Bills are voided, not deleted (#75): only the owner deletes (test data, a voided bill
-      // for good, Clear Data). resource is null when deleting a doc that is already gone (no-op).
-      return isOwnerIn(usersCol) || (isApprovedIn(usersCol) && resource == null);
-    }
-
-    // --- void (#75) and edit records (#121) ---
-
-    function voidFields() {
-      return ['voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason'];
-    }
-
-    // Changing these on a bill needs its edit record (edits/{editCount}) in the same write
-    // (firestore-service.js updateBillChecked; bill-edits.js EDIT_FIELDS). The notes are not logged.
     function editLoggedFields() {
       return ['items', 'customerName', 'grandTotal', 'amountPayable', 'total', 'billTotal', 'saleTotal',
               'laborCharges', 'payment', 'cashPayment', 'onlinePayment', 'dueAmount', 'date', 'timestamp'];
     }
 
-    // An app that knows voided bills (#75) writes clientVersion >= 4 (firestore-service.js
-    // CLIENT_VERSION). Older apps (rc1 has its www inside the APK) must not edit or void bills.
     function voidAwareBill() {
       return request.resource.data.get('clientVersion', 0) is int && request.resource.data.get('clientVersion', 0) >= 4;
     }
 
-    // Figures built from bills (stock checkpoint, month snapshots, rate stats) are written only by
-    // such an app, stamped by this very write (writtenAt = server time: a merge from an older app
-    // can't ride on the version a newer one stored). firestore-service.js voidAwareStamp().
     function voidAwareWriter() {
       return voidAwareBill() && request.resource.data.get('writtenAt', null) == request.time;
     }
@@ -126,40 +67,10 @@ service cloud.firestore {
       return /databases/$(database)/documents/$(usersCol == 'users' ? base : 'dev_' + base)/$(docId);
     }
 
-    // A void or edit reason: 3 to 300 characters (bill-edits.js REASON_MIN / REASON_MAX).
     function reasonOk(r) {
       return r is string && r.trim().size() >= 3 && r.size() <= 300;
     }
 
-    // A void: only the void fields change (and openDue to false, clientVersion for the gate); by
-    // the caller, at the server time, with a reason; never with payments recorded after the bill
-    // was saved (their cash legs would be left without a bill); the owner any bill, anyone else
-    // their own bill inside the edit window (who could delete a bill before #75). A voided bill
-    // never changes again.
-    function voidOk(usersCol, role, changed) {
-      let d = request.resource.data;
-      return changed.hasOnly(['voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason', 'openDue', 'clientVersion'])
-        && voidAwareBill()
-        && d.get('voided', false) == true
-        && d.get('voidedAt', null) == request.time
-        && d.get('voidedBy', null) == request.auth.uid
-        && reasonOk(d.get('voidReason', null))
-        && (!('voidedByName' in d) || (d.voidedByName is string && d.voidedByName.size() <= 200))
-        && d.get('openDue', false) == false
-        && resource.data.get('payments', []).size() == 0
-        && (role == 'owner'
-            || (resource.data.get('userId', null) == request.auth.uid && withinBillWindowFor(usersCol, role)));
-    }
-
-    // editCount only goes up by one, together with the creation of its record edits/{n}.
-    function editCountOk(usersCol, base, docId) {
-      let n = request.resource.data.get('editCount', null);
-      return n is int && n == resource.data.get('editCount', 0) + 1
-        && voidAwareBill()
-        && existsAfter(/databases/$(database)/documents/$(usersCol == 'users' ? base : 'dev_' + base)/$(docId)/edits/$(string(n)));
-    }
-
-    // One field of an edit record: absent, or exactly its value on the bill before and after.
     function editFieldOk(f, before, after, k) {
       return !(k in f)
         || (f[k] is map && f[k].keys().hasOnly(['before', 'after'])
@@ -167,10 +78,6 @@ service cloud.firestore {
             && f[k].get('after', null) == after.get(k, null));
     }
 
-    // An edit record: append-only and immutable; by the caller at the server time with a
-    // reason; numbered with the bill's new editCount, which the same write raises by one.
-    // Its fields are exactly the logged fields that write changed (at least one), each with
-    // its true value before and after (the item list compared whole), so it can't be faked.
     function validEditCreate(usersCol, base, billId, editId) {
       let d = request.resource.data;
       let after = getAfter(billPath(usersCol, base, billId)).data;
@@ -197,22 +104,6 @@ service cloud.firestore {
         && editFieldOk(f, before, after, 'date') && editFieldOk(f, before, after, 'timestamp');
     }
 
-    // Full edits (the owner is handled in canUpdateBill): a manager, or the bill's
-    // creator, inside the edit window; createdAt never changes.
-    function canFullyEditBill(usersCol, role) {
-      return (role == 'manager'
-              || (resource.data.get('userId', null) != null
-                  && resource.data.get('userId', null) == request.auth.uid))
-        && withinBillWindowFor(usersCol, role)
-        && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null);
-    }
-
-    // Everyone else may only touch payment/due bookkeeping written by the app:
-    // payments (outstanding.js applyPaymentTransaction / applyWriteOffTransaction,
-    // which also stamp `paidAt`, the time of the payment, #163), clearing (markAsCleared,
-    // wholesale markSaleAsCleared) and the legacy backfill (openDue, clientVersion,
-    // a missing numeric timestamp, bounded like legacyBackfillOnly). `timestamp` and
-    // `id` may only be filled in, never changed.
     function bookkeepingOnly(docId, changed) {
       return changed.hasOnly([
           'payment', 'payments', 'dueAmount', 'openDue', 'clientVersion', 'paidAt',
@@ -227,41 +118,19 @@ service cloud.firestore {
         && (!changed.hasAny(['id']) || (!('id' in resource.data) && request.resource.data.id == docId));
     }
 
-    // --- money validation (#19, #65) ---
-    // A bill write already uses much of the 1000 expressions rules evaluate per
-    // request, so these follow the shape the app writes (payment.cash / online /
-    // due, with top-level copies) rather than every legacy shape readPayment() reads.
-
-    // A payment amount as the app writes it (round2): a number >= 0 in whole paise
-    // (NaN fails >= 0; for Infinity the paise test is NaN, so it fails too).
     function moneyOk(v) {
       return v is number && v >= 0 && math.abs(v * 100 - math.round(v * 100)) < 0.001;
     }
 
     function moneyOrAbsent(m, key) {
-      return !(key in m) || moneyOk(m[key]);
+      return !(key in m)
+        || (m[key] is number && m[key] >= 0 && math.abs(m[key] * 100 - math.round(m[key] * 100)) < 0.001);
     }
 
     function totalOk(m, key) {
       return !(key in m) || (m[key] is number && m[key] > -10000000000 && m[key] < 10000000000);
     }
 
-    // The bill's due before this write, as readPayment() reads it (nested
-    // payment.due first); null when it isn't stored as a number.
-    function storedDue() {
-      let p = resource.data.get('payment', {});
-      let due = (p is map && 'due' in p) ? p.due : resource.data.get('dueAmount', resource.data.get('due', null));
-      return due is number ? due : null;
-    }
-
-    // Money on a bill created or fully edited by a non-owner: totals are finite
-    // numbers, payment amounts are money and, when any of them changes, cash +
-    // online + written off + due is at most the bill total + Rs 1 (the bill
-    // screen's split check, money.js SPLIT_TOLERANCE: "Cash" or "Due" fills in the
-    // total rounded to the rupee). The total is read as billTotal() reads it
-    // (grandTotal, amountPayable, total, then billTotal / saleTotal). Only
-    // tools/migrate writes opening records; the app never writes the legacy
-    // amountPaid / due that readPayment() would also read.
     function changedMoneyOk(keys) {
       return !keys.hasAny(['openingBalance', 'amountPaid', 'due'])
         && (keys.hasAny(['total', 'grandTotal', 'amountPayable', 'billTotal', 'saleTotal',
@@ -286,8 +155,6 @@ service cloud.firestore {
                : d.get('saleTotal', 0)) + 1.0101;
     }
 
-    // payments[] may only grow by one entry; existing entries stay unchanged and
-    // the new entry has a numeric amount >= 0 (#19).
     function appendsOneEntry(field) {
       let oldList = resource.data.get(field, []);
       let newList = request.resource.data.get(field, []);
@@ -299,16 +166,6 @@ service cloud.firestore {
         && newList[oldList.size()].amount >= 0;
     }
 
-    // Money moves only with the due (#65). A payment or write-off writes
-    // payment.cash, online and due as money; cash, online and written off never
-    // go down, each goes up by what the new payments[] entry (amount > 0) says
-    // (due-payments.js entryParts: a write-off, else its cash / online parts,
-    // else all cash; half a paisa for round2 of older values), and the due goes
-    // down by the same (1 paisa either way, outstanding.js PAYMENT_TOLERANCE).
-    // Without an entry no money moves and the due only drops when a due under
-    // 1 paisa is written off to 0. So a member can neither take money off a bill
-    // nor lower a due without money, and with the split check on creates and
-    // edits nobody pays more than the bill total.
     function paymentMoneyOk(changed, p, rp, before) {
       return moneyOk(p.get('cash', null)) && moneyOk(p.get('online', null)) && moneyOk(p.get('due', null))
         && moneyOrAbsent(p, 'writtenOff') && moneyOrAbsent(p, 'total')
@@ -337,152 +194,93 @@ service cloud.firestore {
         && math.abs(cash - ec) <= 0.005 && math.abs(online - eo) <= 0.005 && math.abs(amount - ec - eo) <= 0.005;
     }
 
-    // A new payments[] entry carries its time (`at`, ms) within 10 minutes of the
-    // server's: payments and write-offs are transactions, so they never queue
-    // offline, and a back- or forward-dated entry would move drawer cash to
-    // another day (due-payments.js counts an entry on the day of its `at`).
-    function entryTimeOk() {
-      let at = request.resource.data.payments[request.resource.data.payments.size() - 1].get('at', null);
-      return at is number && at > request.time.toMillis() - 600000 && at < request.time.toMillis() + 600000;
-    }
-
-    // A due is cleared only when it is settled in the same write (#104: paid or
-    // written off), by the caller, and openDue goes false only with it
-    // (firestore-service.js hasDue).
     function clearOk(changed, d, due) {
       return (!changed.hasAny(['cleared']) || (d.get('cleared', false) == true && due <= 0.0101))
         && (!changed.hasAny(['clearedBy']) || d.clearedBy == request.auth.uid)
         && (!changed.hasAny(['openDue']) || d.openDue == true || d.get('cleared', false) == true || due <= 0.0101);
     }
 
-    // Payment bookkeeping by someone who may not fully edit the bill: amounts are
-    // money, payment.due and dueAmount agree, payments[] is append-only, money
-    // moves only with the due (paymentMoneyOk), dues are cleared only when settled
-    // (clearOk), and `paidAt` is written only with a new payments[] entry and
-    // equals that entry's `at` (outstanding.js applyPaymentTransaction /
-    // applyWriteOffTransaction; markAsCleared and wholesale markSaleAsCleared go
-    // through them). Older apps append without `paidAt`; that stays allowed.
     function paymentEditOk(changed) {
       let d = request.resource.data;
+      let p = resource.data.get('payment', {});
+      let due = (p is map && 'due' in p) ? p.due : resource.data.get('dueAmount', resource.data.get('due', null));
+      let at = d.payments[d.payments.size() - 1].get('at', null);
       return (!changed.hasAny(['dueAmount'])
               || (moneyOk(d.dueAmount) && d.dueAmount == d.get('payment', {}).get('due', d.dueAmount)))
-        && (!changed.hasAny(['payments']) || (appendsOneEntry('payments') && entryTimeOk()))
+        && (!changed.hasAny(['payments'])
+            || (appendsOneEntry('payments')
+                && at is number && at > request.time.toMillis() - 600000 && at < request.time.toMillis() + 600000))
         && (!changed.hasAny(['paidAt'])
             || (d.paidAt is number && changed.hasAny(['payments'])
                 && d.paidAt == d.payments[d.payments.size() - 1].get('at', null)))
         && (changed.hasAny(['payment', 'payments', 'dueAmount'])
-            ? changed.hasAny(['payment']) && paymentMoneyOk(changed, d.payment, resource.data.get('payment', {}), storedDue())
+            ? changed.hasAny(['payment'])
+              && paymentMoneyOk(changed, d.payment, resource.data.get('payment', {}), due is number ? due : null)
             : true)
         && (changed.hasAny(['cleared', 'clearedBy', 'openDue'])
             ? clearOk(changed, d, d.get('payment', {}).get('due', d.get('dueAmount', 0)))
             : true);
     }
 
-    // The caller is approved (businessAccess); their role is read once and the
-    // changed keys worked out once (rules allow 1000 expressions per request).
-    // Only an owner may change userId.
-    function canUpdateBill(usersCol, base, docId) {
-      return billUpdateAs(usersCol, base, docId, get(profilePath(usersCol)).data.get('role', ''),
-        request.resource.data.diff(resource.data).affectedKeys());
-    }
-
-    // A voided bill never changes (owner included); a void is voidOk; editCount moves only
-    // with its edit record; full edits by non-owners that change a logged field need one (#121)
-    // and never touch payments / paidAt (only bookkeeping appends to them).
     function billUpdateAs(usersCol, base, docId, role, changed) {
-      // Ternaries keep the expensive checks off the paths that don't need them.
+      let d = request.resource.data;
+      let n = d.get('editCount', null);
       return resource.data.get('voided', false) == true ? false
-        : changed.hasAny(voidFields()) ? voidOk(usersCol, role, changed)
-        : changed.hasAny(['editCount']) && !editCountOk(usersCol, base, docId) ? false
-        : role == 'owner' ? (!changed.hasAny(editLoggedFields()) || voidAwareBill() || bookkeepingOnly(docId, changed))
+        : changed.hasAny(['voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason'])
+          ? changed.hasOnly(['voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason', 'openDue', 'clientVersion'])
+            && voidAwareBill()
+            && d.get('voided', false) == true
+            && d.get('voidedAt', null) == request.time
+            && d.get('voidedBy', null) == request.auth.uid
+            && reasonOk(d.get('voidReason', null))
+            && (!('voidedByName' in d) || (d.voidedByName is string && d.voidedByName.size() <= 200))
+            && d.get('openDue', false) == false
+            && resource.data.get('payments', []).size() == 0
+            && (role == 'owner'
+                || (resource.data.get('userId', null) == request.auth.uid && withinBillWindowFor(usersCol, role)))
+        : changed.hasAny(['editCount'])
+          && !(n is int && n == resource.data.get('editCount', 0) + 1 && voidAwareBill()
+               && existsAfter(/databases/$(database)/documents/$(usersCol == 'users' ? base : 'dev_' + base)/$(docId)/edits/$(string(n))))
+          ? false
+        : role == 'owner' ? !changed.hasAny(editLoggedFields()) || voidAwareBill() || bookkeepingOnly(docId, changed)
         : changed.hasAny(['userId']) ? false
-        // A payment (payments[] / paidAt) is bookkeeping only: checked straight away, so the
-        // edit-window lookups of canFullyEditBill don't use up the 1000 expressions a payment's
-        // checks need (a manager's full settle on a bill with createdAt was refused, #229).
         : changed.hasAny(['payments', 'paidAt']) ? bookkeepingOnly(docId, changed) && paymentEditOk(changed)
-        : canFullyEditBill(usersCol, role)
-          && (!changed.hasAny(editLoggedFields()) || changed.hasAny(['editCount'])) ? changedMoneyOk(changed)
+        : (role == 'manager'
+           || (resource.data.get('userId', null) != null && resource.data.get('userId', null) == request.auth.uid))
+          && withinBillWindowFor(usersCol, role)
+          && d.get('createdAt', null) == resource.data.get('createdAt', null)
+          && (!changed.hasAny(editLoggedFields()) || changed.hasAny(['editCount']))
+          ? changedMoneyOk(changed)
         : bookkeepingOnly(docId, changed) ? paymentEditOk(changed)
         : false;
     }
 
-    // New bills: the creator's own uid (when set), well-formed money (changedMoneyOk),
-    // no payment history, cleared state, edit count or void (the app never sends them on a
-    // new bill), and createdAt = the server time of this write (#115: every happa version,
-    // rc1 included, sends it; the edit window counts from it). The owner (restores) skips this.
-    // A bill's date (#147): `timestamp` is the time it counts at (BILL-TIME), `enteredAt`
-    // when this app entered it. Anyone but the owner may date a bill back at most the
-    // role's editDays (+ 1 day: the window is in calendar days) before it was entered, and
-    // never after (10 minutes). `enteredAt` itself is the phone's clock and is not bounded:
-    // a bill queued offline arrives later, and a phone whose clock is fast must not lose its
-    // bills. Bills without `enteredAt` (apps before #147) are not limited, as before.
-    function billTimeOk(usersCol) {
-      let d = request.resource.data;
-      return !('enteredAt' in d)
-        || (d.enteredAt is number && d.get('timestamp', null) is number
-            && d.timestamp <= d.enteredAt + 600000
-            && d.timestamp >= d.enteredAt - (billEditDays(usersCol) + 1) * 86400000);
-    }
-
-    // A bill dated before the day it was entered (IST) takes no cash from anyone but the owner
-    // (#147): that day's drawer may already be counted and closed, so the cash would show in no
-    // open drawer. Judged against the IST day of `enteredAt`, not the server's time, so a cash
-    // bill entered offline yesterday and synced today is kept. For cash bills `enteredAt` must be
-    // within the last 3 days (a phone that saved offline). It has no upper bound: a later
-    // `enteredAt` can't move cash onto an earlier day (`timestamp` must be on or after its day),
-    // and a phone whose clock is fast must not lose its bills. A cash bill with `enteredAt` but no
-    // numeric `timestamp` counts as dated back. Bills without `enteredAt`
-    // (apps before #147, which can't date a bill back) are not checked: refusing them would lose
-    // their offline bills; the app check and the anomaly scan cover the new app.
-    function noBackdatedCash() {
+    function validBillCreate(usersCol) {
       let d = request.resource.data;
       let now = request.time.toMillis();
-      return !('enteredAt' in d)
-        || (d.get('payment', {}).get('cash', 0) == 0 && d.get('cashPayment', 0) == 0)
-        || (d.enteredAt is number
-            && d.enteredAt >= now - 259200000
-            && d.get('timestamp', null) is number
-            && d.timestamp >= d.enteredAt - ((d.enteredAt + 19800000) % 86400000));
-    }
-
-    function validBillCreate(usersCol) {
       return request.resource.data.get('userId', request.auth.uid) == request.auth.uid
-        && billTimeOk(usersCol)
-        && noBackdatedCash()
+        && (!('enteredAt' in d)
+            || (d.enteredAt is number && d.get('timestamp', null) is number
+                && d.timestamp <= d.enteredAt + 600000
+                && d.timestamp >= d.enteredAt - (billEditDays(usersCol) + 1) * 86400000))
+        && (!('enteredAt' in d)
+            || (d.get('payment', {}).get('cash', 0) == 0 && d.get('cashPayment', 0) == 0)
+            || (d.enteredAt is number
+                && d.enteredAt >= now - 259200000
+                && d.get('timestamp', null) is number
+                && d.timestamp >= d.enteredAt - ((d.enteredAt + 19800000) % 86400000)))
         && !request.resource.data.keys().hasAny(['payments', 'paidAt', 'cleared', 'editCount',
              'voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason'])
         && changedMoneyOk(request.resource.data.keys())
         && request.resource.data.get('createdAt', null) == request.time;
     }
 
-    // ============================================
-    // CASH, EXPENSES, STOCK ADJUSTMENTS, ITEMS, COUNTERS (#18)
-    // The owner may write these freely (repairs, backup restore). Everyone else
-    // is limited to the writes the app makes.
-    // ============================================
+    // --- expenses, withdrawals, stock adjustments ---
 
-    function isMember(usersCol) {
-      return isApprovedIn(usersCol) && !isManagerIn(usersCol);
-    }
-
-    // Who created a record (expenses carry userId and createdBy).
     function createdByCaller() {
       return resource.data.get('userId', resource.data.get('createdBy', null)) == request.auth.uid;
     }
 
-    // Members may change their own record for 24 hours after it was made
-    // (fixing a typo); after that only an owner/manager may.
-    function withinEditWindow() {
-      let t = resource.data.get('timestamp', null);
-      return t is number
-        && t > request.time.toMillis() - 86400000
-        && t < request.time.toMillis() + 86400000;
-    }
-
-    // Legacy backfill (firestore-service.js backfillLegacyTimestamps): fills a
-    // missing numeric timestamp (+ clientVersion on stock records), nothing else.
-    // The value is the one the app derives (stock-replay.js eventTime), never in
-    // the future: an old Firestore Timestamp's millis, else the record's `date`.
     function legacyBackfillOnly() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       return changed.hasOnly(['timestamp', 'clientVersion'])
@@ -497,21 +295,14 @@ service cloud.firestore {
       return t <= request.time.toMillis()
         && (old is timestamp ? t == old.toMillis()
           : day is timestamp ? t == day.toMillis()
-          : day is string ? backfillDayOk(t, day)
+          : day is string ? (day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}([T ].*)?$')
+                ? nearDay(t, int(day[0:4]), int(day[5:7]), int(day[8:10]))
+              : day.matches('^[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}([, ].*)?$')
+                ? nearDay(t, int(day.split('/')[2][0:4]), int(day.split('/')[1]), int(day.split('/')[0]))
+              : true)
           : true);
     }
 
-    // A date string the rules can read: YYYY-MM-DD[...] or DD/MM/YYYY[, time].
-    function backfillDayOk(t, s) {
-      return s.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}([T ].*)?$')
-          ? nearDay(t, int(s[0:4]), int(s[5:7]), int(s[8:10]))
-        : s.matches('^[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}([, ].*)?$')
-          ? nearDay(t, int(s.split('/')[2][0:4]), int(s.split('/')[1]), int(s.split('/')[0]))
-        : true;
-    }
-
-    // Within that calendar day, give or take a day for the phone's time zone (the app
-    // reads YYYY-MM-DD as UTC midnight and DD/MM/YYYY as local time).
     function nearDay(t, y, m, d) {
       let start = timestamp.date(y, m, d).toMillis();
       return t >= start - 86400000 && t < start + 172800000;
@@ -521,11 +312,6 @@ service cloud.firestore {
       return request.resource.data.get('amount', null) is number && request.resource.data.amount >= 0;
     }
 
-    // Expenses / withdrawals: anyone approved records their own, with a numeric amount
-    // and a numeric `timestamp` that is not in the future (10 minutes' slack for the
-    // phone's clock): startSaveExpense sets it from the creation time, startSaveWithdrawal
-    // from the later of the creation time and the picked day (Money refuses a future day).
-    // A queued offline record arrives later, so there is no lower bound.
     function validLedgerCreate() {
       return amountOk() && request.resource.data.get('userId', null) == request.auth.uid
         && !request.resource.data.keys().hasAny(expenseVoidFields())
@@ -533,15 +319,6 @@ service cloud.firestore {
         && request.resource.data.timestamp <= request.time.toMillis() + 600000;
     }
 
-    function expenseEditOk() {
-      let changed = request.resource.data.diff(resource.data).affectedKeys();
-      return changed.hasOnly(['type', 'personName', 'amount', 'remarks', 'paymentMode', 'updatedAt', 'updatedBy', 'updatedByName'])
-        && (!changed.hasAny(['amount']) || amountOk());
-    }
-
-    // --- expense date and payment mode (#118) ---
-    // paymentMode: 'cash' | 'online' (none = cash). day: the local (IST) day the
-    // expense counts on, YYYY-MM-DD, never in the future (1 hour for a fast phone clock).
     function expenseDayStart(day) {
       return timestamp.date(int(day[0:4]), int(day[5:7]), int(day[8:10])) - duration.value(330, 'm');
     }
@@ -551,28 +328,14 @@ service cloud.firestore {
         && (!('day' in d) || (dayKeyOk(d.day) && expenseDayStart(d.day) <= request.time + duration.value(1, 'h')));
     }
 
-    // A new expense by anyone but the owner that names its day may be dated back at most
-    // the role's edit window (roleAccess.<role>.editDays, as bills; the app allows exactly
-    // that), plus 3 days for a phone that saved it offline. Its `date` (what the figures
-    // read) must be on that day: "D/M/YYYY, …" as en-IN writes it, with or without leading
-    // zeros. Older apps name the day only on personal expenses (today, from the date).
-    function expenseDateOnDay(d) {
-      return d.get('date', null) is string
-        && d.date.matches('^0?' + string(int(d.day[8:10])) + '/0?' + string(int(d.day[5:7])) + '/' + d.day[0:4] + '([^0-9].*)?$');
-    }
-
     function expenseDayInWindow(usersCol) {
       let d = request.resource.data;
       return !('day' in d)
-        || (expenseDateOnDay(d)
+        || ((d.get('date', null) is string
+            && d.date.matches('^0?' + string(int(d.day[8:10])) + '/0?' + string(int(d.day[5:7])) + '/' + d.day[0:4] + '([^0-9].*)?$'))
             && request.time < expenseDayStart(d.day) + duration.value(billEditDays(usersCol) + 4, 'd'));
     }
 
-    // Expenses are voided, never edited or deleted in place (#99): apart from the owner
-    // (repairs), only the legacy timestamp backfill changes one. A save this phone couldn't
-    // confirm, sent again over the same id (#153, miscellaneous.js pendingExpense), lands as
-    // an update that changes nothing: its creator may write it. A change is a void plus a
-    // new expense (replacesId); only the owner deletes.
     function canUpdateExpense(usersCol) {
       return legacyBackfillOnly()
         || (createdByCaller() && request.resource.data.diff(resource.data).affectedKeys().size() == 0);
@@ -582,9 +345,6 @@ service cloud.firestore {
       return resource == null;
     }
 
-    // --- expense void (#99, as bills #75) ---
-
-    // A voided personal expense leaves its day total in the same write (personalExpenseDays).
     function personalVoidLeavesDay(u, docId) {
       let p = /databases/$(database)/documents/$((u == 'dev_users' ? 'dev_' : '') + 'personalExpenseDays')/$(resource.data.get('day', '-'));
       return !existsAfter(p) || !(docId in getAfter(p).data.get('amounts', {}));
@@ -594,19 +354,10 @@ service cloud.firestore {
       return ['voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason'];
     }
 
-    // The role's edit window (roleAccess.<role>.editDays, as bills) from the expense's
-    // `timestamp`, which validLedgerCreate keeps from running ahead of its creation.
-    function withinExpenseWindow(usersCol, role) {
-      let t = resource.data.get('timestamp', null);
-      return t is number && request.time.toMillis() < t + billEditDaysFor(usersCol, role) * 86400000;
-    }
-
-    // A void: only the void fields, by the caller at the server time, with a reason; the
-    // owner any expense, a manager any expense and a member their own, inside the role's
-    // edit window. A voided expense never changes again (canUpdateRecord).
     function expenseVoidOk(usersCol, changed) {
       let d = request.resource.data;
-      let role = get(profilePath(usersCol)).data.get('role', '');
+      let role = get(/databases/$(database)/documents/$(usersCol)/$(request.auth.uid)).data.get('role', '');
+      let t = resource.data.get('timestamp', null);
       return changed.hasOnly(expenseVoidFields())
         && d.get('voided', false) == true
         && d.get('voidedAt', null) == request.time
@@ -614,11 +365,9 @@ service cloud.firestore {
         && reasonOk(d.get('voidReason', null))
         && (!('voidedByName' in d) || (d.voidedByName is string && d.voidedByName.size() <= 200))
         && (role == 'owner'
-            || ((role == 'manager' || createdByCaller()) && withinExpenseWindow(usersCol, role)));
+            || ((role == 'manager' || createdByCaller()) && (t is number && request.time.toMillis() < t + billEditDaysFor(usersCol, role) * 86400000)));
     }
 
-    // Stock adjustments: owner/manager record them (stock.js applyStockAdjustment; the
-    // Stock › Adjustment tab and Set opening stock are not open to members, #64).
     function validAdjustmentCreate() {
       let d = request.resource.data;
       return d.get('userId', null) == request.auth.uid
@@ -627,11 +376,8 @@ service cloud.firestore {
         && d.get('itemId', null) != null;
     }
 
-    // --- cash sessions (cashManagement) ---
+    // --- cash, items, counters, drafts, notifications, personal expenses ---
 
-    // cash-management.js signIn → firestore-service.js openCashSession: the day's
-    // session (#38) at cash_<date>, with the fields signIn sends and no entries yet.
-    // (Every happa version opens cash this way; the old random-id .add() is gone.)
     function validCashCreate(docId) {
       let d = request.resource.data;
       return dayKeyOk(d.get('date', null)) && docId == 'cash_' + d.date
@@ -647,9 +393,6 @@ service cloud.firestore {
         && d.get('openingNotes', '') is string;
     }
 
-    // Deposits and due-payment legs are appended one at a time (arrayUnion, or
-    // outstanding.js applyPaymentTransaction). Also allowed on a closed session:
-    // an entry queued offline must not be lost because another device closed it.
     function cashAppendOk() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       return changed.size() == 1
@@ -657,21 +400,12 @@ service cloud.firestore {
         && appendsOneEntry(changed.hasAny(['duePayments']) ? 'duePayments' : 'cashDeposits');
     }
 
-    // A day the app closed automatically without a real count (#101; older
-    // apps wrote closingBalance 0 and no `counted`).
-    function wasAutoClosedUncounted() {
-      return resource.data.get('signedOut', false) == true
-        && resource.data.get('autoSignedOut', false) == true
-        && resource.data.get('counted', null) != true;
-    }
-
-    // Sign-out (counted) or the automatic close of a past day (not counted).
-    // A counted sign-out may also replace an automatic close: older apps
-    // (v1.3/v1.4) sign out with a plain update and would otherwise lose the count.
     function cashCloseOk() {
       let d = request.resource.data;
       return (resource.data.get('signedOut', false) != true
-              || (wasAutoClosedUncounted() && d.get('closingBalance', null) is number))
+              || (resource.data.get('autoSignedOut', false) == true
+                  && resource.data.get('counted', null) != true
+                  && d.get('closingBalance', null) is number))
         && d.get('signedOut', false) == true
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
              'closingBalance', 'expectedBalance', 'difference', 'signOutTime', 'signedOut', 'counted',
@@ -682,7 +416,6 @@ service cloud.firestore {
         && (d.get('expectedBalance', null) == null || d.expectedBalance is number);
     }
 
-    // Recording the real count for a day that was closed without one (#101).
     function cashLateCountOk() {
       let d = request.resource.data;
       let r = resource.data;
@@ -695,8 +428,6 @@ service cloud.firestore {
         && d.get('countedBy', null) == request.auth.uid;
     }
 
-    // --- items: owner/manager create and edit; only the owner deletes ---
-
     function itemFieldsOk(keys) {
       let d = request.resource.data;
       return (!keys.hasAny(['name']) || d.name is string)
@@ -705,11 +436,6 @@ service cloud.firestore {
         && (!keys.hasAny(['wholesaleRates']) || d.wholesaleRates is list);
     }
 
-    // --- item frequency (billing.js updateItemFrequency): only itemFrequency/global, ---
-    // { purchase|sale: { <item>: { score, count, lastUsed, effectiveScore } } }, merged
-    // in with FieldValue.increment. Only those two maps, and a write never removes an
-    // item (no replacing the doc without merge). Rules can't loop over the item keys,
-    // so the numbers inside each item are not checked.
     function itemFrequencyOk(docId) {
       let d = request.resource.data;
       let r = resource == null ? {} : resource.data;
@@ -724,8 +450,6 @@ service cloud.firestore {
         : d[mode] == r.get(mode, null)
           || (d[mode] is map && d[mode].diff(r.get(mode, {})).removedKeys().size() == 0);
     }
-
-    // --- bill-number counters (helpers.js _nextCounterValue): +1 per transaction ---
 
     function counterFields() {
       return ['next', 'initialized', 'prefix', 'date', 'updatedAt'];
@@ -743,7 +467,6 @@ service cloud.firestore {
         && d.get('next', null) is number
         && (r.get('initialized', false) == true && r.get('next', null) is number
             ? d.next == r.next + 1
-            // Not yet seeded from today's bills: may jump forward, never back.
             : (d.next >= 1 && (!(r.get('next', null) is number) || d.next > r.next)));
     }
 
@@ -755,18 +478,11 @@ service cloud.firestore {
       return collection.matches('dev_.*') ? 'dev_users' : 'users';
     }
 
-    // --- per-user records: auto-save, drafts, notifications (#18 follow-up) ---
-    // Nobody writes another user's records, the owner included; the owner may
-    // only delete them (Admin › Clear Data deletes auto-saves and drafts).
-
-    // autoSaves/{uid} (billing.js autoSaveToCloud / deleteAutoSave): that user only.
     function ownAutoSaveWrite(docId) {
       return docId == request.auth.uid
         && request.resource.data.get('userId', request.auth.uid) == request.auth.uid;
     }
 
-    // drafts (billing.js saveDraft / loadDraft / deleteDraft): own drafts only;
-    // userId never changes.
     function validDraftCreate() {
       return request.resource.data.get('userId', null) == request.auth.uid;
     }
@@ -776,18 +492,6 @@ service cloud.firestore {
         && request.resource.data.get('userId', null) == request.auth.uid;
     }
 
-    // notifications: the sender's device writes one doc per recipient
-    // (firestore-service.js sendNotification / planNotificationDocs, id
-    // <eventKey>_<userId>). The only senders are item adds and rate/name edits
-    // (notifyRateChanges, notifyItemEdit), and only owners/managers edit items,
-    // so only they may create them: stamped with their own uid and server time,
-    // types rate_change and item_edit, these fields only.
-    function notificationFields() {
-      return ['type', 'action', 'fields', 'itemId', 'itemName', 'itemHindiName',
-              'rateType', 'rateTypeLabel', 'oldRate', 'newRate',
-              'changedBy', 'changedByUserId', 'userId', 'eventKey', 'read', 'timestamp'];
-    }
-
     function rateValueOk(d, key) {
       return d.get(key, null) is number || d.get(key, null) is list;
     }
@@ -795,7 +499,9 @@ service cloud.firestore {
     function validNotificationCreate(u, docId) {
       let d = request.resource.data;
       return isManagerIn(u)
-        && d.keys().hasOnly(notificationFields())
+        && d.keys().hasOnly(['type', 'action', 'fields', 'itemId', 'itemName', 'itemHindiName',
+                             'rateType', 'rateTypeLabel', 'oldRate', 'newRate',
+                             'changedBy', 'changedByUserId', 'userId', 'eventKey', 'read', 'timestamp'])
         && d.get('changedByUserId', null) == request.auth.uid
         && d.get('userId', null) is string && d.userId.size() > 0 && d.userId != request.auth.uid
         && d.get('eventKey', null) is string && docId == d.eventKey + '_' + d.userId
@@ -817,7 +523,6 @@ service cloud.firestore {
               && !d.keys().hasAny(['rateType', 'rateTypeLabel', 'oldRate', 'newRate']));
     }
 
-    // The recipient marks it read (markNotificationsRead / markAllNotificationsRead).
     function notificationReadOnly() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       return resource.data.get('userId', null) == request.auth.uid
@@ -826,31 +531,14 @@ service cloud.firestore {
         && (!changed.hasAny(['readAt']) || request.resource.data.readAt is number);
     }
 
-    // Delete: the doc's own user (resource == null: already gone, a no-op), or
-    // the owner. autoSaves are keyed by uid.
-    function canDeleteOwnRecord(base, u, docId) {
-      return isOwnerIn(u)
-        || (base == 'autoSaves'
-            ? docId == request.auth.uid
-            : resource == null || resource.data.get('userId', null) == request.auth.uid);
-    }
-
-    // --- personal expenses (#98): their own collection, read and written only by the
-    // owner and roles with Roles & access › Personal expenses on (default on; one
-    // read of settings/app, never for the owner). personalExpenseDays/{YYYY-MM-DD} =
-    // { amounts: { <expense id>: amount }, last } holds each day's amounts (one key per
-    // expense, written with it) so the cash count and Today still add them up on phones
-    // that can't read the expenses. Members and managers may read these totals.
     function personalOn(usersCol) {
-      return personalOnAs(usersCol, get(profilePath(usersCol)).data.get('role', ''));
+      return personalOnAs(usersCol, get(/databases/$(database)/documents/$(usersCol)/$(request.auth.uid)).data.get('role', ''));
     }
 
     function personalOnAs(usersCol, role) {
       return role == 'owner' ? true : personalSwitch(settingsAppPath(usersCol), role);
     }
 
-    // Off unless the owner turned it on in Roles & access (#98): a stored true without
-    // personalExpensesChosen is the old default (every switch used to be saved), not a choice.
     function personalSwitch(p, role) {
       let access = exists(p) ? get(p).data.get('roleAccess', {}) : {};
       let r = access is map ? access.get(role, {}) : {};
@@ -862,18 +550,11 @@ service cloud.firestore {
       return v is string && v.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$');
     }
 
-    // A personal expense names the day it counts on (`day`, its personalExpenseDays doc).
     function validPersonalCreate() {
       return validLedgerCreate() && request.resource.data.get('category', null) == 'personal'
         && dayKeyOk(request.resource.data.get('day', null));
     }
 
-    // A day doc write changes one key, `last` (an expense id): set to that expense's
-    // amount after this write, on its day, or removed when the expense is gone after
-    // it. So a repeated delete or a late write is harmless, and nobody can zero the
-    // map or add a key for an expense that doesn't exist. Members only touch the key
-    // of an expense written in the same batch; managers may also correct a key to
-    // the stored amount (rebuild from the rows).
     function validPersonalDay(u, docId) {
       let d = request.resource.data;
       let before = resource == null ? {} : resource.data;
@@ -890,10 +571,6 @@ service cloud.firestore {
                && d.get('online', {}).diff(before.get('online', {})).affectedKeys().size() == 0);
     }
 
-    // `online` flags an expense paid online (#118): set exactly when the expense's
-    // paymentMode is 'online', so nobody can move a cash expense out of the drawer.
-    // A removed expense may keep a stale flag (older apps don't clear it); it counts nowhere.
-    // `same`: the write changes no key (an unchanged re-send of a save, #153), always harmless.
     function personalDayKeyOk(u, docId, d, p, same) {
       return d.last in d.amounts
         ? existsAfter(p) && getAfter(p).data.get('voided', false) != true
@@ -905,82 +582,22 @@ service cloud.firestore {
         : !existsAfter(p) || getAfter(p).data.get('voided', false) == true;
     }
 
-    // Older apps tagged personal expenses in `expenses`, where every member reads them (#98).
     function personalTagged(m) {
       return m.get('category', '') is string && m.get('category', '').trim().lower() == 'personal';
     }
 
-    function canCreateRecord(base, u, docId) {
-      return base == 'autoSaves' ? ownAutoSaveWrite(docId)
-        : base == 'drafts' ? validDraftCreate()
-        : base == 'notifications' ? validNotificationCreate(u, docId)
-        : base == 'expenses' && personalTagged(request.resource.data) ? false
-        : base in ['expenses', 'personalExpenses'] && !expenseFieldsOk(request.resource.data) ? false
-        : base == 'settings' && (!settingsReceiptOk() || !settingsStampsOk(docId)) ? false
-        : (isOwnerIn(u)
-        || (base in billCollections() ? validBillCreate(u)
-          : base == 'expenses' ? validLedgerCreate() && expenseDayInWindow(u)
-          : base == 'withdrawals' ? validLedgerCreate() && moneyPageOn(u)
-          : base == 'stockAdjustments' ? isManagerIn(u) && validAdjustmentCreate()
-          : base == 'cashManagement' ? validCashCreate(docId)
-          // legacy cashSessions (backup only) and settings: owner only (#64), but settings/accounts (#74)
-          : base == 'settings' && docId == 'accounts' ? worthAccountsWriteOk(u)
-          : base in ['cashSessions', 'settings'] ? false
-          : base == 'items' ? isManagerIn(u) && itemFieldsOk(request.resource.data.keys())
-          : base == 'counters' ? validCounterCreate()
-          : base == 'itemFrequency' ? itemFrequencyOk(docId)
-          : base == 'personalExpenses' ? personalOn(u) && validPersonalCreate() && expenseDayInWindow(u)
-          : base == 'personalExpenseDays' ? personalOn(u) && validPersonalDay(u, docId)
-          : true));
-    }
-
-    // A closed cash day stays closed for everyone, owners too (#38): a queued or
-    // stale write must not reopen it. There is no reopen action.
     function cashStaysClosed() {
       return resource.data.get('signedOut', false) != true
         || request.resource.data.get('signedOut', false) == true;
     }
 
-    function canUpdateRecord(base, u, docId) {
-      // settings first, on its own: the settings/app receipt check uses most of the 1,000-expression budget.
-      // settings/app is guarded in the match (appSettingsGuard / managerShopSettingsOk); other docs owner only
-      return base == 'settings' ? settingsReceiptOk() && settingsStampsOk(docId)
-          && (docId == 'app' || isOwnerIn(u) || (docId == 'accounts' && worthAccountsWriteOk(u)))
-        : base in billCollections() ? canUpdateBill(u, base, docId)
-        : base in ['cashManagement', 'cashSessions'] && !cashStaysClosed() ? false
-        : base == 'autoSaves' ? ownAutoSaveWrite(docId)
-        : base == 'drafts' ? draftUpdateOk()
-        : base == 'notifications' ? notificationReadOnly()
-        : base == 'expenses' && personalTagged(request.resource.data) && !personalTagged(resource.data) ? false
-        : base in ['expenses', 'personalExpenses'] && !expenseFieldsOk(request.resource.data) ? false
-        // A voided expense never changes (owner included); a void is expenseVoidOk (#99)
-        : base in ['expenses', 'personalExpenses'] && resource.data.get('voided', false) == true ? false
-        : base in ['expenses', 'personalExpenses']
-          && request.resource.data.diff(resource.data).affectedKeys().hasAny(expenseVoidFields())
-          ? (base == 'expenses' || (personalOn(u) && personalVoidLeavesDay(u, docId)))
-            && expenseVoidOk(u, request.resource.data.diff(resource.data).affectedKeys())
-        : isOwnerIn(u) ? true
-        : base == 'expenses' ? canUpdateExpense(u)
-        : base == 'personalExpenses' ? personalOn(u) && canUpdateExpense(u)
-          && request.resource.data.get('category', null) == 'personal'
-          && request.resource.data.get('day', null) == resource.data.get('day', null)
-        : base == 'personalExpenseDays' ? personalOn(u) && validPersonalDay(u, docId)
-        : base in ['withdrawals', 'stockAdjustments']
-          ? (legacyBackfillOnly()
-             || (isManagerIn(u)
-                 && (base != 'withdrawals' || moneyPageOn(u))
-                 && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['amount']) || amountOk())))
-        : base == 'cashManagement' ? (cashAppendOk() || cashCloseOk() || cashLateCountOk())
-        : base == 'cashSessions' ? false
-        : base == 'items' ? isManagerIn(u) && itemFieldsOk(request.resource.data.diff(resource.data).affectedKeys())
-        : base == 'counters' ? counterIncrementOk()
-        : base == 'itemFrequency' ? itemFrequencyOk(docId)
-        : true;
-    }
-
     function canDeleteRecord(base, u, docId) {
-      return base in billCollections() ? canDeleteBill(u)
-        : base in ['autoSaves', 'drafts', 'notifications'] ? canDeleteOwnRecord(base, u, docId)
+      return base in ['purchases', 'retailSales', 'wholesaleSales'] ? isOwnerIn(u) || (isApprovedIn(u) && resource == null)
+        : base in ['autoSaves', 'drafts', 'notifications']
+          ? isOwnerIn(u)
+            || (base == 'autoSaves'
+                ? docId == request.auth.uid
+                : resource == null || resource.data.get('userId', null) == request.auth.uid)
         : isOwnerIn(u) ? true
         : base == 'expenses' ? canDeleteExpense(u)
         : base == 'personalExpenses' ? personalOn(u) && canDeleteExpense(u)
@@ -991,51 +608,31 @@ service cloud.firestore {
         : true;
     }
 
-    // settings/app (minClientVersion) can lock every outdated phone out: owner only.
+    // --- settings, money pages, worth accounts, read access ---
+
     function appSettingsGuard(collection, docId) {
       return !(docId == 'app' && collection in ['settings', 'dev_settings'])
         || isOwnerIn(collection == 'settings' ? 'users' : 'dev_users');
     }
 
-    // Settings › Aadhat: a manager may update only these settings/app fields, and
-    // only when Roles & access allows it (roleAccess.manager.shopSettings == true).
-    function shopSettingsFields() {
-      return ['laborRate', 'heavyWeightThreshold', 'labourPackageKg', 'labourUpdatedAt', 'labourUpdatedBy',
-              'checkThresholds', 'checksUpdatedAt', 'checksUpdatedBy',
-              'businessName', 'businessDetails', 'businessUpdatedAt', 'businessUpdatedBy',
-              'receipt', 'receiptUpdatedAt', 'receiptUpdatedBy'];
-    }
-
-    // Printed bill for every phone (#107): footer, QR, language, darkness and a small
-    // 1-bit logo (at most 384 × 120 dots: 5,760 bytes, 7,680 base64 characters). No character check:
-    // a regex over 7,680 characters uses most of the 1,000-expression budget; the app ignores a logo
-    // whose bits aren't valid base64 of the right length.
-    function receiptLogoOk(l) {
-      return l == null
-        || (l is map && l.keys().hasOnly(['width', 'height', 'bits']) && l.keys().hasAll(['width', 'height', 'bits'])
-            && l.width is int && l.width >= 1 && l.width <= 384
-            && l.height is int && l.height >= 1 && l.height <= 120
-            && l.bits is string && l.bits.size() <= 7680);
-    }
-
-    function receiptOk(r) {
-      return r is map
-        && r.keys().hasOnly(['footer', 'qr', 'lang', 'density', 'logo'])
-        && r.keys().hasAll(['footer', 'qr', 'lang', 'density', 'logo'])
-        && r.footer is string && r.footer.size() <= 80
-        && r.qr is bool
-        && r.lang in ['app', 'en', 'hi']
-        && r.density in ['light', 'normal', 'dark']
-        && receiptLogoOk(r.logo);
-    }
-
     function settingsReceiptOk() {
-      return request.resource.data.get('receipt', null) == null || receiptOk(request.resource.data.receipt);
+      let r = request.resource.data.get('receipt', null);
+      let l = r.logo;
+      return r == null
+        || (r is map
+            && r.keys().hasOnly(['footer', 'qr', 'lang', 'density', 'logo'])
+            && r.keys().hasAll(['footer', 'qr', 'lang', 'density', 'logo'])
+            && r.footer is string && r.footer.size() <= 80
+            && r.qr is bool
+            && r.lang in ['app', 'en', 'hi']
+            && r.density in ['light', 'normal', 'dark']
+            && (l == null
+                || (l is map && l.keys().hasOnly(['width', 'height', 'bits']) && l.keys().hasAll(['width', 'height', 'bits'])
+                    && l.width is int && l.width >= 1 && l.width <= 384
+                    && l.height is int && l.height >= 1 && l.height <= 120
+                    && l.bits is string && l.bits.size() <= 7680)));
     }
 
-    // settings/app section stamps: <section>UpdatedAt is a time in ms (int), <section>UpdatedBy a uid
-    // (or 'unknown'), as every app version writes them. Only fields this write sets are checked, so an
-    // odd stamp already stored never blocks other saves; removing a stamp is allowed.
     function stampAtOk(d, keys, k) {
       return !(k in keys) || !(k in d) || d[k] is int;
     }
@@ -1062,82 +659,70 @@ service cloud.firestore {
         && isManagerIn(usersOf(collection))
         && access is map && access.get('manager', {}) is map
         && access.get('manager', {}).get('shopSettings', false) == true
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(shopSettingsFields());
-    }
-
-    // Stock records: writes must come from an app version that maintains the stock
-    // checkpoint (sets clientVersion >= 3). Blocks outdated apps from creating or
-    // overwriting bills/adjustments. DEPLOY ONLY AFTER every phone runs the new app.
-    function stockCollections() {
-      return ['purchases', 'retailSales', 'wholesaleSales', 'stockAdjustments',
-              'dev_purchases', 'dev_retailSales', 'dev_wholesaleSales', 'dev_stockAdjustments'];
-    }
-
-    // The clientVersion gate is switched on by the owner (settings/app.enforceClientVersion
-    // = true, dev_settings/app for dev_) once every phone runs the new app, so these rules
-    // can be deployed before the old APK is retired.
-    function clientGateOn(collection) {
-      let settingsPath = /databases/$(database)/documents/$(collection.matches('dev_.*') ? 'dev_settings' : 'settings')/app;
-      return exists(settingsPath) && get(settingsPath).data.get('enforceClientVersion', false) == true;
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+             'laborRate', 'heavyWeightThreshold', 'labourPackageKg', 'labourUpdatedAt', 'labourUpdatedBy',
+             'checkThresholds', 'checksUpdatedAt', 'checksUpdatedBy',
+             'businessName', 'businessDetails', 'businessUpdatedAt', 'businessUpdatedBy',
+             'receipt', 'receiptUpdatedAt', 'receiptUpdatedBy']);
     }
 
     function writesCurrentClient(collection) {
-      return !clientGateOn(collection) || request.resource.data.get('clientVersion', 0) >= 3;
+      let p = /databases/$(database)/documents/$(collection.matches('dev_.*') ? 'dev_settings' : 'settings')/app;
+      return !(exists(p) && get(p).data.get('enforceClientVersion', false) == true)
+        || request.resource.data.get('clientVersion', 0) >= 3;
+    }
+
+    // Shared business data (tools/backup/backup-lib.js reads this list).
+    function businessCollections() {
+      return [
+        'purchases', 'retailSales', 'wholesaleSales', 'items', 'expenses',
+        'stockAdjustments', 'withdrawals', 'cashManagement', 'cashSessions',
+        'settings', 'itemFrequency', 'notifications', 'autoSaves', 'drafts',
+        'counters', 'personalExpenses', 'personalExpenseDays'
+      ];
+    }
+
+    function devBusinessCollections() {
+      return [
+        'dev_purchases', 'dev_retailSales', 'dev_wholesaleSales', 'dev_items', 'dev_expenses',
+        'dev_stockAdjustments', 'dev_withdrawals', 'dev_cashManagement', 'dev_cashSessions',
+        'dev_settings', 'dev_itemFrequency', 'dev_notifications', 'dev_autoSaves', 'dev_drafts',
+        'dev_counters', 'dev_personalExpenses', 'dev_personalExpenseDays'
+      ];
     }
 
     function businessAccess(collection) {
-      return (collection in businessCollections() && isApproved())
+      return (collection in businessCollections() && isApprovedIn('users'))
         || (collection in devBusinessCollections() && isApprovedIn('dev_users'));
     }
 
-    // --- reads (#57, #18; docs/role-permissions.md "Server-side read rules") ---
-    // Called after businessAccess, so the caller's profile is already read. The
-    // owner reads everything (backup, Admin). `single` = a get of one document.
     function canReadRecord(base, u, docId, single) {
+      let role = get(/databases/$(database)/documents/$(u)/$(request.auth.uid)).data.get('role', '');
+      let def = role == 'manager';
+      let p = settingsAppPath(u);
+      let access = exists(p) ? get(p).data.get('roleAccess', {}) : {};
+      let r = access is map ? access.get(role, {}) : {};
+      let a = r is map ? r : {};
       return isOwnerIn(u)
         || (base in ['notifications', 'drafts']
             ? (single && resource == null) || resource.data.get('userId', null) == request.auth.uid
           : base == 'autoSaves' ? docId == request.auth.uid
-          // settings/team: names and roles of the team (owner-written) for managers' App health
-          // and notification fan-out, so they never read other profiles (#87)
           : base == 'settings' ? single && (docId == 'app' || (docId == 'team' && isManagerIn(u))
               || (docId == 'accounts' && isManagerIn(u) && moneyPageOn(u)))
-          : base == 'withdrawals' ? roleSeesMoneyPages(u)
+          : base == 'withdrawals' ? (a.get('finance', def) == true || a.get('reports', def) == true || a.get('analytics', def) == true)
           : base == 'personalExpenses' ? personalOn(u)
           : base == 'cashSessions' ? isManagerIn(u)
           : true);
     }
 
-    // Withdrawals are shown only on Money, Statements and Insights (roleAccess ids
-    // finance, reports, analytics; defaults: on for managers, off for members). A
-    // manager or member reads them only when one of those is on for their role: one
-    // extra read (settings/app), never for the owner.
-    function roleSeesMoneyPages(usersCol) {
-      let role = get(profilePath(usersCol)).data.get('role', '');
-      let def = role == 'manager';
-      let p = settingsAppPath(usersCol);
-      let access = exists(p) ? get(p).data.get('roleAccess', {}) : {};
-      let r = access is map ? access.get(role, {}) : {};
-      let a = r is map ? r : {};
-      return a.get('finance', def) == true || a.get('reports', def) == true || a.get('analytics', def) == true;
-    }
-
-    // A withdrawal is recorded only on Money (roleAccess id finance; default on for managers,
-    // off for members), so only roles with Money on may create one (#64). One extra read
-    // (settings/app), never for the owner; withdrawals are rare.
     function moneyPageOn(usersCol) {
-      let role = get(profilePath(usersCol)).data.get('role', '');
+      let role = get(/databases/$(database)/documents/$(usersCol)/$(request.auth.uid)).data.get('role', '');
       let p = settingsAppPath(usersCol);
       let access = exists(p) ? get(p).data.get('roleAccess', {}) : {};
       let r = access is map ? access.get(role, {}) : {};
       return (r is map ? r : {}).get('finance', role == 'manager') == true;
     }
 
-    // Money › Worth accounts (settings/accounts, #74): one doc shared by every phone,
-    // { accounts: { <id>: { name, balance, type } }, updatedAt, updatedBy, changedId }; read by the owner and managers with Money on
-    // (canReadRecord). The owner writes anything (moving one phone's accounts in one write);
-    // a manager with Money on adds, changes or removes one account per write (named in changedId),
-    // in whole rupees.
     function worthAccountOk(a) {
       return a is map
         && a.keys().hasOnly(['name', 'balance', 'type']) && a.keys().hasAll(['name', 'balance', 'type'])
@@ -1162,32 +747,19 @@ service cloud.firestore {
         && (!(id in after) || worthAccountOk(after[id]));
     }
 
-    // --- stock checkpoint (stockCheckpoints/current) ---
+    // --- stock checkpoint, rate history, profiles, device log, audit log, telemetry ---
 
-    function isManagerIn(usersCol) {
-      return isApprovedIn(usersCol) && get(profilePath(usersCol)).data.get('role', '') in ['owner', 'manager'];
-    }
-
-    // Fields any approved user may write to mark the checkpoint stale.
-    function staleMarkOnly() {
-      return request.resource.data.get('stale', false) == true
-        && (resource == null
-            ? request.resource.data.keys().hasOnly(['stale', 'staleCount', 'staleAt', 'staleReason', 'staleBy'])
-            : request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['stale', 'staleCount', 'staleAt', 'staleReason', 'staleBy']));
-    }
-
-    // Only the two docs the app uses (firestore-service.js checkpointRef / legacyScanRef).
     function checkpointRules(usersCol, docId) {
+      let d = request.resource.data;
       return docId == 'current'
-        ? ((isManagerIn(usersCol) && voidAwareWriter()) || (isApprovedIn(usersCol) && staleMarkOnly()))
+        ? (isManagerIn(usersCol) && voidAwareWriter())
+          || (isApprovedIn(usersCol) && d.get('stale', false) == true
+              && (resource == null
+                  ? d.keys().hasOnly(['stale', 'staleCount', 'staleAt', 'staleReason', 'staleBy'])
+                  : d.diff(resource.data).affectedKeys().hasOnly(['stale', 'staleCount', 'staleAt', 'staleReason', 'staleBy'])))
         : docId == 'legacyScan' && isManagerIn(usersCol);
     }
 
-    // --- item rate/name history (rateHistory, #82 / #65 phase 1) ---
-    // Append-only: owner/manager create entries for their own uid; nobody
-    // updates or deletes them. `index` = position in the rate list (#65);
-    // `source` = where the change was made (Items page row, edit dialog, Excel import).
     function validRateHistoryEntry(usersCol) {
       let d = request.resource.data;
       return isManagerIn(usersCol)
@@ -1201,21 +773,13 @@ service cloud.firestore {
         && (!('index' in d) || (d.index is int && d.index >= 0 && d.index <= 20));
     }
 
-    // --- user profile rules (shared by users and dev_users) ---
-
     function canReadProfile(usersCol, userId) {
-      // Own profile (pending/rejected users too, at login); only the owner reads
-      // everyone (Admin, Roles & access). Managers read names and roles from
-      // settings/team instead (#87); members never read others (#57).
-      return (isSignedIn() && request.auth.uid == userId) || isOwnerIn(usersCol);
+      return (request.auth != null && request.auth.uid == userId) || isOwnerIn(usersCol);
     }
 
     function canCreateProfile(userId) {
-      // Self-registration only, always as a pending staff member, with the fields
-      // registration writes (repos/users.js createProfileIfMissing). A removed or
-      // rejected person keeps their profile, so they can't come back as pending (#84).
       let d = request.resource.data;
-      return isSignedIn()
+      return request.auth != null
         && request.auth.uid == userId
         && d.keys().hasOnly(['name', 'email', 'role', 'status', 'createdAt'])
         && d.get('status', '') == 'pending'
@@ -1227,39 +791,23 @@ service cloud.firestore {
         && d.get('createdAt', null) == request.time;
     }
 
-    // An owner can't change their own role/status, nor demote or remove another
-    // owner (two owners removing each other at once would leave none).
-    function ownerProfileGuardOk(userId) {
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status'])
-        || (request.auth.uid != userId && resource.data.get('role', '') != 'owner');
-    }
-
-    // Saved period ranges (#140): "a|b;a|b", at most 10 pairs of the app's period presets.
-    function savedRangesOk(d) {
-      let p = '(this-month|last-month|this-year|last-year|this-fy|last-fy|last-30|all|month:[0-9]{4}-[0-9]{2}|range:[0-9]{4}-[0-9]{2}-[0-9]{2}:[0-9]{4}-[0-9]{2}-[0-9]{2})';
-      let e = p + '[|]' + p + '?';
-      return !('savedRanges' in d)
-        || (d.savedRanges is string && d.savedRanges.size() <= 600
-            && d.savedRanges.matches('^(' + e + '(;' + e + '){0,9})?$'));
-    }
-
-    // Users change only their own name (Settings › account) and their saved period
-    // ranges (#140; the list of their phones is deviceLog, #124); never while removed or rejected.
     function canUpdateProfile(usersCol, userId) {
       let d = request.resource.data;
-      return (isOwnerIn(usersCol) && ownerProfileGuardOk(userId))
-        || (isSignedIn()
+      let p = '(this-month|last-month|this-year|last-year|this-fy|last-fy|last-30|all|month:[0-9]{4}-[0-9]{2}|range:[0-9]{4}-[0-9]{2}-[0-9]{2}:[0-9]{4}-[0-9]{2}-[0-9]{2})';
+      let e = p + '[|]' + p + '?';
+      return (isOwnerIn(usersCol)
+              && (!d.diff(resource.data).affectedKeys().hasAny(['role', 'status'])
+                  || (request.auth.uid != userId && resource.data.get('role', '') != 'owner')))
+        || (request.auth != null
             && request.auth.uid == userId
             && !(resource.data.get('status', '') in ['disabled', 'rejected'])
             && d.diff(resource.data).affectedKeys().hasOnly(['name', 'savedRanges'])
             && d.get('name', '') is string && d.get('name', '').size() <= 100
-            && savedRangesOk(d));
+            && (!('savedRanges' in d)
+                || (d.savedRanges is string && d.savedRanges.size() <= 600
+                    && d.savedRanges.matches('^(' + e + '(;' + e + '){0,9})?$'))));
     }
 
-    // --- phones per person (#124): deviceLog/{uid}.devices, "deviceId:YYYYMMDD" ---
-    // Written only by that person (an approved shop user), read by them and the owner,
-    // never by managers. Entries are checked one by one (at most 10); the day may not
-    // be after tomorrow (UTC) since the phone writes its IST day.
     function deviceEntryOk(e) {
       return e is string && e.matches('^[a-z0-9]{1,20}:[0-9]{8}$')
         && timestamp.date(int(e.split(':')[1][0:4]), int(e.split(':')[1][4:6]), int(e.split(':')[1][6:8]))
@@ -1281,12 +829,6 @@ service cloud.firestore {
         && d.keys().hasOnly(['devices']) && deviceListOk(d.get('devices', null));
     }
 
-    // --- audit logs (#55) and telemetry (#122): append-only ---
-
-    // The caller's own uid; `serverTime` (FieldValue.serverTimestamp) is the
-    // trusted time. `timestamp` (client clock, used for ordering) may not be in
-    // the future and only lags when the entry was queued offline (up to 3 days);
-    // entries without serverTime (older apps) must be within 10 minutes.
     function validAuditEntry() {
       let d = request.resource.data;
       let now = request.time.toMillis();
@@ -1303,7 +845,6 @@ service cloud.firestore {
         && (!('details' in d) || (d.details is map && d.details.size() <= 40));
     }
 
-    // Owner cleanup (audit.js cleanupOldLogs): only entries older than 90 days.
     function isExpiredAuditEntry() {
       return resource.data.get('timestamp', null) is number
         && resource.data.timestamp < request.time.toMillis() - 7776000000;
@@ -1313,7 +854,6 @@ service cloud.firestore {
       return !(key in d) || (d[key] is string && d[key].size() <= max);
     }
 
-    // The owner hides a report (#116): only these fields, by the caller, at the server time.
     function telemetryHideOnly() {
       let d = request.resource.data;
       return d.diff(resource.data).affectedKeys().hasOnly(['hidden', 'hiddenBy', 'hiddenAt'])
@@ -1322,7 +862,6 @@ service cloud.firestore {
         && d.get('hiddenAt', null) == request.time;
     }
 
-    // One document per sync of a grouped error (telemetry.js syncToFirestore).
     function validTelemetryEntry() {
       let d = request.resource.data;
       return d.keys().hasOnly(['type', 'message', 'source', 'line', 'column', 'stack', 'context', 'timestamp',
@@ -1344,22 +883,12 @@ service cloud.firestore {
         && shortStringOrAbsent(d, 'userRole', 32);
     }
 
-    // ============================================
-    // RENTALS (#170): rent_* collections (dev_rent_* in development), roles
-    // per business (#149). The shop owner owns every business; anyone else
-    // needs users/{uid}.rentRole = 'manager' | 'member' (set by the owner).
-    // A shop role alone gives no rentals access, and a rentals role alone
-    // (shop role 'none') gives no shop access. See docs/rentals-design.md.
-    // ============================================
+    // --- rentals (#170): shop owner, or rentRole manager/member ---
 
-    function rentProfile(usersCol) {
-      return get(profilePath(usersCol)).data;
-    }
-
-    // 'owner' | 'manager' | 'member' | '' (no access). The profile is read once
-    // (rules have an expression budget per request).
     function rentRoleIn(usersCol) {
-      return isSignedIn() && exists(profilePath(usersCol)) ? rentRoleOf(get(profilePath(usersCol)).data) : '';
+      return request.auth != null && exists(/databases/$(database)/documents/$(usersCol)/$(request.auth.uid))
+        ? rentRoleOf(get(/databases/$(database)/documents/$(usersCol)/$(request.auth.uid)).data)
+        : '';
     }
 
     function rentRoleOf(p) {
@@ -1369,9 +898,6 @@ service cloud.firestore {
         : '';
     }
 
-    // Owner decision (2026-10-25): anyone with a rentals role records payments
-    // and keeps the records up to date. Deletes and Access stay owner-only;
-    // correcting a charge's amount stays owner/manager.
     function canWriteRent(usersCol) {
       return rentRoleIn(usersCol) != '';
     }
@@ -1380,20 +906,16 @@ service cloud.firestore {
       return rentRoleIn(usersCol) in ['owner', 'manager'];
     }
 
-    function rentPrefix(usersCol) {
-      return usersCol == 'dev_users' ? 'dev_' : '';
-    }
-
     function rentPath(usersCol, coll, id) {
-      return /databases/$(database)/documents/$(rentPrefix(usersCol) + coll)/$(id);
+      return /databases/$(database)/documents/$((usersCol == 'dev_users' ? 'dev_' : '') + coll)/$(id);
     }
 
     function rentLeasePath(usersCol, leaseId) {
-      return rentPath(usersCol, 'rent_leases', leaseId);
+      return /databases/$(database)/documents/$((usersCol == 'dev_users' ? 'dev_' : '') + 'rent_leases')/$(leaseId);
     }
 
     function rentChargePath(usersCol, leaseId, month) {
-      return rentPath(usersCol, 'rent_charges', leaseId + '_' + month);
+      return /databases/$(database)/documents/$((usersCol == 'dev_users' ? 'dev_' : '') + 'rent_charges')/$(leaseId + '_' + month);
     }
 
     function rentStr(d, key, min, max) {
@@ -1416,23 +938,19 @@ service cloud.firestore {
       return n < 10 ? '0' + string(n) : string(n);
     }
 
-    // The month after 'YYYY-MM'.
     function nextMonth(m) {
       return int(m[5:7]) == 12 ? string(int(m[0:4]) + 1) + '-01' : m[0:5] + pad2(int(m[5:7]) + 1);
     }
 
-    // This month in India (IST = UTC+5:30), as 'YYYY-MM'.
     function rentThisMonth() {
       let ist = request.time + duration.value(330, 'm');
       return string(ist.year()) + '-' + pad2(ist.month());
     }
 
-    // Every rentals write names its writer (audit: who recorded what).
     function rentWriterOk() {
       return request.resource.data.get('updatedBy', null) == request.auth.uid;
     }
 
-    // Who/when created a record never changes.
     function rentCreationKept() {
       return request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null)
         && request.resource.data.get('createdBy', null) == resource.data.get('createdBy', null);
@@ -1442,55 +960,66 @@ service cloud.firestore {
       return ['archived', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy'];
     }
 
-    // Shape of properties, units, tenants and leases.
-    function validRentDoc(base) {
+    function validRentProperty() {
       let d = request.resource.data;
       return d.get('archived', false) is bool
         && rentWriterOk()
-        && (base == 'rent_properties'
-          ? d.keys().hasOnly(['name', 'address', 'kind', 'notes'].concat(rentMeta()))
-            && rentStr(d, 'name', 1, 80) && rentStr(d, 'address', 0, 200) && rentStr(d, 'notes', 0, 500)
-            && d.get('kind', 'other') in ['house', 'shop', 'flat', 'plot', 'godown', 'other']
-          : base == 'rent_units'
-          ? d.keys().hasOnly(['propertyId', 'label', 'rent', 'leaseId', 'lastReading', 'meterRate', 'meterCharge',
-                              'type', 'area', 'floor'].concat(rentMeta()))
-            && rentUnitExtrasOk(d)
-            && rentStr(d, 'propertyId', 1, 64) && rentStr(d, 'label', 1, 60) && rentMoney(d, 'rent')
-            && (d.get('leaseId', null) == null || rentStr(d, 'leaseId', 1, 64))
-            && rentNumOrNull(d, 'lastReading') && rentNumOrNull(d, 'meterRate')
-            && (d.get('meterCharge', null) == null || rentStr(d, 'meterCharge', 1, 80))
-          : base == 'rent_tenants'
-          ? d.keys().hasOnly(['name', 'phone', 'phone2', 'notes'].concat(rentMeta()))
-            && rentStr(d, 'name', 1, 80) && rentStr(d, 'phone', 0, 20) && rentStr(d, 'notes', 0, 500)
-            && (resource == null || d.get('phone', '') != resource.data.get('phone', '') ? rentMobile(d.get('phone', null)) : true)
-            && (d.get('phone2', null) == null || rentMobile(d.phone2))
-          : base == 'rent_leases'
-          ? d.keys().hasOnly(['unitId', 'propertyId', 'tenantId', 'rent', 'dueDay', 'startMonth', 'endMonth',
-                              'deposit', 'status', 'chargedThrough', 'increasePct', 'rentSince', 'shareToken',
-                              'startDate', 'proRate', 'firstRent', 'elecMode', 'meterNo', 'fromLeaseId', 'movedTo',
-                              'agreementEnd', 'noticeMonths'].concat(rentMeta()))
-            && rentStr(d, 'unitId', 1, 64) && rentStr(d, 'propertyId', 1, 64) && rentStr(d, 'tenantId', 1, 64)
-            && rentMoney(d, 'rent') && rentMoney(d, 'deposit')
-            && d.get('dueDay', 0) is int && d.dueDay >= 1 && d.dueDay <= 28
-            && rentMonth(d.get('startMonth', null))
-            && (d.get('endMonth', null) == null || rentMonth(d.endMonth))
-            && d.get('status', '') in ['active', 'ended']
-            && (d.get('chargedThrough', null) == null || rentMonth(d.chargedThrough))
-            && (!('increasePct' in d) || (d.increasePct is number && d.increasePct >= 0 && d.increasePct <= 100))
-            && (!('rentSince' in d) || rentMonth(d.rentSince))
-            && (d.get('shareToken', null) == null || rentShareToken(d.shareToken))
-            && (!('startDate' in d) || (rentDate(d.startDate) && d.startDate[0:7] == d.startMonth))
-            && d.get('proRate', false) is bool
-            // firstRent <= rent only when the lease is created; afterwards firstRent is fixed
-            // and the rent may go down (rentLeaseUpdateOk keeps firstRent unchanged).
-            && (d.get('firstRent', null) == null || (d.firstRent is number && d.firstRent >= 0 && (resource != null || d.firstRent <= d.rent)))
-            && d.get('elecMode', 'meter') in ['included', 'meter', 'own']
-            && (d.get('meterNo', null) == null || rentStr(d, 'meterNo', 1, 40))
-            && (d.get('movedTo', null) == null || rentStr(d, 'movedTo', 1, 64))
-          : false);
+        && d.keys().hasOnly(['name', 'address', 'kind', 'notes'].concat(rentMeta()))
+        && rentStr(d, 'name', 1, 80) && rentStr(d, 'address', 0, 200) && rentStr(d, 'notes', 0, 500)
+        && d.get('kind', 'other') in ['house', 'shop', 'flat', 'plot', 'godown', 'other'];
     }
 
-    // 10-digit Indian mobile (WhatsApp reminders), stored without +91.
+    function validRentUnit() {
+      let d = request.resource.data;
+      return d.get('archived', false) is bool
+        && rentWriterOk()
+        && d.keys().hasOnly(['propertyId', 'label', 'rent', 'leaseId', 'lastReading', 'meterRate', 'meterCharge',
+                          'type', 'area', 'floor'].concat(rentMeta()))
+        && (!('type' in d) || d.type in ['flat', 'commercial', 'office', 'godown', 'other'])
+        && (d.get('area', null) == null || (d.area is number && d.area > 0 && d.area <= 1000000))
+        && (d.get('floor', null) == null || rentStr(d, 'floor', 1, 20))
+        && rentStr(d, 'propertyId', 1, 64) && rentStr(d, 'label', 1, 60) && rentMoney(d, 'rent')
+        && (d.get('leaseId', null) == null || rentStr(d, 'leaseId', 1, 64))
+        && rentNumOrNull(d, 'lastReading') && rentNumOrNull(d, 'meterRate')
+        && (d.get('meterCharge', null) == null || rentStr(d, 'meterCharge', 1, 80));
+    }
+
+    function validRentTenant() {
+      let d = request.resource.data;
+      return d.get('archived', false) is bool
+        && rentWriterOk()
+        && d.keys().hasOnly(['name', 'phone', 'phone2', 'notes'].concat(rentMeta()))
+        && rentStr(d, 'name', 1, 80) && rentStr(d, 'phone', 0, 20) && rentStr(d, 'notes', 0, 500)
+        && (resource == null || d.get('phone', '') != resource.data.get('phone', '') ? rentMobile(d.get('phone', null)) : true)
+        && (d.get('phone2', null) == null || rentMobile(d.phone2));
+    }
+
+    function validRentLease() {
+      let d = request.resource.data;
+      return d.get('archived', false) is bool
+        && rentWriterOk()
+        && d.keys().hasOnly(['unitId', 'propertyId', 'tenantId', 'rent', 'dueDay', 'startMonth', 'endMonth',
+                          'deposit', 'status', 'chargedThrough', 'increasePct', 'rentSince', 'shareToken',
+                          'startDate', 'proRate', 'firstRent', 'elecMode', 'meterNo', 'fromLeaseId', 'movedTo',
+                          'agreementEnd', 'noticeMonths'].concat(rentMeta()))
+        && rentStr(d, 'unitId', 1, 64) && rentStr(d, 'propertyId', 1, 64) && rentStr(d, 'tenantId', 1, 64)
+        && rentMoney(d, 'rent') && rentMoney(d, 'deposit')
+        && d.get('dueDay', 0) is int && d.dueDay >= 1 && d.dueDay <= 28
+        && rentMonth(d.get('startMonth', null))
+        && (d.get('endMonth', null) == null || rentMonth(d.endMonth))
+        && d.get('status', '') in ['active', 'ended']
+        && (d.get('chargedThrough', null) == null || rentMonth(d.chargedThrough))
+        && (!('increasePct' in d) || (d.increasePct is number && d.increasePct >= 0 && d.increasePct <= 100))
+        && (!('rentSince' in d) || rentMonth(d.rentSince))
+        && (d.get('shareToken', null) == null || rentShareToken(d.shareToken))
+        && (!('startDate' in d) || (rentDate(d.startDate) && d.startDate[0:7] == d.startMonth))
+        && d.get('proRate', false) is bool
+        && (d.get('firstRent', null) == null || (d.firstRent is number && d.firstRent >= 0 && (resource != null || d.firstRent <= d.rent)))
+        && d.get('elecMode', 'meter') in ['included', 'meter', 'own']
+        && (d.get('meterNo', null) == null || rentStr(d, 'meterNo', 1, 40))
+        && (d.get('movedTo', null) == null || rentStr(d, 'movedTo', 1, 64));
+    }
+
     function rentMobile(v) {
       return v is string && v.matches('^[6-9][0-9]{9}$');
     }
@@ -1503,93 +1032,65 @@ service cloud.firestore {
       return t is string && t.matches('^[A-Za-z0-9_-]{22,64}$');
     }
 
-    // Unit type (flat / commercial / office / godown / other), optional size (sq ft) and floor.
-    // Units saved before types existed have no type (shown as flats until set).
-    function rentUnitExtrasOk(d) {
-      return (!('type' in d) || d.type in ['flat', 'commercial', 'office', 'godown', 'other'])
-        && (d.get('area', null) == null || (d.area is number && d.area > 0 && d.area <= 1000000))
-        && (d.get('floor', null) == null || rentStr(d, 'floor', 1, 20));
-    }
-
-    // New leases start active, with no charges and no tenant link (except one carried over
-    // on a change of unit), and take their unit in the same write.
-    // The lease's property is its unit's, and its tenant exists. Non-owners can't
-    // back-date the start more than 2 days (IST; the app's default edit window, fixed
-    // here because Roles & access days would cost reads past this write's limit).
-    // A member's pro-rated first month is the computed one (RENT-11).
-    function rentLeaseCreateOk(usersCol, docId, owner, mgr) {
+    function rentLeaseCreateOk(usersCol, docId) {
+      let role = rentRoleIn(usersCol);
       let d = request.resource.data;
       let unit = getAfter(rentPath(usersCol, 'rent_units', d.unitId)).data;
-      return d.get('status', '') == 'active' && d.get('endMonth', null) == null
+      let before = get(rentLeasePath(usersCol, d.fromLeaseId)).data;
+      let old = getAfter(rentLeasePath(usersCol, d.fromLeaseId)).data;
+      let ist = request.time + duration.value(330, 'm') - duration.value(2, 'd');
+      let days = rentMonthDays(d.startMonth);
+      let x = float(d.rent) * (days - int(d.startDate[8:10]) + 1) / days;
+      return role != '' && validRentLease()
+        && d.get('status', '') == 'active' && d.get('endMonth', null) == null
         && d.get('movedTo', null) == null && d.get('agreementEnd', null) == null && d.get('noticeMonths', 0) == 0
-        // No charges yet, or the first month's charge written in the same batch (move-in).
         && (d.get('chargedThrough', null) == null
             || (d.chargedThrough == d.startMonth && d.startMonth <= rentThisMonth()
                 && existsAfter(rentChargePath(usersCol, docId, d.startMonth))))
         && unit.get('leaseId', null) == docId
         && unit.get('propertyId', '') == d.propertyId
         && existsAfter(rentPath(usersCol, 'rent_tenants', d.tenantId))
-        && (owner || d.get('startDate', '') >= rentDaysAgo(2))
-        && (mgr || d.get('firstRent', null) == null || rentFirstRentOk(d))
-        // A change of unit's first month is charged after (its opening advance, RENT-16, comes from the old lease).
-        && (d.get('fromLeaseId', null) == null ? d.get('shareToken', null) == null : d.get('chargedThrough', null) == null && rentUnitChangeOk(usersCol, docId, d));
+        && (role == 'owner' || d.get('startDate', '') >= string(ist.year()) + '-' + pad2(ist.month()) + '-' + pad2(ist.day()))
+        && (role in ['owner', 'manager'] || d.get('firstRent', null) == null || (d.firstRent >= x - 0.5 && d.firstRent <= x + 0.5))
+        && (d.get('fromLeaseId', null) == null
+          ? d.get('shareToken', null) == null
+          : d.get('chargedThrough', null) == null
+            && rentStr(d, 'fromLeaseId', 1, 64)
+            && before.status == 'active'
+            && old.status == 'ended' && old.tenantId == d.tenantId && old.unitId != d.unitId
+            && old.get('movedTo', null) == docId
+            && (old.endMonth == d.startMonth
+                || (d.get('startDate', '').matches('^.{8}01$') && nextMonth(old.endMonth) == d.startMonth))
+            && (d.get('shareToken', null) == null
+                || (before.get('shareToken', null) == d.shareToken && old.get('shareToken', null) == null)));
     }
 
-    // Change of unit (rent-unit.js): the same tenant's active lease (fromLeaseId)
-    // ends in this write on another unit, pointing here (movedTo), with the move
-    // month, or the month before when the move is on the 1st (that month isn't
-    // charged twice). Its tenant link moves here: only that lease's token, which it
-    // gives up in the same write.
-    function rentUnitChangeOk(usersCol, docId, d) {
-      let before = get(rentLeasePath(usersCol, d.fromLeaseId)).data;
-      let old = getAfter(rentLeasePath(usersCol, d.fromLeaseId)).data;
-      return rentStr(d, 'fromLeaseId', 1, 64)
-        && before.status == 'active'
-        && old.status == 'ended' && old.tenantId == d.tenantId && old.unitId != d.unitId
-        && old.get('movedTo', null) == docId
-        && (old.endMonth == d.startMonth
-            || (d.get('startDate', '').matches('^.{8}01$') && nextMonth(old.endMonth) == d.startMonth))
-        && (d.get('shareToken', null) == null
-            || (before.get('shareToken', null) == d.shareToken && old.get('shareToken', null) == null));
-    }
-
-    // The old lease of a change of unit points at the new lease created in the same write.
-    function rentMovedOk(usersCol, docId, to) {
-      return !exists(rentLeasePath(usersCol, to))
-        && getAfter(rentLeasePath(usersCol, to)).data.get('fromLeaseId', null) == docId;
-    }
-
-    // 'YYYY-MM-DD' n days ago in India (IST).
-    function rentDaysAgo(n) {
-      let ist = request.time + duration.value(330, 'm') - duration.value(n, 'd');
-      return string(ist.year()) + '-' + pad2(ist.month()) + '-' + pad2(ist.day());
-    }
-
-    // Lease changes (review of #10, High):
-    //  - an ended lease is final: status, endMonth and chargedThrough never change again;
-    //  - an active lease stays active with endMonth null, and chargedThrough moves
-    //    forward exactly one month per write, to a month whose charge exists after
-    //    the write and that isn't after this month (IST);
-    //  - active -> ended only in the move-out write: endMonth (start..this month) =
-    //    chargedThrough, its charge exists, the unit is freed in the same write.
-    //    Ending before the last charged month deletes the later unpaid months and
-    //    is owner/manager only, or one month back on a change of unit (movedTo; a
-    //    move on the 1st within the members' 2-day start window).
-    function rentLeaseUpdateOk(usersCol, docId, mgr) {
+    function rentLeaseUpdateOk(usersCol, docId) {
+      let role = rentRoleIn(usersCol);
+      let mgr = role in ['owner', 'manager'];
       let d = request.resource.data;
       let r = resource.data;
       let before = r.get('chargedThrough', null);
       let next = d.get('chargedThrough', null);
       let moved = r.status == 'active' && d.get('status', '') == 'ended' && d.get('movedTo', null) != null
-        && rentMovedOk(usersCol, docId, d.movedTo);
-      return (d.diff(r).affectedKeys().hasOnly(['status', 'endMonth', 'chargedThrough', 'movedTo', 'shareToken', 'updatedAt', 'updatedBy'])
-          ? rentLeaseStateOk(d)
-          : validRentDoc('rent_leases') && rentCreationKept()
+        && (!exists(rentLeasePath(usersCol, d.movedTo))
+            && getAfter(rentLeasePath(usersCol, d.movedTo)).data.get('fromLeaseId', null) == docId);
+      return role != ''
+        && (d.diff(r).affectedKeys().hasOnly(['status', 'endMonth', 'chargedThrough', 'movedTo', 'shareToken', 'updatedAt', 'updatedBy'])
+          ? (rentWriterOk() && d.get('status', '') in ['active', 'ended']
+              && (d.get('endMonth', null) == null || rentMonth(d.endMonth))
+              && (d.get('chargedThrough', null) == null || rentMonth(d.chargedThrough))
+              && (d.get('movedTo', null) == null || rentStr(d, 'movedTo', 1, 64))
+              && (d.get('shareToken', null) == null || rentShareToken(d.shareToken)))
+          : validRentLease() && rentCreationKept()
             && d.startMonth == r.startMonth && d.unitId == r.unitId && d.tenantId == r.tenantId
             && d.get('startDate', null) == r.get('startDate', null) && d.get('firstRent', null) == r.get('firstRent', null)
             && d.get('proRate', false) == r.get('proRate', false)
             && d.get('fromLeaseId', null) == r.get('fromLeaseId', null)
-            && rentAgreementOk(d, r, mgr))
+            && ((d.get('agreementEnd', null) == r.get('agreementEnd', null) && d.get('noticeMonths', 0) == r.get('noticeMonths', 0))
+                || (mgr
+                  && (d.get('agreementEnd', null) == null || (rentMonth(d.agreementEnd) && d.agreementEnd >= d.startMonth))
+                  && d.get('noticeMonths', 0) is int && d.get('noticeMonths', 0) >= 0 && d.get('noticeMonths', 0) <= 12)))
         && (d.get('movedTo', null) == r.get('movedTo', null) || moved)
         && (d.get('shareToken', null) == r.get('shareToken', null) || mgr
             || (moved && d.get('shareToken', null) == null
@@ -1612,28 +1113,6 @@ service cloud.firestore {
                       && !existsAfter(rentChargePath(usersCol, docId, before)))));
     }
 
-    // Agreement terms (#157 phase 3): the month the agreement ends (not before the start) and the notice
-    // period in months; set or changed only by the owner or a rentals manager, on a full lease edit (the
-    // app never writes them at move-in, and a new lease may not carry them: rentLeaseCreateOk).
-    function rentAgreementOk(d, r, mgr) {
-      return (d.get('agreementEnd', null) == r.get('agreementEnd', null) && d.get('noticeMonths', 0) == r.get('noticeMonths', 0))
-        || (mgr
-          && (d.get('agreementEnd', null) == null || (rentMonth(d.agreementEnd) && d.agreementEnd >= d.startMonth))
-          && d.get('noticeMonths', 0) is int && d.get('noticeMonths', 0) >= 0 && d.get('noticeMonths', 0) <= 12);
-    }
-
-    // Only the lease's state changed (charging, move-out, change of unit, link): the
-    // other fields are as stored, so only these are checked (expression budget).
-    function rentLeaseStateOk(d) {
-      return rentWriterOk() && d.get('status', '') in ['active', 'ended']
-        && (d.get('endMonth', null) == null || rentMonth(d.endMonth))
-        && (d.get('chargedThrough', null) == null || rentMonth(d.chargedThrough))
-        && (d.get('movedTo', null) == null || rentStr(d, 'movedTo', 1, 64))
-        && (d.get('shareToken', null) == null || rentShareToken(d.shareToken));
-    }
-
-    // A unit's lease link changes only with the lease: set by a new active lease
-    // for this unit, cleared when that lease ends in the same write.
     function rentUnitLeaseOk(usersCol, docId) {
       let before = resource.data.get('leaseId', null);
       let next = request.resource.data.get('leaseId', null);
@@ -1646,31 +1125,16 @@ service cloud.firestore {
             && getAfter(rentLeasePath(usersCol, before)).data.status == 'ended');
     }
 
-    // lastReading / meterRate move only with a meter write on a charge of this
-    // unit (meterCharge points at it); owner/manager may also set the rate alone.
-    function rentUnitMeterOk(usersCol, docId, mgr) {
-      let d = request.resource.data;
-      let r = resource.data;
-      let meterKeys = d.diff(r).affectedKeys().intersection(['lastReading', 'meterRate', 'meterCharge'].toSet());
-      return meterKeys.size() == 0
-        || (mgr && meterKeys.hasOnly(['meterRate']))
-        || (rentStr(d, 'meterCharge', 1, 80)
-            && getAfter(rentPath(usersCol, 'rent_charges', d.meterCharge)).data.unitId == docId
-            && getAfter(rentPath(usersCol, 'rent_charges', d.meterCharge)).data.electricity.curr == d.lastReading
-            && getAfter(rentPath(usersCol, 'rent_charges', d.meterCharge)).data.electricity.rate == d.meterRate);
-    }
-
     function rentChargeFields() {
       return ['leaseId', 'unitId', 'propertyId', 'tenantId', 'tenantName', 'unitLabel', 'month', 'dueDay',
               'rent', 'electricity', 'amount', 'paid', 'open', 'payments', 'voided', 'adv', 'createdAt', 'updatedAt', 'updatedBy'];
     }
 
-    // rent_charges/{leaseId}_{YYYY-MM}: created only in the write that moves its
-    // active lease's chargedThrough to exactly this month; amount = the lease's
-    // rent; nothing paid, no electricity yet.
     function validRentChargeCreate(usersCol, docId) {
       let d = request.resource.data;
       let lease = getAfter(rentLeasePath(usersCol, d.get('leaseId', '-'))).data;
+      let l = rentLeasePath(usersCol, d.leaseId);
+      let prev = exists(l) ? get(l).data.get('chargedThrough', null) : null;
       return d.keys().hasOnly(rentChargeFields())
         && rentWriterOk()
         && rentStr(d, 'leaseId', 1, 64) && rentMonth(d.get('month', null))
@@ -1683,23 +1147,14 @@ service cloud.firestore {
         && d.get('propertyId', '') == lease.propertyId && d.get('dueDay', 0) == lease.dueDay
         && d.get('amount', null) == rentMonthRent(lease, d.month) && d.get('rent', null) == rentMonthRent(lease, d.month)
         && d.get('electricity', null) == null && !('voided' in d)
-        && rentChargeOpeningOk(usersCol, d, lease, rentAdvSrc(usersCol, d, lease))
+        && rentChargeOpeningOk(usersCol, d, lease,
+             prev != null ? rentChargePath(usersCol, d.leaseId, prev)
+             : exists(l) && lease.get('fromLeaseId', null) != null
+               ? rentChargePath(usersCol, lease.fromLeaseId, get(rentLeasePath(usersCol, lease.fromLeaseId)).data.endMonth)
+             : null)
         && rentStr(d, 'tenantName', 0, 80) && rentStr(d, 'unitLabel', 0, 60);
     }
 
-    // RENT-16: the month whose advance opens this one: the lease's month before (its chargedThrough
-    // before this write), or for the first month after a change of unit the old lease's last month.
-    function rentAdvSrc(usersCol, d, lease) {
-      let l = rentLeasePath(usersCol, d.leaseId);
-      let prev = exists(l) ? get(l).data.get('chargedThrough', null) : null;
-      return prev != null ? rentChargePath(usersCol, d.leaseId, prev)
-        : exists(l) && lease.get('fromLeaseId', null) != null
-          ? rentChargePath(usersCol, lease.fromLeaseId, get(rentLeasePath(usersCol, lease.fromLeaseId)).data.endMonth)
-          : null;
-    }
-
-    // A new month starts unpaid, or (advance `a` carried) paid min(a, amount) by one 'advance'
-    // payment of the writer, the rest carried on, and the month before's advance cleared in this write.
     function rentChargeOpeningOk(usersCol, d, lease, src) {
       let a = src == null ? 0 : get(src).data.get('adv', 0);
       let applied = a < d.get('amount', 0) ? a : d.get('amount', 0);
@@ -1715,28 +1170,19 @@ service cloud.firestore {
               && d.payments[0].get('by', '') == request.auth.uid);
     }
 
-    // The rent of a month: a pro-rated first month (firstRent, set at move-in) or the lease rent (RENT-11).
     function rentMonthRent(lease, month) {
       return month == lease.startMonth && lease.get('firstRent', null) != null ? lease.firstRent : lease.rent;
     }
 
-    // Σ amount of up to 12 payment entries (rules have no loops; a charge holds at most 12).
     function rentPayAt(list, i) {
       return list.size() > i ? list[i].amount : 0;
     }
 
-    function rentPaidSum(list) {
-      return rentPayAt(list, 0) + rentPayAt(list, 1) + rentPayAt(list, 2) + rentPayAt(list, 3)
-        + rentPayAt(list, 4) + rentPayAt(list, 5) + rentPayAt(list, 6) + rentPayAt(list, 7)
-        + rentPayAt(list, 8) + rentPayAt(list, 9) + rentPayAt(list, 10) + rentPayAt(list, 11);
-    }
-
-    // One new payment entry by the caller (amount > 0, known mode), at most 12 per charge.
-    // An entry with a receipt number (rno) needs its receipt rent_receipts/{charge}_{i}
-    // with that number created in the same write (validRentReceiptCreate).
     function rentNewEntryOk(usersCol, docId) {
       let list = request.resource.data.payments;
       let n = resource.data.get('payments', []).size();
+      let path = rentPath(usersCol, 'rent_deposits', resource.data.get('tenantId', '-'));
+      let es = getAfter(path).data.get('entries', []);
       return appendsOneEntry('payments') && n < 12
         && list[n].keys().hasOnly(['amount', 'adv', 'mode', 'ref', 'date', 'at', 'by', 'byName', 'rno'])
         && list[n].amount > 0
@@ -1744,31 +1190,15 @@ service cloud.firestore {
         && (!('adv' in list[n]) || (request.resource.data.get('adv', 0) != resource.data.get('adv', 0)
             && list[n].get('mode', '') in ['cash', 'upi', 'bank', 'cheque']))
         && (list[n].get('mode', '') in ['cash', 'upi', 'bank', 'cheque']
-            || (list[n].get('mode', '') == 'deposit' && !('rno' in list[n]) && rentDepPaysOk(usersCol, docId, list[n].amount)))
+            || (list[n].get('mode', '') == 'deposit' && !('rno' in list[n])
+                && es.size() == get(path).data.get('entries', []).size() + 1
+                && es[es.size() - 1].get('kind', '') == 'adjust'
+                && es[es.size() - 1].get('chargeId', '') == docId
+                && es[es.size() - 1].get('amount', 0) == list[n].amount))
         && (!('rno' in list[n])
             || getAfter(rentPath(usersCol, 'rent_receipts', docId + '_' + string(n))).data.get('no', '') == list[n].rno);
     }
 
-    // A payment (rent-store.js recordPayment): paid grows by exactly the new
-    // entry and never above the amount due.
-    function rentPaymentOk(usersCol, docId) {
-      let d = request.resource.data;
-      let r = resource.data;
-      let n = r.get('payments', []).size();
-      return d.diff(r).affectedKeys().hasOnly(['payments', 'paid', 'open', 'adv', 'updatedAt', 'updatedBy'])
-        && rentWriterOk()
-        && rentNewEntryOk(usersCol, docId)
-        && rentPayAdvOk(usersCol, d, r, d.payments[n])
-        && d.get('paid', null) is number
-        && d.paid >= r.paid + d.payments[n].amount - 0.01
-        && d.paid <= r.paid + d.payments[n].amount + 0.01
-        && d.paid <= r.amount + 0.01
-        && d.get('open', null) == (d.paid < r.amount - 0.001);
-    }
-
-    // RENT-16: more than is due, only on the active lease's latest month and only once the
-    // month is paid off: the payment's adv (> 0) is added to the month's advance, carried
-    // to the next month (rentChargeOpeningOk). Otherwise the month's advance is unchanged.
     function rentPayAdvOk(usersCol, d, r, e) {
       return !('adv' in e)
         ? d.get('adv', 0) == r.get('adv', 0)
@@ -1781,21 +1211,6 @@ service cloud.firestore {
       return l.status == 'active' && l.get('chargedThrough', '') == month;
     }
 
-    // RENT-16: a month's advance goes to 0 only (a) in the write that creates the next month
-    // paid by it (that month's paid + advance = this advance), or (b) the lease has ended: moved
-    // out, the tenant's deposit ledger gains it in this write ('received', mode 'advance'); or
-    // changed unit, it opens the new lease's first month, created in this write.
-    function rentAdvOutOk(usersCol, docId) {
-      let d = request.resource.data;
-      let r = resource.data;
-      let n = rentChargePath(usersCol, r.leaseId, nextMonth(r.month));
-      return rentWriterOk() && r.get('adv', 0) > 0 && d.get('adv', 0) == 0
-        && ((!exists(n) && existsAfter(n) && rentPaidMatches(getAfter(n).data.paid + getAfter(n).data.get('adv', 0), r.adv))
-          || rentAdvEndedOk(usersCol, r, docId, get(rentLeasePath(usersCol, r.leaseId)).data));
-    }
-
-    // An ended lease's advance: after a change of unit it opens the new lease's first month
-    // (created in this write); after a move-out it goes into the tenant's deposit ledger.
     function rentAdvEndedOk(usersCol, r, docId, old) {
       return old.status == 'ended'
         && (old.get('movedTo', null) == null
@@ -1813,14 +1228,6 @@ service cloud.firestore {
         && es[es.size() - 1].get('chargeId', '') == docId && es[es.size() - 1].get('amount', 0) == adv;
     }
 
-    // Electricity from a sub-meter (rent-store.js recordMeter): units = current −
-    // previous, amount = units × rate rounded to the rupee (#129; within half a
-    // rupee + a paisa for floating point, like the pro-rated rents, so the paise
-    // amount older app versions write is accepted too), charge = rent + electricity
-    // (rent unchanged).
-    // Previous = the reading already on this charge, else the unit's last reading;
-    // rate = the unit's rate unless owner/manager; replacing a saved reading is
-    // owner/manager only; the unit stores the new reading in the same write.
     function rentMeterOk(usersCol, docId, mgr) {
       let d = request.resource.data;
       let r = resource.data;
@@ -1849,40 +1256,8 @@ service cloud.firestore {
         && d.get('open', null) == (r.paid < d.amount - 0.001);
     }
 
-    // Owner/manager corrections (e.g. a waived month): same lease, month and
-    // creation; payments unchanged or one new own entry; paid = Σ entries ≤ amount.
-    function rentChargeEditOk(usersCol, docId) {
-      let d = request.resource.data;
-      let r = resource.data;
-      return d.keys().hasOnly(rentChargeFields())
-        && rentWriterOk() && rentCreationKept()
-        && d.get('leaseId', null) == r.leaseId && d.get('month', null) == r.month
-        && d.get('unitId', null) == r.unitId && d.get('tenantId', null) == r.tenantId
-        && d.get('electricity', null) == r.get('electricity', null) && d.get('rent', null) == r.get('rent', null)
-        && d.get('voided', []) == r.get('voided', []) && d.get('adv', 0) == r.get('adv', 0)
-        && rentMoney(d, 'amount') && rentMoney(d, 'paid')
-        && d.get('payments', null) is list
-        && (d.payments == r.get('payments', []) || rentNewEntryOk(usersCol, docId))
-        && d.payments.size() <= 12
-        && rentPaidMatches(d.paid, rentPaidSum(d.payments))
-        && d.paid <= d.amount + 0.01
-        && d.get('open', null) == (d.paid < d.amount - 0.001);
-    }
-
     function rentPaidMatches(paid, sum) {
       return paid >= sum - 0.01 && paid <= sum + 0.01;
-    }
-
-    // Change of unit, pro-rated (RENT-13): in the write that ends the lease with a
-    // move (movedTo), its last month's rent goes down to the old unit's days; the
-    // amount follows (rent + electricity), never below what is paid. Members: the
-    // computed value, or (more paid than that) closed at what is paid; owner/manager:
-    // any lower amount (they correct charges anyway).
-    function rentChargeMoveOk(usersCol, mgr) {
-      let d = request.resource.data;
-      let r = resource.data;
-      return d.get('rent', null) != r.get('rent', null)
-        && rentChargeMovedOk(usersCol, mgr, d, r, getAfter(rentLeasePath(usersCol, r.leaseId)).data);
     }
 
     function rentChargeMovedOk(usersCol, mgr, d, r, lease) {
@@ -1901,17 +1276,6 @@ service cloud.firestore {
         && d.get('open', null) == (r.paid < d.amount - 0.001);
     }
 
-    // RENT-11: rent × days from the start date to the month's end ÷ days in that month, rounded.
-    function rentFirstRentOk(d) {
-      let days = rentMonthDays(d.startMonth);
-      let x = float(d.rent) * (days - int(d.startDate[8:10]) + 1) / days;
-      return d.firstRent >= x - 0.5 && d.firstRent <= x + 0.5;
-    }
-
-    // RENT-13: rent × (days in the old unit: from the 1st, or the lease's start day when
-    // that month was pro-rated, to the day before the move) ÷ (days that charge covers),
-    // rounded to the rupee (either way on a .5).
-    // capped: closed at what is paid (more than the share): any rent from the share up.
     function rentMoveRentOk(v, full, lease, month, date, capped) {
       let s = month == lease.startMonth && lease.get('firstRent', null) != null ? int(lease.startDate[8:10]) : 1;
       let x = float(full) * (int(date[8:10]) - s) / (rentMonthDays(month) - s + 1);
@@ -1924,19 +1288,8 @@ service cloud.firestore {
       return mo == 2 ? (y % 4 == 0 && (y % 100 != 0 || y % 400 == 0) ? 29 : 28) : (mo in [4, 6, 9, 11] ? 30 : 31);
     }
 
-    // This year in India (IST = UTC+5:30): receipt numbers follow the server's clock.
     function rentIstYear() {
       return (request.time + duration.value(330, 'm')).year();
-    }
-
-    // Receipt issued later (rent-store.js issueReceipt): entry i gains its rno and
-    // nothing else changes; i comes from this year's receipt counter, which must
-    // point at rent_receipts/{charge}_{i} created in the same write with that number.
-    function rentChargeRnoOk(usersCol, docId) {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payments', 'updatedAt', 'updatedBy'])
-        && rentWriterOk()
-        && rentRnoIdx(usersCol, docId, resource.data.get('payments', []), request.resource.data.get('payments', []),
-             getAfter(rentCounterPath(usersCol, rentIstYear())).data.get('rid', ''));
     }
 
     function rentRnoIdx(usersCol, docId, a, b, rid) {
@@ -1951,9 +1304,6 @@ service cloud.firestore {
         && getAfter(rentPath(usersCol, 'rent_receipts', rid)).data.get('no', '') == b[i].rno;
     }
 
-    // Cancelling a receipt (rent-store.js voidReceipt), owner/manager: the charge
-    // lists that payment's index in `voided` (so the tenant link drops its number)
-    // in the same write that marks rent_receipts/{charge}_{i} void.
     function rentChargeVoidOk(usersCol, docId) {
       let d = request.resource.data;
       let r = resource.data;
@@ -1967,52 +1317,8 @@ service cloud.firestore {
         && getAfter(rentPath(usersCol, 'rent_receipts', docId + '_' + string(v[v.size() - 1]))).data.get('void', false) == true;
     }
 
-    // ---- Rent receipts (RENT-12): plain, non-GST, one per payment ----
-    // rent_receipts/{chargeId}_{i} is created in the payment write that adds entry i
-    // (with rno = its number) to the charge, or later for an entry i without one
-    // (rentChargeRnoOk), and moves this IST year's counter rent_counters/receipts_{YYYY}
-    // on by exactly one; the number is that counter value, so numbers are unique and
-    // gap-free per year. The header (business name, address) is not stored: the app
-    // shows it from Settings. Never edited, except cancel (void) by owner/manager.
-    function rentReceiptFields() {
-      return ['no', 'year', 'seq', 'chargeId', 'pi', 'leaseId', 'tenantId', 'unitId', 'propertyId', 'tenantName',
-              'place', 'ut', 'months', 'rent', 'elec', 'total', 'paid', 'adv', 'mode', 'ref', 'date', 'balance', 'by',
-              'byName', 'issuedBy', 'createdAt', 'void', 'voidBy', 'voidByName', 'voidAt', 'voidReason'];
-    }
-
     function rentCounterPath(usersCol, year) {
       return rentPath(usersCol, 'rent_counters', 'receipts_' + string(year));
-    }
-
-    // The counter moves from seq − 1 (or nothing, for the year's first receipt) to seq, pointing at this receipt.
-    function rentReceiptSeqOk(usersCol, rid, year, seq) {
-      let path = rentCounterPath(usersCol, year);
-      return getAfter(path).data.get('last', 0) == seq && getAfter(path).data.get('rid', '') == rid
-        && (exists(path) ? get(path).data.get('last', 0) == seq - 1 : seq == 1);
-    }
-
-    // "Received by" is the caller's profile name (users/{uid}.name, cut to 80; the app says 'User' when it is empty).
-    function rentByNameOk(usersCol, v) {
-      let nm = rentProfile(usersCol).get('name', '');
-      return v == (nm == '' ? 'User' : nm.size() > 80 ? nm[0:80] : nm);
-    }
-
-    // Balance due = the charge's after this write (a receipt issued later shows it as then).
-    function rentBalanceOk(d, amount, paid) {
-      return d.get('balance', null) is number && d.balance >= amount - paid - 0.01 && d.balance <= amount - paid + 0.01;
-    }
-
-    // With the payment: entry pi is new and the caller's.
-    function rentReceiptWithPayment(usersCol, d, ch, before) {
-      return before.size() == d.pi && ch.payments.size() == d.pi + 1
-        && d.get('by', '') == request.auth.uid && rentByNameOk(usersCol, d.get('byName', ''))
-        && !('issuedBy' in d);
-    }
-
-    // Later: entry pi existed without a number (its writer, or an owner/manager: see the match).
-    function rentReceiptLater(d, ch, before) {
-      return before.size() == ch.payments.size() && !('rno' in before[d.pi])
-        && d.get('issuedBy', '') == request.auth.uid;
     }
 
     function validRentReceiptCreate(usersCol, rid) {
@@ -2022,21 +1328,31 @@ service cloud.firestore {
     }
 
     function rentReceiptCreateOk(usersCol, rid, d, ch, before) {
-      return d.keys().hasOnly(rentReceiptFields())
+      let path = rentCounterPath(usersCol, d.year);
+      let nm = get(/databases/$(database)/documents/$(usersCol)/$(request.auth.uid)).data.get('name', '');
+      return d.keys().hasOnly(['no', 'year', 'seq', 'chargeId', 'pi', 'leaseId', 'tenantId', 'unitId', 'propertyId', 'tenantName',
+                               'place', 'ut', 'months', 'rent', 'elec', 'total', 'paid', 'adv', 'mode', 'ref', 'date', 'balance', 'by',
+                               'byName', 'issuedBy', 'createdAt', 'void', 'voidBy', 'voidByName', 'voidAt', 'voidReason'])
         && !d.keys().hasAny(['voidBy', 'voidByName', 'voidAt', 'voidReason']) && d.get('void', null) == false
         && rentStr(d, 'chargeId', 1, 80) && d.get('pi', -1) is int && d.pi >= 0 && d.pi < 12
         && rid == d.chargeId + '_' + string(d.pi)
         && d.get('year', 0) is int && d.year == rentIstYear()
         && d.get('seq', 0) is int && d.seq >= 1
         && d.get('no', '') is string && d.no.matches('R-' + string(d.year) + '-0*' + string(d.seq))
-        && rentReceiptSeqOk(usersCol, rid, d.year, d.seq)
+        && (getAfter(path).data.get('last', 0) == d.seq && getAfter(path).data.get('rid', '') == rid
+            && (exists(path) ? get(path).data.get('last', 0) == d.seq - 1 : d.seq == 1))
         && d.pi < ch.payments.size()
-        && (rentReceiptWithPayment(usersCol, d, ch, before) || rentReceiptLater(d, ch, before))
-        && rentBalanceOk(d, ch.amount, ch.paid)
+        && ((before.size() == d.pi && ch.payments.size() == d.pi + 1
+             && d.get('by', '') == request.auth.uid
+             && d.get('byName', '') == (nm == '' ? 'User' : nm.size() > 80 ? nm[0:80] : nm)
+             && !('issuedBy' in d))
+            || (before.size() == ch.payments.size() && !('rno' in before[d.pi])
+                && d.get('issuedBy', '') == request.auth.uid))
+        && d.get('balance', null) is number
+        && d.balance >= ch.amount - ch.paid - 0.01 && d.balance <= ch.amount - ch.paid + 0.01
         && rentReceiptMatches(d, ch, ch.payments[d.pi]);
     }
 
-    // The receipt shows payment entry e and its charge exactly; createdAt is the server's time.
     function rentReceiptMatches(d, ch, e) {
       return e.get('rno', '') == d.no && e.get('by', '') == d.get('by', '') && e.get('byName', '') == d.get('byName', '')
         && e.amount == d.get('paid', -1) && e.get('adv', 0) == d.get('adv', 0) && e.mode == d.get('mode', '')
@@ -2053,7 +1369,6 @@ service cloud.firestore {
         && d.get('createdAt', null) == request.time;
     }
 
-    // Cancel: void once, by owner/manager, nothing else changes; the charge marks it in the same write.
     function rentReceiptVoidOk(usersCol) {
       let d = request.resource.data;
       let r = resource.data;
@@ -2076,33 +1391,22 @@ service cloud.firestore {
         && rcpt.seq == d.last && id == 'receipts_' + string(rcpt.year);
     }
 
-    // Move-out removes unpaid months after the last month, only inside the
-    // move-out write (lease active before, ended after); owner/manager, or the one
-    // month after on a change of unit (rentLeaseUpdateOk checks movedTo).
     function rentChargeDeleteOk(usersCol, role) {
       let leaseBefore = get(rentLeasePath(usersCol, resource.data.leaseId)).data;
       let leaseAfter = getAfter(rentLeasePath(usersCol, resource.data.leaseId)).data;
+      let r = resource.data;
+      let p = r.get('payments', []);
+      let endCh = rentChargePath(usersCol, r.leaseId, leaseAfter.endMonth);
       return (role in ['owner', 'manager']
           || (role == 'member' && leaseAfter.get('movedTo', null) != null && resource.data.month == nextMonth(leaseAfter.endMonth)))
         && ((resource.data.get('paid', 0) == 0 && resource.data.get('payments', []).size() == 0 && resource.data.get('adv', 0) == 0)
-          || rentAdvBackOk(usersCol, leaseAfter))
+          || (((p.size() == 1 && p[0].get('mode', '') == 'advance') || (p.size() == 0 && r.get('adv', 0) > 0))
+              && r.month == nextMonth(leaseAfter.endMonth)
+              && rentPaidMatches(getAfter(endCh).data.get('adv', 0), get(endCh).data.get('adv', 0) + r.paid + r.get('adv', 0))))
         && leaseBefore.status == 'active' && leaseAfter.status == 'ended'
         && resource.data.month > leaseAfter.endMonth;
     }
 
-    // RENT-16: the one month right after the new last month, paid only from the advance (or just carrying it), may go
-    // when the lease ends before it: paid + its advance go back to the last month's advance.
-    function rentAdvBackOk(usersCol, leaseAfter) {
-      let r = resource.data;
-      let p = r.get('payments', []);
-      let endCh = rentChargePath(usersCol, r.leaseId, leaseAfter.endMonth);
-      return ((p.size() == 1 && p[0].get('mode', '') == 'advance') || (p.size() == 0 && r.get('adv', 0) > 0))
-        && r.month == nextMonth(leaseAfter.endMonth)
-        && rentPaidMatches(getAfter(endCh).data.get('adv', 0), get(endCh).data.get('adv', 0) + r.paid + r.get('adv', 0));
-    }
-
-    // RENT-16, the other side: the last month's advance grows only by that month, deleted in this
-    // write, as the lease ends with this month.
     function rentAdvBackInOk(usersCol) {
       let d = request.resource.data;
       let r = resource.data;
@@ -2115,20 +1419,6 @@ service cloud.firestore {
         && rentPaidMatches(d.get('adv', 0), r.get('adv', 0) + get(n).data.paid + get(n).data.get('adv', 0));
     }
 
-    function rentCreateOk(base, usersCol, docId) {
-      let role = rentRoleIn(usersCol);
-      return role != ''
-        && (base == 'rent_charges' ? validRentChargeCreate(usersCol, docId)
-          : base == 'rent_leases' ? validRentDoc(base) && rentLeaseCreateOk(usersCol, docId, role == 'owner', role in ['owner', 'manager'])
-          : base == 'rent_units' ? validRentDoc(base) && rentUnitCreateLeaseOk(usersCol, docId)
-            && request.resource.data.get('type', '') in ['flat', 'commercial', 'office', 'godown', 'other']
-            && request.resource.data.get('meterCharge', null) == null
-          : validRentDoc(base));
-    }
-
-    // The caller's rentals role is read once per rule (rules have an expression budget).
-    // A new unit is vacant, or occupied by a lease created in the same batch
-    // (Add unit with its tenant). An opening meter reading is allowed.
     function rentUnitCreateLeaseOk(usersCol, docId) {
       let l = request.resource.data.get('leaseId', null);
       return l == null
@@ -2138,39 +1428,81 @@ service cloud.firestore {
             && getAfter(rentLeasePath(usersCol, l)).data.status == 'active');
     }
 
-    function rentUpdateOk(base, usersCol, docId) {
+    // A payment, a receipt number on a payment, a meter reading, a change of unit or an advance
+    // moving out/back; the owner or a manager may also edit the payments or void one.
+    function rentChargeUpdateOk(usersCol, docId) {
       let role = rentRoleIn(usersCol);
       let mgr = role in ['owner', 'manager'];
-      return role != '' && rentUpdateAs(base, usersCol, docId, mgr);
+      let d = request.resource.data;
+      let r = resource.data;
+      let changed = d.diff(r).affectedKeys();
+      let n = r.get('payments', []).size();
+      let next = rentChargePath(usersCol, r.leaseId, nextMonth(r.month));
+      return role != ''
+        && ((rentCreationKept()
+             && ((changed.hasOnly(['payments', 'paid', 'open', 'adv', 'updatedAt', 'updatedBy'])
+                  && rentWriterOk()
+                  && rentNewEntryOk(usersCol, docId)
+                  && rentPayAdvOk(usersCol, d, r, d.payments[n])
+                  && d.get('paid', null) is number
+                  && d.paid >= r.paid + d.payments[n].amount - 0.01
+                  && d.paid <= r.paid + d.payments[n].amount + 0.01
+                  && d.paid <= r.amount + 0.01
+                  && d.get('open', null) == (d.paid < r.amount - 0.001))
+                 || (changed.hasOnly(['payments', 'updatedAt', 'updatedBy'])
+                     && rentWriterOk()
+                     && rentRnoIdx(usersCol, docId, r.get('payments', []), d.get('payments', []),
+                          getAfter(rentCounterPath(usersCol, rentIstYear())).data.get('rid', '')))
+                 || rentMeterOk(usersCol, docId, mgr)
+                 || (d.get('rent', null) != r.get('rent', null)
+                     && rentChargeMovedOk(usersCol, mgr, d, r, getAfter(rentLeasePath(usersCol, r.leaseId)).data))
+                 || (changed.hasOnly(['adv', 'updatedAt', 'updatedBy'])
+                     && ((rentWriterOk() && r.get('adv', 0) > 0 && d.get('adv', 0) == 0
+                          && ((!exists(next) && existsAfter(next)
+                               && rentPaidMatches(getAfter(next).data.paid + getAfter(next).data.get('adv', 0), r.adv))
+                              || rentAdvEndedOk(usersCol, r, docId, get(rentLeasePath(usersCol, r.leaseId)).data)))
+                         || rentAdvBackInOk(usersCol)))))
+            || (mgr
+                && ((d.keys().hasOnly(rentChargeFields())
+                     && rentWriterOk() && rentCreationKept()
+                     && d.get('leaseId', null) == r.leaseId && d.get('month', null) == r.month
+                     && d.get('unitId', null) == r.unitId && d.get('tenantId', null) == r.tenantId
+                     && d.get('electricity', null) == r.get('electricity', null) && d.get('rent', null) == r.get('rent', null)
+                     && d.get('voided', []) == r.get('voided', []) && d.get('adv', 0) == r.get('adv', 0)
+                     && rentMoney(d, 'amount') && rentMoney(d, 'paid')
+                     && d.get('payments', null) is list
+                     && (d.payments == r.get('payments', []) || rentNewEntryOk(usersCol, docId))
+                     && d.payments.size() <= 12
+                     && rentPaidMatches(d.paid, rentPaidSum(d.payments))
+                     && d.paid <= d.amount + 0.01
+                     && d.get('open', null) == (d.paid < d.amount - 0.001))
+                    || rentChargeVoidOk(usersCol, docId))));
     }
 
-    function rentUpdateAs(base, usersCol, docId, mgr) {
-      return base == 'rent_charges'
-          ? (rentCreationKept() && (rentPaymentOk(usersCol, docId) || rentChargeRnoOk(usersCol, docId) || rentMeterOk(usersCol, docId, mgr)
-              || rentChargeMoveOk(usersCol, mgr)
-              // RENT-16, only the advance changes (gated here: the expression budget of a correction).
-              || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['adv', 'updatedAt', 'updatedBy'])
-                && (rentAdvOutOk(usersCol, docId) || rentAdvBackInOk(usersCol)))))
-            || (mgr && (rentChargeEditOk(usersCol, docId) || rentChargeVoidOk(usersCol, docId)))
-        : base == 'rent_leases'
-          ? rentLeaseUpdateOk(usersCol, docId, mgr)
-        : base == 'rent_units'
-          ? (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['leaseId', 'updatedAt', 'updatedBy'])
-              ? rentWriterOk() && rentUnitLeaseOk(usersCol, docId)
-              : validRentDoc(base) && rentCreationKept()
-                && rentUnitLeaseOk(usersCol, docId) && rentUnitMeterOk(usersCol, docId, mgr))
-        : validRentDoc(base) && rentCreationKept();
+    function rentPaidSum(l) {
+      return rentPayAt(l, 0) + rentPayAt(l, 1) + rentPayAt(l, 2) + rentPayAt(l, 3)
+        + rentPayAt(l, 4) + rentPayAt(l, 5) + rentPayAt(l, 6) + rentPayAt(l, 7)
+        + rentPayAt(l, 8) + rentPayAt(l, 9) + rentPayAt(l, 10) + rentPayAt(l, 11);
     }
 
-    function rentDeleteOk(base, usersCol) {
-      return isOwnerIn(usersCol)
-        || (base == 'rent_charges' && resource != null && rentChargeDeleteOk(usersCol, rentRoleIn(usersCol)));
+    function rentUnitUpdateOk(usersCol, docId) {
+      let role = rentRoleIn(usersCol);
+      let d = request.resource.data;
+      let r = resource.data;
+      let meterKeys = d.diff(r).affectedKeys().intersection(['lastReading', 'meterRate', 'meterCharge'].toSet());
+      return role != ''
+        && (d.diff(r).affectedKeys().hasOnly(['leaseId', 'updatedAt', 'updatedBy'])
+          ? rentWriterOk() && rentUnitLeaseOk(usersCol, docId)
+          : validRentUnit() && rentCreationKept()
+            && rentUnitLeaseOk(usersCol, docId)
+            && (meterKeys.size() == 0
+                || (role in ['owner', 'manager'] && meterKeys.hasOnly(['meterRate']))
+                || (rentStr(d, 'meterCharge', 1, 80)
+                    && getAfter(rentPath(usersCol, 'rent_charges', d.meterCharge)).data.unitId == docId
+                    && getAfter(rentPath(usersCol, 'rent_charges', d.meterCharge)).data.electricity.curr == d.lastReading
+                    && getAfter(rentPath(usersCol, 'rent_charges', d.meterCharge)).data.electricity.rate == d.meterRate)));
     }
 
-    // Tenant rent-history link (follow-up to #170): rent_public/{token} is a
-    // read-only snapshot anyone holding the exact token may get (no list). Written
-    // only by rentals roles while the lease points at this token (same write as
-    // the lease change, via getAfter); removed when the link is turned off/replaced.
     function validRentPublic(usersCol, token) {
       let d = request.resource.data;
       return rentRoleIn(usersCol) != ''
@@ -2188,7 +1520,6 @@ service cloud.firestore {
         && d.get('ended', null) is bool && (d.get('endMonth', null) == null || rentMonth(d.endMonth))
         && d.get('months', null) is list && d.months.size() <= 36
         && d.get('updatedAt', null) is number
-        // lid is fixed, except when the link moves with a change of unit (to the lease made from the old one).
         && (resource == null || resource.data.lid == d.lid
             || getAfter(rentLeasePath(usersCol, d.lid)).data.get('fromLeaseId', null) == resource.data.lid);
     }
@@ -2200,16 +1531,12 @@ service cloud.firestore {
             && getAfter(rentLeasePath(usersCol, resource.data.lid)).data.get('shareToken', null) != token);
     }
 
-    // Audit entries for rentals actions from users with a rentals role (a
-    // rentals-only helper isn't approved for the shop).
     function rentAuditOk(usersCol) {
       return request.resource.data.get('action', '') is string
         && request.resource.data.action.matches('RENT_[A-Z_]{1,40}')
         && rentRoleIn(usersCol) != '';
     }
 
-    // Settings › Rentals: defaults for NEW leases (rent_settings/default only).
-    // Rentals roles read; owner/manager write; the owner deletes.
     function validRentSettings(usersCol, docId) {
       let d = request.resource.data;
       return docId == 'default'
@@ -2223,40 +1550,24 @@ service cloud.firestore {
         && rentStr(d, 'receiptHeader', 0, 80) && rentStr(d, 'receiptAddress', 0, 200);
     }
 
-    // ---- Security deposit ledger (#157, RENT-14): rent_deposits/{tenantId} ----
-    // {tenantId, tenantName, held, entries[≤ 24]}; held = Σ received − Σ adjusted −
-    // Σ refunded, never below 0. Any rentals role appends one own entry; only the
-    // owner rewrites (edits / removes) entries, with held still their sum. An
-    // adjustment pays a month of this tenant in the same write: the charge gains a
-    // 'deposit' payment of the same amount (rentDepPaysOk checks the other side).
     function rentDepAt(l, i) {
       return l.size() > i ? (l[i].kind == 'received' ? l[i].amount : 0 - l[i].amount) : 0;
     }
 
-    function rentDepSum(l) {
-      return rentDepAt(l, 0) + rentDepAt(l, 1) + rentDepAt(l, 2) + rentDepAt(l, 3) + rentDepAt(l, 4) + rentDepAt(l, 5)
-        + rentDepAt(l, 6) + rentDepAt(l, 7) + rentDepAt(l, 8) + rentDepAt(l, 9) + rentDepAt(l, 10) + rentDepAt(l, 11)
-        + rentDepAt(l, 12) + rentDepAt(l, 13) + rentDepAt(l, 14) + rentDepAt(l, 15) + rentDepAt(l, 16) + rentDepAt(l, 17)
-        + rentDepAt(l, 18) + rentDepAt(l, 19) + rentDepAt(l, 20) + rentDepAt(l, 21) + rentDepAt(l, 22) + rentDepAt(l, 23);
-    }
-
-    function rentDepEntryOk(e) {
-      return e is map && e.keys().hasOnly(['kind', 'amount', 'date', 'mode', 'chargeId', 'month', 'leaseId', 'note', 'at', 'by', 'byName'])
+    function rentDepNewOk(usersCol, docId, d, held, n) {
+      let e = d.entries[n];
+      let ch = rentPath(usersCol, 'rent_charges', e.get('chargeId', '-'));
+      return d.entries.size() == n + 1
+        && e is map
+        && e.keys().hasOnly(['kind', 'amount', 'date', 'mode', 'chargeId', 'month', 'leaseId', 'note', 'at', 'by', 'byName'])
         && e.get('kind', '') in ['received', 'adjust', 'refund']
         && e.get('amount', null) is number && e.amount > 0
         && rentDate(e.get('date', '')) && e.get('by', '') == request.auth.uid
         && rentStr(e, 'note', 0, 200) && rentStr(e, 'byName', 0, 80)
         && (!('leaseId' in e) || rentStr(e, 'leaseId', 1, 64))
         && (e.kind == 'adjust' ? rentStr(e, 'chargeId', 1, 80)
-          : e.get('mode', '') in ['cash', 'upi', 'bank', 'cheque'] || (e.kind == 'received' && e.mode == 'advance' && rentStr(e, 'chargeId', 1, 80)));
-    }
-
-    // The new entry (index n), held moved by it; an adjustment is this tenant's charge gaining
-    // a 'deposit' payment of the same amount in this write.
-    function rentDepNewOk(usersCol, docId, d, held, n) {
-      let e = d.entries[n];
-      let ch = rentPath(usersCol, 'rent_charges', e.get('chargeId', '-'));
-      return d.entries.size() == n + 1 && rentDepEntryOk(e)
+          : e.get('mode', '') in ['cash', 'upi', 'bank', 'cheque']
+            || (e.kind == 'received' && e.mode == 'advance' && rentStr(e, 'chargeId', 1, 80)))
         && rentPaidMatches(d.held, held + (e.kind == 'received' ? e.amount : 0 - e.amount))
         && (e.get('mode', '') != 'advance'
           || (get(ch).data.tenantId == docId && get(ch).data.get('adv', 0) == e.amount && getAfter(ch).data.get('adv', 0) == 0
@@ -2285,9 +1596,13 @@ service cloud.firestore {
               || (role == 'owner' && rentPaidMatches(d.held, rentDepSum(d.entries)))));
     }
 
-    // ---- Property expenses (#157, RENT-17): rent_expenses/{id} ----
-    // Paid for a property (or one of its units): repairs, tax, maintenance, insurance, broker, other.
-    // Any rentals role adds one signed with its uid; only the owner edits or deletes. Never Aadhat cash.
+    function rentDepSum(l) {
+      return rentDepAt(l, 0) + rentDepAt(l, 1) + rentDepAt(l, 2) + rentDepAt(l, 3) + rentDepAt(l, 4) + rentDepAt(l, 5)
+        + rentDepAt(l, 6) + rentDepAt(l, 7) + rentDepAt(l, 8) + rentDepAt(l, 9) + rentDepAt(l, 10) + rentDepAt(l, 11)
+        + rentDepAt(l, 12) + rentDepAt(l, 13) + rentDepAt(l, 14) + rentDepAt(l, 15) + rentDepAt(l, 16) + rentDepAt(l, 17)
+        + rentDepAt(l, 18) + rentDepAt(l, 19) + rentDepAt(l, 20) + rentDepAt(l, 21) + rentDepAt(l, 22) + rentDepAt(l, 23);
+    }
+
     function validRentExpense(usersCol) {
       let d = request.resource.data;
       return d.keys().hasOnly(['propertyId', 'unitId', 'category', 'amount', 'date', 'month', 'mode', 'note', 'byName',
@@ -2304,127 +1619,97 @@ service cloud.firestore {
         && d.get('createdAt', null) is number && rentStr(d, 'createdBy', 1, 128);
     }
 
-    // The 'deposit' payment of charge `chargeId`: the tenant's ledger gains its adjustment in this write.
-    function rentDepPaysOk(usersCol, chargeId, amount) {
-      let path = rentPath(usersCol, 'rent_deposits', resource.data.get('tenantId', '-'));
-      let es = getAfter(path).data.get('entries', []);
-      return es.size() == get(path).data.get('entries', []).size() + 1
-        && es[es.size() - 1].get('kind', '') == 'adjust'
-        && es[es.size() - 1].get('chargeId', '') == chargeId
-        && es[es.size() - 1].get('amount', 0) == amount;
-    }
-
-    // ============================================
-    // PRODUCTION COLLECTIONS
-    // ============================================
-
-    // Business collections (production and dev_ mirrors) live under one wildcard match.
-    // Reads: see canReadRecord (own notifications/drafts/auto-save, settings/app only,
-    // withdrawals by role access).
+    // Shared business collections (prod and dev_). Create and update dispatch on the collection
+    // here rather than in a helper: every helper layer is re-walked by the rules compiler.
     match /{collection}/{docId} {
       allow get: if businessAccess(collection)
         && canReadRecord(baseName(collection), usersOf(collection), docId, true);
       allow list: if businessAccess(collection)
         && canReadRecord(baseName(collection), usersOf(collection), docId, false);
-      // Stock records need an up-to-date app (clientVersion >= 3) on create/update.
       allow create: if businessAccess(collection)
-        && appSettingsGuard(collection, docId)
-        && (!(collection in stockCollections()) || writesCurrentClient(collection))
-        && canCreateRecord(baseName(collection), usersOf(collection), docId);
-      // Bills: full edits by owner/manager/creator; anyone else approved may only
-      // record payment/due bookkeeping. Only an owner may change userId.
-      // Cash, expenses, stock adjustments, items, counters: see canUpdateRecord.
-      // Auto-saves and drafts: their own user only; notifications: the recipient
-      // marks them read.
+        && (collection in ['purchases', 'retailSales', 'wholesaleSales', 'dev_purchases', 'dev_retailSales', 'dev_wholesaleSales']
+            ? writesCurrentClient(collection)
+              && (isOwnerIn(usersOf(collection)) || validBillCreate(usersOf(collection)))
+          : collection in ['autoSaves', 'dev_autoSaves'] ? ownAutoSaveWrite(docId)
+          : collection in ['drafts', 'dev_drafts'] ? validDraftCreate()
+          : collection in ['notifications', 'dev_notifications'] ? validNotificationCreate(usersOf(collection), docId)
+          : collection in ['expenses', 'dev_expenses']
+            ? !personalTagged(request.resource.data) && expenseFieldsOk(request.resource.data)
+              && (isOwnerIn(usersOf(collection))
+                  || (validLedgerCreate() && expenseDayInWindow(usersOf(collection))))
+          : collection in ['personalExpenses', 'dev_personalExpenses']
+            ? expenseFieldsOk(request.resource.data)
+              && (isOwnerIn(usersOf(collection))
+                  || (personalOn(usersOf(collection)) && validPersonalCreate() && expenseDayInWindow(usersOf(collection))))
+          : collection in ['settings', 'dev_settings']
+            ? appSettingsGuard(collection, docId) && settingsReceiptOk() && settingsStampsOk(docId)
+              && (isOwnerIn(usersOf(collection)) || (docId == 'accounts' && worthAccountsWriteOk(usersOf(collection))))
+          : isOwnerIn(usersOf(collection))
+            || (collection in ['withdrawals', 'dev_withdrawals']
+                ? validLedgerCreate() && moneyPageOn(usersOf(collection))
+              : collection in ['stockAdjustments', 'dev_stockAdjustments']
+                ? isManagerIn(usersOf(collection)) && validAdjustmentCreate()
+              : collection in ['cashManagement', 'dev_cashManagement'] ? validCashCreate(docId)
+              : collection in ['items', 'dev_items']
+                ? isManagerIn(usersOf(collection)) && itemFieldsOk(request.resource.data.keys())
+              : collection in ['counters', 'dev_counters'] ? validCounterCreate()
+              : collection in ['itemFrequency', 'dev_itemFrequency'] ? itemFrequencyOk(docId)
+              : collection in ['personalExpenseDays', 'dev_personalExpenseDays']
+                ? personalOn(usersOf(collection)) && validPersonalDay(usersOf(collection), docId)
+              : false))
+        && (!(collection in ['stockAdjustments', 'dev_stockAdjustments']) || writesCurrentClient(collection));
       allow update: if businessAccess(collection)
-        && (appSettingsGuard(collection, docId) || managerShopSettingsOk(collection, docId))
-        && (!(collection in stockCollections()) || writesCurrentClient(collection))
-        && canUpdateRecord(baseName(collection), usersOf(collection), docId);
-      // Bills: only an owner deletes them (#75: everyone else voids). Cash sessions,
-      // items, counters, item frequency and settings: owner only. Expenses: owner/manager, or the creator
-      // within 24 hours. Withdrawals/stock adjustments: owner/manager. Auto-saves,
-      // drafts, notifications: their own user, or the owner (Clear Data).
+        && (collection in ['purchases', 'retailSales', 'wholesaleSales', 'dev_purchases', 'dev_retailSales', 'dev_wholesaleSales']
+            ? writesCurrentClient(collection)
+              && billUpdateAs(usersOf(collection), baseName(collection), docId,
+                   get(/databases/$(database)/documents/$(usersOf(collection))/$(request.auth.uid)).data.get('role', ''),
+                   request.resource.data.diff(resource.data).affectedKeys())
+          : collection in ['settings', 'dev_settings']
+            ? (appSettingsGuard(collection, docId) || managerShopSettingsOk(collection, docId))
+              && settingsReceiptOk() && settingsStampsOk(docId)
+              && (docId == 'app' || isOwnerIn(usersOf(collection))
+                  || (docId == 'accounts' && worthAccountsWriteOk(usersOf(collection))))
+          : collection in ['autoSaves', 'dev_autoSaves'] ? ownAutoSaveWrite(docId)
+          : collection in ['drafts', 'dev_drafts'] ? draftUpdateOk()
+          : collection in ['notifications', 'dev_notifications'] ? notificationReadOnly()
+          : collection in ['expenses', 'dev_expenses', 'personalExpenses', 'dev_personalExpenses']
+            ? expenseFieldsOk(request.resource.data) && resource.data.get('voided', false) != true
+              && (collection in ['expenses', 'dev_expenses']
+                  ? !(personalTagged(request.resource.data) && !personalTagged(resource.data))
+                    && (request.resource.data.diff(resource.data).affectedKeys().hasAny(expenseVoidFields())
+                        ? expenseVoidOk(usersOf(collection), request.resource.data.diff(resource.data).affectedKeys())
+                        : isOwnerIn(usersOf(collection)) || canUpdateExpense(usersOf(collection)))
+                  : request.resource.data.diff(resource.data).affectedKeys().hasAny(expenseVoidFields())
+                    ? personalOn(usersOf(collection)) && personalVoidLeavesDay(usersOf(collection), docId)
+                      && expenseVoidOk(usersOf(collection), request.resource.data.diff(resource.data).affectedKeys())
+                    : isOwnerIn(usersOf(collection))
+                      || (personalOn(usersOf(collection)) && canUpdateExpense(usersOf(collection))
+                          && request.resource.data.get('category', null) == 'personal'
+                          && request.resource.data.get('day', null) == resource.data.get('day', null)))
+          : collection in ['cashManagement', 'dev_cashManagement', 'cashSessions', 'dev_cashSessions'] && !cashStaysClosed()
+            ? false
+          : isOwnerIn(usersOf(collection))
+            || (collection in ['withdrawals', 'dev_withdrawals', 'stockAdjustments', 'dev_stockAdjustments']
+                ? legacyBackfillOnly()
+                  || (isManagerIn(usersOf(collection))
+                      && (collection in ['stockAdjustments', 'dev_stockAdjustments'] || moneyPageOn(usersOf(collection)))
+                      && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['amount']) || amountOk()))
+              : collection in ['cashManagement', 'dev_cashManagement'] ? cashAppendOk() || cashCloseOk() || cashLateCountOk()
+              : collection in ['items', 'dev_items']
+                ? isManagerIn(usersOf(collection)) && itemFieldsOk(request.resource.data.diff(resource.data).affectedKeys())
+              : collection in ['counters', 'dev_counters'] ? counterIncrementOk()
+              : collection in ['itemFrequency', 'dev_itemFrequency'] ? itemFrequencyOk(docId)
+              : collection in ['personalExpenseDays', 'dev_personalExpenseDays']
+                ? personalOn(usersOf(collection)) && validPersonalDay(usersOf(collection), docId)
+              : false))
+        && (!(collection in ['stockAdjustments', 'dev_stockAdjustments']) || writesCurrentClient(collection));
       allow delete: if businessAccess(collection)
         && appSettingsGuard(collection, docId)
         && canDeleteRecord(baseName(collection), usersOf(collection), docId);
     }
 
-    // Bill edit records (#121, validEditCreate): approved users read them (opened from the bill
-    // details); created only with the bill update that raises its editCount; never changed;
-    // the owner deletes them only once their bill is gone (delete for good, Clear Data).
-    match /purchases/{billId}/edits/{editId} {
-      allow read: if isApproved();
-      allow create: if validEditCreate('users', 'purchases', billId, editId);
-      allow update: if false;
-      allow delete: if isAdmin() && !existsAfter(billPath('users', 'purchases', billId));
-    }
+    // --- anomalies, reminders, rate/month stats, TIP health ---
 
-    match /retailSales/{billId}/edits/{editId} {
-      allow read: if isApproved();
-      allow create: if validEditCreate('users', 'retailSales', billId, editId);
-      allow update: if false;
-      allow delete: if isAdmin() && !existsAfter(billPath('users', 'retailSales', billId));
-    }
-
-    match /wholesaleSales/{billId}/edits/{editId} {
-      allow read: if isApproved();
-      allow create: if validEditCreate('users', 'wholesaleSales', billId, editId);
-      allow update: if false;
-      allow delete: if isAdmin() && !existsAfter(billPath('users', 'wholesaleSales', billId));
-    }
-
-    match /dev_purchases/{billId}/edits/{editId} {
-      allow read: if isApprovedIn('dev_users');
-      allow create: if validEditCreate('dev_users', 'purchases', billId, editId);
-      allow update: if false;
-      allow delete: if isOwnerIn('dev_users') && !existsAfter(billPath('dev_users', 'purchases', billId));
-    }
-
-    match /dev_retailSales/{billId}/edits/{editId} {
-      allow read: if isApprovedIn('dev_users');
-      allow create: if validEditCreate('dev_users', 'retailSales', billId, editId);
-      allow update: if false;
-      allow delete: if isOwnerIn('dev_users') && !existsAfter(billPath('dev_users', 'retailSales', billId));
-    }
-
-    match /dev_wholesaleSales/{billId}/edits/{editId} {
-      allow read: if isApprovedIn('dev_users');
-      allow create: if validEditCreate('dev_users', 'wholesaleSales', billId, editId);
-      allow update: if false;
-      allow delete: if isOwnerIn('dev_users') && !existsAfter(billPath('dev_users', 'wholesaleSales', billId));
-    }
-
-    // State/lease writes: owner or manager only; anyone approved may mark it stale.
-    // legacyScan (backfill completion state): owner/manager only, so staff can't
-    // switch the backfill off; staff devices still backfill and ignore the denied
-    // state write. No other doc ids.
-    match /stockCheckpoints/{docId} {
-      allow read: if isApproved();
-      allow create, update: if checkpointRules('users', docId);
-      allow delete: if isManagerIn('users');
-    }
-
-    match /dev_stockCheckpoints/{docId} {
-      allow read: if isApprovedIn('dev_users');
-      allow create, update: if checkpointRules('dev_users', docId);
-      allow delete: if isManagerIn('dev_users');
-    }
-
-    match /rateHistory/{docId} {
-      allow read: if isManagerIn('users');
-      allow create: if validRateHistoryEntry('users');
-      allow update, delete: if false;
-    }
-
-    match /dev_rateHistory/{docId} {
-      allow read: if isManagerIn('dev_users');
-      allow create: if validRateHistoryEntry('dev_users');
-      allow update, delete: if false;
-    }
-
-    // --- anomalies (#187 / #40): found by the daily scan on owner/manager
-    // devices; only owner/manager may read them or mark them OK/fixed (#84 is
-    // still open, so other users see nothing). Only an owner may delete.
     function validAnomaly(usersCol) {
       let d = request.resource.data;
       return isManagerIn(usersCol)
@@ -2437,30 +1722,6 @@ service cloud.firestore {
         && d.status in ['open', 'ok', 'fixed'];
     }
 
-    match /anomalies/{docId} {
-      allow read: if isManagerIn('users');
-      allow create, update: if validAnomaly('users');
-      allow delete: if isOwnerIn('users');
-    }
-
-    match /dev_anomalies/{docId} {
-      allow read: if isManagerIn('dev_users');
-      allow create, update: if validAnomaly('dev_users');
-      allow delete: if isOwnerIn('dev_users');
-    }
-
-    // --- Manual reminders on Today (#86) ---
-    // reminders/{id}: { title (1-120), dueDate 'YYYY-MM-DD' (India), party?, repeat? ('daily' |
-    // 'weekly' | 'monthly'), repeatDay? (monthly: 1-31), status, createdBy, createdByName?, createdAt,
-    // updatedBy/updatedByName/updatedAt, doneBy/doneByName/doneAt/nextId or
-    // cancelledBy/cancelledByName/cancelledAt, repeatOf? }.
-    // Shop-wide: every approved user reads them (Today) and may mark an open one done, for
-    // everyone. Owners and managers create them (due today or later, at most ~2 years ahead,
-    // yesterday allowed for a phone clock near midnight), edit and cancel open ones. Marking a
-    // repeating one done creates its next copy in the same batch (anyone who may mark it done):
-    // same title, party and repeat, a later date in the create range, linked both ways
-    // (nextId / repeatOf); a repeating one is never marked done without it (stop one with a change to
-    // "once" or Cancel). Done and cancelled are final. Only the owner deletes. In-app only (#58).
     function remIstDay(n) {
       let ist = request.time + duration.value(330, 'm') + duration.value(n, 'd');
       return string(ist.year()) + '-' + pad2(ist.month()) + '-' + pad2(ist.day());
@@ -2473,17 +1734,13 @@ service cloud.firestore {
         && v <= remIstDay(800);
     }
 
-    function reminderRepeatOk(d) {
+    function reminderFieldsOk(d) {
       let r = d.get('repeat', null);
       let day = d.get('repeatDay', null);
-      return (r == null || r in ['daily', 'weekly', 'monthly'])
-        && (day == null || (r == 'monthly' && day is int && day >= 1 && day <= 31));
-    }
-
-    function reminderFieldsOk(d) {
       return d.title is string && d.title.size() >= 1 && d.title.size() <= 120
         && shortStringOrAbsent(d, 'party', 80)
-        && reminderRepeatOk(d);
+        && (r == null || r in ['daily', 'weekly', 'monthly'])
+        && (day == null || (r == 'monthly' && day is int && day >= 1 && day <= 31));
     }
 
     function reminderCreatedOk(d) {
@@ -2507,8 +1764,6 @@ service cloud.firestore {
       return timestamp.date(int(s[0:4]), int(s[5:7]), int(s[8:10]));
     }
 
-    // REM-6 bound: the next copy is due at most one period (+1 day of slack) after the later of
-    // its reminder's due date and today (India); a monthly period counts as 31 days.
     function reminderNextDateOk(next, prev) {
       let due = remDate(prev.dueDate);
       let today = remDate(remIstDay(0));
@@ -2517,7 +1772,6 @@ service cloud.firestore {
       return remDate(next) <= from + duration.value(days + 1, 'd');
     }
 
-    // The next copy of a repeating reminder, created in the batch that marks it done.
     function validReminderNext(usersCol, coll, id) {
       let d = request.resource.data;
       let prevPath = /databases/$(database)/documents/$(coll)/$(d.get('repeatOf', '-'));
@@ -2554,7 +1808,6 @@ service cloud.firestore {
             : (next is string && getAfter(/databases/$(database)/documents/$(coll)/$(next)).data.get('repeatOf', null) == id));
     }
 
-    // Owner / manager edit an open reminder: title, date (a changed one in the create range), party, repeat.
     function reminderEditOk(usersCol) {
       let d = request.resource.data;
       return isManagerIn(usersCol)
@@ -2579,25 +1832,6 @@ service cloud.firestore {
         && shortStringOrAbsent(d, 'cancelledByName', 60);
     }
 
-    match /reminders/{id} {
-      allow read: if isApprovedIn('users');
-      allow create: if validReminderCreate('users') || validReminderNext('users', 'reminders', id);
-      allow update: if reminderAckOk('users', 'reminders', id) || reminderCancelOk('users') || reminderEditOk('users');
-      allow delete: if isOwnerIn('users');
-    }
-
-    match /dev_reminders/{id} {
-      allow read: if isApprovedIn('dev_users');
-      allow create: if validReminderCreate('dev_users') || validReminderNext('dev_users', 'dev_reminders', id);
-      allow update: if reminderAckOk('dev_users', 'dev_reminders', id) || reminderCancelOk('dev_users') || reminderEditOk('dev_users');
-      allow delete: if isOwnerIn('dev_users');
-    }
-
-    // --- rate trends (#65): per-item-year rate stats + backfill status ---
-    // rateStats/{itemId}_{YYYY} holds weekly (weeks: {'wYYYY-MM-DD': bucket})
-    // and monthly (months: {'mYYYY-MM': bucket}) buckets of one item and year;
-    // rateStats/_meta is the backfill status. Owner/manager only. Bucket maps
-    // are size-capped (rules can't check every bucket; the app writes them).
     function validRateStats(usersCol, docId) {
       let d = request.resource.data;
       return isManagerIn(usersCol)
@@ -2613,27 +1847,10 @@ service cloud.firestore {
             && d.months is map && d.months.size() <= 12);
     }
 
-    match /rateStats/{docId} {
-      allow read: if isManagerIn('users');
-      allow create, update: if validRateStats('users', docId);
-      allow delete: if isOwnerIn('users');
-    }
-
-    match /dev_rateStats/{docId} {
-      allow read: if isManagerIn('dev_users');
-      allow create, update: if validRateStats('dev_users', docId);
-      allow delete: if isOwnerIn('dev_users');
-    }
-
-    // --- month snapshots (redesign §7.6): monthStats/{YYYY-MM} ---
-    // One doc per calendar month with that month's Money figures, per-item and
-    // top-party totals, so Money / Insights compare with last year without
-    // reading old bills. Built and rolled by owner/manager devices; read by them.
     function validMonthStats(usersCol, docId) {
       let d = request.resource.data;
       return isManagerIn(usersCol)
         && voidAwareWriter()
-        // Month figures include expenses: built only by an app that knows voided expenses (#99)
         && d.get('clientVersion', 0) >= 5
         && docId.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
         && d.keys().hasOnly(['month', 'v', 'm', 'items', 'customers', 'suppliers', 'categories', 'days', 'builtAt', 'stale', 'staleAt', 'clientVersion', 'writtenAt'])
@@ -2643,10 +1860,6 @@ service cloud.firestore {
         && d.m is map;
     }
 
-    // Saving, editing or deleting a bill, expense or withdrawal dated in an earlier
-    // month marks that month stale (firestore-service.js noteMonthWrite, a merge
-    // write): any approved user, only `stale: true` and its time; a month without a
-    // snapshot gets a stub { month, stale, staleAt }.
     function monthStaleMarkOnly(usersCol, docId) {
       let d = request.resource.data;
       return isApprovedIn(usersCol)
@@ -2659,24 +1872,6 @@ service cloud.firestore {
             : d.diff(resource.data).affectedKeys().hasOnly(['stale', 'staleAt']));
     }
 
-    match /monthStats/{docId} {
-      allow read: if isManagerIn('users');
-      allow create, update: if validMonthStats('users', docId) || monthStaleMarkOnly('users', docId);
-      allow delete: if isOwnerIn('users');
-    }
-
-    match /dev_monthStats/{docId} {
-      allow read: if isManagerIn('dev_users');
-      allow create, update: if validMonthStats('dev_users', docId) || monthStaleMarkOnly('dev_users', docId);
-      allow delete: if isOwnerIn('dev_users');
-    }
-
-    // --- Test in Production (#217) ---
-    // tipHealth/{deviceId}_{YYYYMMDD}: daily per-device counters, written with
-    // set+merge and FieldValue.increment. Any approved user may create/update
-    // only their own device docs (uid, deviceId and day can't change); the
-    // per-version map is capped. tipFailures/{deviceId}_{YYYYMMDD}_{1..20}:
-    // create-only samples, so at most 20 per device per day. Owner/manager read.
     function validTipHealth(usersCol, docId) {
       let d = request.resource.data;
       return isApprovedIn(usersCol)
@@ -2720,118 +1915,167 @@ service cloud.firestore {
         && (!('createdAt' in d) || d.createdAt == request.time);
     }
 
+    // Explicit prod and dev_ blocks below: a wildcard block is evaluated for every write and
+    // counts towards the 1000-expression limit per document.
+    match /purchases/{billId}/edits/{editId} {
+      allow read: if isApprovedIn('users');
+      allow create: if validEditCreate('users', 'purchases', billId, editId);
+      allow delete: if isOwnerIn('users') && !existsAfter(billPath('users', 'purchases', billId));
+    }
+
+    match /retailSales/{billId}/edits/{editId} {
+      allow read: if isApprovedIn('users');
+      allow create: if validEditCreate('users', 'retailSales', billId, editId);
+      allow delete: if isOwnerIn('users') && !existsAfter(billPath('users', 'retailSales', billId));
+    }
+
+    match /wholesaleSales/{billId}/edits/{editId} {
+      allow read: if isApprovedIn('users');
+      allow create: if validEditCreate('users', 'wholesaleSales', billId, editId);
+      allow delete: if isOwnerIn('users') && !existsAfter(billPath('users', 'wholesaleSales', billId));
+    }
+
+    match /users/{userId}/preferences/{prefId} {
+      allow read: if isApprovedIn('users') && request.auth.uid == userId;
+    }
+
+    match /dev_purchases/{billId}/edits/{editId} {
+      allow read: if isApprovedIn('dev_users');
+      allow create: if validEditCreate('dev_users', 'purchases', billId, editId);
+      allow delete: if isOwnerIn('dev_users') && !existsAfter(billPath('dev_users', 'purchases', billId));
+    }
+
+    match /dev_retailSales/{billId}/edits/{editId} {
+      allow read: if isApprovedIn('dev_users');
+      allow create: if validEditCreate('dev_users', 'retailSales', billId, editId);
+      allow delete: if isOwnerIn('dev_users') && !existsAfter(billPath('dev_users', 'retailSales', billId));
+    }
+
+    match /dev_wholesaleSales/{billId}/edits/{editId} {
+      allow read: if isApprovedIn('dev_users');
+      allow create: if validEditCreate('dev_users', 'wholesaleSales', billId, editId);
+      allow delete: if isOwnerIn('dev_users') && !existsAfter(billPath('dev_users', 'wholesaleSales', billId));
+    }
+
+    match /dev_users/{userId}/preferences/{prefId} {
+      allow read: if isApprovedIn('dev_users') && request.auth.uid == userId;
+    }
+
+    match /stockCheckpoints/{docId} {
+      allow read: if isApprovedIn('users');
+      allow create, update: if checkpointRules('users', docId);
+      allow delete: if isManagerIn('users');
+    }
+
+    match /rateHistory/{docId} {
+      allow read: if isManagerIn('users');
+      allow create: if validRateHistoryEntry('users');
+    }
+
+    match /anomalies/{docId} {
+      allow read: if isManagerIn('users');
+      allow create, update: if validAnomaly('users');
+      allow delete: if isOwnerIn('users');
+    }
+
+    match /reminders/{docId} {
+      allow read: if isApprovedIn('users');
+      allow create: if validReminderCreate('users') || validReminderNext('users', 'reminders', docId);
+      allow update: if reminderAckOk('users', 'reminders', docId) || reminderCancelOk('users') || reminderEditOk('users');
+      allow delete: if isOwnerIn('users');
+    }
+
+    match /rateStats/{docId} {
+      allow read: if isManagerIn('users');
+      allow create, update: if validRateStats('users', docId);
+      allow delete: if isOwnerIn('users');
+    }
+
+    match /monthStats/{docId} {
+      allow read: if isManagerIn('users');
+      allow create, update: if validMonthStats('users', docId) || monthStaleMarkOnly('users', docId);
+      allow delete: if isOwnerIn('users');
+    }
+
     match /tipHealth/{docId} {
       allow read: if isManagerIn('users');
       allow create, update: if validTipHealth('users', docId);
       allow delete: if isOwnerIn('users');
     }
 
-    match /dev_tipHealth/{docId} {
-      allow read: if isManagerIn('dev_users');
-      allow create, update: if validTipHealth('dev_users', docId);
-      allow delete: if isOwnerIn('dev_users');
-    }
-
     match /tipFailures/{docId} {
       allow read: if isManagerIn('users');
       allow create: if validTipFailure('users', docId);
-      allow update: if false;
       allow delete: if isOwnerIn('users');
     }
 
-    match /dev_tipFailures/{docId} {
-      allow read: if isManagerIn('dev_users');
-      allow create: if validTipFailure('dev_users', docId);
-      allow update: if false;
-      allow delete: if isOwnerIn('dev_users');
+    match /users/{docId} {
+      allow read: if canReadProfile('users', docId);
+      allow create: if canCreateProfile(docId);
+      allow update: if canUpdateProfile('users', docId);
+      allow delete: if isOwnerIn('users') && resource.data.get('role', '') != 'owner';
     }
 
-    match /users/{userId} {
-      allow read: if canReadProfile('users', userId);
-      allow create: if canCreateProfile(userId);
-      allow update: if canUpdateProfile('users', userId);
-      allow delete: if isAdmin() && resource.data.get('role', '') != 'owner';
+    match /deviceLog/{docId} {
+      allow get: if (request.auth != null && request.auth.uid == docId && isApprovedIn('users')) || isOwnerIn('users');
+      allow list: if isOwnerIn('users');
+      allow create, update: if validDeviceLog('users', docId);
+      allow delete: if isOwnerIn('users');
     }
 
-    match /deviceLog/{uid} {
-      allow get: if (isSignedIn() && request.auth.uid == uid && isApproved()) || isAdmin();
-      allow list: if isAdmin();
-      allow create, update: if validDeviceLog('users', uid);
-      allow delete: if isAdmin();
+    match /auditLogs/{docId} {
+      allow create: if (isApprovedIn('users') || rentAuditOk('users')) && validAuditEntry();
+      allow read: if isOwnerIn('users');
+      allow delete: if isOwnerIn('users') && isExpiredAuditEntry();
     }
 
-    // Never used by the app (#64): readable by its user, written by nobody.
-    match /users/{userId}/preferences/{prefId} {
-      allow read: if isApproved() && request.auth.uid == userId;
-      allow write: if false;
-    }
-
-    // Audit logs - approved users append entries as themselves; only owners read,
-    // and only owners delete entries older than 90 days (retention cleanup).
-    match /auditLogs/{logId} {
-      allow create: if (isApproved() || rentAuditOk('users')) && validAuditEntry();
-      allow read: if isAdmin();
-      allow update: if false;
-      allow delete: if isAdmin() && isExpiredAuditEntry();
-    }
-
-    // Telemetry - append-only error reports; only owners read them, and hide them
-    // (Diagnostics, #116: hidden, never deleted by the app; delete stays for repairs).
     match /telemetry/{docId} {
-      allow create: if isApproved() && validTelemetryEntry();
-      allow update: if isAdmin() && telemetryHideOnly();
-      allow read, delete: if isAdmin();
+      allow create: if isApprovedIn('users') && validTelemetryEntry();
+      allow update: if isOwnerIn('users') && telemetryHideOnly();
+      allow read, delete: if isOwnerIn('users');
     }
 
-    // Tenant rent-history link: anyone with the exact token reads one doc; nobody lists.
-    match /rent_public/{token} {
+    match /rent_public/{docId} {
       allow get: if true;
-      allow list: if false;
-      allow create, update: if validRentPublic('users', token);
-      allow delete: if resource != null && rentPublicDeleteOk('users', token);
+      allow create, update: if validRentPublic('users', docId);
+      allow delete: if resource != null && rentPublicDeleteOk('users', docId);
     }
 
-    match /dev_rent_public/{token} {
-      allow get: if true;
-      allow list: if false;
-      allow create, update: if validRentPublic('dev_users', token);
-      allow delete: if resource != null && rentPublicDeleteOk('dev_users', token);
-    }
-
-    // Rentals (#170): helpers above. Deletes: owner, or move-out removing unpaid later months.
     match /rent_properties/{docId} {
       allow read: if rentRoleIn('users') != '';
-      allow create: if rentCreateOk('rent_properties', 'users', docId);
-      allow update: if rentUpdateOk('rent_properties', 'users', docId);
-      allow delete: if rentDeleteOk('rent_properties', 'users');
-    }
-
-    match /rent_units/{docId} {
-      allow read: if rentRoleIn('users') != '';
-      allow create: if rentCreateOk('rent_units', 'users', docId);
-      allow update: if rentUpdateOk('rent_units', 'users', docId);
-      allow delete: if rentDeleteOk('rent_units', 'users');
+      allow create: if rentRoleIn('users') != '' && validRentProperty();
+      allow update: if rentRoleIn('users') != '' && validRentProperty() && rentCreationKept();
+      allow delete: if isOwnerIn('users');
     }
 
     match /rent_tenants/{docId} {
       allow read: if rentRoleIn('users') != '';
-      allow create: if rentCreateOk('rent_tenants', 'users', docId);
-      allow update: if rentUpdateOk('rent_tenants', 'users', docId);
-      allow delete: if rentDeleteOk('rent_tenants', 'users');
+      allow create: if rentRoleIn('users') != '' && validRentTenant();
+      allow update: if rentRoleIn('users') != '' && validRentTenant() && rentCreationKept();
+      allow delete: if isOwnerIn('users');
+    }
+
+    match /rent_units/{docId} {
+      allow read: if rentRoleIn('users') != '';
+      allow create: if rentRoleIn('users') != '' && validRentUnit() && rentUnitCreateLeaseOk('users', docId)
+        && request.resource.data.get('type', '') in ['flat', 'commercial', 'office', 'godown', 'other']
+        && request.resource.data.get('meterCharge', null) == null;
+      allow update: if rentUnitUpdateOk('users', docId);
+      allow delete: if isOwnerIn('users');
     }
 
     match /rent_leases/{docId} {
       allow read: if rentRoleIn('users') != '';
-      allow create: if rentCreateOk('rent_leases', 'users', docId);
-      allow update: if rentUpdateOk('rent_leases', 'users', docId);
-      allow delete: if rentDeleteOk('rent_leases', 'users');
+      allow create: if rentLeaseCreateOk('users', docId);
+      allow update: if rentLeaseUpdateOk('users', docId);
+      allow delete: if isOwnerIn('users');
     }
 
     match /rent_charges/{docId} {
       allow read: if rentRoleIn('users') != '';
-      allow create: if rentCreateOk('rent_charges', 'users', docId);
-      allow update: if rentUpdateOk('rent_charges', 'users', docId);
-      allow delete: if rentDeleteOk('rent_charges', 'users');
+      allow create: if rentRoleIn('users') != '' && validRentChargeCreate('users', docId);
+      allow update: if rentChargeUpdateOk('users', docId);
+      allow delete: if isOwnerIn('users') || (resource != null && rentChargeDeleteOk('users', rentRoleIn('users')));
     }
 
     match /rent_settings/{docId} {
@@ -2840,132 +2084,96 @@ service cloud.firestore {
       allow delete: if rentRoleIn('users') == 'owner';
     }
 
-    match /dev_rent_settings/{docId} {
-      allow read: if rentRoleIn('dev_users') != '';
-      allow create, update: if validRentSettings('dev_users', docId);
-      allow delete: if rentRoleIn('dev_users') == 'owner';
-    }
-
-    // Rent receipts and their yearly counters (helpers above): rentals roles read;
-    // created with a payment, or later for a payment without one (its writer or owner/manager);
-    // never edited except cancel (owner/manager); never deleted.
-    match /rent_receipts/{rid} {
+    match /rent_receipts/{docId} {
       allow read: if rentRoleIn('users') != '';
-      allow create: if canWriteRent('users') && validRentReceiptCreate('users', rid)
+      allow create: if canWriteRent('users') && validRentReceiptCreate('users', docId)
         && (request.resource.data.get('by', '') == request.auth.uid || canManageRent('users'));
       allow update: if canManageRent('users') && rentReceiptVoidOk('users');
-      allow delete: if false;
     }
 
-    match /dev_rent_receipts/{rid} {
-      allow read: if rentRoleIn('dev_users') != '';
-      allow create: if canWriteRent('dev_users') && validRentReceiptCreate('dev_users', rid)
-        && (request.resource.data.get('by', '') == request.auth.uid || canManageRent('dev_users'));
-      allow update: if canManageRent('dev_users') && rentReceiptVoidOk('dev_users');
-      allow delete: if false;
-    }
-
-    match /rent_deposits/{tenantId} {
+    match /rent_deposits/{docId} {
       allow read: if rentRoleIn('users') != '';
-      allow create, update: if validRentDeposit('users', tenantId);
+      allow create, update: if validRentDeposit('users', docId);
       allow delete: if rentRoleIn('users') == 'owner';
     }
 
-    match /dev_rent_deposits/{tenantId} {
-      allow read: if rentRoleIn('dev_users') != '';
-      allow create, update: if validRentDeposit('dev_users', tenantId);
-      allow delete: if rentRoleIn('dev_users') == 'owner';
-    }
-
-    match /rent_expenses/{id} {
+    match /rent_expenses/{docId} {
       allow read: if rentRoleIn('users') != '';
       allow create: if rentRoleIn('users') != '' && validRentExpense('users') && request.resource.data.createdBy == request.auth.uid;
       allow update: if rentRoleIn('users') == 'owner' && validRentExpense('users') && rentCreationKept();
       allow delete: if rentRoleIn('users') == 'owner';
     }
 
-    match /dev_rent_expenses/{id} {
-      allow read: if rentRoleIn('dev_users') != '';
-      allow create: if rentRoleIn('dev_users') != '' && validRentExpense('dev_users') && request.resource.data.createdBy == request.auth.uid;
-      allow update: if rentRoleIn('dev_users') == 'owner' && validRentExpense('dev_users') && rentCreationKept();
-      allow delete: if rentRoleIn('dev_users') == 'owner';
-    }
-
-    match /rent_counters/{id} {
+    match /rent_counters/{docId} {
       allow read: if rentRoleIn('users') != '';
-      allow create, update: if canWriteRent('users') && validRentCounter('users', id);
-      allow delete: if false;
+      allow create, update: if canWriteRent('users') && validRentCounter('users', docId);
     }
 
-    match /dev_rent_counters/{id} {
-      allow read: if rentRoleIn('dev_users') != '';
-      allow create, update: if canWriteRent('dev_users') && validRentCounter('dev_users', id);
-      allow delete: if false;
+    match /dev_stockCheckpoints/{docId} {
+      allow read: if isApprovedIn('dev_users');
+      allow create, update: if checkpointRules('dev_users', docId);
+      allow delete: if isManagerIn('dev_users');
     }
 
-    match /dev_rent_properties/{docId} {
-      allow read: if rentRoleIn('dev_users') != '';
-      allow create: if rentCreateOk('rent_properties', 'dev_users', docId);
-      allow update: if rentUpdateOk('rent_properties', 'dev_users', docId);
-      allow delete: if rentDeleteOk('rent_properties', 'dev_users');
+    match /dev_rateHistory/{docId} {
+      allow read: if isManagerIn('dev_users');
+      allow create: if validRateHistoryEntry('dev_users');
     }
 
-    match /dev_rent_units/{docId} {
-      allow read: if rentRoleIn('dev_users') != '';
-      allow create: if rentCreateOk('rent_units', 'dev_users', docId);
-      allow update: if rentUpdateOk('rent_units', 'dev_users', docId);
-      allow delete: if rentDeleteOk('rent_units', 'dev_users');
-    }
-
-    match /dev_rent_tenants/{docId} {
-      allow read: if rentRoleIn('dev_users') != '';
-      allow create: if rentCreateOk('rent_tenants', 'dev_users', docId);
-      allow update: if rentUpdateOk('rent_tenants', 'dev_users', docId);
-      allow delete: if rentDeleteOk('rent_tenants', 'dev_users');
-    }
-
-    match /dev_rent_leases/{docId} {
-      allow read: if rentRoleIn('dev_users') != '';
-      allow create: if rentCreateOk('rent_leases', 'dev_users', docId);
-      allow update: if rentUpdateOk('rent_leases', 'dev_users', docId);
-      allow delete: if rentDeleteOk('rent_leases', 'dev_users');
-    }
-
-    match /dev_rent_charges/{docId} {
-      allow read: if rentRoleIn('dev_users') != '';
-      allow create: if rentCreateOk('rent_charges', 'dev_users', docId);
-      allow update: if rentUpdateOk('rent_charges', 'dev_users', docId);
-      allow delete: if rentDeleteOk('rent_charges', 'dev_users');
-    }
-
-    // ============================================
-    // DEVELOPMENT ENVIRONMENT COLLECTIONS (dev_ prefix)
-    // Same rules as production, with dev_users as the profile source.
-    // ============================================
-
-    match /dev_users/{userId} {
-      allow read: if canReadProfile('dev_users', userId);
-      allow create: if canCreateProfile(userId);
-      allow update: if canUpdateProfile('dev_users', userId);
-      allow delete: if isOwnerIn('dev_users') && resource.data.get('role', '') != 'owner';
-    }
-
-    match /dev_deviceLog/{uid} {
-      allow get: if (isSignedIn() && request.auth.uid == uid && isApprovedIn('dev_users')) || isOwnerIn('dev_users');
-      allow list: if isOwnerIn('dev_users');
-      allow create, update: if validDeviceLog('dev_users', uid);
+    match /dev_anomalies/{docId} {
+      allow read: if isManagerIn('dev_users');
+      allow create, update: if validAnomaly('dev_users');
       allow delete: if isOwnerIn('dev_users');
     }
 
-    match /dev_users/{userId}/preferences/{prefId} {
-      allow read: if isApprovedIn('dev_users') && request.auth.uid == userId;
-      allow write: if false;
+    match /dev_reminders/{docId} {
+      allow read: if isApprovedIn('dev_users');
+      allow create: if validReminderCreate('dev_users') || validReminderNext('dev_users', 'dev_reminders', docId);
+      allow update: if reminderAckOk('dev_users', 'dev_reminders', docId) || reminderCancelOk('dev_users') || reminderEditOk('dev_users');
+      allow delete: if isOwnerIn('dev_users');
     }
 
-    match /dev_auditLogs/{logId} {
+    match /dev_rateStats/{docId} {
+      allow read: if isManagerIn('dev_users');
+      allow create, update: if validRateStats('dev_users', docId);
+      allow delete: if isOwnerIn('dev_users');
+    }
+
+    match /dev_monthStats/{docId} {
+      allow read: if isManagerIn('dev_users');
+      allow create, update: if validMonthStats('dev_users', docId) || monthStaleMarkOnly('dev_users', docId);
+      allow delete: if isOwnerIn('dev_users');
+    }
+
+    match /dev_tipHealth/{docId} {
+      allow read: if isManagerIn('dev_users');
+      allow create, update: if validTipHealth('dev_users', docId);
+      allow delete: if isOwnerIn('dev_users');
+    }
+
+    match /dev_tipFailures/{docId} {
+      allow read: if isManagerIn('dev_users');
+      allow create: if validTipFailure('dev_users', docId);
+      allow delete: if isOwnerIn('dev_users');
+    }
+
+    match /dev_users/{docId} {
+      allow read: if canReadProfile('dev_users', docId);
+      allow create: if canCreateProfile(docId);
+      allow update: if canUpdateProfile('dev_users', docId);
+      allow delete: if isOwnerIn('dev_users') && resource.data.get('role', '') != 'owner';
+    }
+
+    match /dev_deviceLog/{docId} {
+      allow get: if (request.auth != null && request.auth.uid == docId && isApprovedIn('dev_users')) || isOwnerIn('dev_users');
+      allow list: if isOwnerIn('dev_users');
+      allow create, update: if validDeviceLog('dev_users', docId);
+      allow delete: if isOwnerIn('dev_users');
+    }
+
+    match /dev_auditLogs/{docId} {
       allow create: if (isApprovedIn('dev_users') || rentAuditOk('dev_users')) && validAuditEntry();
       allow read: if isOwnerIn('dev_users');
-      allow update: if false;
       allow delete: if isOwnerIn('dev_users') && isExpiredAuditEntry();
     }
 
@@ -2973,6 +2181,80 @@ service cloud.firestore {
       allow create: if isApprovedIn('dev_users') && validTelemetryEntry();
       allow update: if isOwnerIn('dev_users') && telemetryHideOnly();
       allow read, delete: if isOwnerIn('dev_users');
+    }
+
+    match /dev_rent_public/{docId} {
+      allow get: if true;
+      allow create, update: if validRentPublic('dev_users', docId);
+      allow delete: if resource != null && rentPublicDeleteOk('dev_users', docId);
+    }
+
+    match /dev_rent_properties/{docId} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create: if rentRoleIn('dev_users') != '' && validRentProperty();
+      allow update: if rentRoleIn('dev_users') != '' && validRentProperty() && rentCreationKept();
+      allow delete: if isOwnerIn('dev_users');
+    }
+
+    match /dev_rent_tenants/{docId} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create: if rentRoleIn('dev_users') != '' && validRentTenant();
+      allow update: if rentRoleIn('dev_users') != '' && validRentTenant() && rentCreationKept();
+      allow delete: if isOwnerIn('dev_users');
+    }
+
+    match /dev_rent_units/{docId} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create: if rentRoleIn('dev_users') != '' && validRentUnit() && rentUnitCreateLeaseOk('dev_users', docId)
+        && request.resource.data.get('type', '') in ['flat', 'commercial', 'office', 'godown', 'other']
+        && request.resource.data.get('meterCharge', null) == null;
+      allow update: if rentUnitUpdateOk('dev_users', docId);
+      allow delete: if isOwnerIn('dev_users');
+    }
+
+    match /dev_rent_leases/{docId} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create: if rentLeaseCreateOk('dev_users', docId);
+      allow update: if rentLeaseUpdateOk('dev_users', docId);
+      allow delete: if isOwnerIn('dev_users');
+    }
+
+    match /dev_rent_charges/{docId} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create: if rentRoleIn('dev_users') != '' && validRentChargeCreate('dev_users', docId);
+      allow update: if rentChargeUpdateOk('dev_users', docId);
+      allow delete: if isOwnerIn('dev_users') || (resource != null && rentChargeDeleteOk('dev_users', rentRoleIn('dev_users')));
+    }
+
+    match /dev_rent_settings/{docId} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create, update: if validRentSettings('dev_users', docId);
+      allow delete: if rentRoleIn('dev_users') == 'owner';
+    }
+
+    match /dev_rent_receipts/{docId} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create: if canWriteRent('dev_users') && validRentReceiptCreate('dev_users', docId)
+        && (request.resource.data.get('by', '') == request.auth.uid || canManageRent('dev_users'));
+      allow update: if canManageRent('dev_users') && rentReceiptVoidOk('dev_users');
+    }
+
+    match /dev_rent_deposits/{docId} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create, update: if validRentDeposit('dev_users', docId);
+      allow delete: if rentRoleIn('dev_users') == 'owner';
+    }
+
+    match /dev_rent_expenses/{docId} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create: if rentRoleIn('dev_users') != '' && validRentExpense('dev_users') && request.resource.data.createdBy == request.auth.uid;
+      allow update: if rentRoleIn('dev_users') == 'owner' && validRentExpense('dev_users') && rentCreationKept();
+      allow delete: if rentRoleIn('dev_users') == 'owner';
+    }
+
+    match /dev_rent_counters/{docId} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create, update: if canWriteRent('dev_users') && validRentCounter('dev_users', docId);
     }
   }
 }

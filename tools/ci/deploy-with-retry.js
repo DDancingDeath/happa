@@ -13,9 +13,15 @@
  * (tools/ci/live-rules.js, read-only): if it equals the repo's file the
  * deploy counts as done; if not, the deploy is retried like a 503.
  *
+ * With --rules-api-fallback, once the Firebase Rules API itself has failed
+ * RULES_API_FALLBACK_AFTER times (an HTTP 503 from firebaserules.googleapis.com,
+ * or a 5xx from its `:test` compile check) the script stops retrying and exits
+ * FALLBACK_EXIT (75): the workflow then publishes the rules through the REST
+ * API instead (tools/ci/rules-rest-deploy.js).
+ *
  * Usage (from .github/workflows/firestore-rules-deploy.yml):
  *   node tools/ci/deploy-with-retry.js --log <file> --project <id> \
- *     [--sa-email <email>] [--rules firestore.rules] \
+ *     [--sa-email <email>] [--rules firestore.rules] [--rules-api-fallback] \
  *     [--credentials <sa.json>] -- <deploy command...>
  * --credentials defaults to $GOOGLE_APPLICATION_CREDENTIALS.
  *
@@ -29,6 +35,8 @@ const { verifyLiveRules } = require('./live-rules');
 
 const DEFAULT_DELAYS_S = [15, 30, 60, 120, 180, 240];
 const REFUSED_PROJECTS = ['aadhat-management'];
+const FALLBACK_EXIT = 75;
+const RULES_API_FALLBACK_AFTER = 2;
 
 const PERMISSION_RE = /permission|\b403\b|forbidden|denied/i;
 // Not "compilation errors..." alone: firebase-tools prints "checking
@@ -38,7 +46,15 @@ const COMPILE_RE = /compilation errors in |\[E\]\s*\d+:\d+/i;
 const RELEASE_EXISTS_RE = /\b409\b[^\n]*releases\/\S+ already exists/i;
 const TRANSIENT_RE = /\b(500|502|503|504|429|409)\b|unavailable|ECONNRESET|ETIMEDOUT|socket hang up|deadline|ABORTED/i;
 
+// "Request to https://firebaserules.googleapis.com/v1/projects/p:test had HTTP Error: 503, ..."
+const RULES_API_OUTAGE_RE = /firebaserules\.googleapis\.com\/\S*[^\n]*HTTP Error: 503\b|firebaserules\.googleapis\.com\/\S*:test\b[^\n]*HTTP Error: 5\d\d\b/i;
+
 const stripAnsi = s => s.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
+
+/** True when a transient failure came from the Firebase Rules API (a 503, or a 5xx from `:test`). */
+function isRulesApiOutage(log) {
+    return RULES_API_OUTAGE_RE.test(stripAnsi(log));
+}
 
 /** 'permission' | 'compile' | 'release-exists' | 'transient' | 'unknown' for a failed deploy's output. */
 function classify(log) {
@@ -64,7 +80,7 @@ function parseArgs(argv) {
     if (sep === -1 || sep === argv.length - 1) {
         throw new Error('Missing deploy command after "--"');
     }
-    const opts = { log: null, project: '', saEmail: '', rules: '', credentials: '', command: argv.slice(sep + 1) };
+    const opts = { log: null, project: '', saEmail: '', rules: '', credentials: '', rulesApiFallback: false, command: argv.slice(sep + 1) };
     const flags = argv.slice(0, sep);
     for (let i = 0; i < flags.length; i++) {
         const value = flags[i + 1];
@@ -73,6 +89,7 @@ function parseArgs(argv) {
         else if (flags[i] === '--sa-email') { opts.saEmail = value; i++; }
         else if (flags[i] === '--rules') { opts.rules = value; i++; }
         else if (flags[i] === '--credentials') { opts.credentials = value; i++; }
+        else if (flags[i] === '--rules-api-fallback') opts.rulesApiFallback = true;
         else throw new Error(`Unknown option: ${flags[i]}`);
     }
     if (!opts.log) throw new Error('--log is required');
@@ -104,7 +121,8 @@ function permissionHint(saEmail, project, log) {
 }
 
 /**
- * Deploys with retries; resolves the exit code (0 on success).
+ * Deploys with retries; resolves the exit code (0 on success, FALLBACK_EXIT
+ * when opts.rulesApiFallback is set and the Rules API keeps failing).
  * `run`, `wait` and `verifyLive` (resolves { ok, reason } for "the live
  * ruleset equals the repo's"; null = no check, so a 409 is retried) are
  * injectable for tests.
@@ -120,6 +138,7 @@ async function deployWithRetry(opts, { run = runOnce, wait = sleep, delays = DEF
     }
     const maxAttempts = delays.length + 1;
     let fullLog = '';
+    let rulesApiFailures = 0;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         console.log(`Deploy attempt ${attempt}/${maxAttempts}`);
         const { code, output } = await run(opts.command);
@@ -146,6 +165,12 @@ async function deployWithRetry(opts, { run = runOnce, wait = sleep, delays = DEF
         } else if (kind !== 'transient') {
             console.log('::error::Firestore rules/indexes deploy failed; see the log above.');
             return 1;
+        } else if (opts.rulesApiFallback && isRulesApiOutage(output)) {
+            rulesApiFailures++;
+            if (rulesApiFailures >= RULES_API_FALLBACK_AFTER || attempt === maxAttempts) {
+                console.log(`::warning title=Firebase Rules API unavailable::firebase deploy failed ${rulesApiFailures} times on the Rules API (503); falling back to the Rules REST API.`);
+                return FALLBACK_EXIT;
+            }
         }
         if (attempt === maxAttempts) {
             console.log(`::error title=Firebase API unavailable::Deploy still failing after ${maxAttempts} attempts (last: ${kind}). Hosting does not deploy until the rules are live; re-run the failed jobs later.`);
@@ -180,4 +205,4 @@ if (require.main === module) {
     deployWithRetry(opts, { delays, verifyLive }).then(code => process.exit(code));
 }
 
-module.exports = { classify, parseArgs, parseDelays, deployWithRetry, DEFAULT_DELAYS_S };
+module.exports = { classify, isRulesApiOutage, parseArgs, parseDelays, deployWithRetry, DEFAULT_DELAYS_S, FALLBACK_EXIT, RULES_API_FALLBACK_AFTER };
