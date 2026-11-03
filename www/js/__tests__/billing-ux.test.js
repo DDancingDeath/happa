@@ -10,6 +10,7 @@ import * as BillDrafts from '../firebase/repos/bill-drafts.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { autoSaveSummary, nextBillNumberHint } from '../utils/calc/billing.js';
+import { installActions } from '../ui/actions.js';
 
 jest.mock('../firebase/repos/bill-drafts.js', () => ({
     getAutoSave: jest.fn(),
@@ -203,6 +204,20 @@ describe('bill number before save (#117, BF-NO)', () => {
 });
 
 describe('fresh bill focuses the Item box (#117)', () => {
+    test('the Retail sale tab switches through the delegated click (#89)', () => {
+        installActions(document);
+        document.getElementById('saleModeBtn').setAttribute('data-onclick', "billing.switchMode('sale', event)");
+        window.app = { billing: { switchMode: (mode, e) => BillingManager.switchMode(mode, e) } };
+        window.reportError = jest.fn();
+        document.getElementById('saleModeBtn').click();
+        expect(window.reportError).not.toHaveBeenCalled();
+        expect(document.getElementById('saleSection').style.display).toBe('block');
+        expect(document.getElementById('saleModeBtn').classList.contains('active')).toBe(true);
+        expect(document.getElementById('purchaseModeBtn').classList.contains('active')).toBe(false);
+        delete window.app;
+        delete window.reportError;
+    });
+
     test('desktop: switching to a fresh bill focuses Item; phone: no focus (keyboard)', () => {
         BillingManager.switchMode('purchase');
         expect(document.activeElement).not.toBe(document.getElementById('billItem'));

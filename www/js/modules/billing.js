@@ -211,7 +211,8 @@ const BillingManager = {
             purchaseBtn.style.borderColor = '';
             saleBtn.style.background = '';
             saleBtn.style.borderColor = '';
-            event.currentTarget.classList.add('active');
+            // The tab for this mode (a delegated click's currentTarget is the document, #89)
+            (mode === 'sale' ? saleBtn : purchaseBtn).classList.add('active');
         }
         
         if (mode === 'sale') {
