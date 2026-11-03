@@ -17,7 +17,9 @@
  *
  * Env (set by the workflow): GITHUB_REPOSITORY, GITHUB_TOKEN, GITHUB_RUN_ID,
  * GITHUB_SHA, WORKFLOW_FILE. Writes
- * rules=true|false, base=<sha> and files=<changed rules files> to
+ * rules=true|false, base=<sha>, files=<changed rules files> and
+ * indexes=true|false (firestore.indexes.json, happa.config.json or
+ * firebase.json changed, or no confirmed base) to
  * $GITHUB_OUTPUT and a line to $GITHUB_STEP_SUMMARY.
  * Needs the full history (actions/checkout fetch-depth: 0).
  */
@@ -34,8 +36,12 @@ const RULES_FILES = [
     'firebase.json',
     '.github/workflows/firestore-rules-deploy.yml',
     'tools/ci/deploy-with-retry.js',
-    'tools/ci/live-rules.js'
+    'tools/ci/live-rules.js',
+    'tools/ci/rules-rest-deploy.js'
 ];
+const INDEXES_FILE = 'firestore.indexes.json';
+// A change to any of these can mean the live indexes are not the repo's.
+const INDEXES_TRIGGERS = [INDEXES_FILE, 'happa.config.json', 'firebase.json'];
 
 const HOSTING_JOB = 'Hosting';
 const HOSTING_STEP = 'Deploy to Firebase Hosting';
@@ -51,18 +57,20 @@ function rulesFilesIn(changed) {
  * @param {{ deployedSha: string|null,
  *   git: { isAncestor(sha: string): boolean, changedFiles(base: string): string[] } }} o
  *   deployedSha: commit of the last confirmed deploy (null = unknown)
- * @returns {{ rules: boolean, base: string, files: string[], reason: string }}
+ * @returns {{ rules: boolean, indexes: boolean, base: string, files: string[], reason: string }}
+ *   indexes: firestore.indexes.json must be deployed (it, the project or firebase.json changed, or no confirmed base)
  */
 function planDeploy({ deployedSha, git }) {
     if (!isSha(deployedSha)) {
-        return { rules: true, base: '', files: [], reason: 'no confirmed earlier deploy, so the rules are deployed to be safe' };
+        return { rules: true, indexes: true, base: '', files: [], reason: 'no confirmed earlier deploy, so the rules are deployed to be safe' };
     }
     if (!git.isAncestor(deployedSha)) {
-        return { rules: true, base: '', files: [], reason: `the last deployed commit ${deployedSha.slice(0, 7)} is not an ancestor of this one, so the rules are deployed to be safe` };
+        return { rules: true, indexes: true, base: '', files: [], reason: `the last deployed commit ${deployedSha.slice(0, 7)} is not an ancestor of this one, so the rules are deployed to be safe` };
     }
     const files = rulesFilesIn(git.changedFiles(deployedSha));
     return {
         rules: files.length > 0,
+        indexes: files.some(file => INDEXES_TRIGGERS.includes(file)),
         base: deployedSha,
         files,
         reason: files.length
@@ -123,7 +131,7 @@ async function main() {
         ? `Rules first: ${plan.reason}. Hosting waits for the rules deploy to succeed.`
         : `Rules unchanged: ${plan.reason}. Hosting deploys without a rules deploy.`;
     console.log(line);
-    if (env.GITHUB_OUTPUT) fs.appendFileSync(env.GITHUB_OUTPUT, `rules=${plan.rules}\nbase=${plan.base}\nfiles=${plan.files.join(',')}\n`);
+    if (env.GITHUB_OUTPUT) fs.appendFileSync(env.GITHUB_OUTPUT, `rules=${plan.rules}\nindexes=${plan.indexes}\nbase=${plan.base}\nfiles=${plan.files.join(',')}\n`);
     if (env.GITHUB_STEP_SUMMARY) fs.appendFileSync(env.GITHUB_STEP_SUMMARY, `${line}\n`);
 }
 
@@ -134,4 +142,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { RULES_FILES, HOSTING_JOB, HOSTING_STEP, rulesFilesIn, planDeploy, hostingDeployed, lastDeployedSha };
+module.exports = { RULES_FILES, INDEXES_FILE, HOSTING_JOB, HOSTING_STEP, rulesFilesIn, planDeploy, hostingDeployed, lastDeployedSha };
