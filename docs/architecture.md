@@ -48,7 +48,9 @@ firebase/repos/*.js ── repositories (phase 4): bill-drafts (drafts, auto-sav
                      user-profiles, notifications, cash-days, settings
                      (settings/app: one read per app open, checked section saves),
                      bill-save (saves, retries, create-only), bill-edit
-                     (checked edits, void, delete), bills (the server copy,
+                     (checked edits, void, delete), bill-due (the one writer of
+                     a bill's stored due: payment.due and its dueAmount
+                     mirror, #126), bills (the server copy,
                      voided bills, edit records; re-exports both), expenses
                      (business and personal, day totals), stock-records (stock
                      adjustments, withdrawals).

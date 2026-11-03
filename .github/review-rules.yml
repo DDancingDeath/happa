@@ -91,14 +91,16 @@ rules:
     learned_at: 2026-10-21
 
   - id: due-amount-vs-payment-due-drift
-    pattern: "\\.dueAmount\\s*=[^=]|payment\\.due\\s*=[^=]"
+    pattern: "\\bdueAmount\\s*:|\\.dueAmount\\s*=[^=]"
     applies_to: ["www/js/**/*.js"]
-    excludes: ["www/js/__tests__/**"]
+    excludes: ["www/js/__tests__/**", "www/js/firebase/repos/bill-due.js", "www/js/utils/bill-share.js"]
     message: |
-      dueAmount (top level) and payment.due (nested) must be written together.
-      Setting only one causes drift on older bills; nested is canonical (utils/money.js).
-    severity: warn
-    learned_at: 2026-05-21
+      payment.due is a bill's one stored due (#126). Set payment.due only: the legacy
+      top-level dueAmount mirror is written by withCanonicalDue() in
+      www/js/firebase/repos/bill-due.js, which every bill write of the repositories
+      goes through. Read a due with readPayment() / outstandingDue() (utils/money.js).
+    severity: block
+    learned_at: 2026-11-03
 
   - id: top-level-app-shadowing
     pattern: "^(let|const|var)\\s+app\\s*="

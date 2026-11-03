@@ -22,6 +22,7 @@ import { isActiveBill } from '../../utils/money.js';
 import {
     BILL_MONEY_FIELDS, keepEditCount, keepStoredCreatedAt, logRetryEdit, withServerCreatedAt
 } from './bill-fields.js';
+import { withCanonicalDue } from './bill-due.js';
 
 /** Payment signature of the last new-bill write this device sent, by `${collKey}/${id}` (#70). */
 export const sentBillPaymentSigs = new Map();
@@ -167,6 +168,7 @@ export async function saveBill(collKey, record, label, { retry = false, createOn
     if (!record.userName && AppState.userName) record.userName = AppState.userName;
     const previous = record.id ? findRecord(collKey, record.id) : null;
     prepareStockRecord(collKey, record, !previous);
+    withCanonicalDue(record, null, { full: true });
     if (!record.id) record.id = getDb().collection(col(collKey)).doc().id;
     const docRef = getDb().collection(col(collKey)).doc(String(record.id));
     const key = `${collKey}/${record.id}`;

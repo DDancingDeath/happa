@@ -1749,7 +1749,6 @@ const BillingManager = {
                     amountPayable: grandTotal,
                     onlinePayment: split.online,
                     cashPayment: split.cash,
-                    dueAmount: split.due,
                     payment: buildPaymentSplit(split)
                 };
                 const updatedBill = {
@@ -1809,7 +1808,6 @@ const BillingManager = {
                     totalPackets: totalPackets,
                     onlinePayment: saleSplit.online,
                     cashPayment: saleSplit.cash,
-                    dueAmount: saleSplit.due,
                     payment: buildPaymentSplit(saleSplit)
                 };
                 const updatedSale = {

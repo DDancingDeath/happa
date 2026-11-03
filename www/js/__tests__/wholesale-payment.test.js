@@ -26,6 +26,7 @@ import { Helpers } from '../utils/helpers.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { readPayment, NAME_REQUIRED_FOR_DUE_KEY } from '../utils/money.js';
 import { t } from '../i18n/index.js';
+import { withCanonicalDue } from '../firebase/repos/bill-due.js';
 
 beforeEach(() => {
     document.body.innerHTML = '<div id="salesOutstandingList"></div><div id="salesHistoryList"></div><div id="toast"></div>';
@@ -139,7 +140,8 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
         jest.spyOn(console, 'error').mockImplementation(() => {});
         jest.spyOn(Helpers, 'generateBillNumber').mockResolvedValue('W20261022-001');
         saved = [];
-        FirebaseService.saveWholesaleSale = jest.fn(async (sale) => { saved.push(sale); return sale; });
+        // The repository adds the dueAmount mirror to the record it saves (repos/bill-due.js)
+        FirebaseService.saveWholesaleSale = jest.fn(async (sale) => { saved.push(withCanonicalDue(sale, null, { full: true })); return sale; });
         AppState.items = [{ id: 'rice', name: 'Rice' }];
         AppState.stock = { rice: { quantity: 500, rate: 30.5 } };
         AppState.stockReady = true;

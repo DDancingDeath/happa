@@ -505,7 +505,7 @@ const RetailSaleManager = {
 
         const { total: salesTotal, packetsSaved: totalPackets } = computeRetailTotals(saleItems);
         const split = this.readPaymentSplit();
-        const { online: saleOnline, cash: saleCash, due: saleDue } = split;
+        const { online: saleOnline, cash: saleCash } = split;
         const saleCustomer = Helpers.getInputText('saleCustomerName');
         const saleComments = Helpers.getInputText('saleComments');
         const printComments = document.getElementById('salePrintComments')?.checked || false;
@@ -548,7 +548,6 @@ const RetailSaleManager = {
                 totalPackets: totalPackets,
                 onlinePayment: saleOnline,
                 cashPayment: saleCash,
-                dueAmount: saleDue,
                 customerName: saleCustomer,
                 comments: saleComments,
                 printComments: printComments,
