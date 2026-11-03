@@ -3,7 +3,8 @@
  * numeric `timestamp` (or `openDue`) are invisible to the window and dues queries; owner and
  * manager phones find them in the background after the first screen and write the missing
  * fields (stockCheckpoints/legacyScan records how far each collection got). Moved verbatim out
- * of firestore-service.js (docs/architecture.md, phase 5, #69).
+ * of firestore-service.js (docs/architecture.md, phase 5, #69). Also the owner's one-time due
+ * backfill (DUE-BACKFILL, #126): a check, then the bills whose due is not stored once in payment.due.
  * @module firebase/core/legacy-scan
  */
 
@@ -20,6 +21,9 @@ import { markStartup } from '../../utils/startup-timings.js';
 import { LEGACY_SCAN_DELAY_MS, whenIdle } from '../../utils/background-tasks.js';
 import { FirebaseService } from '../firestore-service.js';
 import { CHECKPOINT_COLLECTION } from './stock-checkpoint.js';
+import { dueBackfillFields } from '../repos/bill-due.js';
+import { updateBillsInTransaction } from '../repos/bill-payments.js';
+import { AppState } from '../../utils/state.js';
 
 export const LEGACY_SCAN_DOC_ID = 'legacyScan';
 
@@ -223,5 +227,90 @@ export const legacyScanMethods = {
      */
     runLegacyScanNow() {
         return S.legacyScanJob ? S.legacyScanJob.run() : Promise.resolve();
+    }
+};
+
+/** DUE-BACKFILL: its entry in stockCheckpoints/legacyScan ({v, at, checked, written, failed, complete, byUserId}). */
+export const DUE_BACKFILL_KEY = 'dueFields';
+export const DUE_BACKFILL_VERSION = 1;
+/** Bills re-read and written per transaction. */
+export const BILLS_PER_TRANSACTION = 100;
+
+const ownerOnly = () => {
+    if (AppState.userRole !== 'owner') throw Object.assign(new Error('Only the owner can do this'), { code: 'owner-only' });
+};
+
+/** FirebaseService methods of the owner's due backfill (#126); spread into FirebaseService. */
+export const dueBackfillMethods = {
+    /**
+     * DUE-BACKFILL check (a dry run): reads every bill from the server once (one read per bill)
+     * and lists the ones whose due is not stored once as a number in payment.due
+     * (dueBackfillFields). Writes nothing. Owner only; needs a connection.
+     * @returns {Promise<{checked: number, todo: Array<{collKey: string, id: string, reason: string}>, byReason: Object<string, number>, changes: Array<{collKey: string, id: string}>}>}
+     *   changes: bills the backfill would not write because a figure would move (expected: none)
+     */
+    async checkDueFields() {
+        ownerOnly();
+        const db = getDb();
+        const out = { checked: 0, todo: [], byReason: { missing: 0, notNumber: 0, mirror: 0 }, changes: [] };
+        const docs = [];
+        for (const spec of HISTORY_COLLECTIONS.filter(s => s.dues)) {
+            const snap = await getWithRetry(a => (a ? db.collection(col(spec.key)).limit(RETRY_LIMIT_BASE + a) : db.collection(col(spec.key))), `${spec.label} due check`);
+            if (snap.metadata?.fromCache) throw Object.assign(new Error('Offline: bills read from this phone only'), { code: 'unavailable' });
+            snap.docs.forEach(doc => {
+                docs.push(doc.id);
+                const need = dueBackfillFields(doc.data());
+                if (!need) return;
+                if (!need.fields) out.changes.push({ collKey: spec.key, id: doc.id });
+                else out.todo.push({ collKey: spec.key, id: doc.id, reason: need.reason });
+            });
+        }
+        out.checked = docs.length;
+        Object.keys(out.byReason).forEach(r => { out.byReason[r] = out.todo.filter(t => t.reason === r).length; });
+        return out;
+    },
+
+    /**
+     * DUE-BACKFILL: writes the bills a check listed. Each is re-read in a transaction
+     * (BILLS_PER_TRANSACTION bills each) and written only if it still needs it, from that fresh copy,
+     * so a payment recorded meanwhile is never undone; a second run writes nothing. Records the
+     * outcome in stockCheckpoints/legacyScan. Owner only; needs a connection.
+     * @param {Array<{collKey: string, id: string}>} todo - checkDueFields().todo
+     * @param {number} checked - checkDueFields().checked
+     * @returns {Promise<{written: number, failed: number}>}
+     */
+    async backfillDueFields(todo, checked = 0) {
+        ownerOnly();
+        const written = [];
+        const failed = [];
+        const byColl = new Map();
+        (todo || []).forEach(t => byColl.set(t.collKey, [...(byColl.get(t.collKey) || []), t.id]));
+        for (const [collKey, ids] of byColl) {
+            for (let i = 0; i < ids.length; i += BILLS_PER_TRANSACTION) {
+                const chunk = ids.slice(i, i + BILLS_PER_TRANSACTION);
+                try {
+                    written.push(...await updateBillsInTransaction(collKey, chunk, (freshList) => {
+                        const bills = freshList.map(fresh => {
+                            const need = dueBackfillFields(fresh);
+                            return need?.fields ? { ...need.fields, clientVersion: CLIENT_VERSION } : null;
+                        });
+                        return { bills, result: chunk.filter((_, i) => bills[i]) };
+                    }));
+                } catch (e) {
+                    console.warn(`Due backfill (${collKey}) failed for ${chunk.length} bills:`, e?.code || e);
+                    failed.push(...chunk);
+                }
+            }
+        }
+        const entry = { v: DUE_BACKFILL_VERSION, at: Date.now(), checked, written: written.length, failed: failed.length, complete: !failed.length, byUserId: AppState.currentUser?.uid || null };
+        S.legacyScanDoc = { ...(S.legacyScanDoc || {}), [DUE_BACKFILL_KEY]: entry };
+        await legacyScanRef().set({ [DUE_BACKFILL_KEY]: entry }, { merge: true })
+            .catch(e => console.warn('Saving due backfill state failed:', e?.code || e));
+        return { written: written.length, failed: failed.length };
+    },
+
+    /** The last DUE-BACKFILL run as recorded in stockCheckpoints/legacyScan (no read), or null. */
+    dueBackfillState() {
+        return S.legacyScanDoc?.[DUE_BACKFILL_KEY] || null;
     }
 };

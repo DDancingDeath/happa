@@ -261,6 +261,22 @@ function defineSuite(prefix) {
         }
     });
 
+    // ---- due backfill (#126: the owner stores each bill's due once, in payment.due) ----
+
+    t('due backfill: the owner writes payment.due (and its dueAmount mirror) on an old bill; a manager or member cannot', async () => {
+        for (const coll of bills) {
+            await seedBill(coll, 'legacy', { total: 1000, cashPayment: 400, onlinePayment: 0, dueAmount: '600' });
+            await seedBill(coll, 'drift', { userId: 'staff1', total: 1000, payment: { cash: 400, online: 0, due: 600, total: 1000 }, dueAmount: 650, ...fresh() });
+            const fix = { payment: { due: 600 }, dueAmount: 600, clientVersion: 5 };
+            const mirror = { payment: { cash: 400, online: 0, due: 600, total: 1000 }, dueAmount: 600, clientVersion: 5 };
+            for (const uid of ['staff1', 'manager1']) {
+                await assertFails(as(uid).collection(coll).doc('legacy').update(fix));
+                await assertFails(as(uid).collection(coll).doc('drift').update(mirror));
+            }
+            await assertSucceeds(as('legacyOwner').collection(coll).doc('legacy').update(fix));
+            await assertSucceeds(as('legacyOwner').collection(coll).doc('drift').update(mirror));
+        }
+    });
     t('members can\'t create a bill that is voided or has an edit count', async () => {
         const c = as('staff1').collection(purchases);
         await assertFails(c.doc('n1').set({ userId: 'staff1', total: 5, createdAt: serverTimestamp(), ...voidFields('staff1') }));
