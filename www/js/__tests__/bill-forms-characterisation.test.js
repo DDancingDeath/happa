@@ -61,7 +61,7 @@ const WHOLESALE_DOM = `
   <strong id="wholesaleSplitRemaining"></strong><span id="wholesaleTotalReceived">0</span>
   <input type="checkbox" id="wholesaleOnlineCheckbox"><input type="checkbox" id="wholesaleCashCheckbox"><input type="checkbox" id="wholesaleDueCheckbox">
   <input id="wholesaleCustomerName"><input id="salesComments"><datalist id="wholesaleCustomerOptions"></datalist>
-  <button onclick="window.app.wholesaleSales.completeSale()"></button>
+  <button data-onclick="wholesaleSales.completeSale()"></button>
   <div id="salesRecentList"></div><div id="salesHistoryList"></div><div id="salesOutstandingList"></div><div id="toast"></div>`;
 
 const $ = (id) => document.getElementById(id);

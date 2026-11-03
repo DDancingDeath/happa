@@ -808,6 +808,18 @@
     font-size: 0.85em;
 }
 
+/* Expense cards: lift on hover (was inline onmouseover/onmouseout, #89) */
+.expense-card {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.expense-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transform: translateY(-2px);
+}
+
 /* Voided expenses (#99): kept in the list, struck through */
 .expense-card--voided {
   opacity: 0.7;
