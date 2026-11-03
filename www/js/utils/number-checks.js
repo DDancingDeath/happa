@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Diagnostics → Number checks (#216). Runs the accounting checks
  * from docs/calculations.md (AC1–AC6, AC8) on the data already loaded on this
@@ -19,7 +20,12 @@ export const MAX_ROWS = 20;
 
 const BILL_KINDS = [['purchases', 'purchase'], ['wholesaleSales', 'wholesale'], ['retailSales', 'retail']];
 
-/** Short reference for a bill: kind, number, party, date. */
+/**
+ * Short reference for a bill: kind, number, party, date.
+ * @param {?Rec|undefined} bill
+ * @param {string} kind
+ * @returns {{kind: string, id: string, number: string, party: string, day: string}}
+ */
 export function billRef(bill, kind) {
     const d = parseAnyBillDate(bill?.date);
     const day = d ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` : String(bill?.date ?? '?');
@@ -27,16 +33,31 @@ export function billRef(bill, kind) {
     return { kind, id: bill?.id != null ? String(bill.id) : '', number: String(bill?.billNumber || bill?.id || ''), party, day };
 }
 
+/**
+ * @param {string} id
+ * @param {string} key
+ * @param {Array<Rec>} rows
+ * @param {number} checked
+ * @param {Rec} [extra]
+ * @returns {Rec}
+ */
 function result(id, key, rows, checked, extra = {}) {
     return { id, key, status: rows.length ? 'fail' : 'pass', checked, problems: rows.length, rows: rows.slice(0, MAX_ROWS), ...extra };
 }
 
-const eachBill = (data, fn) => BILL_KINDS.forEach(([field, kind]) => activeBills(data[field]).forEach(b => fn(b, kind)));
-/** Bills that are activity: opening records (old-app dues, no total) are balances only. */
-const eachActivityBill = (data, fn) => eachBill(data, (b, kind) => { if (!isOpeningRecord(b)) fn(b, kind); });
+/** @typedef {(bill: Bill, kind: string) => void} BillVisitor */
 
-/** AC2: cash + online + due (+ written off) = bill total, within ₹1. */
+const eachBill = (/** @type {Rec} */ data, /** @type {BillVisitor} */ fn) => BILL_KINDS.forEach(([field, kind]) => activeBills(data[field]).forEach(b => fn(b, kind)));
+/** Bills that are activity: opening records (old-app dues, no total) are balances only. */
+const eachActivityBill = (/** @type {Rec} */ data, /** @type {BillVisitor} */ fn) => eachBill(data, (b, kind) => { if (!isOpeningRecord(b)) fn(b, kind); });
+
+/**
+ * AC2: cash + online + due (+ written off) = bill total, within ₹1.
+ * @param {Rec} data
+ * @returns {Rec}
+ */
 export function checkBillSplit(data) {
+    /** @type {Array<Rec>} */
     const rows = [];
     let checked = 0;
     eachActivityBill(data, (bill, kind) => {
@@ -52,8 +73,13 @@ export function checkBillSplit(data) {
     return result('AC2', 'ui.numchecks.ac2', rows, checked);
 }
 
-/** AC3: paid when saved + later payments in payments[] = cash and online on the bill. */
+/**
+ * AC3: paid when saved + later payments in payments[] = cash and online on the bill.
+ * @param {Rec} data
+ * @returns {Rec}
+ */
 export function checkPayments(data) {
+    /** @type {Array<Rec>} */
     const rows = [];
     let checked = 0;
     eachBill(data, (bill, kind) => {
@@ -61,7 +87,7 @@ export function checkPayments(data) {
         checked++;
         const p = readPayment(bill);
         const at = saleTimePayment(bill);
-        const later = bill.payments.map(entryParts).reduce((a, e) => ({ cash: a.cash + e.cash, online: a.online + e.online }), { cash: 0, online: 0 });
+        const later = bill.payments.map(entryParts).reduce((/** @type {{cash: number, online: number}} */ a, /** @type {Rec} */ e) => ({ cash: a.cash + e.cash, online: a.online + e.online }), { cash: 0, online: 0 });
         const sum = round2(at.cash + at.online + later.cash + later.online);
         const onBill = round2(p.cash + p.online);
         if (Math.abs(sum - onBill) > 0.01) rows.push({ ref: billRef(bill, kind), expected: onBill, actual: sum, diff: round2(onBill - sum) });
@@ -75,7 +101,9 @@ export function checkPayments(data) {
  * the closing stock value; a gap means stock went below zero (goods sold
  * before their purchase was recorded). Needs the full history: without it the
  * replay starts mid-way and every item would look wrong.
- * @returns {Array} two results: AC1 (value gap per item), AC8 (items below zero now)
+ * @param {Rec} data
+ * @param {{fullHistory?: boolean}} [opts]
+ * @returns {Array<Rec>} two results: AC1 (value gap per item), AC8 (items below zero now)
  */
 export function checkStock(data, { fullHistory = true } = {}) {
     if (!fullHistory) {
@@ -88,9 +116,11 @@ export function checkStock(data, { fullHistory = true } = {}) {
     const events = collectEvents({
         purchases: data.purchases, wholesaleSales: data.wholesaleSales, retailSales: data.retailSales, stockAdjustments: data.stockAdjustments
     });
+    /** @type {Rec} */
     const state = {};
+    /** @type {Object<string, {purchases: number, cogs: number, adjustments: number}>} */
     const flow = {};
-    const f = (k) => flow[k] || (flow[k] = { purchases: 0, cogs: 0, adjustments: 0 });
+    const f = (/** @type {string} */ k) => flow[k] || (flow[k] = { purchases: 0, cogs: 0, adjustments: 0 });
     for (const ev of events) {
         const key = ev.kind === 'adjustment' ? getKey({ itemId: ev.adj.itemId, name: ev.adj.itemName }) : getKey(ev.item);
         const s = state[key] || { quantity: 0, totalValue: 0 };
@@ -103,8 +133,10 @@ export function checkStock(data, { fullHistory = true } = {}) {
         else if (ev.kind === 'sale') f(key).cogs += qty * avg;
         else f(key).adjustments += after - before;
     }
-    const names = new Map((data.items || []).map(i => [i.id, i.name]));
+    const names = new Map((data.items || []).map((/** @type {Rec} */ i) => [i.id, i.name]));
+    /** @type {Array<Rec>} */
     const gapRows = [];
+    /** @type {Array<Rec>} */
     const negRows = [];
     Object.keys(flow).forEach(key => {
         const s = state[key];
@@ -123,8 +155,13 @@ export function checkStock(data, { fullHistory = true } = {}) {
     ];
 }
 
-/** AC4: every bill has a readable date, so the months add up to all time. */
+/**
+ * AC4: every bill has a readable date, so the months add up to all time.
+ * @param {Rec} data
+ * @returns {Rec}
+ */
 export function checkDates(data) {
+    /** @type {Array<Rec>} */
     const rows = [];
     let checked = 0;
     let all = 0;
@@ -139,8 +176,13 @@ export function checkDates(data) {
     return result('AC4', 'ui.numchecks.ac4', rows, checked, { totals: { all: round2(all), months: round2(months) } });
 }
 
-/** AC5: the due stored on the bill agrees in both places (top-level dueAmount and payment.due). */
+/**
+ * AC5: the due stored on the bill agrees in both places (top-level dueAmount and payment.due).
+ * @param {Rec} data
+ * @returns {Rec}
+ */
 export function checkDueFields(data) {
+    /** @type {Array<Rec>} */
     const rows = [];
     let checked = 0;
     eachBill(data, (bill, kind) => {
@@ -158,13 +200,15 @@ export function checkDueFields(data) {
  * AC6: for a closed session, the expected cash saved at close must equal
  * opening + cash in − cash out recomputed from today's loaded bills (a
  * difference means a bill or payment of that day changed after closing).
- * @param {?Object} session today's cash session
+ * @param {?Rec} session today's cash session
  * @param {Function} transactionsFor (dateStr, session) → drawer totals
+ * @returns {Rec}
  */
 export function checkDrawer(session, transactionsFor) {
     if (!session) return { id: 'AC6', key: 'ui.numchecks.ac6', status: 'skip', note: 'ui.numchecks.no_session', checked: 0, problems: 0, rows: [] };
     const live = sessionTotals(session, transactionsFor(session.date, session));
     const stored = Number(session.expectedBalance);
+    /** @type {Array<Rec>} */
     const rows = [];
     if (session.signedOut && Number.isFinite(stored) && Math.abs(stored - live.expected) > NUMBER_CHECK_TOLERANCE) {
         rows.push({ ref: { day: session.date }, expected: live.expected, actual: round2(stored), diff: round2(live.expected - stored) });
@@ -174,9 +218,9 @@ export function checkDrawer(session, transactionsFor) {
 
 /**
  * Every check on the loaded data.
- * @param {Object} data {items, purchases, wholesaleSales, retailSales, stockAdjustments}
- * @param {{fullHistory?: boolean, session?: Object, transactionsFor?: Function}} [opts]
- * @returns {Array<{id, key, status: 'pass'|'fail'|'skip', checked, problems, rows, note?}>}
+ * @param {Rec} data {items, purchases, wholesaleSales, retailSales, stockAdjustments}
+ * @param {{fullHistory?: boolean, session?: ?Rec, transactionsFor?: ?Function}} [opts]
+ * @returns {Array<Rec>} {id, key, status: 'pass'|'fail'|'skip', checked, problems, rows, note?}
  */
 export function runNumberChecks(data, { fullHistory = true, session = null, transactionsFor = null } = {}) {
     return [

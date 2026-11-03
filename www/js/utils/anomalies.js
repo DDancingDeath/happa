@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Anomaly detection over saved data (#187, #40): the daily
  * anomaly report on Today and the Anomalies page.
@@ -63,7 +64,10 @@ export const STATUS_LABELS = {
     fixed: { en: 'Fixed', hi: 'सुधारा' }
 };
 
-/** Rule catalogue: label + default severity per anomaly type. */
+/**
+ * Rule catalogue: label + default severity per anomaly type.
+ * @type {Readonly<Object<string, {en: string, hi: string, severity: string}>>}
+ */
 export const ANOMALY_TYPES = Object.freeze({
     'rate-high': { en: 'Rate far above usual', hi: 'रेट सामान्य से बहुत ज़्यादा', severity: 'medium' },
     'rate-low': { en: 'Rate far below usual', hi: 'रेट सामान्य से बहुत कम', severity: 'medium' },
@@ -108,44 +112,73 @@ export const ANOMALY_TYPES = Object.freeze({
     'numcheck-ac8': { en: 'Number check: stock below zero', hi: 'आँकड़ों की जाँच: शून्य से कम स्टॉक', severity: 'medium' }
 });
 
-/** Label of a type (unknown stored flag rules fall back to their id). */
+/**
+ * Label of a type (unknown stored flag rules fall back to their id).
+ * @param {*} type
+ * @returns {{en: string, hi: string}}
+ */
 export function typeLabel(type) {
     const t = ANOMALY_TYPES[type];
     return t ? { en: t.en, hi: t.hi } : { en: String(type || ''), hi: String(type || '') };
 }
 
-const pad2 = (n) => String(n).padStart(2, '0');
-const utcKey = (d) => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+const pad2 = (/** @type {number} */ n) => String(n).padStart(2, '0');
+const utcKey = (/** @type {Date} */ d) => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
 
-/** IST calendar day (YYYY-MM-DD) of an instant (ms). */
+/**
+ * IST calendar day (YYYY-MM-DD) of an instant (ms).
+ * @param {*} ms
+ * @returns {string}
+ */
 export function istDayKey(ms) {
     return utcKey(new Date(Number(ms) + IST_OFFSET_MS));
 }
 
-/** IST hour (0–23) of an instant (ms). */
+/**
+ * IST hour (0–23) of an instant (ms).
+ * @param {*} ms
+ * @returns {number}
+ */
 export function istHour(ms) {
     return new Date(Number(ms) + IST_OFFSET_MS).getUTCHours();
 }
 
+/**
+ * @param {*} key
+ * @returns {?number[]}
+ */
 function keyParts(key) {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key || ''));
     return m ? [Number(m[1]), Number(m[2]) - 1, Number(m[3])] : null;
 }
 
-/** Day key `n` days after `key` (negative = before). */
+/**
+ * Day key `n` days after `key` (negative = before).
+ * @param {string} key
+ * @param {number} n
+ * @returns {string}
+ */
 export function addDaysToKey(key, n) {
     const p = keyParts(key);
     if (!p) return key;
     return utcKey(new Date(Date.UTC(p[0], p[1], p[2] + n)));
 }
 
-/** First instant (ms) of an IST day key. */
+/**
+ * First instant (ms) of an IST day key.
+ * @param {*} key
+ * @returns {number}
+ */
 export function istDayStartMs(key) {
     const p = keyParts(key);
     return p ? Date.UTC(p[0], p[1], p[2]) - IST_OFFSET_MS : NaN;
 }
 
-/** DD/MM/YYYY for a day key. */
+/**
+ * DD/MM/YYYY for a day key.
+ * @param {*} key
+ * @returns {string}
+ */
 export function formatDayKey(key) {
     const p = keyParts(key);
     return p ? `${pad2(p[2])}/${pad2(p[1] + 1)}/${p[0]}` : String(key || '');
@@ -162,7 +195,7 @@ export function anomalyId(type, refKind, refId) {
     return `${type}~${refKind}~${String(refId)}`.replace(/\//g, '_');
 }
 
-const timeOf = (v) => {
+const timeOf = (/** @type {*} */ v) => {
     if (typeof v === 'number' && Number.isFinite(v)) return v;
     const d = parseAnyBillDate(v);
     return d ? d.getTime() : NaN;
@@ -174,11 +207,13 @@ const timeOf = (v) => {
  * timestamp and more than 12 hours after it (a bill without `enteredAt` dated back; a bill saved
  * offline that synced within 12 hours keeps its own time, so a sync just after midnight or at night
  * flags nothing), else its numeric timestamp, else its date.
+ * @param {?Rec|undefined} bill
+ * @returns {number}
  */
 export function billTime(bill) {
     const entered = Number(bill?.enteredAt);
     if (Number.isFinite(entered) && entered > 0) return entered;
-    const created = bill?.createdAt != null ? toJsDate(bill.createdAt)?.getTime() : NaN;
+    const created = /** @type {number} */ (bill?.createdAt != null ? toJsDate(bill.createdAt)?.getTime() : NaN);
     const ts = Number(bill?.timestamp);
     const hasTs = Number.isFinite(ts) && ts > 0;
     if (Number.isFinite(created) && created > 0 && (!hasTs || (created - ts > DAY_MS / 2 && istDayKey(created) > istDayKey(ts)))) return created;
@@ -192,16 +227,16 @@ export function billTime(bill) {
  * already stored under the bill's id, so scans that see the bill and scans that only see the entry don't
  * overwrite each other. An expense void's flag built from its audit entry (#99) likewise never rewrites
  * the record stored from the voided expense.
- * @param {Array} detected
- * @param {Array|null} stored
- * @returns {Array}
+ * @param {Array<Rec>} detected
+ * @param {?Array<Rec>|undefined} stored
+ * @returns {Array<Rec>}
  */
 export function withoutStoredVoidTwins(detected, stored) {
     const allVoids = (stored || []).filter(d => d && (d.type === 'bill-voided' || d.type === 'expense-voided'));
     if (!allVoids.length) return detected;
     const voids = allVoids.filter(d => d.type === 'bill-voided');
-    const keyOf = (d) => `${d.billNumber}|${d.userId || ''}`;
-    const storedAs = (kind) => new Set(voids.filter(d => d.refKind === kind && d.billNumber).map(keyOf));
+    const keyOf = (/** @type {Rec} */ d) => `${d.billNumber}|${d.userId || ''}`;
+    const storedAs = (/** @type {string} */ kind) => new Set(voids.filter(d => d.refKind === kind && d.billNumber).map(keyOf));
     const byAudit = storedAs('audit');
     const byBill = storedAs('bill');
     const ids = new Set(allVoids.map(d => d.id));
@@ -211,40 +246,51 @@ export function withoutStoredVoidTwins(detected, stored) {
             : a.refKind === 'audit' && !!a.billNumber && byBill.has(keyOf(a))))));
 }
 
-const billParty = (bill) => String(bill?.customerName || bill?.supplierName || '').trim();
-const billUserId = (bill) => String(bill?.userId || bill?.createdBy || '');
+const billParty = (/** @type {?Rec|undefined} */ bill) => String(bill?.customerName || bill?.supplierName || '').trim();
+const billUserId = (/** @type {?Rec|undefined} */ bill) => String(bill?.userId || bill?.createdBy || '');
 
 /**
  * A voided bill or expense (by kind, as detectAnomalies `voided`) voided within [from, to) by someone
  * other than `uid` (#75, #99): only then does a scan need to know who the owners are.
+ * @param {?Object<string, ?Array<?Rec>|undefined>|undefined} voided
+ * @param {*} uid
+ * @param {number} from
+ * @param {number} to
+ * @returns {boolean}
  */
 export function voidedByOthers(voided, uid, from, to) {
     return Object.values(voided || {}).some(list => (list || []).some(b => {
-        const at = toJsDate(b?.voidedAt)?.getTime();
+        const at = /** @type {number} */ (toJsDate(b?.voidedAt)?.getTime());
         return !!b?.voidedBy && String(b.voidedBy) !== String(uid || '') && at >= from && at < to;
     }));
 }
-const lineNames = (items) => [...new Set((Array.isArray(items) ? items : [])
+const lineNames = (/** @type {*} */ items) => [...new Set((Array.isArray(items) ? items : [])
     .map(it => readLineItem(it).name).filter(Boolean))];
 
 /**
  * uid → display name from everything loaded (bills, sessions, adjustments),
  * so purchase bills that only store a uid still show who entered them.
- * @param {Object} input - same shape as detectAnomalies input
+ * @param {Rec} input - same shape as detectAnomalies input
  * @returns {Map<string, string>}
  */
 export function buildUserNames({ bills = {}, sessions = [], adjustments = [] } = {}) {
     const names = new Map();
-    const note = (uid, name) => {
+    const note = (/** @type {*} */ uid, /** @type {*} */ name) => {
         const n = String(name || '').trim();
         if (uid && n && n !== 'Unknown' && !names.has(String(uid))) names.set(String(uid), n);
     };
-    Object.values(bills).forEach(list => (list || []).forEach(b => note(billUserId(b), b?.userName || b?.createdByName)));
-    (sessions || []).forEach(s => note(s?.userId, s?.userName));
-    (adjustments || []).forEach(a => note(a?.createdBy || a?.userId, a?.createdByName || a?.userName));
+    Object.values(bills).forEach(list => (list || []).forEach((/** @type {?Rec} */ b) => note(billUserId(b), b?.userName || b?.createdByName)));
+    (sessions || []).forEach((/** @type {?Rec} */ s) => note(s?.userId, s?.userName));
+    (adjustments || []).forEach((/** @type {?Rec} */ a) => note(a?.createdBy || a?.userId, a?.createdByName || a?.userName));
     return names;
 }
 
+/**
+ * @param {string} type
+ * @param {Rec} ref
+ * @param {Rec} fields
+ * @returns {Rec}
+ */
 function makeAnomaly(type, ref, fields) {
     const label = typeLabel(type);
     const at = Number(fields.at);
@@ -271,9 +317,16 @@ function makeAnomaly(type, ref, fields) {
     };
 }
 
-/** Earlier bills of one kind within the rate look-back, for the "usual rate" and duplicates. */
+/**
+ * Earlier bills of one kind within the rate look-back, for the "usual rate" and duplicates.
+ * @param {Array<{bill: Rec, ts: number}>} sorted
+ * @param {number} index
+ * @param {number} lookbackMs
+ * @returns {Array<Rec>}
+ */
 function earlierBills(sorted, index, lookbackMs) {
     const ts = sorted[index].ts;
+    /** @type {Array<Rec>} */
     const out = [];
     for (let i = index - 1; i >= 0 && sorted[i].ts >= ts - lookbackMs; i--) {
         if (sorted[i].ts < ts) out.push(sorted[i].bill);
@@ -285,6 +338,12 @@ function earlierBills(sorted, index, lookbackMs) {
  * Re-run the save-time rules (#37) on a saved bill. Stock-based rules
  * (oversell, below cost) are skipped: today's stock says nothing about the
  * stock when the bill was saved — their save-time flags are used instead.
+ * @param {Rec} bill
+ * @param {'purchase'|'retail'|'wholesale'} kind
+ * @param {number} ts
+ * @param {Array<Rec>} earlier
+ * @param {Rec} base
+ * @returns {Array<{type: string, en: string, hi: string, names: string[]}>}
  */
 function recheckBill(bill, kind, ts, earlier, base) {
     const pay = readPayment(bill);
@@ -319,6 +378,7 @@ function recheckBill(bill, kind, ts, earlier, base) {
         return [];
     }
     const items = Array.isArray(bill.items) ? bill.items : [];
+    /** @type {Map<string, {issue: Rec, names: string[]}>} */
     const byRule = new Map();
     issues.filter(i => !isEntryIssue(i) && i.id !== 'oversell' && i.id !== 'below-cost' && i.id !== 'cost-unknown').forEach(i => {
         const lines = [i.line, ...(i.lines || [])].filter(n => Number.isInteger(n));
@@ -330,47 +390,53 @@ function recheckBill(bill, kind, ts, earlier, base) {
     return [...byRule.values()].map(({ issue, names }) => ({ type: issue.id, en: issue.en, hi: issue.hi, names }));
 }
 
-/** Lines whose total is a round figure but whose rate is an odd, back-worked number. */
+/**
+ * Lines whose total is a round figure but whose rate is an odd, back-worked number.
+ * @param {*} items
+ * @param {Rec} t thresholds
+ */
 function roundLines(items, t) {
     return (Array.isArray(items) ? items : []).map(readLineItem).filter(l =>
         l.total >= t.roundLineMin && Math.abs(l.total % 100) < 0.005 && l.rate > 0
         && Math.abs(l.rate * 4 - Math.round(l.rate * 4)) > 0.01);
 }
 
-const isNight = (hour, t) => (t.nightStartHour > t.nightEndHour
+const isNight = (/** @type {number} */ hour, /** @type {Rec} */ t) => (t.nightStartHour > t.nightEndHour
     ? hour >= t.nightStartHour || hour < t.nightEndHour
     : hour >= t.nightStartHour && hour < t.nightEndHour);
 
 /**
  * Find anomalies in loaded data with event time in [from, to).
  * @param {Object} input
- * @param {{purchase?: Object[], retail?: Object[], wholesale?: Object[]}} input.bills
- * @param {Object[]} [input.sessions] - cash sessions (`cashManagement` docs)
- * @param {Object[]} [input.adjustments] - stock adjustments
- * @param {Object[]} [input.auditLogs] - audit log entries (owner devices only)
- * @param {{purchase?: Object[], retail?: Object[], wholesale?: Object[], expense?: Object[]}} [input.voided] - voided bills
+ * @param {{purchase?: Rec[], retail?: Rec[], wholesale?: Rec[]}} input.bills
+ * @param {Rec[]} [input.sessions] - cash sessions (`cashManagement` docs)
+ * @param {Rec[]} [input.adjustments] - stock adjustments
+ * @param {Rec[]} [input.auditLogs] - audit log entries (owner devices only)
+ * @param {{purchase?: Rec[], retail?: Rec[], wholesale?: Rec[], expense?: Rec[]}} [input.voided] - voided bills
  *   and expenses loaded (FirebaseService.voidedBills, voidedExpenses): a void by anyone but an owner is flagged (#75, #99), no read of its own
- * @param {Object[]} [input.people] - user profiles `{id, name, role}` (owner devices): names on audit-based flags
- * @param {Object[]} [input.catalogue] - items
- * @param {Object} [input.thresholds] - settings/app checkThresholds (+ ANOMALY_DEFAULTS keys)
+ * @param {Rec[]} [input.people] - user profiles `{id, name, role}` (owner devices): names on audit-based flags
+ * @param {Rec[]} [input.catalogue] - items
+ * @param {Rec} [input.thresholds] - settings/app checkThresholds (+ ANOMALY_DEFAULTS keys)
  * @param {?string[]} [input.ownerIds] - uids of the owners: their back-dated bills follow Q20 (backdateDays), anyone else's are flagged from 1 day (#147); null (unknown, e.g. a manager's device) = Q20 for all, the save-time flag covers the rest
- * @param {Object} [input.stock] - AppState.stock: stock on hand counts as stock set (purchase older than the loaded history)
+ * @param {Rec} [input.stock] - AppState.stock: stock on hand counts as stock set (purchase older than the loaded history)
  * @param {number} input.from - inclusive (ms)
  * @param {number} input.to - exclusive (ms)
- * @returns {Array<Object>} anomalies, one per id, high severity and newest first
+ * @returns {Array<Rec>} anomalies, one per id, high severity and newest first
  */
 export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], auditLogs = [], people = [], catalogue = [], thresholds = {}, stock = {}, ownerIds = null, voided = {}, from, to }) {
     const peopleMap = peopleById(people);
+    /** @type {Rec} */
     const t = { ...ANOMALY_DEFAULTS, ...normalizeThresholds(thresholds) };
     Object.keys(ANOMALY_DEFAULTS).forEach(k => {
         const n = Number(thresholds?.[k]);
         if (Number.isFinite(n) && n >= 0) t[k] = n;
     });
-    const inRange = (ms) => Number.isFinite(ms) && ms >= from && ms < to;
+    const inRange = (/** @type {number} */ ms) => Number.isFinite(ms) && ms >= from && ms < to;
     const names = buildUserNames({ bills, sessions, adjustments });
-    const nameOf = (uid, fallback) => String(fallback || names.get(String(uid || '')) || '').trim();
+    const nameOf = (/** @type {*} */ uid, /** @type {*} */ fallback) => String(fallback || names.get(String(uid || '')) || '').trim();
+    /** @type {Map<string, Rec>} */
     const out = new Map();
-    const add = (a) => {
+    const add = (/** @type {Rec} */ a) => {
         if (!inRange(a.at)) return;
         const prev = out.get(a.id);
         if (!prev) { out.set(a.id, a); return; }
@@ -380,8 +446,8 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
     const base = { thresholds, catalogue: Array.isArray(catalogue) ? catalogue : [], ownerIds: Array.isArray(ownerIds) ? new Set(ownerIds.map(String)) : null };
     const lookbackMs = t.rateLookbackDays * DAY_MS;
 
-    ['purchase', 'retail', 'wholesale'].forEach(kind => {
-        const sorted = activityBills(bills[kind]).filter(b => b && b.id != null)
+    /** @type {Array<'purchase'|'retail'|'wholesale'>} */ (['purchase', 'retail', 'wholesale']).forEach(kind => {
+        const sorted = /** @type {Array<Rec>} */ (activityBills(bills[kind])).filter(b => b && b.id != null)
             .map(bill => ({ bill, ts: billTime(bill) }))
             .filter(x => Number.isFinite(x.ts))
             .sort((a, b) => a.ts - b.ts);
@@ -507,11 +573,13 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
         }
     });
 
+    /** @type {Object<string, string>} */
     const AUDIT_TYPES = { DELETE_BILL: 'bill-deleted', DELETE_SALE: 'bill-deleted', DELETE_EXPENSE: 'expense-deleted', VOID_BILL: 'bill-voided', VOID_EXPENSE: 'expense-voided' };
-    const reasonText = (reason) => {
+    const reasonText = (/** @type {*} */ reason) => {
         const why = cleanText(reason).slice(0, 120);
         return why ? ` — ${why}` : '';
     };
+    /** @type {Object<string, (no: string, amount: number, reason?: *) => {en: string, hi: string}>} */
     const AUDIT_TEXT = {
         'bill-deleted': (no, amount) => ({ en: `Bill${no} deleted (${inr(amount)})`, hi: `बिल${no} मिटाया (${inr(amount)})` }),
         'bill-voided': (no, amount, reason) => ({ en: `Bill${no} voided (${inr(amount)})${reasonText(reason)}`, hi: `बिल${no} रद्द किया (${inr(amount)})${reasonText(reason)}` }),
@@ -520,6 +588,7 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
     };
     // #75: a void needs no approval, but one by anyone except an owner is flagged. Owners come from the
     // profiles (owner's scan) or the owners' list (else an audit entry's stored role).
+    /** @type {(uid: *, storedRole?: *) => boolean} */
     const isOwnerUid = (uid, storedRole) => {
         const role = peopleMap.get(String(uid))?.role;
         if (role) return role === 'owner';
@@ -528,11 +597,12 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
     };
     // Until a phone knows the owners (read once a session when someone else voided a loaded bill), it flags no bill void
     const ownersKnown = peopleMap.size > 0 || !!base.ownerIds;
-    const voidKey = (kind, billNumber, uid) => `${kind}|${String(billNumber || '')}|${String(uid || '')}`;
+    const voidKey = (/** @type {*} */ kind, /** @type {*} */ billNumber, /** @type {*} */ uid) => `${kind}|${String(billNumber || '')}|${String(uid || '')}`;
+    /** @type {Map<string, string>} */
     const loadedVoids = new Map();
     // Voids of loaded bills: who and when come from the bill (rules: voidedBy = the writer, voidedAt = server time).
     // The name is the one stored on the bill on every phone, so scans never rewrite each other's record.
-    ['purchase', 'retail', 'wholesale'].forEach(kind => (voided?.[kind] || []).forEach(bill => {
+    /** @type {Array<'purchase'|'retail'|'wholesale'>} */ (['purchase', 'retail', 'wholesale']).forEach(kind => (voided?.[kind] || []).forEach(bill => {
         if (!bill || bill.id == null || bill.voided !== true) return;
         const by = String(bill.voidedBy || '');
         if (bill.billNumber) loadedVoids.set(voidKey(kind, bill.billNumber, by), String(bill.id));
@@ -549,7 +619,7 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
     }));
     // #99: the same for voided expenses, from the expense itself; its audit entry names it (expenseId), so both
     // give one flag. A personal expense's flag carries no type or name (managers read flags, maybe not those rows).
-    const expenseRef = (expense, id, userId, user, amount) => {
+    const expenseRef = (/** @type {Rec} */ expense, /** @type {string} */ id, /** @type {string} */ userId, /** @type {string} */ user, /** @type {number} */ amount) => {
         const personal = isPersonalExpense(expense);
         return {
             refKind: 'expense', refId: id, party: personal ? '' : String(expense?.personName || '').trim(),
@@ -568,7 +638,7 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
     });
     // An entry's userId is the writer's (rules); its stored userName is whatever the phone sent,
     // so the name comes from the profile when the owner's scan has the profiles (#85)
-    const logUser = (log) => {
+    const logUser = (/** @type {Rec} */ log) => {
         const uid = String(log.userId || '');
         const profile = peopleMap.get(uid);
         return { userId: uid, user: String(profile?.name || '').trim() || nameOf(uid, log.userName === 'Unknown User' ? '' : log.userName) };
@@ -614,7 +684,7 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
     });
 
     // #124: refused writes in a burst, new phones, tries on bills past their edit window
-    deniedClusters(auditLogs, t).forEach(({ first, entries }) => {
+    deniedClusters(auditLogs, /** @type {{deniedCount: number, deniedWindowMin: number}} */ (t)).forEach(({ first, entries }) => {
         const kinds = [...new Set(entries.map(e => String(e.details?.source || '').trim()).filter(Boolean))].slice(0, 4).join(', ');
         const mins = Math.max(1, Math.round((Number(entries[entries.length - 1].timestamp) - Number(first.timestamp)) / 60000));
         add(makeAnomaly('access-denied', { refKind: 'audit', refId: first.id, ...logUser(first) }, {
@@ -634,13 +704,14 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
         }
     });
     // Tapping a locked Edit / Void is no flag by itself; trying 3 or more different old bills in a day is
+    /** @type {Map<string, Array<Rec>>} */
     const triesByUserDay = new Map();
     (auditLogs || []).filter(l => l && l.id != null && l.action === SECURITY_ACTIONS.OLD_BILL_TRY && Number.isFinite(Number(l.timestamp)))
         .sort((a, b) => Number(a.timestamp) - Number(b.timestamp))
         .forEach(l => {
             const k = `${l.userId || ''}|${istDayKey(Number(l.timestamp))}`;
             if (!triesByUserDay.has(k)) triesByUserDay.set(k, []);
-            triesByUserDay.get(k).push(l);
+            /** @type {Array<Rec>} */ (triesByUserDay.get(k)).push(l);
         });
     triesByUserDay.forEach(list => {
         const billIds = new Set(list.map(l => String(l.details?.billId || '')).filter(Boolean));
@@ -657,12 +728,16 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
     return sortAnomalies(withoutUnstockedOversell([...out.values()], { stockFrom, catalogue, stock }));
 }
 
-const sevRank = (s) => {
+const sevRank = (/** @type {*} */ s) => {
     const i = SEVERITIES.indexOf(s);
     return i === -1 ? SEVERITIES.length : i;
 };
 
-/** High severity first, then newest first, then id (stable). */
+/**
+ * High severity first, then newest first, then id (stable).
+ * @param {?Array<Rec>|undefined} list
+ * @returns {Array<Rec>}
+ */
 export function sortAnomalies(list) {
     return [...(list || [])].sort((a, b) => sevRank(a.severity) - sevRank(b.severity)
         || (Number(b.at) || 0) - (Number(a.at) || 0)
@@ -674,7 +749,12 @@ export const DETECTION_FIELDS = ['type', 'rule', 'severity', 'en', 'hi', 'refKin
     'party', 'item', 'userId', 'user', 'amount', 'at', 'dayKey', 'hour', 'detectedBy'];
 const COMPARE_FIELDS = ['type', 'severity', 'en', 'hi', 'party', 'item', 'user', 'amount', 'at', 'dayKey'];
 
+/**
+ * @param {Rec} a
+ * @returns {Rec}
+ */
 function detectionData(a) {
+    /** @type {Rec} */
     const out = {};
     DETECTION_FIELDS.forEach(k => { if (a[k] !== undefined) out[k] = a[k]; });
     return out;
@@ -685,14 +765,15 @@ function detectionData(a) {
  * fields: new ids get the full record with status 'open'; changed ones only
  * their detection fields (merge); unchanged ones nothing. Re-running a scan
  * over the same data therefore writes nothing.
- * @param {Array<Object>} detected
- * @param {Array<Object>} stored - docs already read for the same days ({id, ...})
+ * @param {Array<Rec>} detected
+ * @param {Array<Rec>} stored - docs already read for the same days ({id, ...})
  * @param {number} now - ms
- * @returns {Array<{id: string, data: Object, isNew: boolean}>}
+ * @returns {Array<{id: string, data: Rec, isNew: boolean}>}
  */
 export function planAnomalyWrites(detected, stored, now) {
     const byId = new Map((stored || []).map(d => [d.id, d]));
     const seen = new Set();
+    /** @type {Array<{id: string, data: Rec, isNew: boolean}>} */
     const writes = [];
     (detected || []).forEach(a => {
         if (!a || !a.id || seen.has(a.id)) return;
@@ -714,11 +795,12 @@ export function planAnomalyWrites(detected, stored, now) {
  * One list for display: stored docs (with their review status) plus fresh
  * detections not stored yet (status 'open'). Detection text comes from the
  * latest scan when both exist.
- * @param {Array<Object>} detected
- * @param {Array<Object>} stored
- * @returns {Array<Object>}
+ * @param {Array<Rec>} detected
+ * @param {Array<Rec>} stored
+ * @returns {Array<Rec>}
  */
 export function mergeAnomalies(detected, stored) {
+    /** @type {Map<string, Rec>} */
     const out = new Map();
     (stored || []).forEach(d => { if (d && d.id) out.set(d.id, { status: 'open', ...d }); });
     (detected || []).forEach(a => {
@@ -729,7 +811,7 @@ export function mergeAnomalies(detected, stored) {
     return sortAnomalies([...out.values()]);
 }
 
-const splitItems = (item) => String(item || '').split(', ').map(s => s.trim()).filter(Boolean);
+const splitItems = (/** @type {*} */ item) => String(item || '').split(', ').map(s => s.trim()).filter(Boolean);
 
 /**
  * Drops "Sold more than stock" for items whose stock had never been set (no
@@ -738,9 +820,9 @@ const splitItems = (item) => String(item || '').split(', ').map(s => s.trim()).f
  * The flagged item is the one named at the start of the flag text, else any
  * item on the bill. Stock on hand (or a cost) counts as stock set when the
  * item's purchases are older than the loaded history.
- * @param {Array<Object>} list anomalies
- * @param {{stockFrom?: Map<string, number>, catalogue?: Array, stock?: Object}} ctx stockFrom from firstStockTimes()
- * @returns {Array<Object>}
+ * @param {Array<Rec>} list anomalies
+ * @param {{stockFrom?: Map<string, number>, catalogue?: Array<Rec>, stock?: Rec}} [ctx] stockFrom from firstStockTimes()
+ * @returns {Array<Rec>}
  */
 export function withoutUnstockedOversell(list, { stockFrom = new Map(), catalogue = [], stock = {} } = {}) {
     return (list || []).filter(a => {
@@ -751,14 +833,21 @@ export function withoutUnstockedOversell(list, { stockFrom = new Map(), catalogu
         const at = Number(a.at);
         return (named.length ? named : names).some(name => {
             const key = stockKeyFor({ name }, catalogue);
-            if (stockFrom.has(key)) return !Number.isFinite(at) || stockFrom.get(key) <= at;
+            if (stockFrom.has(key)) return !Number.isFinite(at) || /** @type {number} */ (stockFrom.get(key)) <= at;
             const s = (stock || {})[key];
             return (Number(s?.quantity) || 0) > 0 || (Number(s?.rate) || 0) > 0;
         });
     });
 }
 
+/**
+ * @param {Array<Rec>} list
+ * @param {(a: Rec) => string[]} keyFn
+ * @param {number} n
+ * @returns {Array<{name: string, count: number}>}
+ */
 function topCounts(list, keyFn, n) {
+    /** @type {Map<string, number>} */
     const counts = new Map();
     list.forEach(a => keyFn(a).forEach(k => counts.set(k, (counts.get(k) || 0) + 1)));
     return [...counts.entries()].map(([name, count]) => ({ name, count }))
@@ -767,12 +856,15 @@ function topCounts(list, keyFn, n) {
 
 /**
  * Counts for a report: by severity, by type, top items/parties/users.
- * @param {Array<Object>} list
- * @returns {{total: number, open: number, bySeverity: Object, byType: Array, topItems: Array, topParties: Array, topUsers: Array}}
+ * @param {?Array<Rec>|undefined} list
+ * @returns {{total: number, open: number, bySeverity: Object<string, number>, byType: Array<Rec>, topItems: Array<{name: string, count: number}>,
+ *   topParties: Array<{name: string, count: number}>, topUsers: Array<{name: string, count: number}>}}
  */
 export function summarizeAnomalies(list) {
     const items = list || [];
+    /** @type {Object<string, number>} */
     const bySeverity = { high: 0, medium: 0, low: 0 };
+    /** @type {Map<string, number>} */
     const types = new Map();
     items.forEach(a => {
         if (bySeverity[a.severity] !== undefined) bySeverity[a.severity]++;
@@ -790,25 +882,30 @@ export function summarizeAnomalies(list) {
     };
 }
 
-/** One line for the cash-close screen, in the app language. */
+/**
+ * One line for the cash-close screen, in the app language.
+ * @param {?Array<Rec>|undefined} list
+ * @returns {string}
+ */
 export function summaryLine(list) {
     const s = summarizeAnomalies(list);
     if (s.total === 0) return t('ui.anom.summary_none');
     return t('ui.anom.summary_count', { total: s.total, high: s.bySeverity.high });
 }
 
-const inr = (n) => formatRupees(n, { exact: true });
+const inr = (/** @type {*} */ n) => formatRupees(n, { exact: true });
 
 /**
  * WhatsApp text of the day report, in the app language (also the printed image lines).
  * @param {Object} args
  * @param {string} args.dayKey
- * @param {Array<Object>} args.today - today's anomalies
- * @param {Object} [args.totals] - day totals shown on Today
+ * @param {Array<Rec>} args.today - today's anomalies
+ * @param {?Rec} [args.totals] - day totals shown on Today
  * @param {string} [args.shopName]
  * @returns {string}
  */
 export function buildDayReportText({ dayKey, today = [], totals = null, shopName = '' }) {
+    /** @type {string[]} */
     const lines = [];
     lines.push(`*${t('ui.anom.day_report')}* — ${formatDayKey(dayKey)}`);
     const shop = cleanText(shopName);
@@ -856,16 +953,16 @@ export function presetRange(preset, todayKey) {
 
 /**
  * Filter anomalies for the Anomalies page.
- * @param {Array<Object>} list
+ * @param {Array<Rec>} list
  * @param {{from?: string, to?: string, type?: string, severity?: string, item?: string, user?: string, status?: string}} f
  *   empty / 'all' means no filter on that field
- * @returns {Array<Object>}
+ * @returns {Array<Rec>}
  */
 export function filterAnomalies(list, f = {}) {
-    const any = (v) => v === undefined || v === null || v === '' || v === 'all';
+    const any = (/** @type {*} */ v) => v === undefined || v === null || v === '' || v === 'all';
     const itemQ = String(f.item || '').trim().toLowerCase();
-    return (list || []).filter(a => (any(f.from) || String(a.dayKey) >= f.from)
-        && (any(f.to) || String(a.dayKey) <= f.to)
+    return (list || []).filter(a => (any(f.from) || String(a.dayKey) >= /** @type {string} */ (f.from))
+        && (any(f.to) || String(a.dayKey) <= /** @type {string} */ (f.to))
         && (any(f.type) || a.type === f.type)
         && (any(f.severity) || a.severity === f.severity)
         && (any(f.status) || (a.status || 'open') === f.status)
@@ -876,13 +973,14 @@ export function filterAnomalies(list, f = {}) {
 /**
  * Pattern views over a list: per-day counts by type, item × type heatmap,
  * by user, by hour of day and repeat offenders (seen on 2+ different days).
- * @param {Array<Object>} list
+ * @param {Array<Rec>} list
  * @param {{maxItems?: number}} [opts]
  */
 export function anomalyPatterns(list, { maxItems = 10 } = {}) {
     const items = list || [];
     const typesSeen = [...new Set(items.map(a => a.type))].sort();
 
+    /** @type {Map<*, {dayKey: *, total: number, byType: Object<string, number>}>} */
     const dayMap = new Map();
     items.forEach(a => {
         const d = dayMap.get(a.dayKey) || { dayKey: a.dayKey, total: 0, byType: {} };
@@ -893,6 +991,7 @@ export function anomalyPatterns(list, { maxItems = 10 } = {}) {
     const days = [...dayMap.values()].sort((a, b) => String(a.dayKey).localeCompare(String(b.dayKey)));
 
     const itemTotals = topCounts(items, a => splitItems(a.item), maxItems);
+    /** @type {Object<string, Object<string, number>>} */
     const cells = {};
     itemTotals.forEach(({ name }) => { cells[name] = {}; });
     items.forEach(a => splitItems(a.item).forEach(name => {
@@ -900,6 +999,7 @@ export function anomalyPatterns(list, { maxItems = 10 } = {}) {
     }));
     const heatTypes = typesSeen.filter(t => itemTotals.some(({ name }) => cells[name][t]));
 
+    /** @type {Map<string, {name: string, count: number, high: number, byType: Object<string, number>}>} */
     const users = new Map();
     items.forEach(a => {
         const key = String(a.user || a.userId || '').trim();
@@ -917,7 +1017,8 @@ export function anomalyPatterns(list, { maxItems = 10 } = {}) {
         if (h !== null && h >= 0 && h < 24) byHour[h]++;
     });
 
-    const repeat = (keyFn) => {
+    const repeat = (/** @type {(a: Rec) => string[]} */ keyFn) => {
+        /** @type {Map<string, {name: string, count: number, days: Set<*>, types: Set<*>}>} */
         const m = new Map();
         items.forEach(a => keyFn(a).forEach(k => {
             const r = m.get(k) || { name: k, count: 0, days: new Set(), types: new Set() };

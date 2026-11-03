@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Rate trends (#65): weekly and monthly per-item rate statistics
  * built from bill lines, the resumable backfill over all bills, the
@@ -18,9 +19,13 @@ import { createItemKeyResolver, eventTime } from './stock-replay.js';
 import { isActiveBill, isOpeningRecord } from './money.js';
 import { t, getLang } from '../i18n/index.js';
 
+/** @type {Array<'purchase'|'retail'|'wholesale'>} */
 export const RATE_KINDS = ['purchase', 'retail', 'wholesale'];
 
-/** Bill collections read by the backfill, in order, with the section they fill. */
+/**
+ * Bill collections read by the backfill, in order, with the section they fill.
+ * @type {Array<{coll: string, kind: 'purchase'|'retail'|'wholesale'}>}
+ */
 export const BACKFILL_SOURCES = [
     { coll: 'purchases', kind: 'purchase' },
     { coll: 'retailSales', kind: 'retail' },
@@ -40,29 +45,45 @@ const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
 const DAY_MS = 86400000;
 const MONTH_RE = /^(\d{4})-(\d{2})$/;
 const DAY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
-const pad2 = (n) => String(n).padStart(2, '0');
-const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+const pad2 = (/** @type {number} */ n) => String(n).padStart(2, '0');
+const round2 = (/** @type {*} */ n) => Math.round((Number(n) || 0) * 100) / 100;
 
-/** IST calendar month 'YYYY-MM' of an instant (ms). */
+/**
+ * IST calendar month 'YYYY-MM' of an instant (ms).
+ * @param {*} ms
+ * @returns {string}
+ */
 export function istMonthKey(ms) {
     const d = new Date(Number(ms) + IST_OFFSET_MS);
     return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}`;
 }
 
-/** IST calendar day 'YYYY-MM-DD' of an instant (ms). */
+/**
+ * IST calendar day 'YYYY-MM-DD' of an instant (ms).
+ * @param {*} ms
+ * @returns {string}
+ */
 export function istDayKey(ms) {
     const d = new Date(Number(ms) + IST_OFFSET_MS);
     return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
 }
 
-/** Start (ms) of the IST day 'YYYY-MM-DD'. */
+/**
+ * Start (ms) of the IST day 'YYYY-MM-DD'.
+ * @param {?string|undefined} day
+ * @returns {number} NaN for an unreadable day
+ */
 export function istDayStartMs(day) {
     const m = DAY_RE.exec(day || '');
     if (!m) return NaN;
     return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) - IST_OFFSET_MS;
 }
 
-/** Monday 'YYYY-MM-DD' of the IST week (Monday–Sunday) containing an instant (ms). */
+/**
+ * Monday 'YYYY-MM-DD' of the IST week (Monday–Sunday) containing an instant (ms).
+ * @param {*} ms
+ * @returns {string}
+ */
 export function istWeekStart(ms) {
     const d = new Date(Number(ms) + IST_OFFSET_MS);
     const back = (d.getUTCDay() + 6) % 7;
@@ -70,23 +91,37 @@ export function istWeekStart(ms) {
     return istDayKey(monday - IST_OFFSET_MS);
 }
 
-/** Week start 'YYYY-MM-DD' shifted by n weeks. */
+/**
+ * Week start 'YYYY-MM-DD' shifted by n weeks.
+ * @param {?string|undefined} week
+ * @param {number} n
+ * @returns {?string} null for an unreadable week
+ */
 export function addWeeks(week, n) {
     const start = istDayStartMs(week);
     return Number.isFinite(start) ? istDayKey(start + n * 7 * DAY_MS) : null;
 }
 
-export const weekKey = (week) => `w${week}`;
-export const monthKey = (month) => `m${month}`;
+export const weekKey = (/** @type {string} */ week) => `w${week}`;
+export const monthKey = (/** @type {string} */ month) => `m${month}`;
 
-/** Start (ms) of an IST month 'YYYY-MM'. */
+/**
+ * Start (ms) of an IST month 'YYYY-MM'.
+ * @param {?string|undefined} month
+ * @returns {number} NaN for an unreadable month
+ */
 export function istMonthStartMs(month) {
     const m = MONTH_RE.exec(month || '');
     if (!m) return NaN;
     return Date.UTC(Number(m[1]), Number(m[2]) - 1, 1) - IST_OFFSET_MS;
 }
 
-/** 'YYYY-MM' shifted by n months. */
+/**
+ * 'YYYY-MM' shifted by n months.
+ * @param {?string|undefined} month
+ * @param {number} n
+ * @returns {?string} null for an unreadable month
+ */
 export function addMonths(month, n) {
     const m = MONTH_RE.exec(month || '');
     if (!m) return null;
@@ -94,14 +129,22 @@ export function addMonths(month, n) {
     return `${Math.floor(total / 12)}-${pad2((total % 12 + 12) % 12 + 1)}`;
 }
 
-/** IST month of a bill (numeric timestamp, Firestore Timestamp, ISO or en-IN date string), or null. */
+/**
+ * IST month of a bill (numeric timestamp, Firestore Timestamp, ISO or en-IN date string), or null.
+ * @param {Rec} bill
+ * @returns {?string}
+ */
 export function billMonth(bill) {
     const t = eventTime(bill);
     if (!Number.isFinite(t) || t === Number.MAX_SAFE_INTEGER) return null;
     return istMonthKey(t);
 }
 
-/** kg on a bill line: purchase/retail store `qty`, wholesale stores `quantity`. */
+/**
+ * kg on a bill line: purchase/retail store `qty`, wholesale stores `quantity`.
+ * @param {?Rec|undefined} line
+ * @returns {number}
+ */
 export function lineKg(line) {
     if (!line) return 0;
     const raw = line.qty !== undefined && line.qty !== null && line.qty !== '' ? line.qty : line.quantity;
@@ -109,7 +152,12 @@ export function lineKg(line) {
     return Number.isFinite(kg) && kg > 0 ? kg : 0;
 }
 
-/** ₹/kg on a bill line; falls back to total / kg for legacy lines without `rate`. */
+/**
+ * ₹/kg on a bill line; falls back to total / kg for legacy lines without `rate`.
+ * @param {?Rec|undefined} line
+ * @param {number} [kg]
+ * @returns {number}
+ */
 export function lineRate(line, kg = lineKg(line)) {
     const rate = parseFloat(line?.rate);
     if (Number.isFinite(rate) && rate > 0) return rate;
@@ -117,28 +165,31 @@ export function lineRate(line, kg = lineKg(line)) {
     return kg > 0 && Number.isFinite(total) && total > 0 ? total / kg : 0;
 }
 
+/** @returns {{kg: number, amount: number, min: ?number, max: ?number, avg: number, bills: number}} */
 export function emptySection() {
     return { kg: 0, amount: 0, min: null, max: null, avg: 0, bills: 0 };
 }
 
 /** Stats doc id: one doc per item per year. */
-export const statsDocId = (itemId, year) => `${itemId}_${year}`;
+export const statsDocId = (/** @type {string} */ itemId, /** @type {string|number} */ year) => `${itemId}_${year}`;
 
 /**
  * Item-key resolver limited to catalogue ids: lines are grouped by `itemId`,
  * legacy lines without one (or with a deleted id) by English/Hindi name.
  * Lines that match no catalogue item are skipped (returns null).
+ * @param {?Array<{id: string, name?: string, hindiName?: string}>|undefined} items
+ * @returns {(line: Rec) => ?string}
  */
 export function createCatalogueResolver(items) {
     const ids = new Set((items || []).map(i => i.id));
-    const resolve = createItemKeyResolver(items);
+    const resolve = createItemKeyResolver(/** @type {Array<{id: string}>} */ (items));
     return (line) => {
         const key = resolve({ itemId: line.itemId, name: line.name || line.itemName });
         return ids.has(key) ? key : null;
     };
 }
 
-const isDeletedBill = (bill) => bill?.deleted === true || bill?.isDeleted === true || !isActiveBill(bill);
+const isDeletedBill = (/** @type {Rec} */ bill) => bill?.deleted === true || bill?.isDeleted === true || !isActiveBill(bill);
 
 /**
  * Adds one bill to a plain-object accumulator (serialisable and compact, so
@@ -146,11 +197,11 @@ const isDeletedBill = (bill) => bill?.deleted === true || bill?.isDeleted === tr
  * its IST week (doc of the Monday's year) and of its IST month (doc of that
  * year); each bill counts once per item, bucket and kind.
  * Accumulator: { [docId]: { itemId, year, b: { [bucketKey]: { n, purchase?: [kg, amount, min, max, bills], … } } } }
- * @param {Object} acc
- * @param {Object} bill
+ * @param {Rec} acc
+ * @param {Rec} bill
  * @param {'purchase'|'retail'|'wholesale'} kind
  * @param {Function} resolve createCatalogueResolver(items)
- * @param {{fromMs?: number}} [opts] skip bills before this instant
+ * @param {{fromMs?: ?number}} [opts] skip bills before this instant
  * @returns {boolean} whether the bill was used
  */
 export function addBillToAcc(acc, bill, kind, resolve, { fromMs = null } = {}) {
@@ -162,7 +213,7 @@ export function addBillToAcc(acc, bill, kind, resolve, { fromMs = null } = {}) {
     const targets = [[month.slice(0, 4), monthKey(month)], [week.slice(0, 4), weekKey(week)]];
     const seen = new Set();
     let used = false;
-    bill.items.forEach(line => {
+    bill.items.forEach((/** @type {?Rec} */ line) => {
         if (!line) return;
         const kg = lineKg(line);
         const rate = lineRate(line, kg);
@@ -192,23 +243,34 @@ export function addBillToAcc(acc, bill, kind, resolve, { fromMs = null } = {}) {
 
 /**
  * Accumulates loaded bills of every kind.
- * @param {{purchase?: Array, retail?: Array, wholesale?: Array}} sources
- * @param {Array} items catalogue
- * @param {{fromMs?: number}} [opts]
+ * @param {?Object<string, Array<Rec>|undefined>|undefined} sources purchase, retail, wholesale
+ * @param {?Array<{id: string, name?: string, hindiName?: string}>|undefined} items catalogue
+ * @param {{fromMs?: ?number}} [opts]
+ * @returns {Rec} accumulator (addBillToAcc)
  */
 export function aggregateBills(sources, items, opts = {}) {
+    /** @type {Rec} */
     const acc = {};
     const resolve = createCatalogueResolver(items);
-    RATE_KINDS.forEach(kind => (sources?.[kind] || []).forEach(bill => addBillToAcc(acc, bill, kind, resolve, opts)));
+    RATE_KINDS.forEach((/** @type {'purchase'|'retail'|'wholesale'} */ kind) => (sources?.[kind] || []).forEach(bill => addBillToAcc(acc, bill, kind, resolve, opts)));
     return acc;
 }
 
+/**
+ * @param {?Array<number>|undefined} s [kg, amount, min, max, bills]; min and max are set once kg > 0
+ * @returns {{kg: number, amount: number, min: ?number, max: ?number, avg: number, bills: number}}
+ */
 function finalizeSection(s) {
     if (!s || !(s[0] > 0)) return emptySection();
     return { kg: round2(s[0]), amount: round2(s[1]), min: round2(s[2]), max: round2(s[3]), avg: round2(s[1] / s[0]), bills: s[4] || 0 };
 }
 
+/**
+ * @param {Rec} b
+ * @returns {Rec}
+ */
 function finalizeBucket(b) {
+    /** @type {Rec} */
     const out = { bills: b.n || 0 };
     RATE_KINDS.forEach(k => { out[k] = finalizeSection(b[k]); });
     return out;
@@ -217,12 +279,15 @@ function finalizeBucket(b) {
 /**
  * Per-item-year stats documents from an accumulator: every kind present in
  * each bucket (empty sections for kinds with no lines), rounded, avg = amount / kg.
- * @returns {Object.<string, Object>} docId -> { itemId, year, weeks, months } (without updatedAt)
+ * @param {?Rec|undefined} acc
+ * @returns {Object<string, Rec>} docId -> { itemId, year, weeks, months } (without updatedAt)
  */
 export function finalizeStats(acc) {
+    /** @type {Object<string, Rec>} */
     const out = {};
     Object.keys(acc || {}).forEach(id => {
-        const d = acc[id];
+        const d = /** @type {Rec} */ (acc)[id];
+        /** @type {{itemId: string, year: string, weeks: Rec, months: Rec}} */
         const doc = { itemId: d.itemId, year: d.year, weeks: {}, months: {} };
         Object.keys(d.b || {}).sort().forEach(key => {
             (key[0] === 'w' ? doc.weeks : doc.months)[key] = finalizeBucket(d.b[key]);
@@ -235,28 +300,35 @@ export function finalizeStats(acc) {
 /**
  * Bills → per-item-year stats docs (the pure aggregation the backfill, the
  * roll-forward and data migrations share).
- * @param {{purchase?: Array, retail?: Array, wholesale?: Array}} sources
- * @param {Array} items catalogue
- * @returns {Object.<string, Object>} docId -> doc
+ * @param {?Object<string, Array<Rec>|undefined>|undefined} sources purchase, retail, wholesale
+ * @param {?Array<{id: string, name?: string, hindiName?: string}>|undefined} items catalogue
+ * @returns {Object<string, Rec>} docId -> doc
  */
 export function billsToYearDocs(sources, items) {
     return finalizeStats(aggregateBills(sources, items));
 }
 
-const sameSection = (a, b) => {
+const sameSection = (/** @type {?Rec|undefined} */ a, /** @type {?Rec|undefined} */ b) => {
+    /** @type {Rec} */
     const x = a || emptySection();
+    /** @type {Rec} */
     const y = b || emptySection();
     return ['kg', 'amount', 'min', 'max', 'avg', 'bills'].every(f => (x[f] ?? null) === (y[f] ?? null));
 };
 
-const sameBucket = (a, b) => (a?.bills || 0) === (b?.bills || 0) && RATE_KINDS.every(k => sameSection(a?.[k], b?.[k]));
+const sameBucket = (/** @type {?Rec|undefined} */ a, /** @type {?Rec|undefined} */ b) => (a?.bills || 0) === (b?.bills || 0) && RATE_KINDS.every(k => sameSection(a?.[k], b?.[k]));
 
-const sameBuckets = (a, b) => {
+const sameBuckets = (/** @type {?Rec|undefined} */ a, /** @type {?Rec|undefined} */ b) => {
     const keys = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]);
     return [...keys].every(k => a?.[k] && b?.[k] && sameBucket(a[k], b[k]));
 };
 
-/** True when two stats docs carry the same numbers (updatedAt ignored). */
+/**
+ * True when two stats docs carry the same numbers (updatedAt ignored).
+ * @param {?Rec|undefined} a
+ * @param {?Rec|undefined} b
+ * @returns {boolean}
+ */
 export function sameStats(a, b) {
     if (!a || !b) return false;
     return a.itemId === b.itemId && String(a.year) === String(b.year)
@@ -267,13 +339,17 @@ export function sameStats(a, b) {
  * First IST month fully covered by the loaded history (ms; 0 = all loaded),
  * capped to `maxMonths` back from `now` so a roll-forward (and its server
  * read of those months) stays small.
+ * @param {number} loadedFrom
+ * @param {number} now
+ * @param {number} [maxMonths]
+ * @returns {string} 'YYYY-MM'
  */
 export function rollForwardFromMonth(loadedFrom, now, maxMonths = 2) {
     const current = istMonthKey(now);
-    const floor = addMonths(current, -(maxMonths - 1));
+    const floor = /** @type {string} */ (addMonths(current, -(maxMonths - 1)));
     if (!(loadedFrom > 0)) return floor;
     const m = istMonthKey(loadedFrom);
-    const covered = istMonthStartMs(m) === loadedFrom ? m : addMonths(m, 1);
+    const covered = istMonthStartMs(m) === loadedFrom ? m : /** @type {string} */ (addMonths(m, 1));
     return covered > floor ? covered : floor;
 }
 
@@ -281,13 +357,16 @@ export function rollForwardFromMonth(loadedFrom, now, maxMonths = 2) {
  * Buckets a roll-forward recomputes: months from rollForwardFromMonth(), and
  * weeks whose Monday is in the loaded history from the week of that month's
  * start (a week that started before the loaded window is left as stored).
+ * @param {number} loadedFrom
+ * @param {number} now
+ * @param {number} [maxMonths]
  * @returns {{fromMonth: string, fromWeek: string, fromYear: string}}
  */
 export function rollForwardWindow(loadedFrom, now, maxMonths = 2) {
     const fromMonth = rollForwardFromMonth(loadedFrom, now, maxMonths);
     const monthStart = istMonthStartMs(fromMonth);
     let fromWeek = istWeekStart(monthStart);
-    if (Number(loadedFrom) > 0 && istDayStartMs(fromWeek) < loadedFrom) fromWeek = addWeeks(fromWeek, 1);
+    if (Number(loadedFrom) > 0 && istDayStartMs(fromWeek) < loadedFrom) fromWeek = /** @type {string} */ (addWeeks(fromWeek, 1));
     const fromYear = [fromMonth.slice(0, 4), fromWeek.slice(0, 4)].sort()[0];
     return { fromMonth, fromWeek, fromYear };
 }
@@ -298,18 +377,25 @@ export function rollForwardWindow(loadedFrom, now, maxMonths = 2) {
  * stored; null when nothing is missing. A bill dated back into that week (#147:
  * the owner may date back to the 1st of last month) would never reach the week
  * stats: the roll-forward loads the history from here first.
+ * @param {?{fromMonth?: string, fromWeek?: string}|undefined} win rollForwardWindow()
+ * @param {*} loadedFrom
+ * @returns {?number}
  */
 export function rollForwardWeekGap(win, loadedFrom) {
     if (!(Number(loadedFrom) > 0) || !win?.fromMonth) return null;
     const firstWeek = istWeekStart(istMonthStartMs(win.fromMonth));
-    if (win.fromWeek <= firstWeek) return null;
+    if (/** @type {string} */ (win.fromWeek) <= firstWeek) return null;
     const start = istDayStartMs(firstWeek);
     return start < loadedFrom ? start : null;
 }
 
-const stampMs = (v) => (typeof v?.toMillis === 'function' ? v.toMillis() : (typeof v?.seconds === 'number' ? v.seconds * 1000 : Number(v)));
+const stampMs = (/** @type {*} */ v) => (typeof v?.toMillis === 'function' ? v.toMillis() : (typeof v?.seconds === 'number' ? v.seconds * 1000 : Number(v)));
 
-/** Latest time (ms) a bill was entered, reached the server (`createdAt`: saved offline), edited or voided; NaN when unknown. */
+/**
+ * Latest time (ms) a bill was entered, reached the server (`createdAt`: saved offline), edited or voided; NaN when unknown.
+ * @param {?Rec|undefined} b
+ * @returns {number}
+ */
 function lastChangeMs(b) {
     const times = [Number(b?.enteredAt), stampMs(b?.createdAt), Date.parse(b?.editedAt || ''), stampMs(b?.voidedAt)].filter(Number.isFinite);
     return times.length ? Math.max(...times) : NaN;
@@ -318,7 +404,11 @@ function lastChangeMs(b) {
 /**
  * True when a bill dated in [fromMs, toMs) was entered (#147: dated back), edited or voided
  * at or after `sinceMs`, i.e. the week stats of those days may be out of date. No reads.
- * @param {Array<Object[]>} lists loaded bills (and voided ones)
+ * @param {?Array<?Array<?Rec>|undefined>|undefined} lists loaded bills (and voided ones)
+ * @param {number} fromMs
+ * @param {number} toMs
+ * @param {number} sinceMs
+ * @returns {boolean}
  */
 export function billChangedSince(lists, fromMs, toMs, sinceMs) {
     return (lists || []).some(list => (list || []).some(b => {
@@ -327,9 +417,10 @@ export function billChangedSince(lists, fromMs, toMs, sinceMs) {
     }));
 }
 
-const pickBuckets = (map, inRange, keep) => {
+const pickBuckets = (/** @type {?Rec|undefined} */ map, /** @type {(k: string) => boolean} */ inRange, /** @type {boolean} */ keep) => {
+    /** @type {Rec} */
     const out = {};
-    Object.keys(map || {}).forEach(k => { if (inRange(k) === keep) out[k] = map[k]; });
+    Object.keys(map || {}).forEach(k => { if (inRange(k) === keep) out[k] = /** @type {Rec} */ (map)[k]; });
     return out;
 };
 
@@ -338,16 +429,17 @@ const pickBuckets = (map, inRange, keep) => {
  * the roll-forward window: buckets from fromMonth / fromWeek on are replaced
  * by the computed ones (dropped when their bills were all deleted or edited
  * away); older buckets stay as stored. Only changed docs are written.
- * @param {Object.<string, Object>} computed finalizeStats() of the loaded bills
- * @param {Array<Object>} stored stored year docs ({id, ...data}) with year >= window.fromYear
+ * @param {Object<string, Rec>} computed finalizeStats() of the loaded bills
+ * @param {Array<Rec>} stored stored year docs ({id, ...data}) with year >= window.fromYear
  * @param {{fromMonth: string, fromWeek: string, fromYear: string}} window
- * @returns {Array<{id: string, data: Object}>}
+ * @returns {Array<{id: string, data: Rec}>}
  */
 export function planRollForward(computed, stored, { fromMonth, fromWeek, fromYear }) {
     const storedById = new Map((stored || []).filter(d => d && d.itemId && d.year && String(d.year) >= fromYear).map(d => [d.id, d]));
     const ids = new Set([...storedById.keys(), ...Object.keys(computed || {}).filter(id => String(computed[id].year) >= fromYear)]);
-    const monthIn = (k) => k >= monthKey(fromMonth);
-    const weekIn = (k) => k >= weekKey(fromWeek);
+    const monthIn = (/** @type {string} */ k) => k >= monthKey(fromMonth);
+    const weekIn = (/** @type {string} */ k) => k >= weekKey(fromWeek);
+    /** @type {Array<{id: string, data: Rec}>} */
     const writes = [];
     ids.forEach(id => {
         const old = storedById.get(id);
@@ -373,7 +465,7 @@ export function planRollForward(computed, stored, { fromMonth, fromWeek, fromYea
 export const MIGRATION_META_BY = 'migration';
 
 /** True when the stored history was carried from the old project (it can't be rebuilt from this project's bills). */
-export const isCarriedHistory = (meta) => meta?.by === MIGRATION_META_BY;
+export const isCarriedHistory = (/** @type {?Rec|undefined} */ meta) => meta?.by === MIGRATION_META_BY;
 
 /**
  * A carried history holds the old app's bills up to the backup and this
@@ -381,16 +473,16 @@ export const isCarriedHistory = (meta) => meta?.by === MIGRATION_META_BY;
  * bucket that started before the backup as stored (otherwise it would be
  * rebuilt from the new bills alone).
  * @param {{fromMonth: string, fromWeek: string, fromYear: string}} win rollForwardWindow()
- * @param {?Object} meta rateStats/_meta
+ * @param {?Rec} meta rateStats/_meta
  * @returns {{fromMonth: string, fromWeek: string, fromYear: string}}
  */
 export function clampWindowToMigration(win, meta) {
     const at = Number(meta?.backfillAt);
     if (!isCarriedHistory(meta) || !(at > 0)) return win;
     let month = istMonthKey(at);
-    if (istMonthStartMs(month) < at) month = addMonths(month, 1);
+    if (istMonthStartMs(month) < at) month = /** @type {string} */ (addMonths(month, 1));
     let week = istWeekStart(at);
-    if (istDayStartMs(week) < at) week = addWeeks(week, 1);
+    if (istDayStartMs(week) < at) week = /** @type {string} */ (addWeeks(week, 1));
     const fromMonth = win.fromMonth > month ? win.fromMonth : month;
     const fromWeek = win.fromWeek > week ? win.fromWeek : week;
     return { fromMonth, fromWeek, fromYear: [fromMonth.slice(0, 4), fromWeek.slice(0, 4)].sort()[0] };
@@ -400,12 +492,20 @@ export function clampWindowToMigration(win, meta) {
 // Backfill (owner-triggered, resumable)
 // ---------------------------------------------------------------------------
 
-/** A fresh backfill cursor. */
+/**
+ * A fresh backfill cursor.
+ * @param {number} now
+ * @returns {Rec}
+ */
 export function newCursor(now) {
     return { v: CURSOR_VERSION, startedAt: now, phase: 'read', source: 0, after: null, acc: {}, bills: 0, reads: 0, day: istDayKey(now), readsToday: 0 };
 }
 
-/** Parses a stored cursor; null when missing, corrupt or from another format. */
+/**
+ * Parses a stored cursor; null when missing, corrupt or from another format.
+ * @param {?string|undefined} text
+ * @returns {?Rec}
+ */
 export function parseCursor(text) {
     if (!text) return null;
     try {
@@ -422,15 +522,15 @@ export function parseCursor(text) {
  * is used up, or an error stops it. The cursor is saved after every page, so
  * a closed app, quota error or budget stop continues from the next page.
  * @param {Object} args
- * @param {Object} args.cursor mutated
+ * @param {Rec} args.cursor mutated
  * @param {(coll: string, after: ?string, limit: number) => Promise<{docs: Array<{id: string}>, reads: number}>} args.fetchPage
- * @param {Array} args.items catalogue
- * @param {(cursor: Object) => void} args.saveCursor
+ * @param {?Array<{id: string, name?: string, hindiName?: string}>|undefined} args.items catalogue
+ * @param {(cursor: Rec) => void} args.saveCursor
  * @param {(err: *) => boolean} args.isQuotaError
  * @param {number} [args.budget] reads per IST day
  * @param {number} [args.pageSize]
  * @param {() => number} [args.now]
- * @param {(cursor: Object) => void} [args.onProgress]
+ * @param {?(cursor: Rec) => void} [args.onProgress]
  * @returns {Promise<{status: 'read-done'|'budget'|'quota'|'error', error?: *}>}
  */
 export async function runBackfillReads({
@@ -493,7 +593,12 @@ export function estimateBackfillReads({ loadedBills, loadedFrom, oldest, now, it
     return Math.ceil(n * ((now - oldest) / span)) + pages;
 }
 
-/** Days the backfill will take at `budget` reads per day. */
+/**
+ * Days the backfill will take at `budget` reads per day.
+ * @param {*} estimate
+ * @param {number} [budget]
+ * @returns {number}
+ */
 export function backfillDays(estimate, budget = DEFAULT_DAILY_READ_BUDGET) {
     return Math.max(1, Math.ceil((Number(estimate) || 0) / Math.max(1, budget)));
 }
@@ -502,7 +607,12 @@ export function backfillDays(estimate, budget = DEFAULT_DAILY_READ_BUDGET) {
 // Series, table rows and the seasonal estimate
 // ---------------------------------------------------------------------------
 
-/** kg-weighted average of one kind, or of 'sale' (retail + wholesale together). */
+/**
+ * kg-weighted average of one kind, or of 'sale' (retail + wholesale together).
+ * @param {?Rec|undefined} doc
+ * @param {string} kind
+ * @returns {?number}
+ */
 export function sectionAvg(doc, kind) {
     if (!doc) return null;
     const kinds = kind === 'sale' ? ['retail', 'wholesale'] : [kind];
@@ -515,36 +625,56 @@ export function sectionAvg(doc, kind) {
     return kg > 0 ? round2(amount / kg) : null;
 }
 
-const isYearDoc = (d) => d && d.itemId && /^\d{4}$/.test(String(d.year || ''));
+const isYearDoc = (/** @type {?Rec} */ d) => d && d.itemId && /^\d{4}$/.test(String(d.year || ''));
 
 /**
  * Month buckets of year docs as a flat list, oldest first:
  * [{ itemId, month: 'YYYY-MM', purchase, retail, wholesale, bills }].
+ * @param {?Array<?Rec>|undefined} yearDocs
+ * @returns {Array<Rec>}
  */
 export function monthBuckets(yearDocs) {
+    /** @type {Array<Rec>} */
     const out = [];
-    (yearDocs || []).filter(isYearDoc).forEach(d => Object.keys(d.months || {}).forEach(k => {
-        if (MONTH_RE.test(k.slice(1))) out.push({ itemId: d.itemId, month: k.slice(1), ...d.months[k] });
+    (yearDocs || []).filter(isYearDoc).forEach(d => Object.keys(/** @type {Rec} */ (d).months || {}).forEach(k => {
+        if (MONTH_RE.test(k.slice(1))) out.push({ itemId: /** @type {Rec} */ (d).itemId, month: k.slice(1), ...(/** @type {Rec} */ (d).months[k]) });
     }));
     return out.sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : (a.itemId < b.itemId ? -1 : 1)));
 }
 
-/** Week buckets of year docs, oldest first: [{ itemId, week: 'YYYY-MM-DD' (Monday), … }]. */
+/**
+ * Week buckets of year docs, oldest first: [{ itemId, week: 'YYYY-MM-DD' (Monday), … }].
+ * @param {?Array<?Rec>|undefined} yearDocs
+ * @returns {Array<Rec>}
+ */
 export function weekBuckets(yearDocs) {
+    /** @type {Array<Rec>} */
     const out = [];
-    (yearDocs || []).filter(isYearDoc).forEach(d => Object.keys(d.weeks || {}).forEach(k => {
-        if (DAY_RE.test(k.slice(1))) out.push({ itemId: d.itemId, week: k.slice(1), ...d.weeks[k] });
+    (yearDocs || []).filter(isYearDoc).forEach(d => Object.keys(/** @type {Rec} */ (d).weeks || {}).forEach(k => {
+        if (DAY_RE.test(k.slice(1))) out.push({ itemId: /** @type {Rec} */ (d).itemId, week: k.slice(1), ...(/** @type {Rec} */ (d).weeks[k]) });
     }));
     return out.sort((a, b) => (a.week < b.week ? -1 : a.week > b.week ? 1 : (a.itemId < b.itemId ? -1 : 1)));
 }
 
-/** { 'YYYY-MM': avg } for one kind ('purchase' | 'retail' | 'wholesale' | 'sale') from month buckets. */
+/**
+ * { 'YYYY-MM': avg } for one kind ('purchase' | 'retail' | 'wholesale' | 'sale') from month buckets.
+ * @param {?Array<Rec>|undefined} buckets
+ * @param {string} kind
+ * @returns {Object<string, number>}
+ */
 export function monthSeries(buckets, kind) {
     return periodSeries(buckets, kind, 'month');
 }
 
-/** { period: avg } for one kind from month ('month') or week ('week') buckets. */
+/**
+ * { period: avg } for one kind from month ('month') or week ('week') buckets.
+ * @param {?Array<Rec>|undefined} buckets
+ * @param {string} kind
+ * @param {string} [key]
+ * @returns {Object<string, number>}
+ */
 export function periodSeries(buckets, kind, key = 'month') {
+    /** @type {Object<string, number>} */
     const out = {};
     (buckets || []).forEach(d => {
         const v = sectionAvg(d, kind);
@@ -555,7 +685,7 @@ export function periodSeries(buckets, kind, key = 'month') {
 
 /**
  * Table rows per period (oldest first) with sale average and margin per kg.
- * @param {Array<Object>} buckets monthBuckets() or weekBuckets() of one item
+ * @param {?Array<Rec>|undefined} buckets monthBuckets() or weekBuckets() of one item
  * @param {'month'|'week'} [key]
  */
 export function trendRows(buckets, key = 'month') {
@@ -582,8 +712,14 @@ export function trendRows(buckets, key = 'month') {
         .filter(r => r.purchase !== null || r.sale !== null);
 }
 
-/** Same calendar months per year: { year: [12 values or null] } (Jan..Dec). */
+/**
+ * Same calendar months per year: { year: [12 values or null] } (Jan..Dec).
+ * @param {Object<string, number>} series
+ * @param {?Array<number|string>|undefined} years
+ * @returns {Object<string, Array<?number>>}
+ */
 export function yearOverlay(series, years) {
+    /** @type {Object<string, Array<?number>>} */
     const out = {};
     (years || []).forEach(y => {
         out[y] = Array.from({ length: 12 }, (_, i) => {
@@ -594,7 +730,7 @@ export function yearOverlay(series, years) {
     return out;
 }
 
-const directionOf = (pct, flat = FLAT_PCT) => (pct > flat ? 'up' : pct < -flat ? 'down' : 'flat');
+const directionOf = (/** @type {number} */ pct, flat = FLAT_PCT) => (pct > flat ? 'up' : pct < -flat ? 'down' : 'flat');
 
 /**
  * Seasonal estimate for the next `weeks` weeks: in every past year with data
@@ -607,8 +743,8 @@ const directionOf = (pct, flat = FLAT_PCT) => (pct > flat ? 'up' : pct < -flat ?
  *   perYear: Array<{year: number, from: number, to: number, pct: number}>, pct?: number,
  *   direction?: 'up'|'down'|'flat', agree?: number, confidence?: 'high'|'medium'|'low'}}
  */
-export function seasonalOutlook(series, opts = {}) {
-    return outlookFrom((f, t) => {
+export function seasonalOutlook(series, opts = /** @type {*} */ ({})) {
+    return outlookFrom((/** @type {string} */ f, /** @type {string} */ t) => {
         const a = series?.[f];
         const b = series?.[t];
         return a > 0 && b > 0 ? { from: a, to: b, ratio: b / a } : null;
@@ -621,14 +757,16 @@ export function seasonalOutlook(series, opts = {}) {
  * crosses the cutoff is chained through the cutoff month (bills f → cutoff,
  * then Items page cutoff → t), so the level difference between the two
  * sources is not counted as a seasonal change.
- * @param {{bills: Object.<string, number>, items: Object.<string, number>, cutoffMonth: ?string}} combined
+ * @param {?{bills?: Object<string, number>, items?: Object<string, number>, cutoffMonth?: ?string}|undefined} combined
+ * @param {string} f
+ * @param {string} t
  * @returns {?{from: number, to: number, ratio: number}}
  */
 export function combinedChange(combined, f, t) {
     const bills = combined?.bills || {};
     const items = combined?.items || {};
     const cut = combined?.cutoffMonth || null;
-    const pair = (s, a, b) => (s[a] > 0 && s[b] > 0 ? s[b] / s[a] : null);
+    const pair = (/** @type {Object<string, number>} */ s, /** @type {string} */ a, /** @type {string} */ b) => (s[a] > 0 && s[b] > 0 ? s[b] / s[a] : null);
     let ratio = null;
     if (!cut || t <= cut) ratio = pair(bills, f, t);
     else if (f >= cut) ratio = pair(items, f, t);
@@ -643,19 +781,30 @@ export function combinedChange(combined, f, t) {
     return { from, to, ratio };
 }
 
-/** seasonalOutlook() over the combined bills + Items-page line (see combinedChange). */
-export function seasonalOutlookCombined(combined, opts = {}) {
-    return outlookFrom((f, t) => combinedChange(combined, f, t), opts);
+/**
+ * seasonalOutlook() over the combined bills + Items-page line (see combinedChange).
+ * @param {Parameters<typeof combinedChange>[0]} combined
+ * @param {{now: number, weeks?: number, flatPct?: number, maxYears?: number}} opts
+ * @returns {ReturnType<typeof seasonalOutlook>}
+ */
+export function seasonalOutlookCombined(combined, opts = /** @type {*} */ ({})) {
+    return outlookFrom((/** @type {string} */ f, /** @type {string} */ t) => combinedChange(combined, f, t), opts);
 }
 
-function outlookFrom(change, { now, weeks = 6, flatPct = FLAT_PCT, maxYears = 10 } = {}) {
+/**
+ * @param {(f: string, t: string) => ?{from: number, to: number, ratio: number}} change
+ * @param {{now: number, weeks?: number, flatPct?: number, maxYears?: number}} opts
+ * @returns {ReturnType<typeof seasonalOutlook>}
+ */
+function outlookFrom(change, { now, weeks = 6, flatPct = FLAT_PCT, maxYears = 10 } = /** @type {*} */ ({})) {
     const fromMonth = istMonthKey(now);
     let toMonth = istMonthKey(now + weeks * 7 * DAY_MS);
-    if (toMonth <= fromMonth) toMonth = addMonths(fromMonth, 1);
+    if (toMonth <= fromMonth) toMonth = /** @type {string} */ (addMonths(fromMonth, 1));
+    /** @type {Array<{year: number, from: number, to: number, pct: number}>} */
     const perYear = [];
     for (let k = 1; k <= maxYears; k++) {
-        const f = addMonths(fromMonth, -12 * k);
-        const c = change(f, addMonths(toMonth, -12 * k));
+        const f = /** @type {string} */ (addMonths(fromMonth, -12 * k));
+        const c = change(f, /** @type {string} */ (addMonths(toMonth, -12 * k)));
         if (c) perYear.push({ year: Number(f.slice(0, 4)), from: c.from, to: c.to, pct: round2((c.ratio - 1) * 100) });
     }
     const base = { fromMonth, toMonth, seasons: perYear.length, perYear };
@@ -663,18 +812,26 @@ function outlookFrom(change, { now, weeks = 6, flatPct = FLAT_PCT, maxYears = 10
     const pct = round2(perYear.reduce((s, y) => s + y.pct, 0) / perYear.length);
     const direction = directionOf(pct, flatPct);
     const agree = perYear.filter(y => directionOf(y.pct, flatPct) === direction).length;
+    /** @type {'high'|'medium'|'low'} */
     let confidence = 'low';
     if (perYear.length >= 3 && agree === perYear.length) confidence = 'high';
     else if (agree * 3 >= perYear.length * 2) confidence = 'medium';
     return { ...base, status: 'ok', pct, direction, agree, confidence };
 }
 
+/** @type {{en: string[], hi: string[]}} */
 const MONTH_NAMES = {
     en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     hi: ['जनवरी', 'फ़रवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर']
 };
 
-/** 'Oct 2026' / 'अक्टूबर 2026'; `withYear` false gives just the month. */
+/**
+ * 'Oct 2026' / 'अक्टूबर 2026'; `withYear` false gives just the month.
+ * @param {*} month
+ * @param {string} [lang]
+ * @param {boolean} [withYear]
+ * @returns {string}
+ */
 export function monthLabel(month, lang = 'en', withYear = true) {
     const m = MONTH_RE.exec(month || '');
     if (!m) return String(month || '');
@@ -682,7 +839,7 @@ export function monthLabel(month, lang = 'en', withYear = true) {
     return withYear ? `${name} ${m[1]}` : name;
 }
 
-const signed = (n) => `${n > 0 ? '+' : ''}${n}%`;
+const signed = (/** @type {number} */ n) => `${n > 0 ? '+' : ''}${n}%`;
 
 /** i18n keys for an outlook's direction and confidence. */
 export const DIRECTION_KEYS = { up: 'ui.trends.dir_up', down: 'ui.trends.dir_down', flat: 'ui.trends.dir_flat' };
@@ -690,7 +847,7 @@ export const CONFIDENCE_KEYS = { high: 'ui.trends.conf_high', medium: 'ui.trends
 
 /**
  * Plain explanation of an outlook in the app language.
- * @param {Object} o seasonalOutlook() result
+ * @param {Rec} o seasonalOutlook() result
  * @param {'en'|'hi'} [lang]
  * @returns {string}
  */
@@ -700,7 +857,7 @@ export function explainOutlook(o, lang = getLang()) {
     if (o.status !== 'ok') {
         return t('ui.trends.not_enough_explain', { from, to, min: MIN_SEASONS, have: o.seasons }, lang);
     }
-    const list = o.perYear.map(y => `${y.year}: ${signed(y.pct)}`).join(', ');
+    const list = o.perYear.map((/** @type {Rec} */ y) => `${y.year}: ${signed(y.pct)}`).join(', ');
     const about = Math.abs(Math.round(o.pct));
     const dir = t(o.direction === 'up' ? 'ui.trends.went_up' : o.direction === 'down' ? 'ui.trends.went_down' : 'ui.trends.went_flat', { pct: about }, lang);
     return t('ui.trends.explain', { from, to, list, dir, agree: o.agree, seasons: o.seasons }, lang);
@@ -709,12 +866,16 @@ export function explainOutlook(o, lang = getLang()) {
 /**
  * Catalogue items ordered by how many loaded bill lines use them (most used
  * first), then by name.
+ * @param {?Array<Rec & {id: string}>|undefined} items catalogue
+ * @param {?Object<string, Array<?Rec>|undefined>|undefined} sources purchase, retail, wholesale
+ * @returns {Array<{item: Rec, uses: number}>}
  */
 export function itemsByUsage(items, sources) {
     const resolve = createCatalogueResolver(items);
+    /** @type {Object<string, number>} */
     const uses = {};
     RATE_KINDS.forEach(kind => (sources?.[kind] || []).forEach(bill => {
-        (bill?.items || []).forEach(line => {
+        (bill?.items || []).forEach((/** @type {?Rec} */ line) => {
             if (!line) return;
             const id = resolve(line);
             if (id) uses[id] = (uses[id] || 0) + 1;

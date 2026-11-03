@@ -1,3 +1,4 @@
+// @ts-check
 // Small QR code encoder for the bill QR on printed receipts (#107): byte mode,
 // error correction level M, versions 1–5 (up to 84 bytes). Pure, no DOM.
 
@@ -8,7 +9,9 @@ const NUM_BLOCKS = [0, 1, 1, 1, 2, 2];
 const ALIGN_AT = [[], [], [6, 18], [6, 22], [6, 26], [6, 30]];
 const FORMAT_LEVEL_M = 0;
 
-const rawDataModules = (ver) => {
+/** @typedef {boolean[][]} Grid modules[y][x], true = dark */
+
+const rawDataModules = (/** @type {number} */ ver) => {
     let n = (16 * ver + 128) * ver + 64;
     if (ver >= 2) {
         const align = Math.floor(ver / 7) + 2;
@@ -16,13 +19,17 @@ const rawDataModules = (ver) => {
     }
     return n;
 };
-const totalCodewords = (ver) => Math.floor(rawDataModules(ver) / 8);
-const dataCodewords = (ver) => totalCodewords(ver) - ECC_PER_BLOCK[ver] * NUM_BLOCKS[ver];
+const totalCodewords = (/** @type {number} */ ver) => Math.floor(rawDataModules(ver) / 8);
+const dataCodewords = (/** @type {number} */ ver) => totalCodewords(ver) - ECC_PER_BLOCK[ver] * NUM_BLOCKS[ver];
 
+/**
+ * @param {string} text
+ * @returns {number[]}
+ */
 function utf8(text) {
     const out = [];
     for (const ch of text) {
-        const c = ch.codePointAt(0);
+        const c = /** @type {number} */ (ch.codePointAt(0));
         if (c < 0x80) out.push(c);
         else if (c < 0x800) out.push(0xC0 | (c >> 6), 0x80 | (c & 63));
         else if (c < 0x10000) out.push(0xE0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
@@ -34,6 +41,11 @@ function utf8(text) {
 /** Most bytes one QR (level M, version ≤ 5) can hold. */
 export const QR_MAX_BYTES = dataCodewords(MAX_VERSION) - 2;
 
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {number}
+ */
 function gfMultiply(x, y) {
     let z = 0;
     for (let i = 7; i >= 0; i--) {
@@ -43,6 +55,10 @@ function gfMultiply(x, y) {
     return z & 0xFF;
 }
 
+/**
+ * @param {number} degree
+ * @returns {number[]}
+ */
 function rsDivisor(degree) {
     const result = new Array(degree).fill(0);
     result[degree - 1] = 1;
@@ -57,6 +73,11 @@ function rsDivisor(degree) {
     return result;
 }
 
+/**
+ * @param {number[]} data
+ * @param {number[]} divisor
+ * @returns {number[]}
+ */
 function rsRemainder(data, divisor) {
     const result = new Array(divisor.length).fill(0);
     for (const b of data) {
@@ -67,15 +88,22 @@ function rsRemainder(data, divisor) {
     return result;
 }
 
+/**
+ * @param {number[]} bytes
+ * @param {number} ver
+ * @returns {number[]}
+ */
 function dataWithEcc(bytes, ver) {
     const capacity = dataCodewords(ver);
+    /** @type {number[]} */
     const bits = [];
-    const put = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
+    const put = (/** @type {number} */ val, /** @type {number} */ len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
     put(0b0100, 4);
     put(bytes.length, 8);
     bytes.forEach(b => put(b, 8));
     put(0, Math.min(4, capacity * 8 - bits.length));
     put(0, (8 - (bits.length % 8)) % 8);
+    /** @type {number[]} */
     const data = [];
     for (let i = 0; i < bits.length; i += 8) data.push(bits.slice(i, i + 8).reduce((a, b) => (a << 1) | b, 0));
     for (let pad = 0xEC; data.length < capacity; pad ^= 0xEC ^ 0x11) data.push(pad);
@@ -86,6 +114,7 @@ function dataWithEcc(bytes, ver) {
     const numShort = numBlocks - (raw % numBlocks);
     const shortLen = Math.floor(raw / numBlocks);
     const divisor = rsDivisor(eccLen);
+    /** @type {number[][]} */
     const blocks = [];
     for (let i = 0, k = 0; i < numBlocks; i++) {
         const dat = data.slice(k, k + shortLen - eccLen + (i < numShort ? 0 : 1));
@@ -94,6 +123,7 @@ function dataWithEcc(bytes, ver) {
         if (i < numShort) dat.push(0);
         blocks.push(dat.concat(ecc));
     }
+    /** @type {number[]} */
     const out = [];
     for (let i = 0; i < blocks[0].length; i++) {
         blocks.forEach((block, j) => {
@@ -103,6 +133,7 @@ function dataWithEcc(bytes, ver) {
     return out;
 }
 
+/** @type {Array<(x: number, y: number) => boolean>} */
 const MASKS = [
     (x, y) => (x + y) % 2 === 0,
     (x, y) => y % 2 === 0,
@@ -114,17 +145,22 @@ const MASKS = [
     (x, y) => (((x + y) % 2) + ((x * y) % 3)) % 2 === 0
 ];
 
+/**
+ * @param {number} ver
+ * @returns {{size: number, modules: Grid, fn: Grid}}
+ */
 function buildBase(ver) {
     const size = ver * 4 + 17;
     const modules = Array.from({ length: size }, () => new Array(size).fill(false));
     const fn = Array.from({ length: size }, () => new Array(size).fill(false));
+    /** @type {(x: number, y: number, dark: boolean) => void} */
     const set = (x, y, dark) => { modules[y][x] = dark; fn[y][x] = true; };
 
     for (let i = 0; i < size; i++) {
         set(6, i, i % 2 === 0);
         set(i, 6, i % 2 === 0);
     }
-    const finder = (cx, cy) => {
+    const finder = (/** @type {number} */ cx, /** @type {number} */ cy) => {
         for (let dy = -4; dy <= 4; dy++) {
             for (let dx = -4; dx <= 4; dx++) {
                 const x = cx + dx;
@@ -151,13 +187,19 @@ function buildBase(ver) {
     return { size, modules, fn };
 }
 
+/**
+ * @param {Grid} modules
+ * @param {Grid} fn
+ * @param {number} mask
+ */
 function drawFormat(modules, fn, mask) {
     const size = modules.length;
     const data = (FORMAT_LEVEL_M << 3) | mask;
     let rem = data;
     for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
     const bits = ((data << 10) | rem) ^ 0x5412;
-    const bit = (i) => ((bits >>> i) & 1) !== 0;
+    const bit = (/** @type {number} */ i) => ((bits >>> i) & 1) !== 0;
+    /** @type {(x: number, y: number, dark: boolean) => void} */
     const set = (x, y, dark) => { modules[y][x] = dark; fn[y][x] = true; };
     for (let i = 0; i <= 5; i++) set(8, i, bit(i));
     set(8, 7, bit(6));
@@ -169,6 +211,11 @@ function drawFormat(modules, fn, mask) {
     set(8, size - 8, true);
 }
 
+/**
+ * @param {Grid} modules
+ * @param {Grid} fn
+ * @param {number[]} codewords
+ */
 function placeCodewords(modules, fn, codewords) {
     const size = modules.length;
     let i = 0;
@@ -188,6 +235,11 @@ function placeCodewords(modules, fn, codewords) {
     }
 }
 
+/**
+ * @param {Grid} modules
+ * @param {Grid} fn
+ * @param {number} mask
+ */
 function applyMask(modules, fn, mask) {
     const size = modules.length;
     for (let y = 0; y < size; y++) {
@@ -197,7 +249,11 @@ function applyMask(modules, fn, mask) {
     }
 }
 
-/** ISO 18004 penalty (runs, 2×2 blocks, finder-like patterns, dark balance); lower is better. */
+/**
+ * ISO 18004 penalty (runs, 2×2 blocks, finder-like patterns, dark balance); lower is better.
+ * @param {Grid} modules
+ * @returns {number}
+ */
 function penalty(modules) {
     const size = modules.length;
     let score = 0;
@@ -249,6 +305,7 @@ export function encodeQr(text, { mask: fixedMask, version: minVersion = 1 } = {}
     while (ver <= MAX_VERSION && bytes.length > dataCodewords(ver) - 2) ver++;
     if (ver > MAX_VERSION) return null;
     const codewords = dataWithEcc(bytes, ver);
+    /** @type {?{version: number, mask: number, size: number, modules: Grid, score: number}} */
     let best = null;
     const masks = fixedMask === undefined ? [0, 1, 2, 3, 4, 5, 6, 7] : [fixedMask];
     for (const mask of masks) {
@@ -259,6 +316,6 @@ export function encodeQr(text, { mask: fixedMask, version: minVersion = 1 } = {}
         const score = masks.length > 1 ? penalty(modules) : 0;
         if (!best || score < best.score) best = { version: ver, mask, size, modules, score };
     }
-    const qr = { version: best.version, mask: best.mask, size: best.size, modules: best.modules };
+    const qr = { version: /** @type {*} */ (best).version, mask: /** @type {*} */ (best).mask, size: /** @type {*} */ (best).size, modules: /** @type {*} */ (best).modules };
     return qr;
 }
