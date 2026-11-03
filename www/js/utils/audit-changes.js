@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Before → after lines for audit entries (#85): which fields of a
  * shared setting changed, as short text the owner reads in Diagnostics › Audit,
@@ -9,7 +10,9 @@
 import { t, getLang } from '../i18n/index.js';
 import { formatAmount } from './money.js';
 
-const show = (v) => {
+/** @typedef {{name: string, role: string, email?: string, removed?: boolean}} AuditPerson */
+
+const show = (/** @type {*} */ v) => {
     if (v === undefined || v === null || v === '') return '—';
     const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
     return s.length > 60 ? `${s.slice(0, 57)}…` : s;
@@ -17,8 +20,8 @@ const show = (v) => {
 
 /**
  * The fields that differ, as "field: before → after" (at most 20, each short).
- * @param {Object} before
- * @param {Object} after
+ * @param {Rec} before
+ * @param {Rec} after
  * @param {string[]} [keys] - fields to compare (default: every key of either)
  * @returns {string[]}
  */
@@ -32,22 +35,28 @@ export function changedFields(before = {}, after = {}, keys) {
         .map(k => `${k}: ${show(b[k])} → ${show(a[k])}`);
 }
 
-const has = (v) => v !== undefined && v !== null && v !== '';
+const has = (/** @type {*} */ v) => v !== undefined && v !== null && v !== '';
 
-/** Labels of an EXPORT entry's kind and format (#103). */
+/**
+ * Labels of an EXPORT entry's kind and format (#103).
+ * @type {Object<string, string>}
+ */
 const EXPORT_KIND_KEYS = {
     day: 'ui.statements.day_book', month: 'ui.statements.month', party: 'ui.statements.party', item: 'ui.statements.item',
     csv: 'ui.statements.csv', accountant: 'ui.statements.accountant', audit: 'ui.admin.col_audit_logs', errors: 'ui.diag.tab_errors'
 };
+/** @type {Object<string, string>} */
 const EXPORT_FORMAT_KEYS = { csv: 'ui.statements.download_csv', whatsapp: 'ui.statements.whatsapp', print: 'ui.statements.print', json: 'ui.export.format_file' };
 
 /**
  * An audit entry's details as one line in the app language (plain text; escape it).
- * @param {Object} details
+ * @param {Rec} details
  * @param {string} [action] - the entry's action code (a refused write's `source` reads "Refused")
+ * @param {'en'|'hi'} [lang]
  * @returns {string}
  */
 export function formatAuditDetails(details, action, lang = getLang()) {
+    /** @type {(k: string, p?: Rec) => string} */
     const tl = (k, p) => t(k, p, lang);
     if (!details || typeof details !== 'object') return '';
     const d = details;
@@ -83,11 +92,12 @@ export function formatAuditDetails(details, action, lang = getLang()) {
 
 /**
  * Profiles by user id: `{id, name, role}` list (or a Map) → Map(id → {name, role}).
- * @param {Array<Object>|Map} people
- * @returns {Map<string, {name: string, role: string}>}
+ * @param {Array<Rec>|Map<string, AuditPerson>} people
+ * @returns {Map<string, AuditPerson>}
  */
 export function peopleById(people) {
     if (people instanceof Map) return people;
+    /** @type {Map<string, AuditPerson>} */
     const m = new Map();
     (Array.isArray(people) ? people : []).forEach(p => {
         if (p && p.id) {
@@ -105,8 +115,8 @@ export function peopleById(people) {
  * stored `userName` / `userRole` are whatever the phone sent (#85): the profile's
  * name, role and email are shown (a person may rename themselves, but not change their email
  * or role); the stored ones only when they differ or there is no profile (or it has no name).
- * @param {Object} log
- * @param {Map<string, {name: string, role: string, email?: string}>} people
+ * @param {Rec} log
+ * @param {Map<string, AuditPerson>} people
  * @returns {{name: string, role: string, email: string, removed: boolean, verified: boolean, sent: string}}
  *   `role` is the person's role now; `removed`: removed or rejected since; `sent`: the stored name when
  *   it is not the profile's ('' otherwise)
@@ -127,11 +137,13 @@ export function auditWho(log, people) {
  * The "who" line of an audit card as plain text (escape it): `main` = profile name
  * (role) email, or the stored name marked as not checked; `note` = the stored name when it
  * differs from the profile's.
- * @param {{name: string, role: string, verified: boolean, sent: string}} who - auditWho()
+ * @param {{name: string, role: string, email?: string, removed?: boolean, verified: boolean, sent: string}} who - auditWho()
  * @param {function(string): string} roleLabel
+ * @param {'en'|'hi'} [lang]
  * @returns {{main: string, note: string}}
  */
 export function auditWhoText(who, roleLabel, lang = getLang()) {
+    /** @type {(k: string, p?: Rec) => string} */
     const tl = (k, p) => t(k, p, lang);
     const role = who.verified && who.removed ? tl('ui.settings.audit_removed') : roleLabel(who.role);
     if (!who.verified) return { main: tl('ui.settings.audit_unverified', { name: `${who.name || '—'} (${role})` }), note: '' };

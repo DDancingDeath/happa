@@ -90,6 +90,7 @@ interface CashSession {
 /** Globals the app sets on window (main.js, keyboard-shortcuts.js). */
 interface Window {
     app?: any;
+    FirebaseService?: any;
     __aadhatShortcutsInstalled?: boolean;
 }
 

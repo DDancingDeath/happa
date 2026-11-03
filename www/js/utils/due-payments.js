@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Due (udhaar) payments recorded after a bill was saved (#95, #98, #104, #107).
  *
@@ -29,19 +30,32 @@ export function normalizeParty(name) {
     return String(name ?? '').normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
-/** True when two party names are the same person (exact after normalising; '' never matches). */
+/**
+ * True when two party names are the same person (exact after normalising; '' never matches).
+ * @param {*} a
+ * @param {*} b
+ * @returns {boolean}
+ */
 export function sameParty(a, b) {
     const x = normalizeParty(a);
     return x !== '' && x === normalizeParty(b);
 }
 
-/** Party name stored on a bill (customer for sales, supplier for purchases). */
+/**
+ * Party name stored on a bill (customer for sales, supplier for purchases).
+ * @param {?Rec|undefined} bill
+ * @returns {string}
+ */
 export const billParty = (bill) => String(bill?.customerName || bill?.supplierName || '');
 
-/** Money direction of a due payment on a bill of this type. */
+/**
+ * Money direction of a due payment on a bill of this type.
+ * @param {string} billType
+ * @returns {'paid'|'received'}
+ */
 export const directionFor = (billType) => (billType === 'purchase' ? 'paid' : 'received');
 
-const num = (v) => {
+const num = (/** @type {*} */ v) => {
     const n = Number(v);
     return Number.isFinite(n) ? n : 0;
 };
@@ -50,7 +64,7 @@ const num = (v) => {
  * Cash / online / written-off parts of one `payments[]` entry on a bill.
  * Entries written before #107 only carry `amount`; they were always added to
  * `payment.cash`, so they count as cash.
- * @param {Object} entry
+ * @param {Rec} entry
  * @returns {{cash: number, online: number, writeOff: number}}
  */
 export function entryParts(entry) {
@@ -67,7 +81,7 @@ export function entryParts(entry) {
 /**
  * Cash / online parts of a cash-session `duePayments` leg. Legs written by the
  * Cash tab before #98 carry `amount` + `method` ('cash' only in practice).
- * @param {Object} leg
+ * @param {Rec} leg
  * @returns {{cash: number, online: number}}
  */
 export function legParts(leg) {
@@ -82,7 +96,7 @@ export function legParts(leg) {
 /**
  * C4 / C5: the amount of one cash-session `duePayments` leg as listed in the
  * day's details (cash + online, legParts).
- * @param {Object} leg
+ * @param {Rec} leg
  * @returns {number}
  */
 export function legAmount(leg) {
@@ -90,7 +104,11 @@ export function legAmount(leg) {
     return round2(cash + online);
 }
 
-/** Time (ms) of a bill payment entry or session leg; NaN when unknown. */
+/**
+ * Time (ms) of a bill payment entry or session leg; NaN when unknown.
+ * @param {?Rec|undefined} entry
+ * @returns {number}
+ */
 export function entryTime(entry) {
     if (!entry) return NaN;
     if (typeof entry.at === 'number') return entry.at;
@@ -102,7 +120,7 @@ export function entryTime(entry) {
  * What was paid when the bill was saved: the bill's payment minus every later
  * due payment recorded on it. The drawer and Today count the later payments on
  * the day they were made, not on the bill's day.
- * @param {Object} bill
+ * @param {Rec} bill
  * @returns {{cash: number, online: number}}
  */
 export function saleTimePayment(bill) {
@@ -125,7 +143,7 @@ export function saleTimePayment(bill) {
  * A bill's money in parts that add up to its total (T18, bill details): paid at
  * save (BILL-AT-SAVE), paid later (due payments recorded on the bill), written off
  * later, and the due still open (BILL-DUE).
- * @param {Object} bill
+ * @param {Rec} bill
  * @returns {{atSave: {cash: number, online: number}, later: {cash: number, online: number, total: number}, writtenOff: number, due: number}}
  */
 export function paymentBreakdown(bill) {
@@ -149,19 +167,20 @@ export function paymentBreakdown(bill) {
  * Every due payment made in [from, to), from bill entries and session legs,
  * de-duplicated by payment id.
  * @param {Object} args
- * @param {{retail?: Object[], wholesale?: Object[], purchase?: Object[]}} args.bills
- * @param {Object[]} [args.sessions] Cash sessions whose `duePayments` to include
+ * @param {{retail?: Rec[], wholesale?: Rec[], purchase?: Rec[]}} args.bills
+ * @param {Rec[]} [args.sessions] Cash sessions whose `duePayments` to include
  * @param {number} args.from Inclusive start (ms)
  * @param {number} args.to Exclusive end (ms)
  * @returns {Array<{id: string, direction: 'received'|'paid', cash: number, online: number, writeOff: number, at: number, party: string, billId: ?string, billNo: string}>}
  */
 export function dueEvents({ bills = {}, sessions = [], from, to }) {
-    const inRange = (t) => Number.isFinite(t) && t >= from && t < to;
+    const inRange = (/** @type {number} */ t) => Number.isFinite(t) && t >= from && t < to;
     const seen = new Set();
+    /** @type {ReturnType<typeof dueEvents>} */
     const events = [];
 
     Object.entries(BILL_COLLECTIONS).forEach(([billType]) => {
-        (bills[billType] || []).forEach(bill => {
+        (/** @type {Object<string, Rec[]|undefined>} */ (bills)[billType] || []).forEach(bill => {
             if (!isActiveBill(bill)) return;
             const list = Array.isArray(bill?.payments) ? bill.payments : [];
             // Money paid on an old-app due is real money on its day; writing it off is not a bad debt here.
@@ -216,7 +235,7 @@ export function sumDueEvents(events) {
             t.writtenOffReceivable += e.writeOff;
         }
     });
-    Object.keys(t).forEach(k => { t[k] = round2(t[k]); });
+    /** @type {Array<keyof typeof t>} */ (Object.keys(t)).forEach(k => { t[k] = round2(t[k]); });
     return t;
 }
 
@@ -227,11 +246,11 @@ export function sumDueEvents(events) {
  * is appended to `payments[]` and `paidAt` is its time (#163, rules: = entry.at).
  * `dueAmount` is written only when the bill has it. Refused when the payment is
  * more than the due + tolerance.
- * @param {Object} fresh - bill data
+ * @param {Rec} fresh - bill data
  * @param {{cash: number, online: number}} parts - already in paise
- * @param {Object} entry - the full payments[] entry (with `at`)
+ * @param {Rec} entry - the full payments[] entry (with `at`)
  * @param {number} [tolerance=0.01]
- * @returns {{ok: true, update: Object, due: number}|{ok: false, error: 'exceeds-due', due: number}}
+ * @returns {{ok: true, update: Rec, due: number}|{ok: false, error: 'exceeds-due', due: number}}
  */
 export function duePaymentUpdate(fresh, { cash, online }, entry, tolerance = 0.01) {
     const pay = readPayment(fresh);
@@ -241,6 +260,7 @@ export function duePaymentUpdate(fresh, { cash, online }, entry, tolerance = 0.0
     const newOnline = round2(pay.online + online);
     let newDue = round2(pay.due - total);
     if (newDue < tolerance) newDue = 0;
+    /** @type {Rec} */
     const update = {
         payment: {
             ...(fresh.payment && typeof fresh.payment === 'object' ? fresh.payment : {}),
@@ -256,7 +276,11 @@ export function duePaymentUpdate(fresh, { cash, online }, entry, tolerance = 0.0
     return { ok: true, update, due: newDue };
 }
 
-/** When a bill was saved for oldest-first order: its numeric `timestamp`, else its date (0 when neither). */
+/**
+ * When a bill was saved for oldest-first order: its numeric `timestamp`, else its date (0 when neither).
+ * @param {?Rec|undefined} bill
+ * @returns {number}
+ */
 function orderTime(bill) {
     const n = Number(bill?.timestamp);
     if (Number.isFinite(n) && n > 0) return n;
@@ -267,8 +291,8 @@ function orderTime(bill) {
 /**
  * DUE-ALL / DUE-FIFO order, oldest first: numeric `timestamp`, else the bill date
  * (`parseAnyBillDate`), then the document id, so equal times always sort the same.
- * @param {Object} a
- * @param {Object} b
+ * @param {Rec} a
+ * @param {Rec} b
  * @returns {number}
  */
 export function billAgeOrder(a, b) {
@@ -283,7 +307,7 @@ export function billAgeOrder(a, b) {
  * DUE-ALL: what "Complete all due" settles for one party: every open bill whose
  * party is `partyKey` (by `keyOf`, e.g. aging.js normalizePartyName) with its
  * BILL-DUE, oldest first, and the total.
- * @param {Object[]} bills
+ * @param {Rec[]} bills
  * @param {string} partyKey
  * @param {function(string): string} keyOf
  * @returns {{bills: Array<{bill: Object, due: number}>, total: number}}
@@ -301,18 +325,19 @@ export function partyDues(bills, partyKey, keyOf) {
  * DUE-ALL: one bill's part of "Complete all due": its whole BILL-DUE (paise) received
  * in cash or online, as a payments[] entry with that amount (duePaymentUpdate).
  * Null when nothing is due any more (paid or cleared meanwhile).
- * @param {Object} fresh - bill data
+ * @param {Rec} fresh - bill data
  * @param {'cash'|'online'} method
- * @param {Object} entry - entry fields without the amounts (id, at, …)
+ * @param {Rec} entry - entry fields without the amounts (id, at, …)
  * @param {number} [tolerance=0.01]
  * @param {number} [confirmed=Infinity] - the due the user confirmed; more now = `changed`
- * @returns {?{amount: number, update?: Object, changed?: true}}
+ * @returns {?{amount: number, update?: Rec, changed?: true}}
  */
 export function settleDueUpdate(fresh, method, entry, tolerance = 0.01, confirmed = Infinity) {
     const due = round2(readPayment(fresh).due);
     if (!(due > 0) || fresh?.cleared) return null;
     if (due > confirmed + tolerance) return { amount: due, changed: true };
     const parts = method === 'online' ? { cash: 0, online: due } : { cash: due, online: 0 };
-    const { update } = duePaymentUpdate(fresh, parts, { ...entry, amount: due, ...parts }, tolerance);
+    // The whole due never exceeds the due: always ok
+    const { update } = /** @type {{ok: true, update: Rec, due: number}} */ (duePaymentUpdate(fresh, parts, { ...entry, amount: due, ...parts }, tolerance));
     return { amount: due, update };
 }

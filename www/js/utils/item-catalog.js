@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Pure helpers for the item catalogue: id lookups, duplicate-name
  * checks and usage frequency. No Firebase / DOM access, so they are unit-tested.
@@ -23,9 +24,10 @@ export function normalizeItemName(s) {
 
 /**
  * Finds an item by id.
- * @param {Array<{id: string}>} items
- * @param {string} id
- * @returns {Object|null}
+ * @template {{id: string}} T
+ * @param {?Array<T>|undefined} items
+ * @param {*} id
+ * @returns {?T}
  */
 export function findItemById(items, id) {
     if (!id) return null;
@@ -35,7 +37,7 @@ export function findItemById(items, id) {
 /**
  * An archived item (#123) is kept for old bills, stock and reports but is not
  * offered for new bills. Items are never deleted from the app.
- * @param {?Object} item
+ * @param {?Rec} item
  * @returns {boolean}
  */
 export function isArchivedItem(item) {
@@ -44,9 +46,9 @@ export function isArchivedItem(item) {
 
 /**
  * Items to offer in the Items list: archived ones only when asked for.
- * @param {Array<Object>} items
+ * @param {Array<Rec>} items
  * @param {{showArchived?: boolean}} [opts]
- * @returns {Array<Object>}
+ * @returns {Array<Rec>}
  */
 export function visibleItems(items, { showArchived = false } = {}) {
     return (items || []).filter(i => i && (showArchived || !isArchivedItem(i)));
@@ -60,7 +62,7 @@ export function visibleItems(items, { showArchived = false } = {}) {
  * @param {{itemId?: string, name?: string, item?: string}} line
  * @param {Array<{id: string, name?: string, hindiName?: string}>} items
  * @param {boolean} [showHindi=false]
- * @returns {{key: string, label: string, item: ?Object}}
+ * @returns {{key: string, label: string, item: ?{id: string, name?: string, hindiName?: string}}}
  */
 export function lineItemIdentity(line, items, showHindi = false) {
     const raw = String(line?.name || line?.item || '').trim();
@@ -80,7 +82,7 @@ export function lineItemIdentity(line, items, showHindi = false) {
  * @param {Array<{id: string, name?: string, hindiName?: string}>} items
  * @param {{name?: string, hindiName?: string}} candidate
  * @param {string|null} [excludeId] id of the item being edited
- * @returns {{item: Object, name: string}|null} the clashing item and the clashing name
+ * @returns {{item: {id: string, name?: string, hindiName?: string}, name: string}|null} the clashing item and the clashing name
  */
 export function findDuplicateItem(items, candidate, excludeId = null) {
     const wanted = [candidate?.name, candidate?.hindiName]
@@ -91,7 +93,7 @@ export function findDuplicateItem(items, candidate, excludeId = null) {
         if (!item || (excludeId && item.id === excludeId)) continue;
         for (const existing of [item.name, item.hindiName]) {
             const n = normalizeItemName(existing);
-            if (n && wanted.includes(n)) return { item, name: existing };
+            if (n && wanted.includes(n)) return { item, name: /** @type {string} */ (existing) };
         }
     }
     return null;
@@ -100,7 +102,7 @@ export function findDuplicateItem(items, candidate, excludeId = null) {
 /**
  * "Name already exists" message; for an archived item it says to unarchive it.
  * @param {string} name
- * @param {?Object} [item] the clashing item
+ * @param {?Rec} [item] the clashing item
  * @returns {string}
  */
 export function duplicateItemMessage(name, item = null) {
@@ -111,13 +113,14 @@ export function duplicateItemMessage(name, item = null) {
  * Counts how many bill lines used each catalogue item across the loaded
  * purchase, wholesale and retail histories. Lines resolve to an item id the
  * same way the stock replay does (itemId, else English/Hindi name).
- * @param {{purchases?: Array, wholesaleSales?: Array, retailSales?: Array}} sources
+ * @param {?{purchases?: Array<Rec>, wholesaleSales?: Array<Rec>, retailSales?: Array<Rec>}|undefined} sources
  * @param {Array<{id: string, name?: string, hindiName?: string}>} items
  * @returns {Object.<string, number>} item id -> number of bill lines
  */
 export function itemUsageFrequency(sources, items) {
     const getKey = createItemKeyResolver(items);
     const ids = new Set((items || []).map(i => i.id));
+    /** @type {Object<string, number>} */
     const counts = {};
     [sources?.purchases, sources?.wholesaleSales, sources?.retailSales].forEach(bills => {
         activityBills(bills).forEach(bill => {
@@ -133,9 +136,9 @@ export function itemUsageFrequency(sources, items) {
 
 /**
  * Sorts items by usage (most used first), then alphabetically by name.
- * @param {Array<Object>} items
+ * @param {Array<Rec>} items
  * @param {Object.<string, number>} frequency item id -> count
- * @returns {Array<Object>} a new sorted array
+ * @returns {Array<Rec>} a new sorted array
  */
 export function sortItemsByUsage(items, frequency) {
     return [...(items || [])].sort((a, b) => {
@@ -146,9 +149,9 @@ export function sortItemsByUsage(items, frequency) {
 }
 /**
  * Items A–Z by the name shown (Q48 of #111), ties by id so the order is stable.
- * @param {Array<Object>} items
- * @param {(item: Object) => string} [nameOf]
- * @returns {Array<Object>}
+ * @param {Array<Rec>} items
+ * @param {(item: Rec) => string} [nameOf]
+ * @returns {Array<Rec>}
  */
 export function sortItemsByName(items, nameOf = (i) => i.name) {
     return [...(items || [])].sort((a, b) => String(nameOf(a) || '').localeCompare(String(nameOf(b) || ''), undefined, { sensitivity: 'base' })
@@ -169,10 +172,11 @@ export const ITEM_SHEET_COLUMNS = {
 const SALE_RATE_ALIASES = ['Retail-Sale Rates', 'Retail Sale Rates', 'Sale Rates'];
 
 const RATE_FIELDS = ['rates', 'saleRates', 'wholesaleRates'];
+/** @type {Object<string, string>} */
 const RATE_LABELS = { rates: 'purchase', saleRates: 'retail-sale', wholesaleRates: 'wholesale' };
 
-const cellText = (v) => (v == null ? '' : String(v).trim());
-const has = (row, key) => Object.prototype.hasOwnProperty.call(row, key);
+const cellText = (/** @type {*} */ v) => (v == null ? '' : String(v).trim());
+const has = (/** @type {Rec} */ row, /** @type {string} */ key) => Object.prototype.hasOwnProperty.call(row, key);
 
 /**
  * Parses a "41, 42" rate cell. Empty → []. Any non-positive / non-numeric
@@ -192,7 +196,11 @@ export function parseRateCell(value) {
     return { rates, error: null };
 }
 
-/** Item row for export (round-trips through planItemImport). */
+/**
+ * Item row for export (round-trips through planItemImport).
+ * @param {Rec} item
+ * @returns {Object<string, string>}
+ */
 export function itemToSheetRow(item) {
     const C = ITEM_SHEET_COLUMNS;
     return {
@@ -206,9 +214,9 @@ export function itemToSheetRow(item) {
     };
 }
 
-const sameRates = (a, b) => {
-    const x = (a || []).map(Number).filter(n => n > 0);
-    const y = (b || []).map(Number).filter(n => n > 0);
+const sameRates = (/** @type {*} */ a, /** @type {*} */ b) => {
+    const x = /** @type {number[]} */ ((a || []).map(Number)).filter(n => n > 0);
+    const y = /** @type {number[]} */ ((b || []).map(Number)).filter(n => n > 0);
     return x.length === y.length && x.every((v, i) => v === y[i]);
 };
 
@@ -222,11 +230,11 @@ const sameRates = (a, b) => {
  * blank cell (clear the field) is distinguishable from a missing column
  * (leave the field alone).
  *
- * @param {Array<Object>} rows
- * @param {Array<Object>} items current catalogue
+ * @param {Array<Rec>} rows
+ * @param {Array<Rec>} items current catalogue
  * @returns {{
- *   updates: Array<{id: string, rowNumber: number, before: Object, fields: Object}>,
- *   adds: Array<{rowNumber: number, fields: Object}>,
+ *   updates: Array<{id: string, rowNumber: number, before: Rec, fields: Rec}>,
+ *   adds: Array<{rowNumber: number, fields: Rec}>,
  *   unchanged: Array<{id: string, rowNumber: number}>,
  *   errors: Array<{rowNumber: number, reason: string}>,
  *   skipped: number
@@ -234,8 +242,9 @@ const sameRates = (a, b) => {
  */
 export function planItemImport(rows, items) {
     const C = ITEM_SHEET_COLUMNS;
+    /** @type {ReturnType<typeof planItemImport>} */
     const plan = { updates: [], adds: [], unchanged: [], errors: [], skipped: 0 };
-    const catalogue = items || [];
+    const catalogue = /** @type {Array<{id: string, name?: string, hindiName?: string}>} */ (items || []);
     const claimedIds = new Set();
     const sheetNames = new Set();
 
@@ -246,8 +255,9 @@ export function planItemImport(rows, items) {
             plan.skipped++;
             return;
         }
-        const fail = (reason) => plan.errors.push({ rowNumber, reason });
+        const fail = (/** @type {string} */ reason) => plan.errors.push({ rowNumber, reason });
 
+        /** @type {Rec} */
         const fields = {};
         const name = cellText(row[C.name]);
         if (!name) return fail('Item Name is empty');
@@ -255,6 +265,7 @@ export function planItemImport(rows, items) {
         if (has(row, C.hindiName)) fields.hindiName = cellText(row[C.hindiName]);
         if (has(row, C.contactPerson)) fields.contactPerson = cellText(row[C.contactPerson]);
 
+        /** @type {Rec} */
         const rateSources = {
             rates: has(row, C.rates) ? row[C.rates] : undefined,
             saleRates: SALE_RATE_ALIASES.map(k => (has(row, k) ? row[k] : undefined)).find(v => v !== undefined && cellText(v) !== '')
@@ -269,6 +280,7 @@ export function planItemImport(rows, items) {
         }
 
         const rowId = cellText(row[C.id]);
+        /** @type {?Rec} */
         let target = null;
         if (rowId) {
             target = findItemById(catalogue, rowId);
@@ -290,8 +302,8 @@ export function planItemImport(rows, items) {
         if (target) {
             claimedIds.add(target.id);
             const changed = Object.keys(fields).some(f => (RATE_FIELDS.includes(f)
-                ? !sameRates(target[f], fields[f])
-                : cellText(target[f]) !== fields[f]));
+                ? !sameRates(/** @type {Rec} */ (target)[f], fields[f])
+                : cellText(/** @type {Rec} */ (target)[f]) !== fields[f]));
             if (changed) plan.updates.push({ id: target.id, rowNumber, before: target, fields });
             else plan.unchanged.push({ id: target.id, rowNumber });
             return;

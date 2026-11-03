@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Helpers for screens that read the windowed history arrays.
  *
@@ -41,7 +42,7 @@ export function historyLoadedFrom() {
         const v = Number(s.getHistoryWindowStart());
         if (Number.isFinite(v)) return v;
     }
-    const v = Number(AppState.historyLoadedFrom);
+    const v = Number(/** @type {Rec} */ (AppState).historyLoadedFrom);
     return Number.isFinite(v) && v > 0 ? v : 0;
 }
 
@@ -92,6 +93,7 @@ export function ensureHistoryFrom(rangeStart) {
     return inflight.get(key);
 }
 
+/** @type {?Promise<{loadedFrom: number, reachedEnd: boolean}>} */
 let olderInflight = null;
 let reachedEndFlag = false;
 const gates = new Map();
@@ -100,11 +102,13 @@ const gates = new Map();
 // whenever the signed-in user changes or the window start moves forward (a new
 // session starts from the default recent window; within a session it only
 // ever moves back).
+/** @type {?string|undefined} */
 let sessionUid;
+/** @type {?number} */
 let sessionLoadedFrom = null;
 
 function syncSession() {
-    const uid = AppState.currentUser?.uid ?? null;
+    const uid = /** @type {Rec} */ (AppState).currentUser?.uid ?? null;
     const from = historyLoadedFrom();
     const isFull = from === 0;
     const changed = sessionLoadedFrom !== null && (
@@ -195,7 +199,10 @@ export function rangeStatus(owner, rangeStart, rerender) {
     return 'loading';
 }
 
-/** Forget a failed load so the next render retries it. */
+/**
+ * Forget a failed load so the next render retries it.
+ * @param {string} owner
+ */
 export function retryRange(owner) {
     gates.delete(owner);
 }
@@ -205,7 +212,11 @@ export function monthStart(monthsBack = 0, now = new Date()) {
     return new Date(now.getFullYear(), now.getMonth() - monthsBack, 1);
 }
 
-/** Short human date for notices, e.g. "1 Sep 2026". */
+/**
+ * Short human date for notices, e.g. "1 Sep 2026".
+ * @param {?number|undefined} ms
+ * @returns {string}
+ */
 export function formatWindowDate(ms) {
     if (!ms) return '';
     return formatDay(ms, { lang: getLang() });
@@ -220,7 +231,7 @@ export function formatWindowDate(ms) {
  * @param {Object} [opts]
  * @param {string} [opts.loadingText]
  * @param {string} [opts.errorText]
- * @param {Function} [opts.onRetry]
+ * @param {EventListener} [opts.onRetry]
  */
 export function applyRangeState(scopes, status, opts = {}) {
     const list = (Array.isArray(scopes) ? scopes : [scopes]).filter(Boolean);
@@ -270,7 +281,7 @@ export function applyRangeState(scopes, status, opts = {}) {
 /**
  * Resolve a bill's current index by id (indices shift when live sync or
  * older-history loads add records). Falls back to `fallbackIndex` when no id.
- * @param {Array<Object>} history
+ * @param {Array<Rec>} history
  * @param {string|number|null|undefined} id
  * @param {number} [fallbackIndex=-1]
  * @returns {number}
@@ -290,6 +301,7 @@ export function onDemandHistoryInfo() {
     return typeof s?.getOnDemandHistoryInfo === 'function' ? (s.getOnDemandHistoryInfo() || null) : null;
 }
 
+/** @type {?Promise<boolean>} */
 let refreshInflight = null;
 
 /**
@@ -325,8 +337,8 @@ export function staleHistoryHintText(info) {
  * Subtle hint + Refresh button shown while on-demand (non-live) history is in
  * memory; removed otherwise (#132).
  * @param {HTMLElement} anchor - the hint is inserted before this element
- * @param {Object} opts
- * @param {string} opts.id - unique element id for this screen
+ * @param {Object} [opts]
+ * @param {string} [opts.id] - unique element id for this screen (required: nothing is shown without it)
  * @param {Function} [opts.onRefreshed] - re-render after a refresh
  * @param {(info: {liveFrom: number}) => boolean} [opts.isRelevant] - false hides
  *   the hint (e.g. no older bill is on screen)
