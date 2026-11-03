@@ -14,9 +14,7 @@
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <link rel="manifest" href="manifest.webmanifest">
     <meta name="theme-color" content="#667eea">
-    <script>
-        window.addEventListener('beforeinstallprompt', function (e) { window.__installPromptEvent = e; });
-    </script>
+    <script src="js/boot/capture-install-prompt.js?v=20261103ftypes"></script>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23667eea' width='100' height='100' rx='20'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='Arial,sans-serif' font-weight='bold'>A</text></svg>">
     
     <!-- Preconnect to origins needed during startup -->
@@ -24,7 +22,7 @@
     <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
 
     <!-- Styles: one file, joined from the list in styles.css (npm run build:css, #66) -->
-    <link rel="stylesheet" href="css/app.css?v=20261103dtypes">
+    <link rel="stylesheet" href="css/app.css?v=20261103ftypes">
     
     <!-- Firebase SDK (deferred: deferred classic scripts and module scripts run
          in document order after parsing, so firebaseConfig.js and js/main.js
@@ -39,68 +37,21 @@
     <!-- SheetJS (Excel) is loaded on demand via js/utils/lazy-scripts.js -->
 </head>
 <body>
-    <!-- Apply the saved theme before first paint (Settings only applies it once opened). -->
-    <script id="themeBoot">
-        try { if (localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode'); } catch (e) {}
-    </script>
+    <!-- Apply the saved theme before first paint (Settings only applies it once opened). The one inline script:
+         keep it on one line; its sha256 is in the CSP's script-src (firebase.json, security-headers.test.js). -->
+    <script id="themeBoot">try { if (localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode'); } catch (e) {}</script>
     <!-- All HTML content is dynamically loaded from templates/ directory -->
     <!-- See templates/*.html for all readable HTML templates -->
     
     <!-- Firebase Configuration -->
     <script defer src="firebaseConfig.js"></script>
     
-    <!-- Service Worker Registration + auto-reload on new version.
-         When a new SW takes control (after deploy), reload the page so the
-         user immediately sees the new code without a manual hard-refresh. -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            let __reloading = false;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (__reloading) return;
-                __reloading = true;
-                console.log('[SW] New service worker took control — reloading for fresh code.');
-                window.location.reload();
-            });
-
-            window.addEventListener('load', () => {
-                let pending;
-                try {
-                    pending = Promise.resolve(navigator.serviceWorker.register('/service-worker.js'));
-                } catch (err) {
-                    pending = Promise.reject(err);
-                }
-                pending
-                    .then((registration) => {
-                        if (!registration) return;
-                        // Check for updates every time the page becomes visible.
-                        document.addEventListener('visibilitychange', () => {
-                            if (document.visibilityState === 'visible') {
-                                registration.update?.()?.catch?.(() => {});
-                            }
-                        });
-
-                        // When a new SW is found, tell it to skip waiting so
-                        // it activates immediately (instead of waiting for all
-                        // tabs to close).
-                        registration.addEventListener?.('updatefound', () => {
-                            const sw = registration.installing;
-                            if (!sw) return;
-                            sw.addEventListener('statechange', () => {
-                                if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-                                    console.log('[SW] Update installed; activating new version.');
-                                    try { sw.postMessage({ type: 'SKIP_WAITING' }); } catch (_) {}
-                                }
-                            });
-                        });
-                    })
-                    .catch(err => console.warn('[SW] Registration failed:', err));
-            });
-        }
-    </script>
+    <!-- Service worker registration + auto-reload on a new version -->
+    <script defer src="js/boot/sw-register.js?v=20261103ftypes"></script>
     
     <!-- ES6 Modular Architecture (loads and injects all templates) -->
-    <script type="module" src="js/main.js?v=20261103dtypes"></script>
-    <script type="module" src="js/utils/keyboard-shortcuts.js?v=20261103dtypes"></script>
+    <script type="module" src="js/main.js?v=20261103ftypes"></script>
+    <script type="module" src="js/utils/keyboard-shortcuts.js?v=20261103ftypes"></script>
 
 </body>
 </html>

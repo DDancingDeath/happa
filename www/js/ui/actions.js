@@ -1,6 +1,6 @@
 /**
- * @fileoverview Delegated event handlers instead of inline `on*=` attributes (#89), so the
- * Content-Security-Policy can drop 'unsafe-inline' for scripts. Markup says what to call with a
+ * @fileoverview Delegated event handlers instead of inline `on*=` attributes (#89): the
+ * Content-Security-Policy allows no inline script. Markup says what to call with a
  * `data-on<event>` attribute holding the same call the inline handler made, without
  * `window.app.`:
  *

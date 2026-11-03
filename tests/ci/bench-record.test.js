@@ -27,6 +27,8 @@ test('the summary warns and shows the latest rows', () => {
     for (let i = 0; i < 12; i++) trend = appendRow(trend, trendRow({ ...RESULT, at: `day${i}` }, 's'));
     const text = summary(trend, overBudget(RESULT, { historyLoadMs: 20000 }));
     expect(text).toContain('⚠ historyLoadMs 21000 ms is over its budget of 20000 ms');
+    expect(summary(trend, overBudget({ ...RESULT, startupReads: 2600 }, { startupReads: 2500 })))
+        .toContain('⚠ startupReads 2600 is over its budget of 2500');
     expect(text).toContain('day11');
     expect(text).not.toContain('| day1 |');
     expect(summary(trend, [])).toContain('All figures within budget.');

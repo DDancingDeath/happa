@@ -14,7 +14,7 @@ const test = base.test.extend({
         page.on('console', m => {
             // The service worker is blocked in tests; its registration failure is expected.
             if (m.type() === 'error' && !/service ?worker|\[SW\]/i.test(m.text())) problems.consoleErrors.push(m.text());
-            // The static server sends Hosting's report-only CSP (#89); Chrome logs each report (as info).
+            // The static server sends Hosting's enforced CSP (#89); Chrome logs each violation.
             if (/violates the following Content Security Policy directive/.test(m.text())) problems.cspReports.push(m.text());
         });
         page.on('request', r => {
@@ -23,7 +23,7 @@ const test = base.test.extend({
         page.on('dialog', d => d.accept());
         await use(problems);
         base.expect(problems.prodRequests, 'no request may reach production Firebase').toEqual([]);
-        base.expect(problems.cspReports, 'the report-only CSP in firebase.json must not report anything (#89)').toEqual([]);
+        base.expect(problems.cspReports, 'the CSP in firebase.json must not block anything (#89)').toEqual([]);
     }
 });
 

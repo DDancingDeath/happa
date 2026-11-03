@@ -1,6 +1,7 @@
 /**
  * #102: the saved dark-mode preference must be applied at boot, before first
  * paint, by the inline #themeBoot script at the top of <body> in index.html.
+ * It is the one inline script: the CSP allows it by its sha256 (security-headers.test.js).
  */
 const fs = require('fs');
 const path = require('path');
@@ -18,6 +19,10 @@ describe('theme boot script (#102)', () => {
         expect(bootScript).not.toBeNull();
         const afterBody = html.slice(html.indexOf('<body>') + '<body>'.length);
         expect(afterBody.replace(/<!--[\s\S]*?-->/g, '').trim().startsWith('<script id="themeBoot">')).toBe(true);
+    });
+
+    test('is one line, so its CSP hash does not depend on the checkout line endings', () => {
+        expect(bootScript[1]).not.toMatch(/[\r\n]/);
     });
 
     test('darkMode=true adds body.dark-mode; otherwise the body stays light', () => {

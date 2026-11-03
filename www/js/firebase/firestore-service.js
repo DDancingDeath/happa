@@ -27,6 +27,8 @@ import { legacyScanMethods } from './core/legacy-scan.js';
 import { stockCheckpointMethods } from './core/stock-checkpoint.js';
 import { stockMethods } from './core/stock.js';
 import { billMethods } from './repos/bills.js';
+import { billSaveMethods } from './repos/bill-save.js';
+import { billEditMethods } from './repos/bill-edit.js';
 import { expenseMethods } from './repos/expenses.js';
 import { stockRecordMethods } from './repos/stock-records.js';
 import { listenerMethods } from './core/listeners.js';
@@ -85,6 +87,10 @@ const FirebaseService = {
     settleWrite(writePromise, label) {
         return settleWrite(writePromise, label);
     },
+
+    ...billSaveMethods,
+
+    ...billEditMethods,
 
     ...billMethods,
 
