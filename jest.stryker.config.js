@@ -19,7 +19,7 @@ const CORE = www(['money', 'billing-calc', 'dates', 'bill-checks', 'release', 'c
 const oracle = (names) => `**/tests/oracle/${anyOf(names)}.test.js`;
 const FINANCE_CALC = [oracle(['business-metrics', 'cross-page', 'screens']), www(['rounding', 'opening-records'])];
 const BUSINESS_METRICS = [oracle(['business-metrics', 'period-compare', 'fy-periods', 'questionnaire', 'screens', 'cross-page']),
-    www(['fy-periods', 'period-compare', 'questionnaire-defaults'])];
+    www(['fy-periods', 'period-compare', 'questionnaire-defaults', 'business-metrics-units'])];
 
 /** Suites per mutated file; a file not listed gets CORE + the oracle. */
 const TESTS_FOR = {
