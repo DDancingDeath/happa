@@ -99,7 +99,7 @@ const DiagnosticsManager = {
 
         const numbersBtn = `
                 <button class="filter-btn ${this.activeTab === 'numbers' ? 'active' : ''}"
-                        onclick="window.app.diagnostics.showTab('numbers')">
+                        data-onclick="diagnostics.showTab('numbers')">
                     ${Helpers.escapeHtml(t('ui.numchecks.tab'))}
                 </button>`;
         if (!isOwner()) {
@@ -109,15 +109,15 @@ const DiagnosticsManager = {
         container.innerHTML = `
             <div class="filter-buttons" style="margin-bottom: 16px;">
                 <button class="filter-btn ${this.activeTab === 'errors' ? 'active' : ''}" 
-                        onclick="window.app.diagnostics.showTab('errors')">
+                        data-onclick="diagnostics.showTab('errors')">
                     🐛 ${tx('ui.diag.tab_errors')}
                 </button>
                 <button class="filter-btn ${this.activeTab === 'audit' ? 'active' : ''}" 
-                        onclick="window.app.diagnostics.showTab('audit')">
+                        data-onclick="diagnostics.showTab('audit')">
                     📋 ${tx('ui.admin.col_audit_logs')}
                 </button>
                 <button class="filter-btn ${this.activeTab === 'status' ? 'active' : ''}"
-                        onclick="window.app.diagnostics.showTab('status')">
+                        data-onclick="diagnostics.showTab('status')">
                     📱 ${tx('ui.status.tab')}
                 </button>
                 ${numbersBtn}
@@ -199,7 +199,7 @@ const DiagnosticsManager = {
         const head = `
             <div class="diag-numchecks-intro" style="margin-bottom:12px;">
                 <p style="margin:0 0 8px 0;color:var(--text-muted,#666);font-size:0.9rem;">${e(t('ui.numchecks.intro'))}</p>
-                <button class="diag-btn refresh" onclick="window.app.diagnostics.runNumberChecks()">${e(t('ui.numchecks.run'))}</button>
+                <button class="diag-btn refresh" data-onclick="diagnostics.runNumberChecks()">${e(t('ui.numchecks.run'))}</button>
             </div>`;
         if (!this.numberChecks) {
             container.innerHTML = `${head}<div class="diag-empty">${e(t('ui.numchecks.not_run'))}</div>`;
@@ -324,9 +324,9 @@ const DiagnosticsManager = {
                 <tbody>${rows}</tbody>
             </table>
             <div class="diagnostics-controls" style="margin-top:12px;">
-                <button class="diag-btn refresh" onclick="window.app.diagnostics.runSpeedCheck()">${tx('ui.speed.run')}</button>
-                <button class="diag-btn" onclick="window.app.diagnostics.copyStatus()">${tx('ui.status.copy')}</button>
-                ${canShare ? `<button class="diag-btn" onclick="window.app.diagnostics.shareStatus()">${tx('ui.status.share')}</button>` : ''}
+                <button class="diag-btn refresh" data-onclick="diagnostics.runSpeedCheck()">${tx('ui.speed.run')}</button>
+                <button class="diag-btn" data-onclick="diagnostics.copyStatus()">${tx('ui.status.copy')}</button>
+                ${canShare ? `<button class="diag-btn" data-onclick="diagnostics.shareStatus()">${tx('ui.status.share')}</button>` : ''}
             </div>
             ${speed}
             <p style="font-size:0.8rem;color:#4b5563;margin-top:12px;">${tx('ui.status.copy_note')}</p>`;
@@ -452,7 +452,7 @@ const DiagnosticsManager = {
 
             <!-- Controls -->
             <div class="diagnostics-controls">
-                <select id="diagTypeFilter" onchange="window.app.diagnostics.filterByType(this.value)">
+                <select id="diagTypeFilter" data-onchange="diagnostics.filterByType(this.value)">
                     <option value="all" ${this.filter === 'all' ? 'selected' : ''}>${tx('ui.diag.all_types')}</option>
                     <option value="uncaught" ${this.filter === 'uncaught' ? 'selected' : ''}>${tx('ui.diag.uncaught')}</option>
                     <option value="unhandledrejection" ${this.filter === 'unhandledrejection' ? 'selected' : ''}>${tx('ui.diag.rejections')}</option>
@@ -461,9 +461,9 @@ const DiagnosticsManager = {
                     <option value="manual" ${this.filter === 'manual' ? 'selected' : ''}>${tx('ui.diag.manual')}</option>
                     <option value="toast" ${this.filter === 'toast' ? 'selected' : ''}>${tx('ui.diag.t_toast')}</option>
                 </select>
-                <button onclick="window.app.diagnostics.loadData()" class="diag-btn refresh">🔄</button>
-                <button onclick="window.app.diagnostics.exportErrorReport()" class="diag-btn" data-export="errors">${tx('ui.diag.export_report')}</button>
-                <button onclick="window.app.diagnostics.clearAll()" class="diag-btn danger" title="${tx('msg.diagnostics.clear_all_diagnostics')}" aria-label="${tx('msg.diagnostics.clear_all_diagnostics')}">🙈</button>
+                <button data-onclick="diagnostics.loadData()" class="diag-btn refresh">🔄</button>
+                <button data-onclick="diagnostics.exportErrorReport()" class="diag-btn" data-export="errors">${tx('ui.diag.export_report')}</button>
+                <button data-onclick="diagnostics.clearAll()" class="diag-btn danger" title="${tx('msg.diagnostics.clear_all_diagnostics')}" aria-label="${tx('msg.diagnostics.clear_all_diagnostics')}">🙈</button>
             </div>
 
             <!-- Error List -->
@@ -511,7 +511,7 @@ const DiagnosticsManager = {
                     <span class="diag-error-type">${typeLabels[error.type] || Helpers.escapeHtml(error.type)}</span>
                     ${error.type === 'toast' ? `<span class="diag-error-ref">${tx('ui.diag.ref', { ref: error.id })}</span>` : ''}
                     <span class="diag-error-count">${Helpers.escapeHtml(error.count || 1)}×</span>
-                    <button onclick="window.app.diagnostics.deleteError('${Helpers.escapeJsAttr(error.id)}')" class="diag-delete-btn" title="${tx('msg.diagnostics.hide_error_title')}" aria-label="${tx('msg.diagnostics.hide_error_title')}">×</button>
+                    <button data-onclick="diagnostics.deleteError('${Helpers.escapeJsAttr(error.id)}')" class="diag-delete-btn" title="${tx('msg.diagnostics.hide_error_title')}" aria-label="${tx('msg.diagnostics.hide_error_title')}">×</button>
                 </div>
                 <div class="diag-error-message">${Helpers.escapeHtml(error.message || t('ui.diag.no_message'))}</div>
                 ${error.source ? `<div class="diag-error-source">📍 ${Helpers.escapeHtml(error.source)}:${Helpers.escapeHtml(error.line || '?')}</div>` : ''}
@@ -584,7 +584,7 @@ const DiagnosticsManager = {
         container.innerHTML = `
             <!-- Controls -->
             <div class="diagnostics-controls">
-                <select id="auditFilterAction" onchange="window.app.diagnostics.filterAuditLogs(this.value)">
+                <select id="auditFilterAction" data-onchange="diagnostics.filterAuditLogs(this.value)">
                     <option value="" ${this.auditFilter === '' ? 'selected' : ''}>${tx('ui.diag.all_actions')}</option>
                     <option value="CREATE_BILL" ${this.auditFilter === 'CREATE_BILL' ? 'selected' : ''}>${tx('ui.diag.a_create_bill')}</option>
                     <option value="DELETE_BILL" ${this.auditFilter === 'DELETE_BILL' ? 'selected' : ''}>${tx('ui.diag.a_delete_bill')}</option>
@@ -595,9 +595,9 @@ const DiagnosticsManager = {
                     <option value="UPDATE_PAYMENT" ${this.auditFilter === 'UPDATE_PAYMENT' ? 'selected' : ''}>${tx('ui.diag.a_update_payment')}</option>
                     <option value="CLEAR_DATA" ${this.auditFilter === 'CLEAR_DATA' ? 'selected' : ''}>${tx('ui.diag.a_clear_data')}</option>
                 </select>
-                <button onclick="window.app.diagnostics.loadAuditLogs()" class="diag-btn refresh">🔄</button>
-                <button onclick="window.app.diagnostics.exportAuditCsv()" class="diag-btn" data-export="audit-csv">${tx('ui.statements.download_csv')}</button>
-                <button onclick="window.app.diagnostics.printAudit()" class="diag-btn" data-export="audit-print">${tx('ui.statements.print')}</button>
+                <button data-onclick="diagnostics.loadAuditLogs()" class="diag-btn refresh">🔄</button>
+                <button data-onclick="diagnostics.exportAuditCsv()" class="diag-btn" data-export="audit-csv">${tx('ui.statements.download_csv')}</button>
+                <button data-onclick="diagnostics.printAudit()" class="diag-btn" data-export="audit-print">${tx('ui.statements.print')}</button>
             </div>
 
             <!-- Audit List -->

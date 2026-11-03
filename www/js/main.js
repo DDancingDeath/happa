@@ -63,7 +63,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbozzzbaleaaaaaaaaaaaaaaaaaaaa-modals-actions';
+const BUILD_ID = '20261101zzuzieecmbbkhbozzzbaleaaaaaaaaaaaaaaaaaaaaaaaaaa-admin-actions';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -984,7 +984,8 @@ window.app = {
         deleteSaleRate: (id, rIdx) => ItemsManager.deleteSaleRate(id, rIdx),
         archiveItem: (id) => ItemsManager.archiveItem(id),
         exportExcel: () => ItemsManager.exportToExcel(),
-        importExcel: (evt) => ItemsManager.importFromExcel(evt)
+        importExcel: (evt) => ItemsManager.importFromExcel(evt),
+        pickImportFile: () => document.getElementById('importItemsFile')?.click()
     },
     
     // Billing
@@ -1445,7 +1446,13 @@ window.app = {
         deleteUser: (userId, userName) => AdminManager.deleteUser(userId, userName),
         loadStorageStats: () => AdminManager.loadStorageStats(),
         clearAllData: () => AdminManager.clearAllData(),
-        checkBackupFile: (file) => AdminManager.checkBackupFile(file)
+        checkBackupFile: (file) => AdminManager.checkBackupFile(file),
+        // The backup picker: check the chosen file, then clear the input so the same file can be picked again
+        checkBackupInput: (input) => {
+            const checked = AdminManager.checkBackupFile(input.files && input.files[0]);
+            input.value = '';
+            return checked;
+        }
     },
     
     // What's new / update banner / share app

@@ -12,7 +12,7 @@ test('Excel export loads SheetJS from its CDN and downloads the items workbook',
     await showTab(page, 'items');
     const sheetjs = page.waitForResponse((r) => r.url().startsWith('https://cdn.sheetjs.com/'));
     const download = page.waitForEvent('download');
-    await page.click('button[onclick="window.app.items.exportExcel()"]');
+    await page.click('button[data-onclick="items.exportExcel()"]');
     expect((await sheetjs).status()).toBe(200);
     expect((await download).suggestedFilename()).toMatch(/^items_\d{4}-\d{2}-\d{2}\.xlsx$/);
     expect(await page.evaluate(() => typeof window.XLSX?.writeFile)).toBe('function');

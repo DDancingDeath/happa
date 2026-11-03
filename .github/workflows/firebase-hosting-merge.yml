@@ -12,7 +12,8 @@
 # firestore.indexes.json, happa.config.json, firebase.json or the rules deploy
 # tooling changed since the last confirmed deploy by this workflow, or no
 # such deploy can be confirmed); "rules"
-# runs firestore-rules-deploy.yml (tests, retried deploy, live-ruleset check);
+# runs firestore-rules-deploy.yml (tests, retried deploy -- with a Rules REST
+# API fallback when the Rules API answers 503 -- and a live-ruleset check);
 # Hosting runs only if the rules job succeeded or was not needed. A failed
 # rules deploy leaves the live app untouched, fails this run and opens the
 # [Ops] deploy alert issue; "Re-run failed jobs" on the LATEST failed run
@@ -42,6 +43,7 @@ jobs:
       actions: read
     outputs:
       rules: ${{ steps.plan.outputs.rules }}
+      indexes: ${{ steps.plan.outputs.indexes }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -61,6 +63,8 @@ jobs:
     needs: plan
     if: needs.plan.outputs.rules == 'true'
     uses: ./.github/workflows/firestore-rules-deploy.yml
+    with:
+      indexes: ${{ needs.plan.outputs.indexes }}
     secrets: inherit
 
   build_and_deploy:

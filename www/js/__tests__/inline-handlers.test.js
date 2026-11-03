@@ -12,7 +12,7 @@ import { parseAction } from '../ui/actions.js';
 const WWW = path.resolve(__dirname, '../..');
 const BASELINE_FILE = path.resolve(WWW, '../tests/inline-handlers-baseline.json');
 const INLINE = /\son(click|dblclick|change|input|submit|reset|key(?:down|up|press)|mouse\w+|pointer\w+|touch\w+|focus|blur|load|error|scroll|wheel|drag\w*|drop|contextmenu|select|paste|copy|cut|toggle|animation\w+|transition\w+)\s*=\s*["'`]/g;
-const DATA_ON = /data-on(click|change|input|submit|keydown|keyup|focus|blur|toggle)="([^"]*)"/g;
+const DATA_ON = /data-on(click|change|input|submit|keydown|keyup|focus|blur|toggle|enter)="([^"]*)"/g;
 
 function files(dir) {
     return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {

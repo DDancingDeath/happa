@@ -14,6 +14,17 @@
 # the live ruleset equals firestore.rules; the last step reads the live ruleset
 # back (tools/ci/live-rules.js, read-only) and fails unless it equals the repo's.
 #
+# Rules API fallback: when firebase deploy fails twice with a 503 from the
+# Firebase Rules API (its `:test` compile check times out on large rules), the
+# deploy step hands over to tools/ci/rules-rest-deploy.js, which publishes the
+# commit's exact firestore.rules through the Rules REST API (reuse or create a
+# byte-identical ruleset, read it back, point the cloud.firestore release at
+# it; 503s that were applied anyway are detected by re-reading; at most ~12
+# minutes). The indexes are then deployed on their own (firestore:indexes needs
+# no rules compile) when firestore.indexes.json (or the project/firebase.json)
+# changed since the last deploy
+# (input "indexes"; true when unknown). The same live-ruleset check follows.
+#
 # The service account in FIREBASE_SERVICE_ACCOUNT_HAPPA needs, in
 # addition to its hosting roles: Firebase Rules Admin
 # (roles/firebaserules.admin) and Cloud Datastore Index Admin
@@ -22,6 +33,11 @@ name: Deploy Firestore rules and indexes
 
 on:
   workflow_call:
+    inputs:
+      indexes:
+        description: "'false' when firestore.indexes.json is unchanged since the last deploy (from the plan job)"
+        type: string
+        default: 'true'
   workflow_dispatch:
 
 permissions:
@@ -88,18 +104,52 @@ jobs:
       # --force and aadhat-management). Transient Google API errors are retried
       # up to 7 attempts (15s/30s/60s/120s/180s/240s backoff); a 409 "Release
       # already exists" is accepted only if the live ruleset equals the repo's;
-      # compile and permission errors fail at once with a hint.
+      # compile and permission errors fail at once with a hint. Two Rules API
+      # 503s (exit 75) switch to the REST fallback below instead.
       - name: Deploy rules and indexes
+        id: deploy
         if: steps.head.outputs.current == 'true'
         env:
           PROJECT_ID: ${{ steps.project.outputs.project_id }}
         run: |
           SA_EMAIL=$(jq -r .client_email "$GOOGLE_APPLICATION_CREDENTIALS")
+          rc=0
           node tools/ci/deploy-with-retry.js \
             --log "$RUNNER_TEMP/deploy.log" --project "$PROJECT_ID" --sa-email "$SA_EMAIL" \
-            --rules firestore.rules \
+            --rules firestore.rules --rules-api-fallback \
             -- npx --yes firebase-tools@latest deploy \
               --only firestore:rules,firestore:indexes \
+              --project "$PROJECT_ID" --non-interactive || rc=$?
+          if [ "$rc" = 75 ]; then
+            echo "fallback=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          exit "$rc"
+
+      # Publishes only this commit's firestore.rules (checked against
+      # `git show $GITHUB_SHA:firestore.rules` and read back byte for byte
+      # before the release is touched).
+      - name: Fallback - publish firestore.rules through the Rules REST API
+        if: steps.head.outputs.current == 'true' && steps.deploy.outputs.fallback == 'true'
+        env:
+          PROJECT_ID: ${{ steps.project.outputs.project_id }}
+        run: node tools/ci/rules-rest-deploy.js --project "$PROJECT_ID" --rules firestore.rules --commit "$GITHUB_SHA"
+
+      - name: Fallback - deploy indexes (only if firestore.indexes.json changed)
+        if: steps.head.outputs.current == 'true' && steps.deploy.outputs.fallback == 'true'
+        env:
+          PROJECT_ID: ${{ steps.project.outputs.project_id }}
+          INDEXES: ${{ inputs.indexes }}
+        run: |
+          if [ "$INDEXES" = "false" ]; then
+            echo "firestore.indexes.json is unchanged since the last deploy; not deploying indexes."
+            exit 0
+          fi
+          SA_EMAIL=$(jq -r .client_email "$GOOGLE_APPLICATION_CREDENTIALS")
+          node tools/ci/deploy-with-retry.js \
+            --log "$RUNNER_TEMP/deploy-indexes.log" --project "$PROJECT_ID" --sa-email "$SA_EMAIL" \
+            -- npx --yes firebase-tools@latest deploy \
+              --only firestore:indexes \
               --project "$PROJECT_ID" --non-interactive
 
       # Read-only: fetches the cloud.firestore release's ruleset from the
@@ -113,4 +163,4 @@ jobs:
 
       - name: Remove service account key
         if: always()
-        run: rm -f "$RUNNER_TEMP/sa.json" "$RUNNER_TEMP/deploy.log"
+        run: rm -f "$RUNNER_TEMP/sa.json" "$RUNNER_TEMP/deploy.log" "$RUNNER_TEMP/deploy-indexes.log"
