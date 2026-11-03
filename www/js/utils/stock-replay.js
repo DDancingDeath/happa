@@ -21,7 +21,8 @@ export const STOCK_REPLAY_FORMAT = 5;
 
 /**
  * One replay step: a bill line (purchase or sale; source = purchase / wholesale / retail) or a stock adjustment.
- * @typedef {{t: number, kind: 'purchase'|'sale', item: Rec, bill: Rec, source: string}
+ * @typedef {{t: number, kind: 'purchase', item: Rec, bill: Rec, source: string}
+ *   | {t: number, kind: 'sale', item: Rec, bill: Rec, source: string}
  *   | {t: number, kind: 'adjustment', adj: Rec}} StockEvent
  */
 
@@ -48,7 +49,7 @@ export function purchaseLineValue(item) {
  * numeric `timestamp` field, then a Firestore Timestamp with `.toMillis()`,
  * then the `date` field parsed via Helpers.parseDate. Records with no
  * resolvable time sort last (Number.MAX_SAFE_INTEGER).
- * @param {Rec} record
+ * @param {?Rec|undefined} record
  * @returns {number}
  */
 export function eventTime(record) {

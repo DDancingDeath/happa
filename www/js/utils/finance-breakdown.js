@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview "What makes up this number" for every Finance dashboard card
  * (#215). Pure functions only: the sheet UI (ui/finance-breakdown-sheet.js)
@@ -17,13 +18,19 @@ import { toLocalISODate } from './dates.js';
 /** Rows shown per "page" in the sheet. */
 export const PAGE_SIZE = 50;
 
-const stockRows = (name) => (d) => (d.stock ? d.stock[name] : null);
-const stockValue = (name) => (s) => (s.stock ? s.stock[name] : null);
+/**
+ * @typedef {{label: string, rows?: (d: Rec) => ?Array<Rec>, terms?: Array<[string, number, string?]>,
+ *   value: (s: Rec) => ?number, notes?: string[]}} Card
+ */
+
+const stockRows = (/** @type {string} */ name) => (/** @type {Rec} */ d) => (d.stock ? d.stock[name] : null);
+const stockValue = (/** @type {string} */ name) => (/** @type {Rec} */ s) => (s.stock ? s.stock[name] : null);
 
 /**
  * Card id → definition. `label` is an i18n key; `rows(detail)` for leaves,
  * `terms` ([cardId, sign]) for formulas; `value(summary)` is the number shown
  * on the dashboard (null = can't be computed yet).
+ * @type {Object<string, Card>}
  */
 export const CARDS = {
     sales: { label: 'ui.finance.sales', rows: d => d.sales, value: s => s.sales.total },
@@ -73,11 +80,11 @@ export const CARDS = {
 /**
  * Rows of a card (records, with formula signs applied and `term` = the leaf
  * card each row comes from). Null when the card can't be computed.
- * @param {Object} summary computeFinanceSummary(..., detail: true)
+ * @param {Rec} summary computeFinanceSummary(..., detail: true)
  * @param {string} cardId
  * @param {number} [sign=1]
  * @param {string} [path='']
- * @returns {?Array<Object>}
+ * @returns {?Array<Rec>}
  */
 export function cardRows(summary, cardId, sign = 1, path = '') {
     const card = CARDS[cardId];
@@ -87,8 +94,9 @@ export function cardRows(summary, cardId, sign = 1, path = '') {
         if (!rows) return null;
         return rows.map(r => ({ ...r, key: `${path}${cardId}:${r.key}`, term: cardId, amount: r.amount * sign }));
     }
+    /** @type {Array<Rec>} */
     const out = [];
-    for (const [term, s] of card.terms) {
+    for (const [term, s] of /** @type {Array<[string, number, string?]>} */ (card.terms)) {
         const rows = cardRows(summary, term, sign * s, `${path}${cardId}/`);
         if (!rows) return null;
         out.push(...rows);
@@ -96,18 +104,22 @@ export function cardRows(summary, cardId, sign = 1, path = '') {
     return out;
 }
 
-/** Sum of row amounts, rounded to paise. */
+/**
+ * Sum of row amounts, rounded to paise.
+ * @param {?Array<Rec>|undefined} rows
+ * @returns {number}
+ */
 export function sumRows(rows) {
-    return round2((rows || []).reduce((a, r) => a + (Number(r.amount) || 0), 0));
+    return round2((rows || []).reduce((/** @type {number} */ a, r) => a + (Number(r.amount) || 0), 0));
 }
 
 /**
  * Everything the sheet shows for one card.
- * @param {Object} summary computeFinanceSummary(..., detail: true)
+ * @param {Rec} summary computeFinanceSummary(..., detail: true)
  * @param {string} cardId
  * @returns {?{cardId: string, label: string, value: ?number, available: boolean,
- *   formula: ?Array<{cardId: string, label: string, sign: number, value: ?number}>, rows: Array, total: number,
- *   notes: Array<{cardId: string, label: string, value: number}>}} notes: related numbers that
+ *   formula: ?Array<{cardId: string, label: string, sign: number, value: ?number}>, rows: Array<Rec>, total: number,
+ *   notes: Array<{cardId: string, label: string, value: ?number}>}} notes: related numbers that
  *   are NOT part of this card (shown, tappable, only when non-zero)
  */
 export function buildBreakdown(summary, cardId) {
@@ -136,11 +148,14 @@ export function buildBreakdown(summary, cardId) {
     };
 }
 
-const norm = (s) => String(s ?? '').normalize('NFC').toLowerCase();
+const norm = (/** @type {*} */ s) => String(s ?? '').normalize('NFC').toLowerCase();
 
 /**
  * Rows matching a free-text search (bill no, party, item in either language,
  * note, category, date).
+ * @param {Array<Rec>} rows
+ * @param {*} query
+ * @returns {Array<Rec>}
  */
 export function searchRows(rows, query) {
     const q = norm(query).trim();
@@ -152,6 +167,9 @@ export function searchRows(rows, query) {
 /**
  * Sorted copy: 'amount' (biggest first, by size), 'date' (newest first) or
  * 'date-asc'. Undated rows go last.
+ * @param {Array<Rec>} rows
+ * @param {string} [by]
+ * @returns {Array<Rec>}
  */
 export function sortRows(rows, by = 'amount') {
     const copy = [...rows];
@@ -165,7 +183,11 @@ export function sortRows(rows, by = 'amount') {
     });
 }
 
-/** Grouping choices that make sense for these rows. */
+/**
+ * Grouping choices that make sense for these rows.
+ * @param {Array<Rec>} rows
+ * @returns {string[]}
+ */
 export function groupOptions(rows) {
     const opts = ['none'];
     if (rows.some(r => r.itemKey)) opts.push('item');
@@ -179,12 +201,13 @@ export function groupOptions(rows) {
  * Groups with subtotals. Keys: item → itemKey ('' = no item), party →
  * normalised name, day → local YYYY-MM-DD ('' = no date), term → card id.
  * Day groups are newest first; the others biggest first.
- * @param {Array} rows
+ * @param {Array<Rec>} rows
  * @param {'item'|'party'|'day'|'term'} by
  * @param {{lang?: 'en'|'hi'}} [opts]
- * @returns {Array<{key: string, label: string, rows: Array, subtotal: number, count: number}>}
+ * @returns {Array<{key: string, label: string, rows: Array<Rec>, subtotal: number, count: number}>}
  */
 export function groupRows(rows, by, { lang = 'en' } = {}) {
+    /** @type {Map<string, {key: string, label: string, rows: Array<Rec>, subtotal: number, count: number}>} */
     const groups = new Map();
     rows.forEach(r => {
         let key;
@@ -203,7 +226,7 @@ export function groupRows(rows, by, { lang = 'en' } = {}) {
             label = r.term ? CARDS[r.term]?.label || r.term : '';
         }
         if (!groups.has(key)) groups.set(key, { key, label, rows: [], subtotal: 0, count: 0 });
-        const g = groups.get(key);
+        const g = /** @type {{key: string, label: string, rows: Array<Rec>, subtotal: number, count: number}} */ (groups.get(key));
         g.rows.push(r);
         g.subtotal += Number(r.amount) || 0;
         g.count++;
