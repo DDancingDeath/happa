@@ -1,21 +1,23 @@
 /**
  * Dialogs opened one after another (#63, Clear Data): the OK button is wired once
- * (its onclick in templates/modals.html), so one click closes only the dialog it
+ * (its data-onclick in templates/modals.html, #89), so one click closes only the dialog it
  * was clicked in, never the one that opens right after.
  */
 const fs = require('fs');
 const path = require('path');
 import { UIManager } from '../ui/ui-manager.js';
+import { installActions } from '../ui/actions.js';
 
 const WWW = path.join(__dirname, '..', '..');
 
+beforeAll(() => installActions(document));
 beforeEach(() => {
     document.body.innerHTML = fs.readFileSync(path.join(WWW, 'templates', 'modals.html'), 'utf8');
     window.app = { ui: { closeModal: (r) => UIManager.closeModal(r) } };
 });
 afterEach(() => { delete window.app; });
 
-test('the template onclick alone answers the dialog', async () => {
+test('the data-onclick in the template alone answers the dialog', async () => {
     const ok = UIManager.showModal('first', 'First', true);
     document.getElementById('modalConfirm').click();
     await expect(ok).resolves.toBe(true);

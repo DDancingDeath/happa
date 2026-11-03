@@ -14,6 +14,7 @@
     "check:review": "node scripts/check-review-rules.js",
     "check:html-escape": "node scripts/html-escape-audit.js --check",
     "check:lockfile": "node scripts/check-lockfile.js",
+    "check:rules-size": "node scripts/check-rules-size.js",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.typecheck.json",
     "test:e2e": "playwright test",

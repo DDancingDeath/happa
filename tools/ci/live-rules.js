@@ -14,7 +14,8 @@
  *     [--credentials <service-account.json>]   # default $GOOGLE_APPLICATION_CREDENTIALS
  *
  * Exit 0 when the live ruleset equals the file, 1 when it differs or cannot be
- * read (after retries), 2 on bad usage.
+ * read (after retries), 2 on bad usage. (tools/ci/rules-rest-deploy.js reuses
+ * getAccessToken with a write scope; this script itself only reads.)
  *
  * LIVE_RULES_RETRY_DELAYS (comma-separated seconds, default 5,15,30,60) sets
  * the waits between reads: transient API errors (5xx, 429, network) are
@@ -47,13 +48,13 @@ function isTransient(err) {
 
 const b64url = buf => Buffer.from(buf).toString('base64').replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
 
-/** OAuth2 access token for a service-account key (JWT bearer grant). */
-async function getAccessToken(sa, { fetchImpl = fetch, now = Date.now } = {}) {
+/** OAuth2 access token for a service-account key (JWT bearer grant); read-only scope unless `scope` is given. */
+async function getAccessToken(sa, { fetchImpl = fetch, now = Date.now, scope = SCOPE } = {}) {
     if (!sa || !sa.client_email || !sa.private_key) throw new Error('Service account JSON needs client_email and private_key');
     const iat = Math.floor(now() / 1000);
     const aud = sa.token_uri || TOKEN_URI;
     const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
-    const claims = b64url(JSON.stringify({ iss: sa.client_email, scope: SCOPE, aud, iat, exp: iat + 600 }));
+    const claims = b64url(JSON.stringify({ iss: sa.client_email, scope, aud, iat, exp: iat + 600 }));
     const signature = b64url(crypto.createSign('RSA-SHA256').update(`${header}.${claims}`).sign(sa.private_key));
     const res = await fetchImpl(aud, {
         method: 'POST',

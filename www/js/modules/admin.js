@@ -67,15 +67,15 @@ const AdminManager = {
         container.innerHTML = `
             <div class="filter-buttons" style="margin-bottom: 16px;">
                 <button class="filter-btn ${this.activeTab === 'users' ? 'active' : ''}" 
-                        onclick="window.app.admin.showTab('users')">
+                        data-onclick="admin.showTab('users')">
                     👥 ${tx('ui.admin.tab_users')}
                 </button>
                 <button class="filter-btn ${this.activeTab === 'data' ? 'active' : ''}" 
-                        onclick="window.app.admin.showTab('data')">
+                        data-onclick="admin.showTab('data')">
                     📊 ${tx('ui.admin.tab_data')}
                 </button>
                 <button class="filter-btn admin-open-settings" type="button"
-                        onclick="window.app.nav.showTab('settings-shop', event)">
+                        data-onclick="nav.showTab('settings-shop', event)">
                     ⚙️ ${tx('ui.admin.shop_settings_link')}
                 </button>
             </div>
@@ -146,7 +146,7 @@ const AdminManager = {
                 <h3>${tx('ui.admin.activity_title')}</h3>
                 <p class="setting-description">${tx('ui.admin.activity_hint')}</p>
                 <div class="filter-buttons" id="adminActivityRange">
-                    ${ACTIVITY_RANGES.map(r => `<button type="button" class="filter-btn" data-range="${r}" onclick="window.app.admin.showActivity('${r}')">${tx(`ui.admin.range_${r}`)}</button>`).join('')}
+                    ${ACTIVITY_RANGES.map(r => `<button type="button" class="filter-btn" data-range="${r}" data-onclick="admin.showActivity('${r}')">${tx(`ui.admin.range_${r}`)}</button>`).join('')}
                 </div>
                 <div id="adminActivity"></div>
             </div>
@@ -209,7 +209,7 @@ const AdminManager = {
                     <span class="user-role-badge pending">${tx(user.status === 'rejected' ? 'ui.admin.status_rejected' : 'ui.admin.status_removed')}</span>
                 </div>
                 <div class="user-actions">
-                    <button type="button" onclick="window.app.admin.restoreUser('${Helpers.escapeJsAttr(user.id)}', '${Helpers.escapeJsAttr(user.name || '')}')">
+                    <button type="button" data-onclick="admin.restoreUser('${Helpers.escapeJsAttr(user.id)}', '${Helpers.escapeJsAttr(user.name || '')}')">
                         ↩️ ${tx('ui.admin.restore')}
                     </button>
                 </div>
@@ -313,10 +313,10 @@ const AdminManager = {
                         <option value="staff">${Helpers.escapeHtml(Helpers.roleLabel('staff'))}</option>
                         <option value="manager">${Helpers.escapeHtml(Helpers.roleLabel('manager'))}</option>
                     </select>
-                    <button class="btn-approve" onclick="window.app.admin.approveUser('${Helpers.escapeJsAttr(user.id)}')">
+                    <button class="btn-approve" data-onclick="admin.approveUser('${Helpers.escapeJsAttr(user.id)}')">
                         ✓ ${tx('ui.admin.approve')}
                     </button>
-                    <button class="btn-reject" onclick="window.app.admin.rejectUser('${Helpers.escapeJsAttr(user.id)}')">
+                    <button class="btn-reject" data-onclick="admin.rejectUser('${Helpers.escapeJsAttr(user.id)}')">
                         ✕ ${tx('ui.admin.reject')}
                     </button>
                 </div>
@@ -360,13 +360,13 @@ const AdminManager = {
                 </div>
                 ${!isCurrentUser ? `
                 <div class="user-actions" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
-                    <button onclick="window.app.admin.showChangeRole('${Helpers.escapeJsAttr(user.id)}', '${safeName}', '${Helpers.escapeJsAttr(user.role)}')" style="flex: 1; min-width: 80px; padding: 8px 12px; background: #f7fafc; border: 1px solid #e0e0e0; border-radius: 8px; cursor: pointer; font-size: 13px;">
+                    <button data-onclick="admin.showChangeRole('${Helpers.escapeJsAttr(user.id)}', '${safeName}', '${Helpers.escapeJsAttr(user.role)}')" style="flex: 1; min-width: 80px; padding: 8px 12px; background: #f7fafc; border: 1px solid #e0e0e0; border-radius: 8px; cursor: pointer; font-size: 13px;">
                         ✏️ ${tx('ui.admin.edit_role')}
                     </button>
-                    <button onclick="window.app.admin.resetUserPassword('${Helpers.escapeJsAttr(user.id)}', '${safeEmail}')" style="flex: 1; min-width: 80px; padding: 8px 12px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; cursor: pointer; font-size: 13px; color: #92400e;">
+                    <button data-onclick="admin.resetUserPassword('${Helpers.escapeJsAttr(user.id)}', '${safeEmail}')" style="flex: 1; min-width: 80px; padding: 8px 12px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; cursor: pointer; font-size: 13px; color: #92400e;">
                         🔑 ${tx('ui.admin.reset_password')}
                     </button>
-                    <button onclick="window.app.admin.deleteUser('${Helpers.escapeJsAttr(user.id)}', '${safeName}')" style="flex: 1; min-width: 80px; padding: 8px 12px; background: #fee2e2; border: 1px solid #ef4444; border-radius: 8px; cursor: pointer; font-size: 13px; color: #991b1b;">
+                    <button data-onclick="admin.deleteUser('${Helpers.escapeJsAttr(user.id)}', '${safeName}')" style="flex: 1; min-width: 80px; padding: 8px 12px; background: #fee2e2; border: 1px solid #ef4444; border-radius: 8px; cursor: pointer; font-size: 13px; color: #991b1b;">
                         🗑️ ${tx('ui.modals.delete')}
                     </button>
                 </div>
@@ -489,7 +489,7 @@ const AdminManager = {
             <div class="settings-card">
                 <h3>📊 ${tx('ui.admin.storage_title')}</h3>
                 <p class="setting-description">${tx('ui.admin.storage_hint')}</p>
-                <button class="add-item-btn" onclick="window.app.admin.loadStorageStats()" style="padding: 8px 16px; margin-bottom: 12px;">
+                <button class="add-item-btn" data-onclick="admin.loadStorageStats()" style="padding: 8px 16px; margin-bottom: 12px;">
                     🔄 ${tx('ui.admin.storage_calc')}
                 </button>
                 <div id="adminStorageStats"></div>
@@ -500,7 +500,7 @@ const AdminManager = {
                 <p class="setting-description">${tx('ui.backup.hint')}</p>
                 <label class="add-item-btn backup-pick" style="display: inline-block; padding: 8px 16px; margin-bottom: 12px; cursor: pointer;">
                     📂 ${tx('ui.backup.pick')}
-                    <input type="file" id="adminBackupFile" accept=".json,.gz,application/json,application/gzip" hidden onchange="window.app.admin.checkBackupFile(this.files && this.files[0]); this.value = ''">
+                    <input type="file" id="adminBackupFile" accept=".json,.gz,application/json,application/gzip" hidden data-onchange="admin.checkBackupInput(this)">
                 </label>
                 <div id="adminBackupResult" aria-live="polite"></div>
                 <details class="backup-restore-guide">
@@ -518,7 +518,7 @@ const AdminManager = {
             <div class="settings-card danger-zone">
                 <h4>⚠️ ${tx('ui.admin.danger_zone')}</h4>
                 <p>${tx('ui.admin.danger_hint')}</p>
-                <button class="danger-btn" onclick="window.app.admin.clearAllData()">
+                <button class="danger-btn" data-onclick="admin.clearAllData()">
                     🗑️ ${tx('ui.admin.clear_all')}
                 </button>
             </div>

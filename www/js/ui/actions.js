@@ -5,8 +5,9 @@
  * `window.app.`:
  *
  *     <button data-onclick="nav.showTab('billing', event)">
- *     <input data-onchange="settings.setLang(this.value)">
+ *     <input data-onchange="i18n.setLang(this.value)">
  *     <a href="#" data-onclick="auth.showTab('login'); return false">
+ *     <input data-onenter="event.preventDefault(); billing.addWeight(true)">
  *
  * One listener per event type on the document finds the elements carrying the attribute (the
  * target and its ancestors, nearest first, as the browser runs inline handlers while the event
@@ -27,10 +28,12 @@
 
 /** Events handled; focus / blur don't bubble, so their `focusin` / `focusout` are used; `toggle`
  * (a <details> opening or closing) doesn't bubble either: only the element itself, caught on the
- * way down. */
+ * way down. `enter` is a keydown of the Enter key (was an inline onkeypress testing
+ * `event.key === 'Enter'`). */
 export const ACTION_EVENTS = Object.freeze({
     click: 'click', change: 'change', input: 'input', submit: 'submit',
-    keydown: 'keydown', keyup: 'keyup', focus: 'focusin', blur: 'focusout', toggle: 'toggle'
+    keydown: 'keydown', keyup: 'keyup', focus: 'focusin', blur: 'focusout', toggle: 'toggle',
+    enter: 'keydown'
 });
 
 const NAME = /[A-Za-z_$][\w$]*/y;
@@ -242,6 +245,7 @@ export function installActions(doc = document) {
         // focus/blur/toggle don't bubble: only the element itself, as with its inline handler
         const bubbles = type !== 'focus' && type !== 'blur' && type !== 'toggle';
         doc.addEventListener(domType, (event) => {
+            if (type === 'enter' && (event.key !== 'Enter' || event.isComposing)) return;
             let el = event.target instanceof Element ? event.target : event.target?.parentElement;
             while (el && el !== doc) {
                 const src = el.getAttribute?.(attr);

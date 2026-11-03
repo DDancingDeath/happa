@@ -1,6 +1,7 @@
 /**
  * Every inline handler (`onclick="window.app.x.y(...)"` and other `on*=`
- * attributes) in templates, index.html and HTML rendered from JS must name a
+ * attributes, and the delegated `data-on*="x.y(...)"` ones, #89) in templates,
+ * index.html and HTML rendered from JS must name a
  * method that `main.js` (or a lazily loaded section) registers on `window.app`.
  * AadhatManagementApp#74: Admin → Users "Reset password" / "Delete" threw because
  * the facade did not expose them.
@@ -133,8 +134,11 @@ function collectRegistry() {
     return defined;
 }
 
-const HANDLER_ATTR = /\bon[a-z]+\s*=\s*(["'])([\s\S]*?)\1/g;
+// Inline `on*=` handlers name `window.app.…` calls; delegated `data-on*=` attributes (#89,
+// ui/actions.js) name the same calls without the `window.app.` prefix.
+const HANDLER_ATTR = /(data-)?\bon[a-z]+\s*=\s*(["'])([\s\S]*?)\2/g;
 const APP_CALL = /window\.app\.([\w$]+(?:\.[\w$]+)*)\s*\(/g;
+const DATA_CALL = /(?:^|;)\s*(?:window\.app\.)?([\w$]+(?:\.[\w$]+)+)\s*\(/g;
 
 function collectHandlerCalls() {
     const files = [
@@ -146,7 +150,10 @@ function collectHandlerCalls() {
     for (const file of files) {
         const src = fs.readFileSync(file, 'utf8');
         for (const attr of src.matchAll(HANDLER_ATTR)) {
-            for (const call of attr[2].matchAll(APP_CALL)) {
+            const found = attr[1]
+                ? [...attr[3].matchAll(DATA_CALL)].filter((c) => !c[1].startsWith('event.'))
+                : [...attr[3].matchAll(APP_CALL)];
+            for (const call of found) {
                 const line = src.slice(0, attr.index).split('\n').length;
                 calls.push({ where: `${path.relative(WWW, file)}:${line}`, path: call[1] });
             }
