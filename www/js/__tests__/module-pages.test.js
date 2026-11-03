@@ -503,7 +503,7 @@ describe('Admin → Users', () => {
         const tabs = document.getElementById('adminTabsContainer');
         expect(tabs.innerHTML).not.toContain("showTab('configure')");
         expect(tabs.textContent).not.toMatch(/Configure/);
-        expect(tabs.querySelector('.admin-open-settings').getAttribute('onclick')).toContain("showTab('settings-shop'");
+        expect(tabs.querySelector('.admin-open-settings').getAttribute('data-onclick')).toContain("showTab('settings-shop'");
         AdminManager.showTab('configure');
         expect(window.app.nav.showTab).toHaveBeenCalledWith('settings-shop');
         expect(AdminManager.activeTab).toBe('users');
