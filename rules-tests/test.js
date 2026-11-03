@@ -2095,6 +2095,157 @@ function defineSuite(prefix) {
         }
     });
 
+    // cleared / openDue are not edit-logged fields: inside the edit window a member (own bill) or a
+    // manager must still settle a due before it reads as 0 (outstandingDue) or leaves the dues query.
+    const zeroingWrites = (uid) => [
+        { cleared: true, clientVersion: 4 },
+        { cleared: true, openDue: false, clientVersion: 4 },
+        { cleared: true, openDue: false, clearedAt: 'x', clearedBy: uid, clearedByName: 'S', clientVersion: 4 },
+        { openDue: false, clientVersion: 4 },
+        { cleared: true, clearedBy: 'legacyOwner', clientVersion: 4 },
+        { due: 0, clientVersion: 4 },
+        { amountPaid: 100, clientVersion: 4 },
+        { openingBalance: { amount: 0 }, clientVersion: 4 },
+        { 'payment.writtenOff': 100, 'payment.due': 0, dueAmount: 0, clientVersion: 4 },
+        { 'payment.due': 0, clientVersion: 4 },
+        { dueAmount: 0, clientVersion: 4 },
+        { paidAt: PAID_AT, clientVersion: 4 },
+        { voided: true, clientVersion: 4 }
+    ];
+    const windowBill = (ms) => ({ ...dueBill, userId: 'staff1', createdAt: savedAgo(ms) });
+    const ZERO_ACTORS = [['staff1', 'member, own bill'], ['manager1', 'manager']];
+
+    t('cleared (#126): a member on their own bill or a manager cannot zero a due without settling it, in or out of the edit window', async () => {
+        const allowed = [];
+        const refused = async (label, write) => {
+            try {
+                await assertFails(write);
+            } catch (e) {
+                allowed.push(label);
+            }
+        };
+        for (const coll of bills) {
+            for (const [uid, who] of ZERO_ACTORS) {
+                for (const [age, where] of [[HOUR, 'in window'], [10 * DAY, 'out of window']]) {
+                    const at = `${coll} ${who} ${where}`;
+                    // one bill per case: an allowed logged edit would leave edits/1 behind
+                    const id = `z-${uid}-${age}`;
+                    const ref = as(uid).collection(coll).doc(id);
+                    const fresh = async () => {
+                        await seedBill(coll, id, windowBill(age));
+                        return stored(coll, id);
+                    };
+                    for (const w of zeroingWrites(uid)) {
+                        await fresh();
+                        await refused(`${at}: ${JSON.stringify(w)}`, ref.update(w));
+                    }
+                    await refused(`${at}: set with cleared`, ref.set({ ...(await fresh()), cleared: true, openDue: false }));
+                    await fresh();
+                    await refused(`${at}: logged edit with cleared`, logged(uid, coll, id, 1, { total: 110, cleared: true, openDue: false }));
+                }
+            }
+        }
+        if (allowed.length) throw new Error(`allowed:\n         ${allowed.join('\n         ')}`);
+    });
+
+    t('cleared (#126): legacy bills whose due is a top-level due or worked out from the total are not cleared by flipping cleared', async () => {
+        const allowed = [];
+        const legacy = {
+            top: { userId: 'manager1', total: 100, due: 100, timestamp: 1, clientVersion: 3 },
+            derived: { userId: 'manager1', total: 100, cashPayment: 40, timestamp: 1, clientVersion: 3 }
+        };
+        for (const coll of bills) {
+            for (const [id, write] of [
+                ['top', { cleared: true, clearedBy: 'staff1', clientVersion: 3 }],
+                ['top', { cleared: true, openDue: false, clientVersion: 3 }],
+                ['top', { openDue: false, clientVersion: 3 }],
+                ['derived', { cleared: true, clearedBy: 'staff1', clientVersion: 3 }],
+                ['derived', { cleared: true, openDue: false, clientVersion: 3 }]
+            ]) {
+                await seedBill(coll, id, legacy[id]);
+                try {
+                    await assertFails(as('staff1').collection(coll).doc(id).update(write));
+                } catch (e) {
+                    allowed.push(`${coll} ${id}: ${JSON.stringify(write)}`);
+                }
+            }
+            await seedBill(coll, 'top', legacy.top);
+            await assertSucceeds(as('staff1').collection(coll).doc('top').update({ openDue: true, clientVersion: 3 }));
+        }
+        if (allowed.length) throw new Error(`allowed:\n         ${allowed.join('\n         ')}`);
+    });
+
+    t('cleared (#126): inside the edit window the app\'s own paths still clear, settle, void, edit and backfill', async () => {
+        const settle = (uid) => ({
+            payment: { online: 0, cash: 100, due: 0, total: 100 },
+            payments: [...dueBill.payments, { id: 's', amount: 100, cash: 100, online: 0, at: PAID_AT, settlesDue: true }],
+            dueAmount: 0, openDue: false, paidAt: PAID_AT,
+            cleared: true, clearedAt: 'x', clearedBy: uid, clearedByName: 'S', clientVersion: 4
+        });
+        const writeOff = (uid) => ({
+            payment: { online: 0, cash: 0, due: 0, total: 0, writtenOff: 100 }, dueAmount: 0, openDue: false,
+            payments: [...dueBill.payments, { id: 'w', kind: 'writeOff', amount: 100, reason: 'gone', at: PAID_AT }],
+            cleared: true, clearedAt: 'x', clearedBy: uid, clearedByName: 'S', clientVersion: 4, paidAt: PAID_AT
+        });
+        const refused = [];
+        const step = async (label, write) => {
+            try {
+                await assertSucceeds(write);
+            } catch (e) {
+                refused.push(`${label}: ${e.message.split('\n')[0]}`);
+            }
+        };
+        for (const coll of bills) {
+            for (const [uid] of ZERO_ACTORS) {
+                const ok = async (id, write, bill = windowBill(HOUR)) => {
+                    await seedBill(coll, id, bill);
+                    await step(`${coll} ${uid} ${id}`, write(as(uid).collection(coll).doc(id)));
+                };
+                // Mark as cleared (cash), write-off, Complete all due, a paisa written off without an entry
+                await ok('mark', ref => ref.update(settle(uid)));
+                await ok('wo', ref => ref.update(writeOff(uid)));
+                await seedBill(coll, 'all1', windowBill(HOUR));
+                await seedBill(coll, 'all2', windowBill(HOUR));
+                const b = as(uid).batch();
+                b.update(as(uid).collection(coll).doc('all1'), settle(uid));
+                b.update(as(uid).collection(coll).doc('all2'), settle(uid));
+                await step(`${coll} ${uid} complete all`, b.commit());
+                await ok('paisa', ref => ref.update({
+                    payment: { online: 0, cash: 99.99, due: 0, total: 99.99, writtenOff: 0 }, dueAmount: 0, openDue: false,
+                    cleared: true, clearedAt: 'x', clearedBy: uid, clearedByName: 'S', clientVersion: 4
+                }), { ...windowBill(HOUR), payment: { online: 0, cash: 99.99, due: 0.01, total: 99.99 }, dueAmount: 0.01 });
+                // a part payment (party payment) keeps the bill open
+                await ok('part', ref => ref.update({
+                    payment: { online: 0, cash: 40, due: 60, total: 40 }, dueAmount: 60, openDue: true, clientVersion: 4,
+                    payments: [...dueBill.payments, { id: 'pp', amount: 40, cash: 40, online: 0, at: PAID_AT, bulk: true }], paidAt: PAID_AT
+                }));
+                // a logged edit that settles the due may close it; openDue follows the due (prepareStockRecord)
+                await seedBill(coll, `edit-${uid}`, windowBill(HOUR));
+                await step(`${coll} ${uid} edit`, logged(uid, coll, `edit-${uid}`, 1, {
+                    payment: { online: 0, cash: 100, due: 0, total: 100 }, dueAmount: 0, openDue: false
+                }));
+                await seedBill(coll, `edit2-${uid}`, windowBill(HOUR));
+                await step(`${coll} ${uid} edit2`, logged(uid, coll, `edit2-${uid}`, 1, { total: 120, openDue: true }));
+                // an edit of a cleared bill keeps cleared as stored; openDue false stays with it
+                await seedBill(coll, `cl-${uid}`, { ...windowBill(HOUR), ...writeOff(uid) });
+                await step(`${coll} ${uid} edit cleared`, logged(uid, coll, `cl-${uid}`, 1, { customerName: 'Ram', cleared: true, openDue: false }));
+                // the legacy backfill sets openDue to the due
+                await ok('bf', ref => ref.update({ openDue: true, clientVersion: 4 }), { ...windowBill(HOUR), openDue: false });
+                await ok('bf0', ref => ref.update({ openDue: false, clientVersion: 4 }),
+                    { ...windowBill(HOUR), payment: { online: 0, cash: 100, due: 0, total: 100 }, dueAmount: 0 });
+            }
+            // void: own bill only, no payments since it was saved
+            const noPay = { ...windowBill(HOUR) };
+            delete noPay.payments;
+            await seedBill(coll, 'v', noPay);
+            await step(`${coll} void`, as('staff1').collection(coll).doc('v').update(voidFields('staff1')));
+            // the owner is not limited
+            await seedBill(coll, 'own', windowBill(HOUR));
+            await step(`${coll} owner`, as('legacyOwner').collection(coll).doc('own').update({ cleared: true, openDue: false, clientVersion: 4 }));
+        }
+        if (refused.length) throw new Error(`refused:\n         ${refused.join('\n         ')}`);
+    });
+
     t('bill create (#65): paid + due at most the total + Rs 1; money in paise; no opening records', async () => {
         for (const coll of bills) {
             const c = as('staff1').collection(coll);
