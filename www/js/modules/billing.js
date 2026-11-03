@@ -211,7 +211,8 @@ const BillingManager = {
             purchaseBtn.style.borderColor = '';
             saleBtn.style.background = '';
             saleBtn.style.borderColor = '';
-            event.currentTarget.classList.add('active');
+            // The tab for this mode (a delegated click's currentTarget is the document, #89)
+            (mode === 'sale' ? saleBtn : purchaseBtn).classList.add('active');
         }
         
         if (mode === 'sale') {
@@ -761,10 +762,10 @@ const BillingManager = {
                         <div class="history-date">${Helpers.escapeHtml(draft.date)}</div>
                         ${draft.customerName ? `<div style="color: #666; font-size: 13px; margin-top: 4px;">${Helpers.escapeHtml(t('ui.common.customer'))} ${Helpers.escapeHtml(draft.customerName)}</div>` : ''}
                         <div style="display: flex; gap: 8px; margin-top: 8px;">
-                            <button onclick="window.app.billing.loadDraft('${Helpers.escapeJsAttr(draft.id)}')" style="flex: 1; padding: 8px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            <button data-onclick="billing.loadDraft('${Helpers.escapeJsAttr(draft.id)}')" style="flex: 1; padding: 8px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
                                 ${Helpers.escapeHtml(t('ui.billing.load'))}
                             </button>
-                            <button onclick="window.app.billing.deleteDraft('${Helpers.escapeJsAttr(draft.id)}')" style="flex: 1; padding: 8px; background: #b91c1c; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            <button data-onclick="billing.deleteDraft('${Helpers.escapeJsAttr(draft.id)}')" style="flex: 1; padding: 8px; background: #b91c1c; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
                                 ${Helpers.escapeHtml(t('ui.modals.delete'))}
                             </button>
                         </div>

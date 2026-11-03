@@ -1,19 +1,19 @@
 <div id="billing" class="tab active">
 
         <div class="filter-buttons" style="margin-bottom: 20px;">
-            <button class="filter-btn active" id="purchaseModeBtn" onclick="window.app.billing.switchMode('purchase', event)" data-i18n="ui.common.purchase">Purchase</button>
-            <button class="filter-btn" id="saleModeBtn" onclick="window.app.billing.switchMode('sale', event)" data-i18n="ui.billing.sale">Retail sale</button>
+            <button class="filter-btn active" id="purchaseModeBtn" data-onclick="billing.switchMode('purchase', event)" data-i18n="ui.common.purchase">Purchase</button>
+            <button class="filter-btn" id="saleModeBtn" data-onclick="billing.switchMode('sale', event)" data-i18n="ui.billing.sale">Retail sale</button>
         </div>
         
         <!-- Draft Management -->
         <div style="display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;">
-            <button type="button" id="saveDraftBtn" onclick="window.app.billing.saveDraft()" class="draft-btn draft-save-btn" style="background: #fff !important; border: 1px solid #2563eb !important; color: #1d4ed8 !important; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;" data-i18n="ui.billing.save_draft">
+            <button type="button" id="saveDraftBtn" data-onclick="billing.saveDraft()" class="draft-btn draft-save-btn" style="background: #fff !important; border: 1px solid #2563eb !important; color: #1d4ed8 !important; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;" data-i18n="ui.billing.save_draft">
                 Save draft
             </button>
-            <button onclick="window.app.billing.showDrafts()" class="draft-btn" style="background: #15803d !important; border-color: #15803d !important; color: white !important; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;">
+            <button data-onclick="billing.showDrafts()" class="draft-btn" style="background: #15803d !important; border-color: #15803d !important; color: white !important; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;">
                 <span data-i18n="ui.billing.drafts">Drafts</span> <span>(<span id="draftCount">0</span>)</span>
             </button>
-            <button onclick="window.app.billing.clearBill()" class="draft-btn" style="background: #b91c1c !important; border-color: #b91c1c !important; color: white !important; display: flex; align-items: center; justify-content: center;" data-i18n="ui.billing.clear">
+            <button data-onclick="billing.clearBill()" class="draft-btn" style="background: #b91c1c !important; border-color: #b91c1c !important; color: white !important; display: flex; align-items: center; justify-content: center;" data-i18n="ui.billing.clear">
                 Clear
             </button>
         </div>
@@ -21,8 +21,8 @@
         <div id="autoSaveBanner" class="autosave-banner" role="status" hidden>
             <span id="autoSaveBannerText"></span>
             <div class="autosave-banner-actions">
-                <button type="button" class="autosave-restore" onclick="window.app.billing.resolveRecovery(true)" data-i18n="ui.billing.restore">Restore</button>
-                <button type="button" class="autosave-discard" onclick="window.app.billing.resolveRecovery(false)" data-i18n="ui.billing.discard">Discard</button>
+                <button type="button" class="autosave-restore" data-onclick="billing.resolveRecovery(true)" data-i18n="ui.billing.restore">Restore</button>
+                <button type="button" class="autosave-discard" data-onclick="billing.resolveRecovery(false)" data-i18n="ui.billing.discard">Discard</button>
             </div>
         </div>
 
@@ -33,16 +33,16 @@
             <label style="width: 100px;" data-i18n="ui.common.customer">Customer:</label>
             <div style="display: flex; gap: 8px; flex: 1; align-items: center;">
                 <input type="text" id="customerName" list="customerOptions" placeholder="Name (optional)" style="flex: 1;"  data-i18n-placeholder="ui.billing.enter_customer_name_optional"/>
-                <button class="contact-pick-btn" data-perm="contacts" onclick="window.app.billing.pickContact()" style="padding: 8px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 44px; display: flex; align-items: center; justify-content: center;" title="Pick Contact" data-i18n-title="ui.common.pick_contact">👤</button>
+                <button class="contact-pick-btn" data-perm="contacts" data-onclick="billing.pickContact()" style="padding: 8px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 44px; display: flex; align-items: center; justify-content: center;" title="Pick Contact" data-i18n-title="ui.common.pick_contact">👤</button>
             </div>
             <datalist id="customerOptions"></datalist>
         </div>
 
         <div class="bill-totals" style="padding: 16px; margin-bottom: 16px;">
-            <button type="button" class="voice-mic-btn" id="voiceMicPurchase" hidden onclick="window.app.voice.start('purchase')" data-i18n="ui.voice.mic" data-i18n-title="ui.voice.mic_title" title="Say item, weight and rate">🎤 Speak the line</button>
+            <button type="button" class="voice-mic-btn" id="voiceMicPurchase" hidden data-onclick="voice.start('purchase')" data-i18n="ui.voice.mic" data-i18n-title="ui.voice.mic_title" title="Say item, weight and rate">🎤 Speak the line</button>
             <div class="form-row">
                 <label data-i18n="ui.common.item">Item:</label>
-                <select id="billItem" onchange="window.app.billing.loadRates()"></select>
+                <select id="billItem" data-onchange="billing.loadRates()"></select>
             </div>
 
             <div class="form-row">
@@ -54,8 +54,8 @@
             <div class="form-row">
                 <label data-i18n="ui.billing.weight_kg">Weight (kg):</label>
                 <div style="display: flex; gap: 8px; flex: 1;">
-                    <input type="number" inputmode="decimal" id="newWeight" placeholder="Weight" style="flex: 1;" onkeypress="if(event.key === 'Enter') { event.preventDefault(); window.app.billing.addWeight(true); }"  data-i18n-placeholder="ui.billing.enter_weight"/>
-                    <button class="quick-add-btn-inline" onclick="window.app.billing.addWeight()" data-i18n="ui.billing.add">Add</button>
+                    <input type="number" inputmode="decimal" id="newWeight" placeholder="Weight" style="flex: 1;" data-onenter="event.preventDefault(); billing.addWeight(true)"  data-i18n-placeholder="ui.billing.enter_weight"/>
+                    <button class="quick-add-btn-inline" data-onclick="billing.addWeight()" data-i18n="ui.billing.add">Add</button>
                 </div>
             </div>
 
@@ -66,7 +66,7 @@
                 <span><span data-i18n="ui.billing.packets">Packets:</span> <strong><span id="totalPackets">0</span></strong></span>
             </div>
 
-            <button class="add-to-bill-btn" onclick="window.app.billing.addToBill()" data-i18n="ui.common.add_bill">Add to Bill</button>
+            <button class="add-to-bill-btn" data-onclick="billing.addToBill()" data-i18n="ui.common.add_bill">Add to Bill</button>
         </div>
 
         <div id="weightBreakdownSection" style="margin: 20px 0;"></div>
@@ -99,13 +99,13 @@
             
             <div class="labor-input-row">
                 <label class="checkbox-label" style="margin: 0;">
-                    <input type="checkbox" id="autoLaborCharge" checked onchange="window.app.billing.updateTotals()">
+                    <input type="checkbox" id="autoLaborCharge" checked data-onchange="billing.updateTotals()">
                     <span data-i18n="ui.billing.labor">Labour (₹):</span>
                 </label>
                 <span id="laborCalculation" style="color: #595959; font-size: 14px;">6 × 0</span>
                 <input type="number" inputmode="decimal" id="manualLaborCharges" value="0" 
-                       onchange="this.dataset.manuallySet = 'true'; window.app.billing.updateTotals();" 
-                       onfocus="this.dataset.manuallySet = 'true';" 
+                       data-onchange="billing.markLabourManual(this); billing.updateTotals()" 
+                       data-onfocus="billing.markLabourManual(this)" 
                        placeholder="0" />
             </div>
             
@@ -116,14 +116,14 @@
 
             <div class="payment-row">
                 <label data-i18n="ui.common.online">Online (₹):</label>
-                <input type="checkbox" id="onlineCheckbox" onchange="window.app.billing.fillPayableAmount('online')" />
-                <input type="number" inputmode="decimal" id="onlinePayment" oninput="window.app.billing.updatePaymentTotal();" placeholder="0" />
+                <input type="checkbox" id="onlineCheckbox" data-onchange="billing.fillPayableAmount('online')" />
+                <input type="number" inputmode="decimal" id="onlinePayment" data-oninput="billing.updatePaymentTotal()" placeholder="0" />
             </div>
             
             <div class="payment-row">
                 <label data-i18n="ui.common.cash">Cash (₹):</label>
-                <input type="checkbox" id="cashCheckbox" onchange="window.app.billing.fillPayableAmount('cash')" />
-                <input type="number" inputmode="decimal" id="cashPayment" oninput="window.app.billing.updatePaymentTotal();" placeholder="0" />
+                <input type="checkbox" id="cashCheckbox" data-onchange="billing.fillPayableAmount('cash')" />
+                <input type="number" inputmode="decimal" id="cashPayment" data-oninput="billing.updatePaymentTotal()" placeholder="0" />
             </div>
             
             <div class="payment-row payment-total" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); color: #1976d2;">
@@ -133,14 +133,14 @@
             
             <div class="payment-row">
                 <label data-i18n="ui.common.due">Due (₹):</label>
-                <input type="checkbox" id="dueCheckbox" onchange="window.app.billing.fillPayableAmount('due')" />
-                <input type="number" inputmode="decimal" id="dueAmount" oninput="window.app.billing.updatePaymentTotal();" placeholder="0" />
+                <input type="checkbox" id="dueCheckbox" data-onchange="billing.fillPayableAmount('due')" />
+                <input type="number" inputmode="decimal" id="dueAmount" data-oninput="billing.updatePaymentTotal()" placeholder="0" />
             </div>
 
             <div class="payment-row split-remaining-row">
                 <span data-i18n="ui.common.not_split_yet">Not split yet:</span>
                 <strong id="purchaseSplitRemaining">₹0</strong>
-                <button type="button" class="split-rest-btn" onclick="window.app.billing.putRestInDue('purchase')" data-i18n="ui.common.rest_due">Rest → Due</button>
+                <button type="button" class="split-rest-btn" data-onclick="billing.putRestInDue('purchase')" data-i18n="ui.common.rest_due">Rest → Due</button>
             </div>
         </div>
 
@@ -162,12 +162,12 @@
         <div class="bill-no-hint" id="purchaseBillNo"></div>
 
         <div style="display: flex; gap: 12px; margin-top: 16px;">
-            <button onclick="window.app.billing.shareWhatsApp()" style="flex: 1; padding: 12px; background: #15803d; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;">
+            <button data-onclick="billing.shareWhatsApp()" style="flex: 1; padding: 12px; background: #15803d; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                 WhatsApp
             </button>
-            <button class="save-btn save-purchase-btn" id="saveBillBtn" onclick="window.app.billing.saveBill()" style="flex: 1; padding: 12px;" data-i18n="ui.common.save">Save</button>
-            <button class="print-btn print-purchase-btn" id="printBillBtn" onclick="window.app.billing.printBill()" style="flex: 1; padding: 12px;" data-i18n="ui.common.print">Print</button>
+            <button class="save-btn save-purchase-btn" id="saveBillBtn" data-onclick="billing.saveBill()" style="flex: 1; padding: 12px;" data-i18n="ui.common.save">Save</button>
+            <button class="print-btn print-purchase-btn" id="printBillBtn" data-onclick="billing.printBill()" style="flex: 1; padding: 12px;" data-i18n="ui.common.print">Print</button>
                 </div>
         </div>
         </div>
@@ -180,16 +180,16 @@
             <label style="width: 100px;" data-i18n="ui.common.customer">Customer:</label>
             <div style="display: flex; gap: 8px; flex: 1; align-items: center;">
                 <input type="text" id="saleCustomerName" list="saleCustomerOptions" placeholder="Name (optional)" style="flex: 1;"  data-i18n-placeholder="ui.billing.enter_customer_name_optional"/>
-                <button class="contact-pick-btn" data-perm="contacts" onclick="window.app.billing.pickSaleContact()" style="padding: 8px 12px; background: #15803d; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 44px; display: flex; align-items: center; justify-content: center;" title="Pick Contact" data-i18n-title="ui.common.pick_contact">👤</button>
+                <button class="contact-pick-btn" data-perm="contacts" data-onclick="billing.pickSaleContact()" style="padding: 8px 12px; background: #15803d; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 44px; display: flex; align-items: center; justify-content: center;" title="Pick Contact" data-i18n-title="ui.common.pick_contact">👤</button>
             </div>
             <datalist id="saleCustomerOptions"></datalist>
         </div>
 
         <div class="bill-totals" style="padding: 16px; margin-bottom: 16px; border-radius: 12px;">
-            <button type="button" class="voice-mic-btn" id="voiceMicSale" hidden onclick="window.app.voice.start('sale')" data-i18n="ui.voice.mic" data-i18n-title="ui.voice.mic_title" title="Say item, weight and rate">🎤 Speak the line</button>
+            <button type="button" class="voice-mic-btn" id="voiceMicSale" hidden data-onclick="voice.start('sale')" data-i18n="ui.voice.mic" data-i18n-title="ui.voice.mic_title" title="Say item, weight and rate">🎤 Speak the line</button>
             <div class="form-row">
                 <label data-i18n="ui.common.item">Item:</label>
-                <select id="saleItem" onchange="window.app.billing.loadSaleRates()"></select>
+                <select id="saleItem" data-onchange="billing.loadSaleRates()"></select>
             </div>
 
             <div class="form-row">
@@ -201,8 +201,8 @@
             <div class="form-row">
                 <label data-i18n="ui.billing.weight_kg">Weight (kg):</label>
                 <div style="display: flex; gap: 8px; flex: 1;">
-                    <input type="number" inputmode="decimal" id="saleWeight" placeholder="Weight" style="flex: 1;" onkeypress="if(event.key === 'Enter') { event.preventDefault(); window.app.billing.addSaleWeight(); }"  data-i18n-placeholder="ui.billing.enter_weight"/>
-                    <button class="quick-add-btn-inline" onclick="window.app.billing.addSaleWeight()" style="background: #15803d; border-color: #15803d;" data-i18n="ui.billing.add">Add</button>
+                    <input type="number" inputmode="decimal" id="saleWeight" placeholder="Weight" style="flex: 1;" data-onenter="event.preventDefault(); billing.addSaleWeight()"  data-i18n-placeholder="ui.billing.enter_weight"/>
+                    <button class="quick-add-btn-inline" data-onclick="billing.addSaleWeight()" style="background: #15803d; border-color: #15803d;" data-i18n="ui.billing.add">Add</button>
                 </div>
             </div>
 
@@ -213,7 +213,7 @@
                 <span><span data-i18n="ui.billing.packets">Packets:</span> <strong><span id="salePacketCount">0</span></strong></span>
             </div>
 
-            <button class="add-to-bill-btn" onclick="window.app.billing.addToSalesBill()" style="background: #15803d;" data-i18n="ui.common.add_bill">Add to Bill</button>
+            <button class="add-to-bill-btn" data-onclick="billing.addToSalesBill()" style="background: #15803d;" data-i18n="ui.common.add_bill">Add to Bill</button>
         </div>
 
         <h3 data-i18n="ui.common.bill_items">Bill Items</h3>
@@ -253,14 +253,14 @@
 
             <div class="payment-row">
                 <label data-i18n="ui.common.online">Online (₹):</label>
-                <input type="checkbox" id="saleOnlineCheckbox" onchange="window.app.billing.fillReceivableAmount('online')" />
-                <input type="number" inputmode="decimal" id="saleOnlinePayment" oninput="window.app.billing.updateSalePaymentTotal();" placeholder="0" />
+                <input type="checkbox" id="saleOnlineCheckbox" data-onchange="billing.fillReceivableAmount('online')" />
+                <input type="number" inputmode="decimal" id="saleOnlinePayment" data-oninput="billing.updateSalePaymentTotal()" placeholder="0" />
             </div>
             
             <div class="payment-row">
                 <label data-i18n="ui.common.cash">Cash (₹):</label>
-                <input type="checkbox" id="saleCashCheckbox" onchange="window.app.billing.fillReceivableAmount('cash')" />
-                <input type="number" inputmode="decimal" id="saleCashPayment" oninput="window.app.billing.updateSalePaymentTotal();" placeholder="0" />
+                <input type="checkbox" id="saleCashCheckbox" data-onchange="billing.fillReceivableAmount('cash')" />
+                <input type="number" inputmode="decimal" id="saleCashPayment" data-oninput="billing.updateSalePaymentTotal()" placeholder="0" />
             </div>
             
             <div class="payment-row payment-total" style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9) !important;">
@@ -270,14 +270,14 @@
             
             <div class="payment-row">
                 <label data-i18n="ui.common.due">Due (₹):</label>
-                <input type="checkbox" id="saleDueCheckbox" onchange="window.app.billing.fillReceivableAmount('due')" />
-                <input type="number" inputmode="decimal" id="saleDueAmount" oninput="window.app.billing.updateSalePaymentTotal();" placeholder="0" />
+                <input type="checkbox" id="saleDueCheckbox" data-onchange="billing.fillReceivableAmount('due')" />
+                <input type="number" inputmode="decimal" id="saleDueAmount" data-oninput="billing.updateSalePaymentTotal()" placeholder="0" />
             </div>
 
             <div class="payment-row split-remaining-row">
                 <span data-i18n="ui.common.not_split_yet">Not split yet:</span>
                 <strong id="saleSplitRemaining">₹0</strong>
-                <button type="button" class="split-rest-btn" onclick="window.app.billing.putRestInDue('sale')" data-i18n="ui.common.rest_due">Rest → Due</button>
+                <button type="button" class="split-rest-btn" data-onclick="billing.putRestInDue('sale')" data-i18n="ui.common.rest_due">Rest → Due</button>
             </div>
         </div>
 
@@ -294,12 +294,12 @@
         <div class="bill-no-hint" id="saleBillNo"></div>
 
         <div style="display: flex; gap: 12px; margin-top: 16px;">
-            <button onclick="window.app.billing.shareSaleWhatsApp()" style="flex: 1; padding: 12px; background: #15803d; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;">
+            <button data-onclick="billing.shareSaleWhatsApp()" style="flex: 1; padding: 12px; background: #15803d; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                 WhatsApp
             </button>
-            <button class="save-btn save-sale-btn" id="saveSaleBtn" onclick="window.app.billing.completeSale()" style="flex: 1; padding: 12px;" data-i18n="ui.common.save">Save</button>
-            <button class="print-btn print-sale-btn" id="printSaleBtn" onclick="window.app.billing.printSale()" style="flex: 1; padding: 12px;" data-i18n="ui.common.print">Print</button>
+            <button class="save-btn save-sale-btn" id="saveSaleBtn" data-onclick="billing.completeSale()" style="flex: 1; padding: 12px;" data-i18n="ui.common.save">Save</button>
+            <button class="print-btn print-sale-btn" id="printSaleBtn" data-onclick="billing.printSale()" style="flex: 1; padding: 12px;" data-i18n="ui.common.print">Print</button>
                 </div>
         </div>
         </div>

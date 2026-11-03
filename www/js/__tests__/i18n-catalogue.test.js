@@ -161,7 +161,7 @@ describe('Billing draft button (F02)', () => {
     const html = fs.readFileSync(path.join(WWW, 'templates', 'billing.html'), 'utf8');
 
     it('the top button saves a draft and says so; the bottom Save saves the bill', () => {
-        expect(html).toMatch(/onclick="window\.app\.billing\.saveDraft\(\)"[^>]*data-i18n="ui\.billing\.save_draft"/);
+        expect(html).toMatch(/data-onclick="billing\.saveDraft\(\)"[^>]*data-i18n="ui\.billing\.save_draft"/);
         expect(html).not.toMatch(/saveDraft\(\)"[^>]*data-i18n="ui\.common\.save"/);
         expect(html).toMatch(/id="saveBillBtn"[^>]*data-i18n="ui\.common\.save"/);
         expect(en['ui.billing.save_draft']).toBe('Save draft');

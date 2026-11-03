@@ -125,7 +125,7 @@ const PurchaseManager = {
                 ${weights.map((w, i) => `
                     <div class="weight-chip">
                         <span>${formatKg(w)}</span>
-                        <button class="weight-chip-remove" onclick="window.app.purchase.removeWeight(${i})">×</button>
+                        <button class="weight-chip-remove" data-onclick="purchase.removeWeight(${i})">×</button>
                     </div>
                 `).join('')}
             </div>
@@ -289,12 +289,12 @@ const PurchaseManager = {
         // Render bill items table
         tbody.innerHTML = billItems.map((item, index) => {
             return `
-                <tr style="cursor: pointer;" onclick="window.app.purchase.editBillItem(${index})">
+                <tr style="cursor: pointer;" data-onclick="purchase.editBillItem(${index})">
                     <td>${Helpers.escapeHtml(lineLabel(item))}</td>
                     <td>${formatRate(item.rate)}</td>
                     <td>${formatKg(item.qty)} kg</td>
                     <td>${formatRupees(shownAmount(item.total))}</td>
-                    <td><button onclick="event.stopPropagation(); window.app.purchase.deleteBillItem(${index})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">×</button></td>
+                    <td><button data-onclick="event.stopPropagation(); purchase.deleteBillItem(${index})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">×</button></td>
                 </tr>
             `;
         }).join('');

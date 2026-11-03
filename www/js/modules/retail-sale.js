@@ -123,7 +123,7 @@ const RetailSaleManager = {
                 ${saleWeights.map((w, i) => `
                     <div class="weight-chip">
                         <span>${formatKg(w)}</span>
-                        <button class="weight-chip-remove" onclick="window.app.retailSale.removeSaleWeight(${i})">×</button>
+                        <button class="weight-chip-remove" data-onclick="retailSale.removeSaleWeight(${i})">×</button>
                     </div>
                 `).join('')}
             </div>
@@ -290,12 +290,12 @@ const RetailSaleManager = {
         
         // Render bill items table
         tbody.innerHTML = saleItems.map((item, index) => `
-            <tr style="cursor: pointer;" onclick="window.app.retailSale.editSaleItem(${index})">
+            <tr style="cursor: pointer;" data-onclick="retailSale.editSaleItem(${index})">
                 <td>${Helpers.escapeHtml(lineLabel(item))}</td>
                 <td>${formatRate(item.rate)}</td>
                 <td>${formatKg(item.qty)} kg</td>
                 <td>${formatRupees(shownAmount(item.total))}</td>
-                <td><button onclick="event.stopPropagation(); window.app.retailSale.removeSaleItem(${index})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">×</button></td>
+                <td><button data-onclick="event.stopPropagation(); retailSale.removeSaleItem(${index})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">×</button></td>
             </tr>
         `).join('');
         
