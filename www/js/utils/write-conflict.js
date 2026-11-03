@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Writes that must not silently overwrite another phone's change (#113):
  * item, settings and user writes need the internet, and an item or settings section

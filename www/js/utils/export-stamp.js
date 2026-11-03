@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview The stamp every exported file carries (#103): shop, period,
  * export time and who exported it, in the file name and at the top of the
@@ -11,7 +12,7 @@ import { t } from '../i18n/index.js';
 /** Export kinds written in the audit row (`details.exportKind`). */
 export const EXPORT_KINDS = Object.freeze(['day', 'month', 'party', 'item', 'csv', 'accountant', 'audit', 'errors']);
 
-const text = (v, max) => String(v ?? '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, max);
+const text = (/** @type {*} */ v, /** @type {number} */ max) => String(v ?? '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, max);
 
 /**
  * @param {{shop?: string, period?: {from?: ?string, to?: ?string, label?: string}, at: number, user?: string}} s
@@ -35,7 +36,7 @@ export function exportStamp({ shop, period = {}, at, user }) {
  * @returns {Array<[string, string]>}
  */
 export function stampPairs(stamp, lang) {
-    const tl = (k) => t(k, null, lang);
+    const tl = (/** @type {string} */ k) => t(k, null, lang);
     // No from day: everything loaded up to the to day.
     const period = stamp.label || (stamp.from || stamp.to ? `${stamp.from || '…'} – ${stamp.to || '…'}` : '');
     return [
@@ -46,7 +47,12 @@ export function stampPairs(stamp, lang) {
     ];
 }
 
-/** The stamp as one line ("Shop: … · Period: … · …"), for a shared text or a printed page. */
+/**
+ * The stamp as one line ("Shop: … · Period: … · …"), for a shared text or a printed page.
+ * @param {ReturnType<typeof exportStamp>} stamp
+ * @param {'en'|'hi'} [lang]
+ * @returns {string}
+ */
 export function stampLine(stamp, lang) {
     return stampPairs(stamp, lang).map(([k, v]) => `${k}: ${v}`).join(' · ');
 }
@@ -55,7 +61,7 @@ export function stampLine(stamp, lang) {
  * CSV text with the stamp rows on top, a blank row, then the header and rows
  * (RFC 4180 quoting, formulas neutralised, UTF-8 BOM for Excel).
  * @param {string[]} header
- * @param {Array<Array>} rows
+ * @param {Array<Array<*>>} rows
  * @param {ReturnType<typeof exportStamp>} stamp
  * @param {'en'|'hi'} [lang]
  * @returns {string}
@@ -65,7 +71,7 @@ export function stampedCsv(header, rows, stamp, lang) {
     return `\uFEFF${lines.map(r => r.map(csvCell).join(',')).join('\r\n')}\r\n`;
 }
 
-const slug = (s, max) => String(s ?? '').normalize('NFC').replace(/[^\p{L}\p{M}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').slice(0, max);
+const slug = (/** @type {*} */ s, /** @type {number} */ max) => String(s ?? '').normalize('NFC').replace(/[^\p{L}\p{M}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').slice(0, max);
 
 /**
  * File name: shop_kind_period_YYYYMMDD-HHmm.ext (letters of any script kept).

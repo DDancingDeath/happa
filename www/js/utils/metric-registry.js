@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Single home for every figure (docs/insights-redesign.md §6).
  * Each spec ID is rendered as a value (`data-metric="ID"`) by exactly one
@@ -48,15 +49,16 @@ export const METRICS = Object.freeze({
  * them (docs/insights-redesign.md §10). Empty once Finance, Reports and
  * Analytics are gone.
  */
-export const LEGACY_DUPLICATES = Object.freeze([]);
+export const LEGACY_DUPLICATES = Object.freeze(/** @type {string[]} */ ([]));
 
 /**
  * Problems with the values found in templates.
  * @param {Object<string, Array<{id: string, kind: 'value'|'ref'|'export'}>>} byTemplate file → metric tags
- * @param {Object} [metrics=METRICS]
+ * @param {Object<string, {home: string, section: string}>} [metrics=METRICS]
  * @returns {string[]} human-readable problems; [] when every figure has one home
  */
 export function registryProblems(byTemplate, metrics = METRICS) {
+    /** @type {string[]} */
     const problems = [];
     const valueHomes = new Map();
     Object.entries(byTemplate).forEach(([file, tags]) => {
@@ -81,6 +83,7 @@ export function registryProblems(byTemplate, metrics = METRICS) {
  * @returns {Array<{id: string, kind: 'value'|'ref'|'export'}>}
  */
 export function metricTags(html) {
+    /** @type {Array<{id: string, kind: 'value'|'ref'|'export'}>} */
     const out = [];
     const re = /data-metric(-ref|-export)?="([A-Z]+\d+)"/g;
     let m;
@@ -115,8 +118,8 @@ export function unexplainedValues(root) {
 /**
  * Value tags of a rendered page: every element whose figure has its home here.
  * @param {Element} root
- * @returns {Array<{id: string, kind: 'value'}>}
+ * @returns {Array<{id: ?string, kind: 'value'}>}
  */
 export function renderedValueTags(root) {
-    return [...root.querySelectorAll('[data-metric]')].map(el => ({ id: el.getAttribute('data-metric'), kind: 'value' }));
+    return [...root.querySelectorAll('[data-metric]')].map(el => ({ id: el.getAttribute('data-metric'), kind: /** @type {'value'} */ ('value') }));
 }

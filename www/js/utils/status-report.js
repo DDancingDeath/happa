@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Diagnostics › Status (#119): the rows shown for this phone and
  * the "Copy status" text. Only codes, counts, states and times: no names,
@@ -9,11 +10,12 @@ import { t } from '../i18n/index.js';
 import { formatDateTimeIN } from './dates.js';
 
 /** Bill kinds in a trace id. */
+/** @type {Object<string, string>} */
 const TRACE_KIND = { purchase: 'P', retail: 'R', wholesale: 'W' };
 
 /**
  * Trace id of a bill for support (#119): kind letter and document id, nothing else.
- * @param {Object} bill
+ * @param {?Bill|undefined} bill
  * @param {'purchase'|'retail'|'wholesale'} type
  * @returns {string} '' without an id
  */
@@ -47,7 +49,7 @@ export function billTraceId(bill, type) {
  * @returns {Array<{key: string, label: string, value: string, code?: boolean}>}
  */
 export function statusRows(s) {
-    const num = (v) => String(Math.max(0, Math.round(Number(v) || 0)));
+    const num = (/** @type {*} */ v) => String(Math.max(0, Math.round(Number(v) || 0)));
     const network = s.online
         ? (s.connection ? t('ui.status.online_type', { type: s.connection }) : t('ui.status.online'))
         : t('ui.status.offline');
@@ -72,7 +74,11 @@ export function statusRows(s) {
     return rows;
 }
 
-/** One line per suspect: title, then what to do. */
+/**
+ * One line per suspect: title, then what to do.
+ * @param {?{score: number, suspects: Array<{id: string, params?: Rec}>}} speed
+ * @returns {string[]}
+ */
 export function speedLines(speed) {
     if (!speed) return [];
     const lines = [t('ui.speed.score', { score: speed.score })];
@@ -87,7 +93,7 @@ export function speedLines(speed) {
 /**
  * Plain text for "Copy status" (support), app language.
  * @param {PhoneStatus} s
- * @param {?{score: number, suspects: Array}} [speed] last speed check
+ * @param {?{score: number, suspects: Array<{id: string, params?: Rec}>}} [speed] last speed check
  * @param {number} [now]
  * @returns {string}
  */

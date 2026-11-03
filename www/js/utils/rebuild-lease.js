@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview What a device does when no stock checkpoint is usable (#194).
  * After a stock calculation version change every owner/manager device used to
@@ -34,14 +35,14 @@ export function memberWindowStart(windowStart, staleAsOf, maxExtraMs = MEMBER_AP
 }
 
 /** User id part of a lease token (`<uid>:<time>:<random>`). */
-export const leaseOwnerUid = (token) => (typeof token === 'string' && token.includes(':') ? token.slice(0, token.indexOf(':')) : null);
+export const leaseOwnerUid = (/** @type {*} */ token) => (typeof token === 'string' && token.includes(':') ? token.slice(0, token.indexOf(':')) : null);
 
 /**
  * @param {Object} p
  * @param {boolean} p.canManage owner/manager (may write the checkpoint)
  * @param {number} [p.leaseUntil] checkpoint doc `rebuildingUntil` (ms epoch, holder's clock)
- * @param {string} [p.leaseBy] checkpoint doc `rebuildingBy` token
- * @param {string} [p.uid] current user's uid
+ * @param {?string} [p.leaseBy] checkpoint doc `rebuildingBy` token
+ * @param {?string} [p.uid] current user's uid
  * @param {number} p.now
  * @param {number} [p.waitedMs] how long this session has already waited (local clock)
  * @param {number} [p.maxWaitMs]

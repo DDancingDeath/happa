@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Local usage counters (#136): which features are used on this
  * phone, per day. Event names come from the fixed list below, never from user
@@ -27,19 +28,22 @@ const PAGE_EVENT = /^page\.[a-z][a-z0-9-]{0,39}$/;
 /** Days kept on the phone. */
 export const USAGE_KEEP_DAYS = 90;
 
-/** @returns {boolean} true for a documented event name */
+/**
+ * @param {*} name
+ * @returns {boolean} true for a documented event name
+ */
 export function isUsageEvent(name) {
     return typeof name === 'string' && (USAGE_EVENTS.includes(name) || PAGE_EVENT.test(name));
 }
 
 /** Store key of one counter. */
-export const usageKey = (day, event) => `${day}|${event}`;
+export const usageKey = (/** @type {string} */ day, /** @type {string} */ event) => `${day}|${event}`;
 
 /**
  * Adds pending counts into stored rows.
  * @param {Array<{day: string, event: string, count: number}>} rows
  * @param {Map<string, number>} pending usageKey → count
- * @returns {Array} new rows (input untouched)
+ * @returns {Array<{day: string, event: string, count: number}>} new rows (input untouched)
  */
 export function mergeUsage(rows, pending) {
     const byKey = new Map((rows || []).map(r => [usageKey(r.day, r.event), { ...r }]));
@@ -72,7 +76,12 @@ export function topUsage(rows, { fromDay, toDay, limit = 10 }) {
         .slice(0, limit);
 }
 
-/** Rows older than `oldestDay` (to drop). */
+/**
+ * Rows older than `oldestDay` (to drop).
+ * @param {Array<{day: string}>} rows
+ * @param {string} oldestDay
+ * @returns {Array<{day: string}>}
+ */
 export function expiredUsage(rows, oldestDay) {
     return (rows || []).filter(r => r.day < oldestDay);
 }
