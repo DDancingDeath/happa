@@ -26,7 +26,7 @@ import { currentSources, hasDue, queueExtend } from './history-window.js';
 import { dueVisibleToQueries } from './legacy-scan.js';
 import { tip } from '../../tip/index.js';
 import { checkpointProps } from '../../tip/scenarios/stock-checkpoint.js';
-import { openRebuildProgress } from './rebuild-progress.js';
+import { dropRebuildProgress, openRebuildProgress } from './rebuild-progress.js';
 import { FirebaseService } from '../firestore-service.js';
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
@@ -465,6 +465,7 @@ export async function rebuildCheckpointNow(gen) {
         }
         throw e;
     }
+    if (lease === 'fresh') dropRebuildProgress(AppState.currentUser?.uid || 'anon');
     if (lease !== 'acquired') return { status: lease };
     let result = { status: 'failed' };
     // An earlier rebuild cut short on this phone carries on where it stopped (#159)

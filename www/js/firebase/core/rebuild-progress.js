@@ -51,6 +51,13 @@ export function usableProgress(p, ctx) {
 const validPage = (page) => !!page && Array.isArray(page.ids) && page.ids.every(id => typeof id === 'string')
     && (page.after === null || typeof page.after === 'string') && Number.isFinite(page.readAt);
 
+const progressKey = (uid) => `${STORAGE_PREFIX}:${col('stockCheckpoints')}:${uid}`;
+
+/** Drops this phone's stored progress (the checkpoint was built, here or on another phone). */
+export function dropRebuildProgress(uid, storage = defaultStorage()) {
+    try { storage?.removeItem(progressKey(uid)); } catch { /* nothing to drop */ }
+}
+
 /**
  * Opens the progress of one rebuild: the stored one when usable, else a new one (the stored
  * one is dropped).
@@ -59,7 +66,7 @@ const validPage = (page) => !!page && Array.isArray(page.ids) && page.ids.every(
  */
 export function openRebuildProgress({ uid, staleCount, windowStart, now = Date.now(), storage = defaultStorage(), alive = () => true }) {
     const env = col('stockCheckpoints');
-    const key = `${STORAGE_PREFIX}:${env}:${uid}`;
+    const key = progressKey(uid);
     const ctx = { uid, env, windowStart, staleCount, now };
     let stored = null;
     try {
@@ -124,6 +131,7 @@ async function writesSent() {
  * refills a limit query from its cache, so a page read while a delete is pending could end past
  * documents the server holds: a page is read only once every write has been sent, and read again
  * when a document of the collection was deleted meanwhile (creates and updates can't open a gap).
+ * A delete made in another tab during the page isn't counted (the Android app has one webview).
  * null: deletes kept coming (or writes were never sent); stop for now.
  */
 async function serverPage(ref, docIdPath, from, spec, pageSize) {

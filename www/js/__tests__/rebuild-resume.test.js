@@ -204,6 +204,20 @@ describe('resumable stock checkpoint rebuild (#159)', () => {
         expect(comparable(cpDoc())).toEqual(ref.cp);
     });
 
+    it('progress left after the checkpoint was built on another phone is dropped', async () => {
+        const ref = await referenceBuild(29);
+        const built = cpDoc();
+        localStorage.clear();
+        install(29);
+        await openAndCloseAfter(3);
+        expect(localStorage.getItem(PROGRESS_KEY)).not.toBeNull();
+        await fake.db.collection('stockCheckpoints').doc('current').set(built);
+        await open();
+        expect(await FirebaseService.rebuildStockCheckpoint()).toMatchObject({ status: 'fresh' });
+        expect(localStorage.getItem(PROGRESS_KEY)).toBeNull();
+        expect(comparable(cpDoc())).toEqual(ref.cp);
+    });
+
     it('a stored page whose documents left the cache is read again, with the pages after it', async () => {
         const ref = await referenceBuild(23);
         localStorage.clear();
