@@ -435,7 +435,7 @@ export const MoneyManager = {
         this.renderCompare(null, null, {});
         this.lastSummary = null;
         this.html('moneyNotLoaded', `<div class="ins-empty"><p>${esc(t('ui.money.older_not_loaded', { period: this.periodLabel(r) }))}</p>`
-            + `<button type="button" class="btn btn-primary" onclick="window.app.money.loadOlder()">${esc(t('ui.money.load_older'))}</button></div>`);
+            + `<button type="button" class="btn btn-primary" data-onclick="money.loadOlder()">${esc(t('ui.money.load_older'))}</button></div>`);
         this.html('moneyChecks', '');
     },
 
@@ -576,7 +576,7 @@ export const MoneyManager = {
         const stale = [...keys, ...keys.map(lyKey), ...cmpKeys].some(k => this.snapshots[k]?.stale);
         const canBuild = this.writesSnapshots();
         this.html('moneyBuildHistory', (missing || stale) && canBuild
-            ? `<p class="ins-hint">${esc(t(stale ? 'ui.money.stale_hint' : 'ui.money.build_hint'))}</p><button type="button" class="btn btn-secondary" ${this.building ? 'disabled' : ''} onclick="window.app.money.buildHistory()">${esc(t(this.building ? 'ui.money.building' : 'ui.money.build_history'))}</button>`
+            ? `<p class="ins-hint">${esc(t(stale ? 'ui.money.stale_hint' : 'ui.money.build_hint'))}</p><button type="button" class="btn btn-secondary" ${this.building ? 'disabled' : ''} data-onclick="money.buildHistory()">${esc(t(this.building ? 'ui.money.building' : 'ui.money.build_history'))}</button>`
             : '');
     },
 
@@ -857,7 +857,7 @@ export const MoneyManager = {
             : !list
                 ? `<p class="ins-empty-text">${esc(t(state === 'error' ? 'ui.money.accounts_not_loaded' : 'ui.money.accounts_loading'))}</p>`
                 : list.length
-                    ? list.map(a => `<div class="ins-row"><span>${icon(a)} ${esc(a.name)}</span><span>${a.type === 'liability' ? '−' : ''}${money(a.balance)}${edit ? ` <button type="button" class="ins-link" onclick="window.app.money.removeAccount('${Helpers.escapeJsAttr(a.id)}')" aria-label="${esc(t('ui.money.acc_remove'))}">✕</button>` : ''}</span></div>`).join('')
+                    ? list.map(a => `<div class="ins-row"><span>${icon(a)} ${esc(a.name)}</span><span>${a.type === 'liability' ? '−' : ''}${money(a.balance)}${edit ? ` <button type="button" class="ins-link" data-onclick="money.removeAccount('${Helpers.escapeJsAttr(a.id)}')" aria-label="${esc(t('ui.money.acc_remove'))}">✕</button>` : ''}</span></div>`).join('')
                     : `<p class="ins-empty-text">${esc(t('ui.money.no_accounts'))}</p>`);
         const form = document.getElementById('moneyAccForm');
         if (form) form.hidden = !edit || state !== 'ready';

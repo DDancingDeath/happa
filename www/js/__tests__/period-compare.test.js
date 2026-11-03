@@ -13,6 +13,7 @@ import {
     periodText, resetPeriodCompareForTests, saveCurrentRange, removeCurrentRange
 } from '../ui/period-compare.js';
 import { AppState } from '../utils/state.js';
+import { runAction } from '../ui/actions.js';
 import { periodCompare } from '../utils/business-metrics.js';
 
 const memStore = () => {
@@ -70,6 +71,20 @@ describe('period B in the shared context', () => {
         expect(presetSelectValue('month:2026-09')).toBe('');
         setInsightsContext({ preset: 'this-month' });
         expect(presetSelectValue('this-month')).toBe('this-month');
+    });
+    test('the bar\'s controls reach the page module through the delegated actions (#89)', () => {
+        chooseCompare('custom');
+        document.body.innerHTML = `<div id="b">${compareBarHtml('money')}</div>`;
+        expect(document.querySelector('#b [onclick], #b [onchange]')).toBeNull();
+        const money = { setCompare: jest.fn(), applyDates: jest.fn() };
+        const sel = document.getElementById('moneyCompare');
+        sel.value = 'last-month';
+        runAction(sel, sel.getAttribute('data-onchange'), new Event('change'), { money });
+        expect(money.setCompare).toHaveBeenCalledWith('last-month');
+        const show = document.querySelector('#b [data-onclick*="applyDates"]');
+        runAction(show, show.getAttribute('data-onclick'), new Event('click'), { money });
+        expect(money.applyDates).toHaveBeenCalledTimes(1);
+        chooseCompare('last-month');
     });
 });
 
