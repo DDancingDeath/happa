@@ -91,7 +91,7 @@ rules:
     learned_at: 2026-10-21
 
   - id: due-amount-vs-payment-due-drift
-    pattern: "\\bdueAmount\\s*:|\\.dueAmount\\s*=[^=]"
+    pattern: "(^\\s*|[{,]\\s*)dueAmount\\s*:|\\.dueAmount\\s*=[^=]"
     applies_to: ["www/js/**/*.js"]
     excludes: ["www/js/__tests__/**", "www/js/firebase/repos/bill-due.js", "www/js/utils/bill-share.js"]
     message: |

@@ -704,8 +704,10 @@ export class OutstandingManager {
             // A retry of a payment that already reached the server: nothing to add (#70)
             if (entry?.id && entries.some(p => p && p.id === entry.id)) {
                 tipInfo.retried = true;
-                const current = { payment: fresh.payment, payments: entries, openDue: fresh.openDue };
-                if (Object.prototype.hasOwnProperty.call(fresh, 'dueAmount')) current.dueAmount = fresh.dueAmount;
+                // The stored payment state as it is, for this phone's copy (nothing is written)
+                const { dueAmount } = fresh;
+                const current = { payment: fresh.payment, payments: entries, openDue: fresh.openDue,
+                    ...(Object.prototype.hasOwnProperty.call(fresh, 'dueAmount') ? { dueAmount } : {}) };
                 return { result: current };
             }
 

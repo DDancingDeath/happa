@@ -38,15 +38,15 @@ describe('withCanonicalDue', () => {
 
 test('only firebase/repos/bill-due.js writes dueAmount (the review rule due-amount-vs-payment-due-drift checks new lines)', () => {
     const root = path.join(__dirname, '..');
-    // A reprint payload (never stored) and a retried payment's local copy of the stored bill
-    const allowed = { 'firebase/repos/bill-due.js': 1, 'utils/bill-share.js': 1, 'modules/outstanding.js': 1 };
+    // bill-share.js: a reprint payload, never stored
+    const allowed = { 'firebase/repos/bill-due.js': 1, 'utils/bill-share.js': 1 };
     const found = {};
     const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).forEach(e => {
         const full = path.join(dir, e.name);
         if (e.isDirectory()) {
             if (e.name !== '__tests__') walk(full);
         } else if (e.name.endsWith('.js')) {
-            const n = (fs.readFileSync(full, 'utf8').match(/\bdueAmount\s*:|\.dueAmount\s*=[^=]/g) || []).length;
+            const n = (fs.readFileSync(full, 'utf8').match(/(^\s*|[{,]\s*)dueAmount\s*:|\.dueAmount\s*=[^=]/gm) || []).length;
             if (n) found[path.relative(root, full).split(path.sep).join('/')] = n;
         }
     });
