@@ -17,9 +17,9 @@ const CORE = www(['money', 'billing-calc', 'dates', 'bill-checks', 'release', 'c
 // Finance / Insights maths (#160): only the suites that check these figures directly, so each
 // mutant runs a few files and a job stays under an hour (every oracle suite: ~8 s per mutant).
 const oracle = (names) => `**/tests/oracle/${anyOf(names)}.test.js`;
-const FINANCE_CALC = [oracle(['business-metrics', 'cross-page', 'screens']), www(['rounding', 'opening-records'])];
+const FINANCE_CALC = [oracle(['business-metrics', 'cross-page', 'screens']), www(['rounding', 'opening-records', 'finance-calc'])];
 const BUSINESS_METRICS = [oracle(['business-metrics', 'period-compare', 'fy-periods', 'questionnaire', 'screens', 'cross-page']),
-    www(['fy-periods', 'period-compare', 'questionnaire-defaults'])];
+    www(['fy-periods', 'period-compare', 'questionnaire-defaults', 'business-metrics-units'])];
 
 // Today and the cash drawer (#160): the suites that call calc/today.js / calc/cash.js directly.
 const TODAY = [oracle(['screens']), www(['today-characterisation', 'rounding', 'bill-date'])];
