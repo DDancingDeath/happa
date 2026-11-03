@@ -542,7 +542,7 @@ const AdminManager = {
     dueFieldsLastRunHtml() {
         const last = FirebaseService.dueBackfillState?.();
         if (!last) return '';
-        return `<p class="setting-description">${tx('ui.duefix.last_run', { date: formatDayTime(last.at) || '', written: last.written || 0 })}</p>`;
+        return `<p class="setting-description">${tx('ui.duefix.last_run', { date: formatDayTime(last.at, { lang: getLang() }) || '', written: last.written || 0 })}</p>`;
     },
 
     /**

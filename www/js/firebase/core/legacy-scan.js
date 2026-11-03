@@ -324,7 +324,8 @@ export const dueBackfillMethods = {
         }
         const entry = { v: DUE_BACKFILL_VERSION, at: Date.now(), checked, written: written.length, failed: failed.length, complete: !failed.length, byUserId: AppState.currentUser?.uid || null };
         S.legacyScanDoc = { ...(S.legacyScanDoc || {}), [DUE_BACKFILL_KEY]: entry };
-        await legacyScanRef().set({ [DUE_BACKFILL_KEY]: entry }, { merge: true })
+        // Not awaited: offline it is queued and would hold the run open until the phone is back online
+        legacyScanRef().set({ [DUE_BACKFILL_KEY]: entry }, { merge: true })
             .catch(e => console.warn('Saving due backfill state failed:', e?.code || e));
         return { written: written.length, failed: failed.length };
     },
