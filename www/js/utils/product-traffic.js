@@ -134,7 +134,6 @@ export function weeklyItemRows(buckets, fromWeek, toWeek) {
     const byWeek = new Map((buckets || []).map(b => [b.week, b]));
     /** @type {Array<Rec>} */
     const rows = [];
-    /** @type {Array<Rec>} */
     for (let w = fromWeek; w && w <= toWeek; w = addWeeks(w, 1)) {
         const b = byWeek.get(w);
         /** @type {Rec} */

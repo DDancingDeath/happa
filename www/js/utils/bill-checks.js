@@ -50,8 +50,10 @@ export const DEFAULT_THRESHOLDS = Object.freeze({
     deniedWindowMin: 10
 });
 
-/** Rate list on an item for each bill kind (see utils/rate-history.js RATE_FIELDS). */
-/** @type {Object<string, string>} */
+/**
+ * Rate list on an item for each bill kind (see utils/rate-history.js RATE_FIELDS).
+ * @type {Object<string, string>}
+ */
 const ITEM_RATE_FIELD = { purchase: 'rates', retail: 'saleRates', wholesale: 'wholesaleRates' };
 
 /** Rule ids an owner/manager may never override: saving them would corrupt money/stock. */

@@ -225,7 +225,6 @@ export function itemLedger(src, items, itemKey, { from = -Infinity, to = Infinit
             opening = { qty: round2(beforeQty), value: round2(s.totalValue - delta) };
         }
         const line = ev.item ? readLineItem(ev.item) : null;
-        // A bill line always has its item; only an adjustment has no line
         const qty = ev.kind === 'adjustment' ? num(ev.adj?.quantity) : /** @type {{qty: number}} */ (line).qty;
         const avg = s.quantity > 0 ? s.totalValue / s.quantity : 0;
         /** @type {Rec} */

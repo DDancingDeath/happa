@@ -22,8 +22,10 @@ import { t, getLang } from '../i18n/index.js';
 /** @type {Array<'purchase'|'retail'|'wholesale'>} */
 export const RATE_KINDS = ['purchase', 'retail', 'wholesale'];
 
-/** Bill collections read by the backfill, in order, with the section they fill. */
-/** @type {Array<{coll: string, kind: 'purchase'|'retail'|'wholesale'}>} */
+/**
+ * Bill collections read by the backfill, in order, with the section they fill.
+ * @type {Array<{coll: string, kind: 'purchase'|'retail'|'wholesale'}>}
+ */
 export const BACKFILL_SOURCES = [
     { coll: 'purchases', kind: 'purchase' },
     { coll: 'retailSales', kind: 'retail' },
@@ -344,7 +346,6 @@ export function sameStats(a, b) {
  */
 export function rollForwardFromMonth(loadedFrom, now, maxMonths = 2) {
     const current = istMonthKey(now);
-    // istMonthKey of a time is always a readable month
     const floor = /** @type {string} */ (addMonths(current, -(maxMonths - 1)));
     if (!(loadedFrom > 0)) return floor;
     const m = istMonthKey(loadedFrom);
@@ -390,8 +391,8 @@ export function rollForwardWeekGap(win, loadedFrom) {
 
 const stampMs = (/** @type {*} */ v) => (typeof v?.toMillis === 'function' ? v.toMillis() : (typeof v?.seconds === 'number' ? v.seconds * 1000 : Number(v)));
 
-/** Latest time (ms) a bill was entered, reached the server (`createdAt`: saved offline), edited or voided; NaN when unknown. */
 /**
+ * Latest time (ms) a bill was entered, reached the server (`createdAt`: saved offline), edited or voided; NaN when unknown.
  * @param {?Rec|undefined} b
  * @returns {number}
  */
@@ -798,7 +799,6 @@ export function seasonalOutlookCombined(combined, opts = /** @type {*} */ ({})) 
 function outlookFrom(change, { now, weeks = 6, flatPct = FLAT_PCT, maxYears = 10 } = /** @type {*} */ ({})) {
     const fromMonth = istMonthKey(now);
     let toMonth = istMonthKey(now + weeks * 7 * DAY_MS);
-    // istMonthKey of a time is always a readable month
     if (toMonth <= fromMonth) toMonth = /** @type {string} */ (addMonths(fromMonth, 1));
     /** @type {Array<{year: number, from: number, to: number, pct: number}>} */
     const perYear = [];

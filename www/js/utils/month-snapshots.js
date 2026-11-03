@@ -217,7 +217,6 @@ export function rangeFigures(docs, from, to) {
     });
     if (parts.some(p => !(p.whole || p.part))) return null;
     if (parts.every(p => p.whole)) return sumFigures(parts.map(p => p.whole));
-    // Every part has its figures here (checked above)
     const add = (/** @type {string} */ k) => parts.some(p => /** @type {Rec} */ (p.whole || p.part)[k] === null || /** @type {Rec} */ (p.whole || p.part)[k] === undefined)
         ? null : Math.round(parts.reduce((a, p) => a + /** @type {Rec} */ (p.whole || p.part)[k], 0) * 100) / 100;
     return { M1: add('M1'), M6: add('M6') };
