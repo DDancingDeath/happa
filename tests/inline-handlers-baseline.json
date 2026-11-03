@@ -13,7 +13,6 @@
     "js/modules/settings.js": 1,
     "js/modules/statements.js": 12,
     "js/modules/wholesale-sales.js": 8,
-    "js/ui/manual-reminders.js": 5,
     "templates/auth.html": 12,
     "templates/billing.html": 42,
     "templates/expenses.html": 15,
