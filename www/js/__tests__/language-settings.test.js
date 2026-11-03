@@ -65,7 +65,7 @@ describe('Settings language row', () => {
         RolesAccessManager.render();
         applyTranslations(document);
 
-        const settingsLink = document.querySelector('.nav-menu a[onclick*="showTab(\'settings\'"]');
+        const settingsLink = document.querySelector('.nav-menu a[data-onclick*="showTab(\'settings\'"]');
         expect(visible(settingsLink)).toBe(true);
         const card = document.getElementById('languageSettingsCard');
         expect(visible(card)).toBe(true);

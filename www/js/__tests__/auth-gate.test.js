@@ -195,8 +195,8 @@ describe('role-based restrictions', () => {
         document.body.innerHTML = `
           <div id="salesTab"></div>
           <nav class="nav-menu">
-            <a onclick="showTab('money')"></a><a onclick="showTab('admin')"></a>
-            <a onclick="showTab('diagnostics')"></a><a onclick="showTab('statements')"></a>
+            <a data-onclick="nav.showTab('money')"></a><a data-onclick="nav.showTab('admin')"></a>
+            <a data-onclick="nav.showTab('diagnostics')"></a><a data-onclick="nav.showTab('statements')"></a>
           </nav>
           <button data-requires-owner id="del"></button><button data-requires-manager id="exp"></button>`;
     });

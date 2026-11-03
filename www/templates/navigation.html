@@ -1,26 +1,26 @@
 <!-- Hamburger Menu Button -->
-    <button class="hamburger" onclick="window.app.nav.toggleMenu()">
+    <button class="hamburger" data-onclick="nav.toggleMenu()">
         <span></span>
         <span></span>
         <span></span>
     </button>
 
     <!-- Notifications bell + inbox (#12) -->
-    <button type="button" class="notif-bell" id="notifBell" style="display: none;" onclick="window.app.notifications.toggle()" aria-label="Notifications" data-i18n-aria-label="ui.common.notifications" title="Notifications" data-i18n-title="ui.common.notifications">
+    <button type="button" class="notif-bell" id="notifBell" style="display: none;" data-onclick="notifications.toggle()" aria-label="Notifications" data-i18n-aria-label="ui.common.notifications" title="Notifications" data-i18n-title="ui.common.notifications">
         <span class="notif-bell-icon" aria-hidden="true">🔔</span>
         <span class="notif-badge" id="notifBadge" hidden></span>
     </button>
-    <div class="notif-backdrop" id="notifBackdrop" hidden onclick="window.app.notifications.close()"></div>
+    <div class="notif-backdrop" id="notifBackdrop" hidden data-onclick="notifications.close()"></div>
     <div class="notif-panel" id="notifPanel" role="dialog" aria-label="Notifications" hidden data-i18n-aria-label="ui.common.notifications">
         <div class="notif-panel-header">
             <h3>🔔 <span data-i18n="ui.common.notifications">Notifications</span></h3>
-            <button type="button" class="notif-close" onclick="window.app.notifications.close()" aria-label="Close" data-i18n-aria-label="ui.common.close">×</button>
+            <button type="button" class="notif-close" data-onclick="notifications.close()" aria-label="Close" data-i18n-aria-label="ui.common.close">×</button>
         </div>
         <div class="notif-panel-actions">
-            <button type="button" class="notif-mark-all" onclick="window.app.notifications.markAllRead()" data-i18n="ui.nav.mark_all_read">✓ Mark all read</button>
+            <button type="button" class="notif-mark-all" data-onclick="notifications.markAllRead()" data-i18n="ui.nav.mark_all_read">✓ Mark all read</button>
         </div>
         <div class="notif-list" id="notifList"></div>
-        <button type="button" class="notif-more" id="notifMore" hidden onclick="window.app.notifications.loadMore()" data-i18n="ui.nav.show_more">Show more</button>
+        <button type="button" class="notif-more" id="notifMore" hidden data-onclick="notifications.loadMore()" data-i18n="ui.nav.show_more">Show more</button>
     </div>
 
     <!-- Side Navigation -->
@@ -30,92 +30,92 @@
                 <h2 data-i18n="ui.app.name">happa</h2>
                 <div id="currentUserName" style="font-size: 14px; color: rgba(255,255,255,0.9); margin-top: 6px;"><span data-i18n="ui.navigation.loading">Loading...</span></div>
                 <div class="biz-switch" id="bizSwitch" role="group" aria-label="Business" data-i18n-aria-label="ui.biz.business" hidden>
-                    <button type="button" data-biz-btn="shop" class="active" aria-pressed="true" onclick="window.app.business.set('shop')">🌾 <span data-i18n="ui.biz.shop">Aadhat</span></button>
-                    <button type="button" data-biz-btn="rentals" aria-pressed="false" onclick="window.app.business.set('rentals')">🏠 <span data-i18n="ui.biz.rentals">Rentals</span></button>
+                    <button type="button" data-biz-btn="shop" class="active" aria-pressed="true" data-onclick="business.set('shop')">🌾 <span data-i18n="ui.biz.shop">Aadhat</span></button>
+                    <button type="button" data-biz-btn="rentals" aria-pressed="false" data-onclick="business.set('rentals')">🏠 <span data-i18n="ui.biz.rentals">Rentals</span></button>
                 </div>
             </div>
-            <button class="close-btn" onclick="window.app.nav.toggleMenu()">×</button>
+            <button class="close-btn" data-onclick="nav.toggleMenu()">×</button>
         </div>
         <nav class="nav-menu">
-            <a href="#" onclick="window.app.nav.showTab('day', event)">
+            <a href="#" data-onclick="nav.showTab('day', event)">
                 <span class="nav-icon">📅</span>
                 <span data-i18n="ui.nav.today">Today</span>
             </a>
-            <a href="#" onclick="window.app.nav.showTab('billing', event)">
+            <a href="#" data-onclick="nav.showTab('billing', event)">
                 <span class="nav-icon">📋</span>
                 <span data-i18n="ui.nav.billing">Billing</span>
             </a>
-            <a href="#" onclick="window.app.nav.showTab('wholesale-sales', event)">
+            <a href="#" data-onclick="nav.showTab('wholesale-sales', event)">
                 <span class="nav-icon">🧾</span>
                 <span data-i18n="ui.nav.sales">Wholesale</span>
             </a>
-            <a href="#" onclick="window.app.nav.showTab('expenses', event)">
+            <a href="#" data-onclick="nav.showTab('expenses', event)">
                 <span class="nav-icon">💳</span>
                 <span data-i18n="ui.nav.expenses">Expenses</span>
             </a>
-            <a href="#" onclick="window.app.nav.showTab('rates', event)">
+            <a href="#" data-onclick="nav.showTab('rates', event)">
                 <span class="nav-icon">🏷️</span>
                 <span data-i18n="ui.nav.rates">Rates</span>
             </a>
-            <a href="#" onclick="window.app.nav.showTab('history', event)">
+            <a href="#" data-onclick="nav.showTab('history', event)">
                 <span class="nav-icon">📜</span>
                 <span data-i18n="ui.nav.history">History</span>
             </a>
-            <a href="#" onclick="window.app.nav.showTab('stock', event)">
+            <a href="#" data-onclick="nav.showTab('stock', event)">
                 <span class="nav-icon">📊</span>
                 <span data-i18n="ui.nav.stocks">Stocks</span>
             </a>
-            <a href="#" onclick="window.app.nav.showTab('due', event)">
+            <a href="#" data-onclick="nav.showTab('due', event)">
                 <span class="nav-icon">💸</span>
                 <span data-i18n="ui.nav.outstanding">Outstanding</span>
             </a>
-            <a href="#" onclick="window.app.nav.showTab('money', event)" id="moneyNavLink">
+            <a href="#" data-onclick="nav.showTab('money', event)" id="moneyNavLink">
                 <span class="nav-icon">💰</span>
                 <span data-i18n="ui.nav.money">Money</span>
             </a>
-            <a href="#" onclick="window.app.nav.showTab('insights', event)" id="insightsNavLink">
+            <a href="#" data-onclick="nav.showTab('insights', event)" id="insightsNavLink">
                 <span class="nav-icon">💡</span>
                 <span data-i18n="ui.nav.insights">Insights</span>
             </a>
-            <a href="#" onclick="window.app.nav.showTab('statements', event)" id="statementsNavLink">
+            <a href="#" data-onclick="nav.showTab('statements', event)" id="statementsNavLink">
                 <span class="nav-icon">🧾</span>
                 <span data-i18n="ui.nav.statements">Statements</span>
             </a>
-            <a href="#" onclick="window.app.nav.showTab('anomalies', event)" id="anomaliesNavLink" style="display: none;">
+            <a href="#" data-onclick="nav.showTab('anomalies', event)" id="anomaliesNavLink" style="display: none;">
                 <span class="nav-icon">🚨</span>
                 <span data-i18n="ui.nav.anomalies">Anomalies</span>
             </a>
-            <a href="#" onclick="window.app.nav.showTab('health', event)" id="healthNavLink" style="display: none;">
+            <a href="#" data-onclick="nav.showTab('health', event)" id="healthNavLink" style="display: none;">
                 <span class="nav-icon">🩺</span>
                 <span data-i18n="ui.nav.health">App health</span>
             </a>
-            <a href="#" onclick="window.app.nav.showTab('admin', event)" id="adminNavLink" style="display: none;">
+            <a href="#" data-onclick="nav.showTab('admin', event)" id="adminNavLink" style="display: none;">
                 <span class="nav-icon">🛠️</span>
                 <span data-i18n="ui.nav.admin">Admin</span>
             </a>
-            <a href="#" onclick="window.app.nav.showTab('diagnostics', event)" id="diagnosticsNavLink" style="display: none;">
+            <a href="#" data-onclick="nav.showTab('diagnostics', event)" id="diagnosticsNavLink" style="display: none;">
                 <span class="nav-icon">🔬</span>
                 <span data-i18n="ui.nav.diagnostics">Diagnostics</span>
             </a>
-            <a href="#" data-biz="rentals" data-rent-nav="rent" onclick="window.app.rentals.open('rent', event)">
+            <a href="#" data-biz="rentals" data-rent-nav="rent" data-onclick="rentals.open('rent', event)">
                 <span class="nav-icon">💰</span>
                 <span data-i18n="ui.nav.rent">Rent</span>
             </a>
-            <a href="#" data-biz="rentals" data-rent-nav="tenants" onclick="window.app.rentals.open('tenants', event)">
+            <a href="#" data-biz="rentals" data-rent-nav="tenants" data-onclick="rentals.open('tenants', event)">
                 <span class="nav-icon">👥</span>
                 <span data-i18n="ui.nav.tenants">Tenants</span>
             </a>
-            <a href="#" data-biz="rentals" data-rent-nav="properties" onclick="window.app.rentals.open('properties', event)">
+            <a href="#" data-biz="rentals" data-rent-nav="properties" data-onclick="rentals.open('properties', event)">
                 <span class="nav-icon">🏘️</span>
                 <span data-i18n="ui.nav.properties">Properties</span>
             </a>
-            <a href="#" onclick="window.app.nav.showTab('ask', event)">
+            <a href="#" data-onclick="nav.showTab('ask', event)">
                 <span class="nav-icon">💬</span>
                 <span data-i18n="ui.nav.ask">Ask</span>
             </a>
         </nav>
         <nav class="nav-menu nav-menu-footer">
-            <a href="#" data-biz="all" onclick="window.app.nav.showTab('settings', event)">
+            <a href="#" data-biz="all" data-onclick="nav.showTab('settings', event)">
                 <span class="nav-icon">⚙️</span>
                 <span data-i18n="ui.nav.settings">Settings</span>
             </a>
@@ -124,11 +124,11 @@
 
     <!-- Phone bottom bar (#142): the main pages; More opens the side menu. Hidden on desktop (desktop.css) -->
     <nav class="bottom-nav" id="bottomNav" aria-label="Main pages" data-i18n-aria-label="ui.nav.bottom_label">
-        <a href="#" class="bottom-nav-item" data-tab="billing" onclick="window.app.nav.showTab('billing', event)"><span class="bottom-nav-icon" aria-hidden="true">📋</span><span class="bottom-nav-label" data-i18n="ui.nav.billing">Billing</span></a>
-        <a href="#" class="bottom-nav-item" data-tab="day" onclick="window.app.nav.showTab('day', event)"><span class="bottom-nav-icon" aria-hidden="true">📅</span><span class="bottom-nav-label" data-i18n="ui.nav.today">Today</span></a>
-        <a href="#" class="bottom-nav-item" data-tab="history" onclick="window.app.nav.showTab('history', event)"><span class="bottom-nav-icon" aria-hidden="true">📜</span><span class="bottom-nav-label" data-i18n="ui.nav.history">History</span></a>
-        <a href="#" class="bottom-nav-item" data-tab="due" onclick="window.app.nav.showTab('due', event)"><span class="bottom-nav-icon" aria-hidden="true">💸</span><span class="bottom-nav-label" data-i18n="ui.nav.outstanding">Outstanding</span></a>
-        <button type="button" class="bottom-nav-item" data-tab="more" onclick="window.app.nav.toggleMenu()" aria-controls="sideNav" aria-expanded="false"><span class="bottom-nav-icon" aria-hidden="true">☰</span><span class="bottom-nav-label" data-i18n="ui.nav.more">More</span></button>
+        <a href="#" class="bottom-nav-item" data-tab="billing" data-onclick="nav.showTab('billing', event)"><span class="bottom-nav-icon" aria-hidden="true">📋</span><span class="bottom-nav-label" data-i18n="ui.nav.billing">Billing</span></a>
+        <a href="#" class="bottom-nav-item" data-tab="day" data-onclick="nav.showTab('day', event)"><span class="bottom-nav-icon" aria-hidden="true">📅</span><span class="bottom-nav-label" data-i18n="ui.nav.today">Today</span></a>
+        <a href="#" class="bottom-nav-item" data-tab="history" data-onclick="nav.showTab('history', event)"><span class="bottom-nav-icon" aria-hidden="true">📜</span><span class="bottom-nav-label" data-i18n="ui.nav.history">History</span></a>
+        <a href="#" class="bottom-nav-item" data-tab="due" data-onclick="nav.showTab('due', event)"><span class="bottom-nav-icon" aria-hidden="true">💸</span><span class="bottom-nav-label" data-i18n="ui.nav.outstanding">Outstanding</span></a>
+        <button type="button" class="bottom-nav-item" data-tab="more" data-onclick="nav.toggleMenu()" aria-controls="sideNav" aria-expanded="false"><span class="bottom-nav-icon" aria-hidden="true">☰</span><span class="bottom-nav-label" data-i18n="ui.nav.more">More</span></button>
     </nav>
     <div class="pull-refresh" id="pullRefresh" hidden aria-hidden="true"><span class="pull-refresh-pull" data-i18n="ui.nav.pull_refresh">↓ Pull to refresh</span><span class="pull-refresh-release" data-i18n="ui.nav.release_refresh">↻ Release to refresh</span></div>
 
