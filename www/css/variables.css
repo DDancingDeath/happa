@@ -1,73 +1,69 @@
+/* Design tokens. Colours that carry text keep WCAG AA (4.5:1) on --card-bg and --light-bg in both themes. */
 :root {
-  /* Modern Primary Gradient Colors */
-  --primary-color: #5560d6;
-  --primary-dark: #4349b8;
+  --primary-color: #4f46e5;
+  --primary-dark: #4338ca;
   --primary-light: #818cf8;
-  --primary-gradient: linear-gradient(135deg, #5560d6 0%, #764ba2 100%);
-  
-  /* Semantic Colors - Modern Palette */
+  --primary-soft: #eef2ff;
+  --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  --focus-ring: 0 0 0 3px rgba(79, 70, 229, 0.25);
+
   --success-color: #047857;
   --success-light: #d1fae5;
   --success-dark: #065f46;
-  
+
   --danger-color: #b91c1c;
   --danger-light: #fee2e2;
   --danger-dark: #991b1b;
-  
+
   --warning-color: #f59e0b;
   --warning-light: #fef3c7;
   --warning-dark: #92400e;
-  
+
   --info-color: #2563eb;
   --info-light: #dbeafe;
   --info-dark: #1d4ed8;
-  
-  /* Purchase/Sale Theme Colors */
+
   --purchase-color: #3b82f6;
   --purchase-light: #eff6ff;
   --purchase-dark: #1e40af;
-  
+
   --sale-color: #047857;
   --sale-light: #ecfdf5;
   --sale-dark: #065f46;
-  
-  /* Neutral Colors */
-  --dark-color: #1f2937;
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --text-muted: #4b5563;
-  
-  /* Background Colors */
-  --light-bg: #f3f4f6;
+
+  --dark-color: #1e293b;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #475569;
+
+  --light-bg: #f4f6fa;
   --white: #ffffff;
   --card-bg: #ffffff;
-  
-  /* Border Colors */
-  --border-color: #e5e7eb;
-  --border-light: #f3f4f6;
-  
-  /* Shadows - Modern depth */
-  --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
-  --shadow: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
-  --shadow-md: 0 6px 12px rgba(0,0,0,0.08), 0 3px 6px rgba(0,0,0,0.06);
-  --shadow-lg: 0 10px 25px rgba(0,0,0,0.1), 0 6px 10px rgba(0,0,0,0.08);
-  --shadow-xl: 0 20px 40px rgba(0,0,0,0.15);
-  
-  /* Transitions */
-  --transition-fast: 0.15s ease;
-  --transition: 0.2s ease;
-  --transition-slow: 0.3s ease;
-  
-  /* Border Radius */
+  --input-bg: #ffffff;
+  --seg-bg: #e9edf3;
+
+  --border-color: #e2e8f0;
+  --border-light: #f1f5f9;
+  --border-strong: #cbd5e1;
+
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 10px 20px -4px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.08);
+  --shadow-xl: 0 20px 40px -8px rgba(15, 23, 42, 0.22);
+
+  --transition-fast: 0.12s ease;
+  --transition: 0.18s ease;
+  --transition-slow: 0.28s ease;
+
   --radius-sm: 6px;
-  --radius: 8px;
+  --radius: 10px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
   --radius-full: 9999px;
-  
-  /* Spacing */
+
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 12px;
@@ -75,52 +71,63 @@
   --space-xl: 20px;
   --space-2xl: 24px;
   --space-3xl: 32px;
+
+  /* System fonts only (the CSP allows no font origin); Devanagari falls back to Noto on Android, Nirmala UI on Windows */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Noto Sans Devanagari', 'Nirmala UI', 'Helvetica Neue', Arial, sans-serif;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
 }
 
-/* Dark Mode Variables */
 body.dark-mode {
   --primary-color: #818cf8;
   --primary-dark: #667eea;
   --primary-light: #a5b4fc;
-  --primary-gradient: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
-  
+  --primary-soft: rgba(129, 140, 248, 0.16);
+  --focus-ring: 0 0 0 3px rgba(129, 140, 248, 0.4);
+
   --success-color: #34d399;
   --success-light: #064e3b;
   --success-dark: #10b981;
-  
+
   --danger-color: #f87171;
   --danger-light: #7f1d1d;
   --danger-dark: #ef4444;
-  
+
   --warning-color: #fbbf24;
   --warning-light: #78350f;
   --warning-dark: #f59e0b;
-  
+
   --info-color: #60a5fa;
   --info-light: #1e3a5f;
   --info-dark: #3b82f6;
-  
-  --dark-color: #f3f4f6;
-  --text-primary: #f9fafb;
-  --text-secondary: #d1d5db;
-  --text-muted: #9ca3af;
-  
-  --light-bg: #111827;
-  --white: #1f2937;
-  --card-bg: #1f2937;
-  
-  --border-color: #374151;
-  --border-light: #1f2937;
-  
-  --shadow-xs: 0 1px 2px rgba(0,0,0,0.2);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
-  --shadow: 0 4px 6px rgba(0,0,0,0.25), 0 2px 4px rgba(0,0,0,0.2);
-  --shadow-md: 0 6px 12px rgba(0,0,0,0.3), 0 3px 6px rgba(0,0,0,0.25);
-  --shadow-lg: 0 10px 25px rgba(0,0,0,0.35), 0 6px 10px rgba(0,0,0,0.3);
-  --shadow-xl: 0 20px 40px rgba(0,0,0,0.45);
-}
 
-body.dark-mode {
+  --dark-color: #f1f5f9;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+
+  --light-bg: #0f172a;
+  --white: #1e293b;
+  --card-bg: #1e293b;
+  --input-bg: #0f172a;
+  --seg-bg: #0f172a;
+
+  --border-color: #334155;
+  --border-light: #1e293b;
+  --border-strong: #475569;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.45);
+  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.55);
+
   background: var(--light-bg);
   color: var(--text-primary);
 }
@@ -143,22 +150,27 @@ body.dark-mode .modern-card {
 body.dark-mode input,
 body.dark-mode select,
 body.dark-mode textarea {
-  background: #374151;
+  background: var(--input-bg);
   color: var(--text-primary);
-  border-color: var(--border-color);
+  border-color: var(--border-strong);
 }
 
 body.dark-mode input::placeholder {
   color: var(--text-muted);
 }
 
+body.dark-mode .top-bar,
+body.dark-mode .side-nav,
+body.dark-mode .modal-box {
+  background: var(--card-bg);
+}
+
 body.dark-mode .top-bar {
-  background: #1f2937;
   border-bottom-color: var(--border-color);
 }
 
-body.dark-mode .side-nav {
-  background: #1f2937;
+body.dark-mode .modal-box {
+  color: var(--text-primary);
 }
 
 body.dark-mode .nav-menu a {
@@ -166,17 +178,28 @@ body.dark-mode .nav-menu a {
 }
 
 body.dark-mode .nav-menu a:hover {
-  background: #374151;
+  background: var(--border-color);
 }
 
 body.dark-mode .nav-menu a.active {
-  background: rgba(129, 140, 248, 0.15);
+  background: var(--primary-soft);
   color: var(--primary-color);
 }
 
-body.dark-mode .modal-box {
-  background: #1f2937;
-  color: var(--text-primary);
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
 }
 
 /* Global Base Styles */
@@ -192,7 +215,7 @@ html {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-sans);
   background: var(--light-bg);
   color: var(--text-primary);
   margin: 0;
@@ -209,6 +232,16 @@ body {
 /* Devanagari's marks above and below the line need more room than Latin text (#68) */
 html[lang="hi"] body {
   line-height: 1.5;
+}
+
+/* Money and weight columns line up digit under digit */
+table,
+input[type="number"],
+.stat-value,
+.stat-value-sm,
+.total-row strong,
+.payment-row strong {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Modern Card Utility Class */

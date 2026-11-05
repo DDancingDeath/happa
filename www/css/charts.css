@@ -151,7 +151,7 @@ html {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(15, 23, 42, 0.55);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: 20000;
@@ -228,7 +228,8 @@ body:has(.tab.sale-theme.active) .modal-overlay .modal-header {
 
 .modal-footer {
   padding: 16px 24px;
-  background: var(--light-bg);
+  background: var(--card-bg);
+  border-top: 1px solid var(--border-color);
   display: flex;
   gap: 12px;
   justify-content: flex-end;
@@ -257,7 +258,7 @@ body:has(.tab.sale-theme.active) .modal-overlay .modal-header {
 .modal-btn-cancel {
   background: var(--card-bg);
   color: var(--text-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-strong);
 }
 
 .modal-btn-cancel:hover {
@@ -316,7 +317,7 @@ input, textarea, select {
 }
 
 /* Better focus states for accessibility */
-button:focus-visible, input:focus-visible, select:focus-visible {
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
   outline: 3px solid var(--primary-color);
   outline-offset: 2px;
 }

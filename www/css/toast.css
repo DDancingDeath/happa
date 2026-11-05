@@ -3,7 +3,7 @@
   bottom: 80px;
   left: 50%;
   transform: translateX(-50%) translateY(100px);
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  background: #1e293b;
   color: white;
   padding: 14px 28px;
   border-radius: var(--radius-full);
@@ -27,15 +27,15 @@
 }
 
 .toast.success {
-  background: linear-gradient(135deg, var(--success-color) 0%, var(--success-dark) 100%);
+  background: #047857;
 }
 
 .toast.error {
-  background: linear-gradient(135deg, var(--danger-color) 0%, var(--danger-dark) 100%);
+  background: #b91c1c;
 }
 
 .toast.warning {
-  background: linear-gradient(135deg, var(--warning-color) 0%, var(--warning-dark) 100%);
+  background: #92400e;
 }
 
 /* Offline / waiting-to-sync pill (#70), between the menu button and the bell */

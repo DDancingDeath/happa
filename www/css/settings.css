@@ -17,12 +17,9 @@
   margin: 0 0 16px 0;
   font-size: 18px;
   font-weight: 700;
-  padding-bottom: 12px;
-  border-bottom: 2px solid var(--border-color);
-  background: var(--primary-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
 }
 
 .setting-description {

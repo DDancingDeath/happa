@@ -19,8 +19,8 @@
 .form-row input[type="number"],
 .form-row input[type="text"] {
   flex: 1;
-  padding: 12px 14px;
-  border: 2px solid var(--border-color);
+  padding: 13px 15px;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   font-size: 15px;
   background: var(--card-bg);
@@ -44,7 +44,7 @@ input[type="number"] {
 .form-row input:focus {
   border-color: var(--primary-color);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+  box-shadow: var(--focus-ring);
 }
 
 .quick-add-btn-inline {
@@ -88,8 +88,8 @@ label {
 
 select, input[type="number"], input[type="text"] {
   width: 100%;
-  padding: 12px 14px;
-  border: 2px solid var(--border-color);
+  padding: 13px 15px;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   font-size: 15px;
   background: var(--card-bg);
@@ -111,7 +111,7 @@ input[type="number"] {
 select:focus, input:focus {
   border-color: var(--primary-color);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+  box-shadow: var(--focus-ring);
 }
 
 .weight-input-row {
@@ -323,7 +323,7 @@ select:focus, input:focus {
 
 .rate-input:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+  box-shadow: var(--focus-ring);
 }
 
 .delete-rate {

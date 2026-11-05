@@ -24,8 +24,8 @@
   flex: 1;
   font-size: 16px;
   font-weight: 600;
-  padding: 12px 14px;
-  border: 2px solid var(--border-color);
+  padding: 13px 15px;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   transition: all var(--transition);
   background: var(--card-bg);
@@ -35,7 +35,7 @@
 .item-name-input:focus {
   border-color: var(--primary-color);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+  box-shadow: var(--focus-ring);
 }
 
 .delete-item-btn {

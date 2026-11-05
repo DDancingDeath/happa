@@ -110,7 +110,7 @@
   font-size: 22px;
   font-weight: 700;
   color: var(--text-secondary);
-  background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.95) 70%);
+  background: linear-gradient(to right, transparent, var(--card-bg) 70%);
   border-radius: 0 12px 12px 0;
   pointer-events: none;
 }
