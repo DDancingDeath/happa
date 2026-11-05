@@ -73,7 +73,7 @@
   --space-3xl: 32px;
 
   /* System fonts only (the CSP allows no font origin); Devanagari falls back to Noto on Android, Nirmala UI on Windows */
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Noto Sans Devanagari', 'Nirmala UI', 'Helvetica Neue', Arial, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans', 'Noto Sans Devanagari', 'Nirmala UI', system-ui, 'Helvetica Neue', Arial, sans-serif;
   --text-xs: 12px;
   --text-sm: 13px;
   --text-base: 14px;
