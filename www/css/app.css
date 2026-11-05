@@ -163,6 +163,11 @@ body.dark-mode .ins-hero .ins-cmp {
   color: #fff;
 }
 
+body.dark-mode .ins-card .ins-link,
+body.dark-mode .ins-list .ins-link {
+  color: var(--info-color);
+}
+
 body.dark-mode input::placeholder {
   color: var(--text-muted);
 }
