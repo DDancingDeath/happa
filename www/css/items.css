@@ -90,7 +90,7 @@
 
 .rate-group:has(.rate-input.wholesale) {
   border-color: var(--wholesale-color);
-  background: var(--primary-soft);
+  background: var(--wholesale-soft);
 }
 
 .rate-group:has(.rate-input.sale) {

@@ -175,7 +175,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
   width: min(92vw, 520px);
   padding: 10px 12px;
   border-radius: 10px;
-  background: var(--warning-soft);
+  background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--card-bg);
   border: 1px solid var(--warning-border);
   color: var(--on-warning-soft);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);

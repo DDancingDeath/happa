@@ -65,7 +65,7 @@
 }
 
 .sync-pill[data-state="pending"] {
-  background: var(--warning-soft);
+  background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--card-bg);
   color: var(--on-warning-soft);
 }
 

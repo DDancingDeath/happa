@@ -31,7 +31,7 @@
   width: min(92vw, 560px);
   padding: 10px 12px;
   border-radius: 10px;
-  background: var(--danger-soft);
+  background: linear-gradient(var(--danger-soft), var(--danger-soft)), var(--card-bg);
   border: 1px solid var(--danger-border);
   color: var(--on-danger-soft);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
