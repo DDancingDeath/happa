@@ -26,8 +26,6 @@ jobs:
           java-version: '21'
       - run: npm ci
       - run: npx playwright install --with-deps --only-shell chromium
-      - run: timeout 300 sudo apt-get install -y --no-install-recommends fonts-noto-core || true
-        timeout-minutes: 6
       - name: Before (main)
         env:
           SHOTS_DIR: shots/before
