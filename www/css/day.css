@@ -77,7 +77,7 @@
 }
 .stat-card-success .stat-label,
 .stat-card-success .stat-subtitle {
-  color: var(--success-dark);
+  color: var(--on-success-soft);
 }
 .stat-value-success {
   color: var(--success-color);
@@ -87,7 +87,7 @@
   background: var(--success-soft);
 }
 .stat-card-success-light .stat-label {
-  color: var(--success-dark);
+  color: var(--on-success-soft);
 }
 
 .stat-card-info {
@@ -95,7 +95,7 @@
 }
 .stat-card-info .stat-label,
 .stat-card-info .stat-subtitle {
-  color: var(--info-dark);
+  color: var(--on-info-soft);
 }
 .stat-value-info {
   color: var(--info-color);
@@ -105,7 +105,7 @@
   background: var(--info-soft);
 }
 .stat-card-info-light .stat-label {
-  color: var(--info-dark);
+  color: var(--on-info-soft);
 }
 
 .stat-card-warning {

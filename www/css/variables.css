@@ -218,6 +218,11 @@ body.dark-mode .ins-list .ins-link {
   color: var(--info-color);
 }
 
+body.dark-mode .diag-delete-btn {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
 body.dark-mode input::placeholder {
   color: var(--text-muted);
 }
@@ -303,11 +308,13 @@ body.dark-mode .nav-menu a.active {
 .dark-mode [style^="color: #6c757d"],
 .dark-mode [style*=" color: #6c757d"],
 .dark-mode [style*=" color: #495057"],
+.dark-mode [style*=" color:#555"],
 .dark-mode [style*=" color: #555"],
 .dark-mode [style*=";color:#555"],
 .dark-mode [style*=" color: #374151"],
 .dark-mode [style^="color: #595959"],
 .dark-mode [style*=" color: #777"],
+.dark-mode [style*=" color:#4b5563"],
 .dark-mode [style^="color:#4b5563"],
 .dark-mode [style*=";color:#4b5563"],
 .dark-mode [style*=" color: #9ca3af"] {
@@ -328,6 +335,7 @@ body.dark-mode .nav-menu a.active {
 }
 
 .dark-mode [style*=" color: #991b1b"],
+.dark-mode [style*=" color:#b91c1c"],
 .dark-mode [style^="color: #b91c1c"],
 .dark-mode [style^="color:#b91c1c"],
 .dark-mode [style*=";color:#b91c1c"],

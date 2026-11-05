@@ -213,7 +213,7 @@
     font-weight: 600;
     cursor: pointer;
 }
-.ins-checkline.ok { background: var(--success-light); color: var(--success-dark); }
+.ins-checkline.ok { background: var(--success-light); color: var(--on-success-soft); }
 .ins-checkline.warn { background: var(--warning-light); color: var(--on-warning-soft); }
 
 .ins-table { width: 100%; border-collapse: collapse; font-size: 14px; }
