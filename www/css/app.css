@@ -1850,6 +1850,12 @@ body.typing .bottom-nav {
   text-align: center;
 }
 
+/* Rate, Qty and Total line up on the right */
+#billTable :is(th, td):nth-child(n+2):nth-child(-n+4),
+#saleTable :is(th, td):nth-child(n+2):nth-child(-n+4) {
+  text-align: right;
+}
+
 .remove-bill-item, .remove-sale-item {
   background: var(--danger-soft);
   color: var(--on-danger-soft);
