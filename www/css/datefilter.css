@@ -55,13 +55,13 @@
 }
 
 .filter-btn.filter-purchase.active {
-  background: linear-gradient(135deg, var(--purchase-color), var(--purchase-dark));
+  background: var(--btn-primary);
   border-color: transparent;
   color: white;
 }
 
 .filter-btn.filter-sale.active {
-  background: linear-gradient(135deg, var(--sale-color), var(--sale-dark));
+  background: var(--btn-success);
   border-color: transparent;
   color: white;
 }

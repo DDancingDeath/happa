@@ -130,6 +130,14 @@ body.dark-mode {
   --info-light: #1e3a5f;
   --info-dark: #3b82f6;
 
+  --purchase-color: #818cf8;
+  --purchase-light: rgba(129, 140, 248, 0.16);
+  --purchase-dark: #a5b4fc;
+
+  --sale-color: #34d399;
+  --sale-light: rgba(52, 211, 153, 0.14);
+  --sale-dark: #6ee7b7;
+
   --dark-color: #f1f5f9;
   --text-primary: #f1f5f9;
   --text-secondary: #cbd5e1;
@@ -5307,13 +5315,13 @@ body.dark-mode .stock-row__qty {
 }
 
 .filter-btn.filter-purchase.active {
-  background: linear-gradient(135deg, var(--purchase-color), var(--purchase-dark));
+  background: var(--btn-primary);
   border-color: transparent;
   color: white;
 }
 
 .filter-btn.filter-sale.active {
-  background: linear-gradient(135deg, var(--sale-color), var(--sale-dark));
+  background: var(--btn-success);
   border-color: transparent;
   color: white;
 }
