@@ -37,6 +37,9 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           SHOTS_DIR: shots/after
+          E2E_AUTH_PORT: '9098'
+          E2E_FIRESTORE_PORT: '8182'
+          E2E_PORT: '8098'
         run: |
           git checkout origin/ui/modern-revamp -- www
           npx playwright test tests/e2e/zz-ui-screens.spec.js --project=desktop
