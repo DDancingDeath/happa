@@ -193,9 +193,9 @@
   font-size: 14px;
   font-weight: 600;
   line-height: 1.4;
-  color: #b91c1c;
-  background: #fef2f2;
-  border: 1px solid #fca5a5;
+  color: var(--on-danger-soft);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-border);
   overflow-wrap: anywhere;
 }
 
@@ -204,14 +204,14 @@
 }
 
 .auth-message.success {
-  color: #166534;
-  background: #f0fdf4;
-  border-color: #86efac;
+  color: var(--on-success-soft);
+  background: var(--success-soft);
+  border-color: var(--success-border);
 }
 
 .auth-message.info {
   color: var(--text-primary);
-  background: #f3f4f6;
+  background: var(--surface-muted);
   border-color: var(--border-color);
 }
 

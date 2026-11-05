@@ -200,11 +200,11 @@
 }
 
 .reports-hero-card.purchase-theme {
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    background: var(--primary-gradient);
 }
 
 .reports-hero-card.sale-theme {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    background: linear-gradient(135deg, #047857 0%, #065f46 100%);
 }
 
 .hero-stat {
@@ -385,19 +385,19 @@
 }
 
 .payment-stat.cash {
-    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    background: var(--success-soft);
 }
 
 .payment-stat.online {
-    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    background: var(--info-soft);
 }
 
 .payment-stat.due-pay {
-    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    background: var(--danger-soft);
 }
 
 .payment-stat.due-receive {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    background: var(--warning-soft);
 }
 
 .payment-icon {
@@ -666,12 +666,12 @@
 }
 
 .compare-card.purchase {
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    background: var(--primary-gradient);
     color: white;
 }
 
 .compare-card.sale {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    background: linear-gradient(135deg, #047857 0%, #065f46 100%);
     color: white;
 }
 
@@ -918,7 +918,7 @@
 .margin-cost-note {
     display: block;
     font-size: 11px;
-    color: #b45309;
+    color: var(--on-warning-soft);
     margin-top: 4px;
     line-height: 1.3;
 }

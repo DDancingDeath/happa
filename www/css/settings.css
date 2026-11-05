@@ -31,7 +31,7 @@
 }
 
 .danger-btn {
-  background: linear-gradient(135deg, var(--danger-color), var(--danger-dark));
+  background: var(--btn-danger);
   color: white;
   border: none;
   padding: 16px;
@@ -65,7 +65,7 @@
   border: 2px solid var(--primary-color, #5560d6);
   border-radius: 8px;
   background: transparent;
-  color: var(--primary-color, #5560d6);
+  color: var(--primary-color);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -96,7 +96,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .role-access-table th,
 .role-access-table td {
   padding: 8px 6px;
-  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  border-bottom: 1px solid var(--border-color);
   text-align: center;
 }
 
@@ -117,15 +117,15 @@ body.no-perm-contacts [data-perm~="contacts"] {
 
 .role-access-group td {
   font-weight: 600;
-  color: var(--text-secondary, #6c757d);
-  background: var(--bg-secondary, #f8f9fa);
+  color: var(--text-secondary);
+  background: var(--surface-muted);
 }
 
 .role-access-note {
   display: block;
   margin-top: 2px;
   font-size: 12px;
-  color: var(--text-secondary, #6c757d);
+  color: var(--text-secondary);
 }
 /* Settings sections: Common, Aadhat, Rentals */
 .settings-section-title {
@@ -175,9 +175,9 @@ body.no-perm-contacts [data-perm~="contacts"] {
   width: min(92vw, 520px);
   padding: 10px 12px;
   border-radius: 10px;
-  background: #fff7ed;
-  border: 1px solid #fdba74;
-  color: #7c2d12;
+  background: var(--warning-soft);
+  border: 1px solid var(--warning-border);
+  color: var(--on-warning-soft);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
   font-size: 14px;
 }

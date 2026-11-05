@@ -14,12 +14,12 @@
 
 .aging-title {
     font-weight: 600;
-    color: #374151;
+    color: var(--text-secondary);
 }
 
 .aging-total {
     font-size: 18px;
-    color: #b02a37;
+    color: var(--on-danger-soft);
 }
 
 .aging-buckets {
@@ -37,12 +37,12 @@
     border: 2px solid transparent;
     border-left-width: 5px;
     border-radius: 8px;
-    background: #f9fafb;
+    background: var(--surface-muted);
     cursor: pointer;
     text-align: left;
     min-width: 0;
     font: inherit;
-    color: #111827;
+    color: var(--text-primary);
 }
 
 .aging-bucket.active {
@@ -53,7 +53,7 @@
 .aging-bucket-label,
 .aging-bucket-count {
     font-size: 14px;
-    color: #4b5563;
+    color: var(--text-secondary);
 }
 
 .aging-bucket-amount {
@@ -66,10 +66,10 @@
 .aging-bucket.aging-b1 { border-left-color: #ca8a04; }
 .aging-bucket.aging-b2 { border-left-color: #ea580c; }
 .aging-bucket.aging-b3 { border-left-color: #b91c1c; }
-.aging-bucket.aging-b0.active { border-color: #15803d; background: #f0fdf4; }
-.aging-bucket.aging-b1.active { border-color: #ca8a04; background: #fefce8; }
-.aging-bucket.aging-b2.active { border-color: #ea580c; background: #fff7ed; }
-.aging-bucket.aging-b3.active { border-color: #b91c1c; background: #fef2f2; }
+.aging-bucket.aging-b0.active { border-color: #15803d; background: var(--success-soft); }
+.aging-bucket.aging-b1.active { border-color: #ca8a04; background: var(--warning-soft); }
+.aging-bucket.aging-b2.active { border-color: #ea580c; background: var(--caution-soft); }
+.aging-bucket.aging-b3.active { border-color: #b91c1c; background: var(--danger-soft); }
 
 .aging-age {
     display: inline-block;
@@ -80,20 +80,20 @@
     white-space: nowrap;
 }
 
-.aging-age.aging-b0 { background: #dcfce7; color: #166534; }
-.aging-age.aging-b1 { background: #fef9c3; color: #854d0e; }
-.aging-age.aging-b2 { background: #ffedd5; color: #9a3412; }
-.aging-age.aging-b3 { background: #fee2e2; color: #991b1b; }
+.aging-age.aging-b0 { background: var(--success-soft); color: var(--on-success-soft); }
+.aging-age.aging-b1 { background: var(--warning-soft); color: var(--on-warning-soft); }
+.aging-age.aging-b2 { background: var(--caution-soft); color: var(--on-caution-soft); }
+.aging-age.aging-b3 { background: var(--danger-soft); color: var(--on-danger-soft); }
 
 .aging-filter-note {
     margin-top: 6px;
     font-size: 12px;
-    color: #4b5563;
+    color: var(--text-secondary);
 }
 
 .aging-subtitle {
     font-weight: 600;
-    color: #374151;
+    color: var(--text-secondary);
     margin: 12px 0 6px;
 }
 
@@ -108,7 +108,7 @@
 
 .aging-empty {
     font-size: 13px;
-    color: #4b5563;
+    color: var(--text-secondary);
 }
 
 .aging-parties {
@@ -117,7 +117,7 @@
 
 .aging-parties > summary {
     font-weight: 600;
-    color: #374151;
+    color: var(--text-secondary);
     cursor: pointer;
     padding: 4px 0;
 }
@@ -128,21 +128,21 @@
     gap: 6px;
     margin: 6px 0;
     font-size: 14px;
-    color: #4b5563;
+    color: var(--text-secondary);
 }
 
 .aging-sort-btn {
     padding: 4px 10px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-strong);
     border-radius: 14px;
-    background: #fff;
+    background: var(--card-bg);
     cursor: pointer;
     font-size: 14px;
 }
 
 .aging-sort-btn.active {
-    background: #1f2937;
-    border-color: #1f2937;
+    background: var(--btn-primary);
+    border-color: var(--btn-primary);
     color: #fff;
 }
 
@@ -153,8 +153,8 @@
     align-items: center;
     padding: 8px 10px;
     margin-bottom: 6px;
-    background: #fff;
-    border: 1px solid #e5e7eb;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
     border-left: 5px solid #15803d;
     border-radius: 8px;
 }
@@ -170,12 +170,12 @@
 
 .aging-party-meta {
     font-size: 14px;
-    color: #4b5563;
+    color: var(--text-secondary);
     margin-top: 2px;
 }
 
 .aging-party-total {
-    color: #b02a37;
+    color: var(--on-danger-soft);
     white-space: nowrap;
 }
 
@@ -188,17 +188,17 @@
 
 .aging-btn {
     padding: 6px 12px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
-    background: #fff;
+    background: var(--card-bg);
     cursor: pointer;
     font-weight: 600;
     font-size: 14px;
 }
 
 .aging-btn.aging-remind {
-    background: #15803d;
-    border-color: #15803d;
+    background: var(--btn-success);
+    border-color: var(--btn-success);
     color: #fff;
 }
 
@@ -207,7 +207,7 @@
     margin-left: 4px;
     padding: 1px 6px;
     border-radius: 10px;
-    background: #b91c1c;
+    background: var(--btn-danger);
     color: #fff;
     font-size: 14px;
     font-weight: 600;
@@ -228,8 +228,8 @@
     margin-bottom: 10px;
     padding: 8px 10px;
     border-radius: 8px;
-    background: #eff6ff;
-    color: #1e3a8a;
+    background: var(--info-soft);
+    color: var(--on-info-soft);
     font-size: 14px;
 }
 
@@ -245,8 +245,8 @@ body.dark-mode .party-filter-note {
     border-radius: 10px;
     font-size: 11px;
     font-weight: 600;
-    background: #ecfdf5;
-    color: #065f46;
+    background: var(--success-soft);
+    color: var(--on-success-soft);
     vertical-align: middle;
 }
 
@@ -257,5 +257,5 @@ body.dark-mode .due-kind-chip {
 
 /* Outstanding search box (its inline style; the id keeps it over the generic input rules) and
    its focus ring, which was inline onfocus / onblur (#89) */
-#outstandingSearchInput { width: 100%; padding: 14px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 15px; transition: all 0.2s; }
-#outstandingSearchInput:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+#outstandingSearchInput { width: 100%; padding: 14px; border: 2px solid var(--border-color); border-radius: 10px; font-size: 15px; transition: all 0.2s; }
+#outstandingSearchInput:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }

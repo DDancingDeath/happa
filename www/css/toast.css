@@ -65,8 +65,8 @@
 }
 
 .sync-pill[data-state="pending"] {
-  background: #fef3c7;
-  color: #78350f;
+  background: var(--warning-soft);
+  color: var(--on-warning-soft);
 }
 
 .sync-pill[data-state="synced"] {
@@ -80,8 +80,8 @@
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--warning-soft);
+  color: var(--on-warning-soft);
 }
 
 .sync-chip[hidden] {
@@ -89,8 +89,8 @@
 }
 
 .sync-chip[data-state="synced"] {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--success-soft);
+  color: var(--on-success-soft);
 }
 
 .ins-row .sync-chip {

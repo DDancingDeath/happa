@@ -119,7 +119,7 @@ html {
 
 /* -------------------- MODE TOGGLE BUTTON -------------------- */
 .mode-toggle-btn {
-  background: linear-gradient(135deg, var(--sale-color), var(--sale-dark));
+  background: var(--btn-success);
   color: white;
   border: none;
   padding: 10px 20px;
@@ -141,7 +141,7 @@ html {
 }
 
 .mode-toggle-btn.sale-mode {
-  background: linear-gradient(135deg, var(--purchase-color), var(--purchase-dark));
+  background: var(--btn-primary);
 }
 
 /* -------------------- MODAL POPUP -------------------- */
@@ -188,18 +188,22 @@ html {
 }
 
 .modal-header {
-  background: var(--primary-gradient);
-  color: white;
+  background: var(--card-bg);
+  color: var(--text-primary);
   padding: 14px 20px;
   text-align: center;
+  border-bottom: 1px solid var(--border-color);
+  border-top: 4px solid var(--primary-color);
 }
 
 body:has(.tab.purchase-theme.active) .modal-overlay .modal-header {
-  background: linear-gradient(135deg, var(--purchase-color), var(--purchase-dark));
+  background: var(--card-bg);
+  border-top-color: var(--btn-primary);
 }
 
 body:has(.tab.sale-theme.active) .modal-overlay .modal-header {
-  background: linear-gradient(135deg, var(--sale-color), var(--sale-dark));
+  background: var(--card-bg);
+  border-top-color: var(--btn-success);
 }
 
 .modal-header h3 {
@@ -266,7 +270,7 @@ body:has(.tab.sale-theme.active) .modal-overlay .modal-header {
 }
 
 .modal-btn-confirm {
-  background: var(--primary-gradient);
+  background: var(--btn-primary);
   color: white;
   box-shadow: var(--shadow-sm);
 }
@@ -276,7 +280,7 @@ body:has(.tab.sale-theme.active) .modal-overlay .modal-header {
 }
 
 body:has(.tab.purchase-theme.active) .modal-btn-confirm {
-  background: linear-gradient(135deg, var(--purchase-color), var(--purchase-dark));
+  background: var(--btn-primary);
 }
 
 body:has(.tab.purchase-theme.active) .modal-btn-confirm:hover {
@@ -284,7 +288,7 @@ body:has(.tab.purchase-theme.active) .modal-btn-confirm:hover {
 }
 
 body:has(.tab.sale-theme.active) .modal-btn-confirm {
-  background: linear-gradient(135deg, var(--sale-color), var(--sale-dark));
+  background: var(--btn-success);
 }
 
 body:has(.tab.sale-theme.active) .modal-btn-confirm:hover {
@@ -448,7 +452,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   padding: 16px;
   border-top: 1px solid var(--border-color);
   flex-shrink: 0;
-  background: #f8f9fa;
+  background: var(--surface-muted);
 }
 
 .bill-action-btn {
@@ -469,21 +473,22 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .bill-action-btn.btn-close {
-  background: #6c757d;
-  color: white;
+  background: var(--seg-bg);
+  color: var(--text-primary);
 }
 
 .bill-action-btn.btn-close:hover {
-  background: #5a6268;
+  background: var(--border-strong);
 }
 
 .bill-action-btn.btn-delete {
-  background: #b02a37;
-  color: white;
+  background: var(--danger-soft);
+  color: var(--on-danger-soft);
+  box-shadow: inset 0 0 0 1px var(--danger-border);
 }
 
 .bill-action-btn.btn-delete:hover {
-  background: #c82333;
+  background: var(--danger-soft);
 }
 
 .item-modal-danger {
@@ -498,8 +503,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   min-height: 40px;
   padding: 8px 16px;
   background: transparent;
-  color: #b91c1c;
-  border: 1px solid #fca5a5;
+  color: var(--on-danger-soft);
+  border: 1px solid var(--danger-border);
   border-radius: 10px;
   font-size: 14px;
   font-weight: 600;
@@ -507,16 +512,16 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .item-delete-btn:hover {
-  background: #fef2f2;
+  background: var(--danger-soft);
 }
 
 .bill-action-btn.btn-edit {
-  background: var(--primary-color);
+  background: var(--btn-primary);
   color: white;
 }
 
 .bill-action-btn.btn-edit:hover {
-  background: #0056b3;
+  background: var(--primary-dark);
 }
 
 @media (max-width: 480px) {
@@ -538,7 +543,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .bill-info-row {
   display: flex;
   padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .bill-info-label {
@@ -562,15 +567,17 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .bill-items-table thead {
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-  color: white;
+  background: var(--surface-muted);
+  color: var(--text-secondary);
 }
 
 .bill-items-table th {
   padding: 12px;
   text-align: left;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .bill-items-table th:not(:first-child) {
@@ -618,7 +625,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .bill-payment-section {
-  background: #e7f3ff;
+  background: var(--info-soft);
   padding: 16px;
   border-radius: 8px;
   margin: 20px 0;

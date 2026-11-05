@@ -84,7 +84,7 @@
 }
 
 .stat-card-success-light {
-  background: #ecfdf5;
+  background: var(--success-soft);
 }
 .stat-card-success-light .stat-label {
   color: var(--success-dark);
@@ -102,7 +102,7 @@
 }
 
 .stat-card-info-light {
-  background: #eff6ff;
+  background: var(--info-soft);
 }
 .stat-card-info-light .stat-label {
   color: var(--info-dark);
@@ -113,7 +113,7 @@
 }
 .stat-card-warning .stat-label,
 .stat-card-warning .stat-subtitle {
-  color: #92400e;
+  color: var(--on-warning-soft);
 }
 .stat-value-warning {
   color: var(--warning-dark);
@@ -124,20 +124,20 @@
 }
 .stat-card-danger .stat-label,
 .stat-card-danger .stat-subtitle {
-  color: #991b1b;
+  color: var(--on-danger-soft);
 }
 .stat-value-danger {
   color: var(--danger-color);
 }
 
 .stat-card-purple {
-  background: #f3e8ff;
+  background: var(--primary-soft);
 }
 .stat-card-purple .stat-label {
-  color: #6b21a8;
+  color: var(--on-primary-soft);
 }
 .stat-value-purple {
-  color: #7c3aed;
+  color: var(--on-primary-soft);
 }
 
 /* Section Title */
@@ -180,28 +180,28 @@
 }
 
 .summary-item-success {
-  background: #f0fdf4;
+  background: var(--success-soft);
 }
 .summary-item-success strong {
   color: var(--success-color);
 }
 
 .summary-item-info {
-  background: #eff6ff;
+  background: var(--info-soft);
 }
 .summary-item-info strong {
   color: var(--info-color);
 }
 
 .summary-item-danger {
-  background: #fef2f2;
+  background: var(--danger-soft);
 }
 .summary-item-danger strong {
   color: var(--danger-color);
 }
 
 .summary-item-warning {
-  background: #fefce8;
+  background: var(--warning-soft);
 }
 .summary-item-warning strong {
   color: var(--warning-dark);
@@ -360,12 +360,12 @@ body.dark-mode .item-detail-row:hover {
 
 /* Labour card on Today: deducted from farmers and to pay labour */
 .today-labour-card {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-border);
   border-radius: 12px;
   padding: 12px 16px;
   margin-bottom: 16px;
-  color: #991b1b;
+  color: var(--on-danger-soft);
   cursor: pointer;
 }
 
@@ -391,13 +391,13 @@ body.dark-mode .item-detail-row:hover {
 .today-labour-sub,
 .today-labour-hint {
   font-size: 14px;
-  color: #7f1d1d;
+  color: var(--on-danger-soft);
   opacity: 0.85;
 }
 
 .today-labour-diff {
   font-size: 14px;
-  color: #374151;
+  color: var(--text-secondary);
   margin-top: 4px;
 }
 
@@ -414,7 +414,7 @@ body.dark-mode .item-detail-row:hover {
 .labour-breakdown-table th,
 .labour-breakdown-table td {
   padding: 6px 4px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-color);
   text-align: right;
 }
 
@@ -425,7 +425,7 @@ body.dark-mode .item-detail-row:hover {
 
 .labour-breakdown-note {
   font-size: 12px;
-  color: #4b5563;
+  color: var(--text-secondary);
   margin: 8px 0 0;
 }
 
@@ -450,9 +450,9 @@ body.dark-mode .today-labour-diff {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  background: #fffbeb;
-  border: 1px solid #fcd34d;
-  color: #78350f;
+  background: var(--warning-soft);
+  border: 1px solid var(--warning-border);
+  color: var(--on-warning-soft);
   border-radius: 12px;
   padding: 12px 16px;
   margin-bottom: 16px;
@@ -469,7 +469,7 @@ body.dark-mode .today-labour-diff {
   padding: 8px 16px;
   border: none;
   border-radius: 10px;
-  background: #15803d;
+  background: var(--btn-success);
   color: #fff;
   font-size: 15px;
   font-weight: 700;
@@ -529,7 +529,7 @@ body.dark-mode .today-labour-diff {
 }
 
 .today-channel-due strong {
-  color: #b45309;
+  color: var(--on-warning-soft);
 }
 
 .today-channel-writeoff {
@@ -628,39 +628,39 @@ body.dark-mode .today-cash-prompt {
 /* Reminders on Today (#86) */
 .today-reminders { padding: 12px 14px; }
 .today-reminders-title { margin: 0 0 8px; font-size: 16px; }
-.today-reminder { padding: 8px 0; border-top: 1px solid #eef0f3; }
+.today-reminder { padding: 8px 0; border-top: 1px solid var(--border-color); }
 .today-reminder:first-of-type { border-top: 0; }
 .today-reminder-head { display: flex; justify-content: space-between; gap: 8px; }
 .today-reminder ul { list-style: none; margin: 6px 0; padding: 0; }
 .today-reminder-party { display: flex; gap: 8px; justify-content: space-between; font-size: 14px; padding: 2px 0; }
 .today-reminder-party span:first-child { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.today-reminder-days, .today-reminder-more { color: #4b5563; font-size: 12px; }
+.today-reminder-days, .today-reminder-more { color: var(--text-secondary); font-size: 12px; }
 /* Cash open 14 h or more (C10, Q25 of #111) */
-.cash-long-open { background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-weight: 600; }
+.cash-long-open { background: var(--warning-soft); border: 1px solid var(--warning-border); color: var(--on-warning-soft); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-weight: 600; }
 
 /* Manual reminders (#86) */
 .today-reminder-item { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 14px; padding: 4px 0; }
 .today-reminder-title { font-weight: 600; }
-.today-reminder-days.late { color: #b91c1c; font-weight: 600; }
+.today-reminder-days.late { color: var(--on-danger-soft); font-weight: 600; }
 .today-reminder-actions { display: flex; gap: 6px; margin-left: auto; }
 .today-reminder-actions .filter-btn, .today-reminder > .filter-btn { min-height: 44px; }
 .today-reminder-form { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .today-reminder-form input, .today-reminder-form select { min-height: 44px; font-size: 16px; padding: 6px 10px; }
-.today-reminder-repeat { color: #4b5563; font-size: 12px; }
+.today-reminder-repeat { color: var(--text-secondary); font-size: 12px; }
 .today-reminder-form-buttons { display: flex; gap: 8px; }
 
 /* Ask (#88) */
 .ask-page { max-width: 720px; }
-.ask-intro { color: var(--text-secondary, #555); margin: 4px 0 12px; }
+.ask-intro { color: var(--text-secondary); margin: 4px 0 12px; }
 .ask-form { display: flex; gap: 8px; }
 .ask-form input { flex: 1; min-width: 0; min-height: 44px; font-size: 16px; padding: 8px 12px; }
 .ask-examples { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
 .ask-answers { display: flex; flex-direction: column; gap: 10px; }
-.ask-answer { background: var(--card-bg, #fff); border: 1px solid var(--border-color, #e0e0e0); border-radius: 10px; padding: 10px 12px; }
+.ask-answer { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; }
 .ask-question { font-weight: 600; margin-bottom: 4px; }
 .ask-line { margin: 2px 0; }
 .ask-answer .ask-open { margin-top: 6px; }
 
 /* Cash › history: a day row lights up under the pointer (was an inline mouseover, #89) */
 .cash-day-row { transition: background 0.2s; }
-.cash-day-row:hover { background: #f8f9fa; }
+.cash-day-row:hover { background: var(--surface-muted); }

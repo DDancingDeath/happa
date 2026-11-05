@@ -39,7 +39,7 @@
 }
 
 .delete-item-btn {
-  background: linear-gradient(135deg, var(--danger-color), var(--danger-dark));
+  background: var(--btn-danger);
   color: white;
   border: none;
   padding: 10px 16px;
@@ -89,8 +89,8 @@
 }
 
 .rate-group:has(.rate-input.wholesale) {
-  border-color: #9333ea;
-  background: #f3e8ff;
+  border-color: var(--wholesale-color);
+  background: var(--primary-soft);
 }
 
 .rate-group:has(.rate-input.sale) {
@@ -123,7 +123,7 @@
 }
 
 .rates-container .delete-rate {
-  background: #b91c1c;
+  background: var(--btn-danger);
   color: var(--white);
   border: none;
   width: 28px;
@@ -144,7 +144,7 @@
 }
 
 .rates-container .delete-rate:hover {
-  background: #b91c1c;
+  background: var(--danger-dark);
   transform: scale(1.05);
 }
 
@@ -200,15 +200,15 @@
   margin-left: 6px;
   padding: 2px 8px;
   border-radius: 10px;
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--surface-muted);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
 }
 
 /* Items search box: focus ring (was inline onfocus/onblur, #89) */
-#itemsSearchInput { width: 100%; padding: 14px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 15px; transition: all 0.2s; }
-#itemsSearchInput:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+#itemsSearchInput { width: 100%; padding: 14px; border: 2px solid var(--border-color); border-radius: 10px; font-size: 15px; transition: all 0.2s; }
+#itemsSearchInput:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
 
 .items-archived-toggle {
   display: flex;
@@ -216,12 +216,12 @@
   gap: 8px;
   margin-top: 10px;
   font-size: 14px;
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 /* Item name suggested from the other language (#134), until the user takes it */
 .autofill-suggest {
-  color: #9ca3af;
+  color: var(--text-muted);
   font-style: italic;
 }
 

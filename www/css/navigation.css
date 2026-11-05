@@ -130,8 +130,8 @@
   cursor: pointer;
 }
 .biz-switch button.active {
-  background: white;
-  color: #4338ca;
+  background: var(--card-bg);
+  color: var(--on-primary-soft);
 }
 .nav-menu a[data-biz="rentals"] { display: none; }
 body.biz-rentals .nav-menu a[data-biz="rentals"] { display: flex; }

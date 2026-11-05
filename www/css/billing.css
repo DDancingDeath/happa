@@ -48,7 +48,7 @@ input[type="number"] {
 }
 
 .quick-add-btn-inline {
-  background: var(--primary-gradient);
+  background: var(--btn-primary);
   color: white;
   border: none;
   padding: 12px 18px;
@@ -62,11 +62,11 @@ input[type="number"] {
 }
 
 .tab.purchase-theme .quick-add-btn-inline {
-  background: linear-gradient(135deg, var(--purchase-color), var(--purchase-dark));
+  background: var(--btn-primary);
 }
 
 .tab.sale-theme .quick-add-btn-inline {
-  background: linear-gradient(135deg, var(--sale-color), var(--sale-dark));
+  background: var(--btn-success);
 }
 
 .quick-add-btn-inline:hover {
@@ -126,7 +126,7 @@ select:focus, input:focus {
 }
 
 .quick-add-btn {
-  background: var(--primary-gradient);
+  background: var(--btn-primary);
   color: white;
   border: none;
   padding: 14px 20px;
@@ -167,18 +167,18 @@ select:focus, input:focus {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: linear-gradient(135deg, var(--info-light), #bfdbfe);
+  background: var(--primary-soft);
   padding: 8px 12px;
   border-radius: var(--radius-full);
-  border: 2px solid var(--info-color);
+  border: 2px solid var(--primary-border);
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
-  box-shadow: var(--shadow-xs);
+  color: var(--on-primary-soft);
+  box-shadow: none;
 }
 
 .weight-chip-remove {
-  background: linear-gradient(135deg, var(--danger-color), var(--danger-dark));
+  background: var(--btn-danger);
   color: white;
   border: none;
   width: 22px;
@@ -231,7 +231,7 @@ select:focus, input:focus {
 
 .add-to-bill-btn {
   width: 100%;
-  background: var(--primary-gradient);
+  background: var(--btn-primary);
   color: white;
   border: none;
   padding: 16px;
@@ -254,35 +254,19 @@ select:focus, input:focus {
 
 /* -------------------- BILLING THEME -------------------- */
 .tab.purchase-theme {
-  background: linear-gradient(to bottom, var(--light-bg) 0%, var(--card-bg) 100%);
+  background: var(--light-bg);
 }
 
 .tab.sale-theme {
-  background: linear-gradient(to bottom, var(--sale-light) 0%, var(--card-bg) 100%);
+  background: linear-gradient(to bottom, var(--success-soft) 0%, var(--light-bg) 240px);
 }
 
 .tab.purchase-theme .add-to-bill-btn {
-  background: linear-gradient(135deg, var(--purchase-color), var(--purchase-dark));
+  background: var(--btn-primary);
 }
 
 .tab.sale-theme .add-to-bill-btn {
-  background: linear-gradient(135deg, var(--sale-color), var(--sale-dark));
-}
-
-.tab.purchase-theme h2,
-.tab.purchase-theme h3 {
-  background: linear-gradient(135deg, var(--purchase-color), var(--purchase-dark));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.tab.sale-theme h2,
-.tab.sale-theme h3 {
-  background: linear-gradient(135deg, var(--sale-color), var(--sale-dark));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  background: var(--btn-success);
 }
 
 .tab.purchase-theme .bill-totals {
@@ -327,7 +311,7 @@ select:focus, input:focus {
 }
 
 .delete-rate {
-  background: linear-gradient(135deg, var(--danger-color), var(--danger-dark));
+  background: var(--btn-danger);
   color: white;
   border: none;
   width: 28px;
@@ -366,15 +350,15 @@ select:focus, input:focus {
 }
 
 .add-rate-plus.purchase {
-  background: linear-gradient(135deg, var(--purchase-color), var(--purchase-dark));
+  background: var(--btn-primary);
 }
 
 .add-rate-plus.wholesale {
-  background: linear-gradient(135deg, #9333ea, #7c3aed);
+  background: var(--wholesale-color);
 }
 
 .add-rate-plus.sale {
-  background: linear-gradient(135deg, var(--sale-color), var(--sale-dark));
+  background: var(--btn-success);
 }
 
 .add-rate-plus:hover {
@@ -395,11 +379,11 @@ select:focus, input:focus {
   gap: 8px 12px;
   margin-bottom: 16px;
   padding: 10px 12px;
-  border: 1px solid #f59e0b;
+  border: 1px solid var(--warning-border);
   border-left-width: 4px;
   border-radius: var(--radius);
-  background: #fffbeb;
-  color: #78350f;
+  background: var(--warning-soft);
+  color: var(--on-warning-soft);
   font-size: 14px;
 }
 
@@ -420,21 +404,21 @@ select:focus, input:focus {
 }
 
 .autosave-restore {
-  background: #1d4ed8;
-  border: 1px solid #1d4ed8;
+  background: var(--btn-primary);
+  border: 1px solid var(--btn-primary);
   color: #fff;
 }
 
 .autosave-discard {
-  background: #fff;
-  border: 1px solid #b91c1c;
-  color: #b91c1c;
+  background: var(--card-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--on-danger-soft);
 }
 
 .bill-no-hint {
   margin-top: 12px;
   font-size: 13px;
-  color: var(--text-secondary, #555);
+  color: var(--text-secondary);
 }
 /* Voice billing (#81): shown only when switched on in Settings */
 .voice-mic-btn {
@@ -442,10 +426,10 @@ select:focus, input:focus {
   width: 100%;
   margin-bottom: 12px;
   padding: 10px;
-  border: 1px dashed #2563eb;
+  border: 1px dashed var(--primary-border);
   border-radius: 8px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--primary-soft);
+  color: var(--on-primary-soft);
   font-size: 15px;
 }
 
@@ -455,9 +439,9 @@ select:focus, input:focus {
 
 .voice-mic-btn.voice-listening {
   border-style: solid;
-  border-color: #b91c1c;
-  background: #fee2e2;
-  color: #b91c1c;
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
+  color: var(--on-danger-soft);
 }
 
 .voice-check th {
@@ -467,5 +451,5 @@ select:focus, input:focus {
 }
 
 .voice-warn {
-  color: #b45309;
+  color: var(--on-warning-soft);
 }
