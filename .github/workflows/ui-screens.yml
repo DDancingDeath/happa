@@ -1,0 +1,54 @@
+# Temporary, on branch ui-revamp-screens only (never merged): before/after screenshots for PR #354.
+name: UI screens (temporary)
+
+on:
+  push:
+    branches: [ui-revamp-screens]
+
+permissions:
+  contents: read
+
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - run: npx playwright install --with-deps --only-shell chromium
+      - run: sudo apt-get install -y fonts-noto-core fonts-noto-color-emoji
+      - name: Before (main)
+        env:
+          SHOTS_DIR: shots/before
+        run: |
+          git checkout origin/main -- www
+          npx playwright test tests/e2e/zz-ui-screens.spec.js --project=desktop
+      - name: After (PR branch)
+        if: ${{ !cancelled() }}
+        env:
+          SHOTS_DIR: shots/after
+        run: |
+          git checkout origin/ui/modern-revamp -- www
+          npx playwright test tests/e2e/zz-ui-screens.spec.js --project=desktop
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-shots
+          path: shots
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ui-shots-traces
+          path: test-results/
+          retention-days: 3
