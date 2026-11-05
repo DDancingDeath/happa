@@ -236,7 +236,7 @@
 }
 
 /* ==================== TYPE + DATE FILTERS (#160) ==================== */
-.history-type-filter .filter-btn {
+.filter-buttons.history-type-filter .filter-btn {
   min-width: 0;
   padding: 12px 6px;
 }

@@ -185,7 +185,7 @@ body.dark-mode .nav-menu a:hover {
 
 body.dark-mode .nav-menu a.active {
   background: var(--primary-soft);
-  color: var(--primary-color);
+  color: var(--primary-light);
 }
 
 @media (prefers-reduced-motion: reduce) {
