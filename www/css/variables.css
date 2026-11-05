@@ -41,6 +41,7 @@
   --card-bg: #ffffff;
   --input-bg: #ffffff;
   --seg-bg: #e9edf3;
+  --seg-active: #ffffff;
 
   --border-color: #e2e8f0;
   --border-light: #f1f5f9;
@@ -147,7 +148,8 @@ body.dark-mode {
   --white: #1e293b;
   --card-bg: #1e293b;
   --input-bg: #0f172a;
-  --seg-bg: #0f172a;
+  --seg-bg: #172033;
+  --seg-active: #334155;
 
   --border-color: #334155;
   --border-light: #1e293b;
@@ -180,9 +182,9 @@ body.dark-mode {
 
   background: var(--light-bg);
   color: var(--text-primary);
+  color-scheme: dark;
 }
 
-body.dark-mode .tab,
 body.dark-mode .item-card,
 body.dark-mode .bill-item-row,
 body.dark-mode .settings-card,

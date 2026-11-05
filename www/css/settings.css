@@ -72,7 +72,7 @@
 }
 
 .lang-switch-btn[aria-pressed="true"] {
-  background: var(--primary-color, #5560d6);
+  background: var(--btn-primary);
   color: white;
 }
 
