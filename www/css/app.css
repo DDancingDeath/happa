@@ -90,6 +90,8 @@ body.dark-mode {
   --primary-dark: #667eea;
   --primary-light: #a5b4fc;
   --primary-soft: rgba(129, 140, 248, 0.16);
+  /* Light enough for the dark text (var(--white)) Money's hero card puts on it */
+  --primary-gradient: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
   --focus-ring: 0 0 0 3px rgba(129, 140, 248, 0.4);
 
   --success-color: #34d399;
@@ -7997,11 +7999,11 @@ body.dark-mode .notif-panel-actions {
     top: 0;
     z-index: 5;
     background: var(--light-bg);
-    padding: 8px 0 10px;
+    padding: 6px 0 8px;
 }
 
 .ins-title {
-    margin: 0 0 8px 56px;
+    margin: 0 0 6px 56px;
     font-size: 20px;
     font-weight: 700;
     color: var(--text-primary);
@@ -8044,7 +8046,7 @@ body.dark-mode .notif-panel-actions {
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-top: 8px;
+    margin-top: 6px;
 }
 
 .ins-step {

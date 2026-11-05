@@ -8,11 +8,11 @@
     top: 0;
     z-index: 5;
     background: var(--light-bg);
-    padding: 8px 0 10px;
+    padding: 6px 0 8px;
 }
 
 .ins-title {
-    margin: 0 0 8px 56px;
+    margin: 0 0 6px 56px;
     font-size: 20px;
     font-weight: 700;
     color: var(--text-primary);
@@ -55,7 +55,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-top: 8px;
+    margin-top: 6px;
 }
 
 .ins-step {
