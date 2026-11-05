@@ -7513,7 +7513,7 @@ body.dark-mode .today-cash-prompt {
 }
 
 .btn-primary {
-    background: var(--primary-gradient);
+    background: var(--btn-primary);
     color: white;
 }
 
@@ -7523,17 +7523,24 @@ body.dark-mode .today-cash-prompt {
 }
 
 .btn-secondary {
-    background: var(--light-bg);
+    background: var(--card-bg);
     color: var(--text-primary);
-    border: 2px solid var(--border-color);
+    border: none;
+    box-shadow: inset 0 0 0 1px var(--border-strong);
 }
 
 .btn-secondary:hover {
-    background: var(--border-color);
+    background: var(--surface-muted);
+}
+
+.btn-success {
+    background: var(--success-soft);
+    color: var(--on-success-soft);
+    box-shadow: inset 0 0 0 1px var(--success-border);
 }
 
 .btn-danger {
-    background: var(--danger-color);
+    background: var(--btn-danger);
     color: white;
 }
 
