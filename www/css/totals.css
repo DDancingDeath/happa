@@ -175,10 +175,12 @@
   color: var(--on-primary-soft) !important;
 }
 
-#saleSection .payment-row.payment-total:not(.payment-excess) {
+#saleSection .payment-row.payment-total:not(.payment-excess),
+#wholesale-sales .payment-row.payment-total:not(.payment-excess) {
   background: var(--success-soft);
 }
 
-#saleSection .payment-row.payment-total:not(.payment-excess) :is(span, strong) {
+#saleSection .payment-row.payment-total:not(.payment-excess) :is(span, strong),
+#wholesale-sales .payment-row.payment-total:not(.payment-excess) :is(span, strong) {
   color: var(--on-success-soft) !important;
 }

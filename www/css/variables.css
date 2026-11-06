@@ -399,11 +399,11 @@ body.dark-mode .nav-menu a.active {
   background: var(--info-soft) !important;
 }
 
-.dark-mode [style*="linear-gradient(135deg, #e8f5e9"] {
-  background: var(--success-soft) !important;
+/* Cash close: the "extra cash" note the script colours #997404 (3.9:1 on its yellow) */
+.dark-mode #cashDifferenceAlert[style*="background: rgb(255, 243, 205)"] {
+  background: var(--warning-soft) !important;
 }
 
-/* Cash close: the "extra cash" note the script colours #997404 (3.9:1 on its yellow) */
 #cashDifferenceAlert[style*="color: rgb(153, 116, 4)"] {
   color: var(--on-warning-soft) !important;
 }
