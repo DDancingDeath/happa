@@ -194,6 +194,8 @@ export const MoneyManager = {
 
     setPreset(preset) {
         choosePreset(preset);
+        const sel = document.getElementById('moneyPreset');
+        if (sel) sel.value = presetSelectValue(getInsightsContext().preset);
         this.render();
     },
 

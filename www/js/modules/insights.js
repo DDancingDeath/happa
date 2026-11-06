@@ -93,6 +93,8 @@ export const InsightsManager = {
 
     setPreset(preset) {
         choosePreset(preset);
+        const sel = document.getElementById('insightsPreset');
+        if (sel) sel.value = presetSelectValue(getInsightsContext().preset);
         this.render();
     },
 
