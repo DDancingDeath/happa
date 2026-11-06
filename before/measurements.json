@@ -1,0 +1,26 @@
+{
+  "moneyProfit": {
+    "height": 385,
+    "bottom": 455
+  },
+  "moneyWorth": {
+    "height": 385,
+    "bottom": 455
+  },
+  "moneyPresets": [
+    "this-month",
+    "last-month",
+    "this-year",
+    "last-year",
+    "this-fy",
+    "last-fy",
+    "last-30",
+    "custom"
+  ],
+  "insights": {
+    "height": 335,
+    "bottom": 405
+  },
+  "todoHeading": "This week",
+  "deadStockText": "बिक्री नहीं:\n30 दिन\n60 दिन\n90 दिन\nसभी बिल देखे गए।\n\nपिछले 30 दिनों में स्टॉक का हर आइटम बिका है 👍"
+}
