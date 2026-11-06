@@ -405,6 +405,11 @@ body.dark-mode .nav-menu a.active {
   background: var(--success-soft) !important;
 }
 
+/* Cash close: the "extra cash" note the script colours #997404 (3.9:1 on its yellow) */
+#cashDifferenceAlert[style*="color: rgb(153, 116, 4)"] {
+  color: var(--on-warning-soft) !important;
+}
+
 /* The old purple brand gradient still written inline by a few templates */
 [style*="linear-gradient(135deg, #5560d6"],
 [style*="linear-gradient(135deg, rgb(85, 96, 214)"] {
@@ -2823,6 +2828,25 @@ select:focus, input:focus {
 .payment-row.payment-excess strong {
   color: var(--danger-dark) !important;
   animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Purchase totals in the brand colour, sale totals green */
+#purchaseSection .grand-total,
+#purchaseSection .payment-row.payment-total:not(.payment-excess) {
+  background: var(--primary-soft);
+}
+
+#purchaseSection .grand-total :is(span, strong),
+#purchaseSection .payment-row.payment-total:not(.payment-excess) :is(span, strong) {
+  color: var(--on-primary-soft) !important;
+}
+
+#saleSection .payment-row.payment-total:not(.payment-excess) {
+  background: var(--success-soft);
+}
+
+#saleSection .payment-row.payment-total:not(.payment-excess) :is(span, strong) {
+  color: var(--on-success-soft) !important;
 }
 
 /* ---- css/bill-checks.css ---- */

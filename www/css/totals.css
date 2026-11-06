@@ -164,3 +164,21 @@
   animation: pulse 1.5s ease-in-out infinite;
 }
 
+/* Purchase totals in the brand colour, sale totals green */
+#purchaseSection .grand-total,
+#purchaseSection .payment-row.payment-total:not(.payment-excess) {
+  background: var(--primary-soft);
+}
+
+#purchaseSection .grand-total :is(span, strong),
+#purchaseSection .payment-row.payment-total:not(.payment-excess) :is(span, strong) {
+  color: var(--on-primary-soft) !important;
+}
+
+#saleSection .payment-row.payment-total:not(.payment-excess) {
+  background: var(--success-soft);
+}
+
+#saleSection .payment-row.payment-total:not(.payment-excess) :is(span, strong) {
+  color: var(--on-success-soft) !important;
+}

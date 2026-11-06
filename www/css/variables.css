@@ -403,6 +403,11 @@ body.dark-mode .nav-menu a.active {
   background: var(--success-soft) !important;
 }
 
+/* Cash close: the "extra cash" note the script colours #997404 (3.9:1 on its yellow) */
+#cashDifferenceAlert[style*="color: rgb(153, 116, 4)"] {
+  color: var(--on-warning-soft) !important;
+}
+
 /* The old purple brand gradient still written inline by a few templates */
 [style*="linear-gradient(135deg, #5560d6"],
 [style*="linear-gradient(135deg, rgb(85, 96, 214)"] {
