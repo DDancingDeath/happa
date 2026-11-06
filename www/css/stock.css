@@ -34,19 +34,19 @@
 
 .stock-low {
   border-left-color: var(--warning-color);
-  background: linear-gradient(90deg, var(--warning-light), var(--card-bg));
+  background: linear-gradient(90deg, var(--warning-soft), var(--card-bg));
 }
 
 .stock-out {
   border-left-color: var(--danger-color);
-  background: linear-gradient(90deg, var(--danger-light), var(--card-bg));
+  background: linear-gradient(90deg, var(--danger-soft), var(--card-bg));
   opacity: 0.85;
 }
 
 /* Low stock, alert levels, reverse and count (#146) */
 .stock-low-card {
-  background: #fff7ed;
-  border: 1px solid #fdba74;
+  background: var(--warning-soft);
+  border: 1px solid var(--warning-border);
   border-radius: 10px;
   padding: 12px 14px;
   margin-bottom: 14px;
@@ -54,7 +54,7 @@
 
 .stock-low-card__title {
   font-weight: 700;
-  color: #9a3412;
+  color: var(--on-warning-soft);
   margin-bottom: 6px;
 }
 
@@ -69,14 +69,14 @@
   border: none;
   padding: 6px 0;
   min-height: 32px;
-  color: #2563eb;
+  color: var(--on-info-soft);
   font-size: 13px;
   cursor: pointer;
 }
 
 .stock-adj-note {
   font-size: 13px;
-  color: #4b5563;
+  color: var(--text-secondary);
   margin-top: 4px;
 }
 
@@ -92,7 +92,7 @@
   justify-content: space-between;
   gap: 10px;
   padding: 6px 0;
-  border-bottom: 1px solid #f1f1f1;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .stock-count-row input {
@@ -102,7 +102,7 @@
 .stock-count-row__now {
   display: block;
   font-size: 12px;
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 
@@ -135,7 +135,7 @@
   grid-area: qty;
   font-size: 17px;
   font-weight: 700;
-  color: #15803d;
+  color: var(--on-success-soft);
   text-align: right;
   white-space: nowrap;
 }
@@ -204,5 +204,5 @@ body.dark-mode .stock-row__qty {
 }
 
 /* Stock search box (was its inline style) and its focus ring, which was inline onfocus / onblur (#89) */
-#stockSearchInput { width: 100%; padding: 14px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 15px; transition: all 0.2s; }
-#stockSearchInput:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+#stockSearchInput { width: 100%; padding: 14px; border: 2px solid var(--border-color); border-radius: 10px; font-size: 15px; transition: all 0.2s; }
+#stockSearchInput:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }

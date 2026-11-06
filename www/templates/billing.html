@@ -7,13 +7,13 @@
         
         <!-- Draft Management -->
         <div style="display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;">
-            <button type="button" id="saveDraftBtn" data-onclick="billing.saveDraft()" class="draft-btn draft-save-btn" style="background: #fff !important; border: 1px solid #2563eb !important; color: #1d4ed8 !important; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;" data-i18n="ui.billing.save_draft">
+            <button type="button" id="saveDraftBtn" data-onclick="billing.saveDraft()" class="draft-btn draft-save-btn" style="display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;" data-i18n="ui.billing.save_draft">
                 Save draft
             </button>
-            <button data-onclick="billing.showDrafts()" class="draft-btn" style="background: #15803d !important; border-color: #15803d !important; color: white !important; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;">
+            <button data-onclick="billing.showDrafts()" class="draft-btn draft-open-btn" style="display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;">
                 <span data-i18n="ui.billing.drafts">Drafts</span> <span>(<span id="draftCount">0</span>)</span>
             </button>
-            <button data-onclick="billing.clearBill()" class="draft-btn" style="background: #b91c1c !important; border-color: #b91c1c !important; color: white !important; display: flex; align-items: center; justify-content: center;" data-i18n="ui.billing.clear">
+            <button data-onclick="billing.clearBill()" class="draft-btn draft-clear-btn" style="display: flex; align-items: center; justify-content: center;" data-i18n="ui.billing.clear">
                 Clear
             </button>
         </div>
@@ -33,7 +33,7 @@
             <label style="width: 100px;" data-i18n="ui.common.customer">Customer:</label>
             <div style="display: flex; gap: 8px; flex: 1; align-items: center;">
                 <input type="text" id="customerName" list="customerOptions" placeholder="Name (optional)" style="flex: 1;"  data-i18n-placeholder="ui.billing.enter_customer_name_optional"/>
-                <button class="contact-pick-btn" data-perm="contacts" data-onclick="billing.pickContact()" style="padding: 8px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 44px; display: flex; align-items: center; justify-content: center;" title="Pick Contact" data-i18n-title="ui.common.pick_contact">👤</button>
+                <button class="contact-pick-btn" data-perm="contacts" data-onclick="billing.pickContact()" title="Pick Contact" data-i18n-title="ui.common.pick_contact">👤</button>
             </div>
             <datalist id="customerOptions"></datalist>
         </div>
@@ -109,9 +109,9 @@
                        placeholder="0" />
             </div>
             
-            <div class="total-row grand-total" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb) !important;">
-                <span style="color: #1976d2 !important; font-weight: 600;" data-i18n="ui.billing.total_payable">Total Payable:</span>
-                <strong style="color: #1976d2 !important;">₹ <span id="amountPayable" style="color: #1976d2 !important;">0</span></strong>
+            <div class="total-row grand-total">
+                <span data-i18n="ui.billing.total_payable">Total Payable:</span>
+                <strong>₹ <span id="amountPayable">0</span></strong>
             </div>
 
             <div class="payment-row">
@@ -126,7 +126,7 @@
                 <input type="number" inputmode="decimal" id="cashPayment" data-oninput="billing.updatePaymentTotal()" placeholder="0" />
             </div>
             
-            <div class="payment-row payment-total" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); color: #1976d2;">
+            <div class="payment-row payment-total">
                 <span data-i18n="ui.billing.total_paid">Total Paid:</span>
                 <strong>₹ <span id="totalPayment">0</span></strong>
             </div>
@@ -180,7 +180,7 @@
             <label style="width: 100px;" data-i18n="ui.common.customer">Customer:</label>
             <div style="display: flex; gap: 8px; flex: 1; align-items: center;">
                 <input type="text" id="saleCustomerName" list="saleCustomerOptions" placeholder="Name (optional)" style="flex: 1;"  data-i18n-placeholder="ui.billing.enter_customer_name_optional"/>
-                <button class="contact-pick-btn" data-perm="contacts" data-onclick="billing.pickSaleContact()" style="padding: 8px 12px; background: #15803d; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 44px; display: flex; align-items: center; justify-content: center;" title="Pick Contact" data-i18n-title="ui.common.pick_contact">👤</button>
+                <button class="contact-pick-btn" data-perm="contacts" data-onclick="billing.pickSaleContact()" title="Pick Contact" data-i18n-title="ui.common.pick_contact">👤</button>
             </div>
             <datalist id="saleCustomerOptions"></datalist>
         </div>
@@ -246,9 +246,9 @@
                 <strong style="color: var(--success-color);">₹ <span id="saleTotal">0</span></strong>
             </div>
             
-            <div class="total-row grand-total" style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9) !important;">
-                <span style="color: #166534 !important; font-weight: 600;" data-i18n="ui.common.total_receivable">Total Receivable:</span>
-                <strong style="color: #166534 !important;">₹ <span id="amountReceivable" style="color: #166534 !important;">0</span></strong>
+            <div class="total-row grand-total">
+                <span data-i18n="ui.common.total_receivable">Total Receivable:</span>
+                <strong>₹ <span id="amountReceivable">0</span></strong>
             </div>
 
             <div class="payment-row">
@@ -263,9 +263,9 @@
                 <input type="number" inputmode="decimal" id="saleCashPayment" data-oninput="billing.updateSalePaymentTotal()" placeholder="0" />
             </div>
             
-            <div class="payment-row payment-total" style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9) !important;">
-                <span style="color: #166534 !important; font-weight: 600;" data-i18n="ui.common.total_received">Total Received:</span>
-                <strong style="color: #166534 !important;">₹ <span id="totalReceived" style="color: #166534 !important;">0</span></strong>
+            <div class="payment-row payment-total">
+                <span data-i18n="ui.common.total_received">Total Received:</span>
+                <strong>₹ <span id="totalReceived">0</span></strong>
             </div>
             
             <div class="payment-row">

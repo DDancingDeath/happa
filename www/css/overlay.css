@@ -4,7 +4,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.5);
+  background: rgba(15, 23, 42, 0.45);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: 999;
@@ -31,9 +31,9 @@
   width: min(92vw, 560px);
   padding: 10px 12px;
   border-radius: 10px;
-  background: #fef2f2;
-  border: 1px solid #fca5a5;
-  color: #7f1d1d;
+  background: linear-gradient(var(--danger-soft), var(--danger-soft)), var(--card-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--on-danger-soft);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
   font-size: 14px;
 }
@@ -47,7 +47,7 @@
   padding: 6px 12px;
   border: none;
   border-radius: 8px;
-  background: #b91c1c;
+  background: var(--btn-danger);
   color: #fff;
   font-weight: 600;
   cursor: pointer;
@@ -67,7 +67,7 @@
   margin: 4px 0 8px;
   padding: 8px 10px;
   border-radius: 8px;
-  background: #fff7ed;
-  color: #9a3412;
+  background: var(--warning-soft);
+  color: var(--on-warning-soft);
   font-size: 13px;
 }

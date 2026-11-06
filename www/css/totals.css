@@ -54,11 +54,11 @@
 
 .labor-input-row input[type="number"] {
   width: 120px;
-  padding: 10px;
+  padding: 11px;
   text-align: right;
   font-size: 16px;
   font-weight: 600;
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   margin: 0;
   max-width: 120px;
@@ -67,26 +67,26 @@
 
 .labor-input-row input[type="number"]:focus {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+  box-shadow: var(--focus-ring);
 }
 
 .grand-total {
   padding: 14px !important;
   margin-top: 10px;
   font-size: 16px !important;
-  background: linear-gradient(135deg, var(--success-light), #a7f3d0);
+  background: var(--success-soft);
   border-radius: var(--radius);
   margin: 10px -4px;
 }
 
 .grand-total span {
   font-weight: 700;
-  color: var(--success-dark);
+  color: var(--on-success-soft);
 }
 
 .grand-total strong {
   font-size: 22px !important;
-  color: var(--success-dark) !important;
+  color: var(--on-success-soft) !important;
 }
 
 .payment-row {
@@ -121,11 +121,11 @@
   width: 120px;
   min-width: 120px;
   max-width: 120px;
-  padding: 10px;
+  padding: 11px;
   text-align: right;
   font-size: 16px;
   font-weight: 600;
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   margin: 0;
   flex-shrink: 0;
@@ -134,11 +134,11 @@
 
 .payment-row input[type="number"]:focus {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+  box-shadow: var(--focus-ring);
 }
 
 .payment-row.payment-total {
-  background: linear-gradient(135deg, var(--info-light), #bfdbfe);
+  background: var(--info-soft);
   padding: 14px;
   border-radius: var(--radius);
   margin: 10px -4px;
@@ -147,7 +147,7 @@
 
 .payment-row.payment-total span {
   font-weight: 700;
-  color: var(--info-dark);
+  color: var(--on-info-soft);
 }
 
 .payment-row.payment-total strong {
@@ -156,7 +156,7 @@
 }
 
 .payment-row.payment-excess {
-  background: linear-gradient(135deg, var(--danger-light), #fecaca) !important;
+  background: var(--danger-soft) !important;
 }
 
 .payment-row.payment-excess strong {
@@ -164,3 +164,23 @@
   animation: pulse 1.5s ease-in-out infinite;
 }
 
+/* Purchase totals in the brand colour, sale totals green */
+#purchaseSection .grand-total,
+#purchaseSection .payment-row.payment-total:not(.payment-excess) {
+  background: var(--primary-soft);
+}
+
+#purchaseSection .grand-total :is(span, strong),
+#purchaseSection .payment-row.payment-total:not(.payment-excess) :is(span, strong) {
+  color: var(--on-primary-soft) !important;
+}
+
+#saleSection .payment-row.payment-total:not(.payment-excess),
+#wholesale-sales .payment-row.payment-total:not(.payment-excess) {
+  background: var(--success-soft);
+}
+
+#saleSection .payment-row.payment-total:not(.payment-excess) :is(span, strong),
+#wholesale-sales .payment-row.payment-total:not(.payment-excess) :is(span, strong) {
+  color: var(--on-success-soft) !important;
+}

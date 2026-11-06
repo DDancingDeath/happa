@@ -20,8 +20,8 @@
     padding: 10px 12px;
     border-radius: 10px;
     border: 2px solid var(--danger-dark);
-    background: #fef2f2;
-    color: #7f1d1d;
+    background: var(--danger-soft);
+    color: var(--on-danger-soft);
     box-shadow: var(--shadow-sm);
 }
 
@@ -31,8 +31,8 @@
 
 .bill-check-banner.bill-check-warn {
     border-color: var(--warning-dark);
-    background: #fffbeb;
-    color: #78350f;
+    background: var(--warning-soft);
+    color: var(--on-warning-soft);
 }
 
 .bill-check-banner-head {
@@ -68,7 +68,7 @@ select.bill-check-warn {
 }
 
 tr.bill-check-block > td {
-    background: #fef2f2;
+    background: var(--danger-soft);
 }
 
 tr.bill-check-block > td:first-child {
@@ -76,7 +76,7 @@ tr.bill-check-block > td:first-child {
 }
 
 tr.bill-check-warn > td {
-    background: #fffbeb;
+    background: var(--warning-soft);
 }
 
 tr.bill-check-warn > td:first-child {
@@ -88,11 +88,11 @@ tr.bill-check-warn > td:first-child {
     font-size: 14px;
     font-weight: 600;
     line-height: 1.35;
-    color: #b91c1c;
+    color: var(--on-danger-soft);
 }
 
 .bill-check-msg.bill-check-warn {
-    color: #92400e;
+    color: var(--on-warning-soft);
 }
 
 tr.bill-check-row > td {
@@ -160,10 +160,10 @@ body.dark-mode .bill-check-msg.bill-check-warn {
     width: 100%;
     margin: -4px 0 10px;
     padding: 6px 10px;
-    border: 1px solid #bfdbfe;
+    border: 1px solid var(--info-border);
     border-radius: 6px;
-    background: #eff6ff;
-    color: #1e40af;
+    background: var(--info-soft);
+    color: var(--on-info-soft);
     font-size: 13px;
     font-weight: 600;
     line-height: 1.35;
@@ -172,9 +172,9 @@ body.dark-mode .bill-check-msg.bill-check-warn {
 }
 
 .party-due-line.party-due-old {
-    border-color: #fcd34d;
-    background: #fffbeb;
-    color: #92400e;
+    border-color: var(--warning-border);
+    background: var(--warning-soft);
+    color: var(--on-warning-soft);
 }
 
 body.dark-mode .party-due-line {

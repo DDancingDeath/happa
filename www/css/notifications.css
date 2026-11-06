@@ -6,10 +6,10 @@
   z-index: 1000;
   width: 46px;
   height: 46px;
-  border: none;
-  border-radius: var(--radius-md, 12px);
-  background: var(--primary-gradient, linear-gradient(135deg, #5560d6 0%, #764ba2 100%));
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -34,7 +34,7 @@
   height: 20px;
   padding: 0 5px;
   border-radius: 10px;
-  background: #ef4444;
+  background: var(--btn-danger);
   color: #fff;
   font-size: 12px;
   font-weight: 700;
@@ -63,7 +63,7 @@
   max-height: 85vh;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 16px 16px 0 0;
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.2);
   padding-bottom: env(safe-area-inset-bottom, 0);
@@ -88,7 +88,7 @@
 
 .notif-panel-hi {
   font-weight: 500;
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 .notif-close {
@@ -97,20 +97,20 @@
   font-size: 28px;
   line-height: 1;
   cursor: pointer;
-  color: #4b5563;
+  color: var(--text-secondary);
   padding: 4px 8px;
 }
 
 .notif-panel-actions {
   padding: 0 16px 8px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .notif-mark-all,
 .notif-more {
-  border: 1px solid #c7d2fe;
-  background: #eef2ff;
-  color: #4338ca;
+  border: 1px solid var(--primary-border);
+  background: var(--primary-soft);
+  color: var(--on-primary-soft);
   border-radius: 8px;
   padding: 8px 12px;
   font-size: 14px;
@@ -137,8 +137,8 @@
   width: 100%;
   text-align: left;
   border: none;
-  border-bottom: 1px solid #f3f4f6;
-  background: #fff;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--card-bg);
   padding: 12px 16px;
   cursor: pointer;
   font: inherit;
@@ -146,7 +146,7 @@
 }
 
 .notif-row.unread {
-  background: #eff6ff;
+  background: var(--info-soft);
   box-shadow: inset 4px 0 0 #3b82f6;
 }
 
@@ -164,24 +164,24 @@
 
 .notif-en {
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
   word-break: break-word;
 }
 
 .notif-hi {
-  color: #374151;
+  color: var(--text-secondary);
   word-break: break-word;
 }
 
 .notif-meta {
   font-size: 12px;
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 .notif-empty {
   padding: 28px 16px;
   text-align: center;
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 body.dark-mode .notif-panel,
