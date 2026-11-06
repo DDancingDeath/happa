@@ -582,6 +582,8 @@
 
   .ins-head .ins-title { margin-bottom: 0; }
   .ins-head .ins-period { margin-top: 0; }
+  .ins-cmp-toggle { display: none; }
+  .ins-head:not(.ins-cmp-open) .ins-cmp-more { display: block; }
 
   .ins-section:not([hidden]) {
     display: grid;

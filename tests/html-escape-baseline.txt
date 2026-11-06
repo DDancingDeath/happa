@@ -147,7 +147,6 @@ www/js/modules/money.js: labels.prev (markup via vsItem)
 www/js/modules/money.js: labels.prev (markup via vsItem)
 www/js/modules/money.js: labels.prev (markup via vsItem)
 www/js/modules/money.js: lastMonthKeys(now.getTime(), 13) (markup via map((k, i) => ({ key: k, tick: i % 3 === 0 || i === keys.length - 1 ? formatMonth(monthBounds(k).from, { lang, year: false }) : '', title: `${fo))
-www/js/modules/money.js: link
 www/js/modules/money.js: localDayKeys(r.from, Math.min(r.to, Date.now())) (markup via map((k, i) => ({ key: k, tick: i % 7 === 0 ? String(Number(k.slice(8))) : '', title: `${formatDay(k, { lang, year: false })}: ${money(net[i])}` ))
 www/js/modules/money.js: m.M1.total ← m = this.summary(r) (markup via this.renderCash .ly)
 www/js/modules/money.js: m.M1.total ← m = this.summary(r) (markup via this.renderCash .prev)

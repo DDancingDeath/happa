@@ -311,7 +311,7 @@ describe('taps, caveats and checks', () => {
             walk(document.getElementById('money'));
             return out.filter(s => /₹/.test(s));
         };
-        for (const section of ['profit', 'cash', 'spending', 'worth']) {
+        for (const section of ['profit', 'cash', 'spending']) {
             resetInsightsContextForTests();
             MoneyManager.init(section);
             MoneyManager.step(-1);
@@ -333,6 +333,118 @@ describe('taps, caveats and checks', () => {
     test('the checks line says the page adds up', () => {
         MoneyManager.init('profit');
         expect(document.getElementById('moneyChecks').textContent).toMatch(/Numbers match/);
+    });
+});
+
+describe('#92 sign-off fixes', () => {
+    const DAYS = (a, b) => [new Date(2026, 9, a).getTime(), new Date(2026, 9, b).getTime()];
+    const accountsMap = { a1: { name: 'Bank', balance: 1000, type: 'asset' }, a2: { name: 'Loan', balance: 300, type: 'liability' } };
+    const flush = async () => { for (let i = 0; i < 4; i++) await Promise.resolve(); };
+    const drawerRow = () => document.querySelector('#moneyWorthTerms [data-drawer]');
+
+    test('Worth is a now-snapshot: no period or compare bar, and it shows for a period whose bills are not loaded', async () => {
+        const sepStart = new Date(2026, 8, 1).getTime();
+        AppState.historyLoadedFrom = sepStart;
+        jest.spyOn(FirebaseService, 'getStockCheckpointState').mockReturnValue({ state: {}, asOf: sepStart });
+        jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([{ date: '2026-10-20', signedOut: true, closingBalance: 250 }]);
+        MoneyManager.init('worth');
+        await flush();
+        const thisMonth = document.getElementById('moneyWorthValue').textContent;
+        expect(thisMonth).toMatch(/₹/);
+        expect(document.getElementById('moneyPeriodBar').hidden).toBe(true);
+        expect(document.getElementById('moneyCmpToggle').hidden).toBe(true);
+        expect(document.getElementById('moneyCmpBar').hidden).toBe(true);
+        expect(document.getElementById('moneyNow').hidden).toBe(false);
+        expect(document.getElementById('moneyNowLabel').textContent).toBe('As of today, 21 Oct 2026');
+        setInsightsContext({ preset: 'month:2026-01' });
+        MoneyManager.render();
+        expect(document.getElementById('moneyBody').hidden).toBe(false);
+        expect(document.getElementById('moneyNotLoaded').hidden).toBe(true);
+        expect(document.getElementById('moneyWorthValue').textContent).toBe(thisMonth);
+        MoneyManager.setSection('profit');
+        expect(document.getElementById('moneyPeriodBar').hidden).toBe(false);
+        expect(document.getElementById('moneyNow').hidden).toBe(true);
+        expect(document.getElementById('moneyNotLoaded').textContent).toMatch(/not loaded/);
+    });
+
+    test.each([
+        ['loading', () => new Promise(() => {}), /still loading/],
+        ['error', () => Promise.reject(new Error('offline')), /couldn't load/],
+        ['old', () => Promise.resolve([{ date: '2026-09-10', signedOut: true, closingBalance: 700 }]), /not counted in the last 30 days/]
+    ])('drawer cash %s: "—" with why, left out of net worth (== oracle without the drawer)', async (state, load, why) => {
+        FirebaseService.loadWorthAccounts.mockResolvedValue(accountsMap);
+        jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockImplementation(load);
+        MoneyManager.drawerCache = null;
+        MoneyManager.init('worth');
+        await flush();
+        MoneyManager.render();
+        expect(drawerRow().dataset.drawer).toBe(state);
+        expect(document.querySelector('#moneyWorthTerms [data-metric-ref="C9"]').textContent).toBe('—');
+        expect(drawerRow().textContent).toMatch(why);
+        expect(document.getElementById('moneyWorthCaveats').textContent).toMatch(/leaves out the drawer cash/);
+        expect(shown('moneyWorthValue')).toBe(rupee(O.netWorth(data, { accounts: 700, drawer: 0 })));
+    });
+
+    test('drawer cash counted in the last 30 days: shown and counted in net worth, no caveat', async () => {
+        FirebaseService.loadWorthAccounts.mockResolvedValue(accountsMap);
+        const sessions = [{ date: '2026-10-20', signedOut: true, closingBalance: 250 }];
+        jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue(sessions);
+        MoneyManager.drawerCache = null;
+        MoneyManager.init('worth');
+        await flush();
+        MoneyManager.render();
+        expect(drawerRow().dataset.drawer).toBe('counted');
+        expect(shown('moneyWorthValue')).toBe(rupee(O.netWorth(data, { accounts: 700, drawer: O.drawerCash(sessions, new Date(NOW)) })));
+        expect(document.getElementById('moneyWorthCaveats').textContent).toBe('');
+    });
+
+    test('Today and This week: figures == oracle, labels, yesterday / last week, ‹ › by day and week', () => {
+        MoneyManager.init('profit');
+        MoneyManager.setPreset('today');
+        expect(document.getElementById('moneyPeriodLabel').textContent).toBe('Today, 21 Oct');
+        expect(shown('moneySales')).toBe(rupee(O.metrics(data, DAYS(21, 22)).M1_sales));
+        expect(shown('moneyProfitValue')).toBe(rupee(O.metrics(data, DAYS(21, 22)).M6_profit));
+        expect(document.getElementById('moneyProfitCompare').textContent).toMatch(/yesterday/);
+        MoneyManager.setPreset('this-week');
+        // 21 Oct 2026 is a Wednesday: Monday 19 Oct to today
+        expect(document.getElementById('moneyPeriodLabel').textContent).toBe('This week, 19 Oct – 21 Oct');
+        expect(shown('moneySales')).toBe(rupee(O.metrics(data, DAYS(19, 22)).M1_sales));
+        MoneyManager.step(-1);
+        expect(getInsightsContext().preset).toBe('range:2026-10-12:2026-10-18');
+        expect(shown('moneySales')).toBe(rupee(O.metrics(data, DAYS(12, 19)).M1_sales));
+        MoneyManager.step(1);
+        expect(getInsightsContext().preset).toBe('this-week');
+        MoneyManager.setPreset('today');
+        MoneyManager.step(-1);
+        expect(getInsightsContext().preset).toBe('range:2026-10-20:2026-10-20');
+        MoneyManager.step(1);
+        expect(getInsightsContext().preset).toBe('today');
+        // Today / This week are not kept as saved ranges (the rules list the saved presets)
+        expect(document.querySelector('#moneyCmpBar [data-onclick="money.saveRange()"]')).toBeNull();
+        setLang('hi');
+        try {
+            MoneyManager.render();
+            expect(document.getElementById('moneyPeriodLabel').textContent).toMatch(/^आज, 21 \S+$/);
+        } finally {
+            setLang('en');
+        }
+    });
+
+    test('"Compare & share" opens and closes the compare controls (aria-expanded), closed at first', () => {
+        MoneyManager.init('profit');
+        const btn = document.getElementById('moneyCmpToggle');
+        const head = btn.closest('.ins-head');
+        expect(btn.getAttribute('aria-expanded')).toBe('false');
+        expect(head.classList.contains('ins-cmp-open')).toBe(false);
+        expect(document.querySelector('#moneyCmpBar .ins-cmp-more [data-onclick="money.shareSummary()"]')).not.toBeNull();
+        MoneyManager.toggleCompare();
+        expect(btn.getAttribute('aria-expanded')).toBe('true');
+        expect(head.classList.contains('ins-cmp-open')).toBe(true);
+        MoneyManager.render();
+        expect(head.classList.contains('ins-cmp-open')).toBe(true);
+        MoneyManager.toggleCompare();
+        expect(btn.getAttribute('aria-expanded')).toBe('false');
+        expect(head.classList.contains('ins-cmp-open')).toBe(false);
     });
 });
 

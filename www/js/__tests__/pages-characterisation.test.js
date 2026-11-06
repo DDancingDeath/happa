@@ -24,6 +24,7 @@ import { AppState } from '../utils/state.js';
 import { computeStock } from '../utils/stock-replay.js';
 import { setInsightsContext, resetInsightsContextForTests, getInsightsContext } from '../utils/insights-context.js';
 import { moneySummary } from '../utils/business-metrics.js';
+import { setLang } from '../i18n/index.js';
 import { buildSnapshot, lastMonthKeys, monthBounds } from '../utils/month-snapshots.js';
 
 const ROOT = path.resolve(__dirname, '../../..');
@@ -216,6 +217,19 @@ describe('Stock screen, pinned (S1–S4, adjustment value)', () => {
         stockPage({ role: 'staff' });
         await StockManager.renderStock();
         pin('stock.staff', [...document.querySelectorAll('#stockList .stock-item')].map(el => squash(el.textContent)));
+    });
+
+    test('Not selling in Hindi: the average rate is Hindi too, no English "avg" (#92)', async () => {
+        stockPage();
+        setLang('hi');
+        try {
+            await StockManager.renderDeadStock();
+            const rows = [...document.querySelectorAll('#deadStockList .stock-item')].map(el => squash(el.textContent)).join(' | ');
+            expect(rows).toContain('औसत ₹31.33/kg');
+            expect(rows).not.toMatch(/avg/i);
+        } finally {
+            setLang('en');
+        }
     });
 
     test.each(Object.keys(NOWS))('generated shop, %s: stock rows and dead stock', async (name) => {

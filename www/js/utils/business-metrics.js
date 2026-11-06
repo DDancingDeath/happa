@@ -18,6 +18,7 @@ import { parseAnyBillDate, toLocalISODate } from './dates.js';
 import { saleTimePayment, dueEvents, sumDueEvents } from './due-payments.js';
 import { normalizePartyName, pickPartyName } from './aging.js';
 import { INSIGHTS_DEFAULTS } from './insights-config.js';
+import { lastCountedSession } from './cash-session.js';
 
 const DAY_MS = 86400000;
 /** @typedef {import('./finance-calc.js').Catalogue} Catalogue */
@@ -53,16 +54,24 @@ export function recordTime(value) {
 const localMidnight = (/** @type {Date} */ d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
 /**
+ * PERIOD: Monday 00:00 of the week containing `d` (weeks start on Monday).
+ * @param {Date} d
+ * @returns {Date}
+ */
+const weekStart = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7));
+
+/**
  * PERIOD: [from, to) for a preset. Calendar periods run up to the end of today.
- * @param {string} preset 'this-month' | 'last-month' | 'this-year' | 'last-year' | 'last-30' | 'all' | 'month:YYYY-MM'
- *   | 'range:YYYY-MM-DD:YYYY-MM-DD' (PERIOD-CUSTOM: both days included, never past today)
+ * @param {string} preset 'today' | 'this-week' | 'this-month' | 'last-month' | 'this-year' | 'last-year' | 'last-30' | 'all'
+ *   | 'month:YYYY-MM' | 'range:YYYY-MM-DD:YYYY-MM-DD' (PERIOD-CUSTOM: both days included, never past today)
  * @param {Date} [now]
  * @param {{monthMode?: string, yearStartMonth?: number}} [cfg]
- * @returns {{preset: string, from: number, to: number, month?: string}}
+ * @returns {{preset: string, from: number, to: number, month?: string, first?: string, last?: string, custom?: boolean, day?: boolean, week?: boolean}}
  */
 export function periodRange(preset, now = new Date(), cfg = INSIGHTS_DEFAULTS) {
     const today = localMidnight(now);
     const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).getTime();
+    const todayIso = toLocalISODate(today);
     const y = now.getFullYear();
     const m = now.getMonth();
     const ys = cfg.yearStartMonth || 0;
@@ -75,6 +84,8 @@ export function periodRange(preset, now = new Date(), cfg = INSIGHTS_DEFAULTS) {
     const monthKey = (/** @type {Date} */ d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     if (preset === 'this-month' && cfg.monthMode === 'last30') return mk(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29), endOfToday);
     switch (preset) {
+        case 'today': return mk(today, endOfToday, { day: true, first: todayIso, last: todayIso });
+        case 'this-week': return mk(weekStart(today), endOfToday, { week: true, first: toLocalISODate(weekStart(today)), last: todayIso });
         case 'this-month': return mk(new Date(y, m, 1), endOfToday, { month: monthKey(now) });
         case 'last-month': return mk(new Date(y, m - 1, 1), new Date(y, m, 1), { month: monthKey(new Date(y, m - 1, 1)) });
         case 'this-year': return mk(yearStart(0), endOfToday);
@@ -139,6 +150,46 @@ export function customRangePreset(fromIso, toIso, now = new Date()) {
 }
 
 /**
+ * PERIOD: 1 for a one-day period (Today, one chosen day), 7 for a week (This week, a chosen Monday–Sunday), else 0.
+ * @param {{from: number, preset?: string, custom?: boolean, first?: string, last?: string}} r periodRange()
+ * @returns {0|1|7}
+ */
+export function dayOrWeekSpan(r) {
+    if (r.preset === 'today' || (r.custom && r.first && r.first === r.last)) return 1;
+    if (r.preset === 'this-week') return 7;
+    if (r.custom && r.first && r.last) {
+        const a = new Date(r.from);
+        const sunday = toLocalISODate(new Date(a.getFullYear(), a.getMonth(), a.getDate() + 6));
+        if (a.getDay() === 1 && r.last === sunday) return 7;
+    }
+    return 0;
+}
+
+/**
+ * PERIOD: ‹ › from a day or a week. Today and a one-day range step a day; this week and a Monday–Sunday
+ * range step a week. Never past today: the current day / week becomes 'today' / 'this-week' again.
+ * @param {string} preset
+ * @param {number} dir -1 earlier, 1 later
+ * @param {Date} [now]
+ * @returns {?string} the new preset (the same one when the step would pass today), null for any other period
+ */
+export function stepDayOrWeek(preset, dir, now = new Date()) {
+    const r = periodRange(preset, now);
+    const days = dayOrWeekSpan(r);
+    if (!days) return null;
+    const f = new Date(r.from);
+    const start = new Date(f.getFullYear(), f.getMonth(), f.getDate() + Math.sign(dir) * days);
+    const today = localMidnight(now);
+    if (start.getTime() > today.getTime()) return preset;
+    if (days === 1) {
+        const iso = toLocalISODate(start);
+        return iso === toLocalISODate(today) ? 'today' : `range:${iso}:${iso}`;
+    }
+    if (start.getTime() === weekStart(today).getTime()) return 'this-week';
+    return `range:${toLocalISODate(start)}:${toLocalISODate(new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6))}`;
+}
+
+/**
  * PERIOD-FY: 1 April of the Indian financial year containing `now`, `offset` years away.
  * @param {Date} now
  * @param {number} [offset]
@@ -173,9 +224,10 @@ function shiftDate(ms, { years = 0, months = 0 }) {
 
 /**
  * CMP: the two comparison ranges for a period. A (partial) calendar month is
- * compared with the same days of the previous month; other periods with the
+ * compared with the same days of the previous month; a day or a week (dayOrWeekSpan)
+ * with the day / the same days of the week before; other periods with the
  * same length just before. "Last year" = the same dates one year earlier.
- * @param {{from: number, to: number, month?: string, preset?: string}} range
+ * @param {{from: number, to: number, month?: string, preset?: string, custom?: boolean, first?: string, last?: string}} range
  * @returns {{previous: ?{from: number, to: number}, lastYear: ?{from: number, to: number}}}
  */
 export function comparisonRanges(range) {
@@ -183,7 +235,15 @@ export function comparisonRanges(range) {
     let previous;
     const f = new Date(range.from);
     const rolling = range.preset === 'last-30' || (range.preset === 'this-month' && !range.month);
-    if (!rolling && f.getDate() === 1 && f.getHours() === 0 && range.to - range.from <= 31 * DAY_MS) {
+    const back = dayOrWeekSpan(range);
+    if (back) {
+        // The day before / the same days of the week before (Monday to the same weekday), also on the 1st
+        const t = new Date(range.to);
+        previous = {
+            from: new Date(f.getFullYear(), f.getMonth(), f.getDate() - back).getTime(),
+            to: new Date(t.getFullYear(), t.getMonth(), t.getDate() - back).getTime()
+        };
+    } else if (!rolling && f.getDate() === 1 && f.getHours() === 0 && range.to - range.from <= 31 * DAY_MS) {
         previous = { from: shiftDate(range.from, { months: -1 }), to: Math.min(shiftEnd(range.to, { months: -1 }), range.from) };
     } else {
         previous = { from: range.from - (range.to - range.from), to: range.from };
@@ -889,7 +949,8 @@ export function netMoneyByDay(detail, dayKeys) {
  * M15 net worth = the chosen terms − payables (#39 default: stock + receivable
  * + other accounts + drawer cash − payable). Each due counted once.
  * @param {{stock: ?number, receivable: number, payable: number, accounts: ?number, drawer: ?number}} t
- *   accounts null = the shared accounts (#74) are not loaded yet
+ *   accounts null = the shared accounts (#74) are not loaded yet; drawer null = not known
+ *   (drawerTerm: loading, not loaded, or no count in 30 days), left out
  * @param {typeof INSIGHTS_DEFAULTS} [cfg]
  * @returns {?number} null when the stock value or the accounts aren't known
  */
@@ -903,6 +964,26 @@ export function netWorth(t, cfg = INSIGHTS_DEFAULTS) {
     if (terms.includes('accounts')) v += num(t.accounts);
     if (terms.includes('drawer')) v += num(t.drawer);
     return round2(v);
+}
+
+/** M15 / C9: how old the last count may be to count in net worth (days). */
+export const DRAWER_MAX_AGE_DAYS = 30;
+
+/**
+ * M15 drawer term (C9): the last counted cash of the sessions, when it is known. Not known (amount
+ * null, left out of net worth): the sessions are still loading, could not be loaded, or no session
+ * of the last DRAWER_MAX_AGE_DAYS days was counted.
+ * @param {?Array<Rec>} sessions the loaded cash sessions (any days)
+ * @param {'loading'|'error'|'ready'} load
+ * @param {Date} [now]
+ * @returns {{state: 'counted'|'loading'|'error'|'old', amount: ?number, date: ?string}}
+ */
+export function drawerTerm(sessions, load, now = new Date()) {
+    if (load === 'loading' || load === 'error') return { state: load, amount: null, date: null };
+    const oldest = toLocalISODate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - DRAWER_MAX_AGE_DAYS));
+    const last = lastCountedSession((sessions || []).filter(s => s && String(s.date) >= oldest));
+    if (!last) return { state: 'old', amount: null, date: null };
+    return { state: 'counted', amount: round2(num(last.closingBalance)), date: String(last.date) };
 }
 
 /**

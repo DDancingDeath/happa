@@ -22,12 +22,12 @@ import { labourSummary, labourToPayByDay, labourCalcText, periodLabourGap } from
 import { formatMonth, formatDay, toLocalISODate, parseAnyBillDate, monthStart, addLocalDays, periodBounds, localDayKeys, endUpToNow } from '../utils/dates.js';
 import { pickReplayBase, billsInRange } from '../utils/finance-calc.js';
 import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom, refreshOnDemandHistory } from '../utils/history-window.js';
-import { lastCountedSession } from '../utils/cash-session.js';
 import { refusedForClock } from '../utils/clock-skew.js';
 import {
     moneySummary, periodRange, comparisonRanges, change, outstandingTotals, netWorth, fiscalYearLabel, periodCompare,
     itemSummary, biggestChange, profitPerDay, billTime, roundTo, sharePct, addsUp, netMoneyByDay,
-    accountsTotal, accountsList, accountEntry, accountsFromPhone, MAX_WORTH_ACCOUNTS, expensePer100Sales
+    accountsTotal, accountsList, accountEntry, accountsFromPhone, MAX_WORTH_ACCOUNTS, expensePer100Sales,
+    drawerTerm, stepDayOrWeek, dayOrWeekSpan, DRAWER_MAX_AGE_DAYS
 } from '../utils/business-metrics.js';
 import { insightsSettings } from '../utils/insights-config.js';
 import { getInsightsContext, setInsightsContext } from '../utils/insights-context.js';
@@ -43,7 +43,7 @@ import { APP_IDENTITY } from '../config/app-identity.js';
 import { PrinterService } from '../services/printer.js';
 import {
     compareBarHtml, writeBar, compareTableHtml, compareTarget, choosePreset, chooseCompare, applyDates, applySaved,
-    saveCurrentRange, removeCurrentRange, periodText, presetSelectValue, summaryLines, summaryText, summaryCanvas
+    saveCurrentRange, removeCurrentRange, periodText, presetSelectValue, summaryLines, summaryText, summaryCanvas, toggleCompareBar
 } from '../ui/period-compare.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
@@ -177,10 +177,25 @@ export const MoneyManager = {
             b.classList.toggle('active', on);
             b.setAttribute('aria-selected', String(on));
         });
+        // Worth is where things stand now (#92): no period, no compare / share
+        const worth = section === 'worth';
+        ['moneyPeriodBar', 'moneyCmpToggle', 'moneyCmpBar'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.hidden = worth;
+        });
+        const now = document.getElementById('moneyNow');
+        if (now) now.hidden = !worth;
+    },
+
+    /** Phone: opens / closes "Compare & share" (#92). */
+    toggleCompare() {
+        toggleCompareBar('money');
     },
 
     setPreset(preset) {
         choosePreset(preset);
+        const sel = document.getElementById('moneyPreset');
+        if (sel) sel.value = presetSelectValue(getInsightsContext().preset);
         this.render();
     },
 
@@ -219,7 +234,10 @@ export const MoneyManager = {
         const now = new Date();
         const r = this.range();
         const { preset } = getInsightsContext();
-        if (/year$/.test(preset)) {
+        const dayOrWeek = stepDayOrWeek(preset, dir, now);
+        if (dayOrWeek) {
+            setInsightsContext({ preset: dayOrWeek });
+        } else if (/year$/.test(preset)) {
             setInsightsContext({ preset: preset === 'this-year' ? (dir < 0 ? 'last-year' : 'this-year') : (dir > 0 ? 'this-year' : 'last-year') });
         } else if (/-fy$/.test(preset)) {
             setInsightsContext({ preset: dir < 0 ? 'last-fy' : 'this-fy' });
@@ -251,7 +269,7 @@ export const MoneyManager = {
     periodLabel(r = this.range()) {
         const lang = getLang();
         const { preset } = getInsightsContext();
-        if (r.custom) return periodText(r, preset, lang);
+        if (r.custom || r.day || r.week) return periodText(r, preset, lang);
         if (r.month) {
             const label = formatMonth(r.from, { lang });
             if (preset !== 'this-month') return label;
@@ -335,22 +353,32 @@ export const MoneyManager = {
      * its due legs are then on the bills; the drawer balance is not).
      */
     drawerSessions(now = new Date()) {
-        const a = toLocalISODate(addLocalDays(now, -30));
+        const a = toLocalISODate(addLocalDays(now, -DRAWER_MAX_AGE_DAYS));
         const b = toLocalISODate(now);
         const key = `${a}|${b}`;
         const hit = this.drawerCache;
-        const fresh = hit && hit.key === key && Date.now() - hit.at < SESSION_TTL_MS;
+        const fresh = hit && hit.key === key && (hit.loaded || hit.failed) && Date.now() - hit.at < SESSION_TTL_MS;
         if (!fresh && !(hit && hit.pending && hit.key === key)) {
-            this.drawerCache = { key, pending: true, at: Date.now(), list: hit?.list || [] };
+            // An earlier list (another day's window, or before the TTL) is kept until this load answers.
+            this.drawerCache = { key, pending: true, at: Date.now(), list: hit?.list || [], loaded: !!hit?.loaded, failed: false };
             Promise.resolve(FirebaseService.loadCashSessionsBetween?.(a, b)).then(list => {
-                this.drawerCache = { key, pending: false, at: Date.now(), list: list || [] };
+                this.drawerCache = { key, pending: false, at: Date.now(), list: list || [], loaded: true, failed: false };
                 if (this.isOpen()) this.render();
             }).catch(e => {
                 console.error('Money: loading drawer sessions failed:', e);
-                this.drawerCache = { key, pending: false, at: Date.now(), list: hit?.list || [] };
+                this.drawerCache = { key, pending: false, at: Date.now(), list: hit?.list || [], loaded: !!hit?.loaded, failed: true };
+                if (this.isOpen()) this.render();
             });
         }
         return this.drawerCache?.list || [];
+    },
+
+    /** M15 drawer term (C9) and why it is not known (drawerTerm). */
+    drawerNow(now = new Date()) {
+        const list = this.drawerSessions(now);
+        const c = this.drawerCache;
+        const load = c?.loaded ? 'ready' : c?.failed ? 'error' : 'loading';
+        return drawerTerm(list, load, now);
     },
 
     /**
@@ -387,6 +415,10 @@ export const MoneyManager = {
         const page = document.getElementById('money');
         if (!page) return;
         const now = new Date();
+        if (this.section === 'worth') {
+            this.renderWorthNow(now);
+            return;
+        }
         const r = this.range();
         const label = document.getElementById('moneyPeriodLabel');
         if (label) label.textContent = this.periodLabel(r);
@@ -403,8 +435,11 @@ export const MoneyManager = {
         const prev = this.figuresFor(cmpR.previous, now);
         const ly = this.figuresFor(cmpR.lastYear, now);
         const lang = getLang();
+        const span = dayOrWeekSpan(r);
+        const prevKey = r.day ? 'ui.money.yesterday' : r.week ? 'ui.money.last_week'
+            : span === 1 ? 'ui.money.day_before' : span === 7 ? 'ui.money.week_before' : 'ui.money.before';
         const labels = {
-            prev: r.month ? formatMonth(cmpR.previous?.from, { lang, year: false }) : t('ui.money.before'),
+            prev: r.month ? formatMonth(cmpR.previous?.from, { lang, year: false }) : t(prevKey),
             ly: r.month ? formatMonth(cmpR.lastYear?.from, { lang }) : t('ui.money.last_year')
         };
         const target = compareTarget(this.cfg(), now);
@@ -415,8 +450,26 @@ export const MoneyManager = {
         this.renderProfit(ctx);
         if (this.section === 'cash') this.renderCash(ctx);
         if (this.section === 'spending') this.renderSpending(ctx);
-        if (this.section === 'worth') this.renderWorth(ctx);
         this.renderChecks(ctx);
+    },
+
+    /**
+     * Worth (#92): where things stand now, whatever period the other tabs show. Stock now comes
+     * from this month's replay (always loaded), dues and accounts are all-time.
+     */
+    renderWorthNow(now = new Date()) {
+        const label = document.getElementById('moneyNowLabel');
+        if (label) label.textContent = t('ui.money.worth_now', { day: formatDay(now, { lang: getLang() }) });
+        const r = periodRange('this-month', now, this.cfg());
+        if (!this.covered(r.from)) {
+            this.renderNotLoaded(r);
+            return;
+        }
+        this.showBody(true);
+        this.renderCompare(null, null, {});
+        const m = this.summary(r, { sessions: this.sessions(r), detail: true });
+        this.renderWorth({ m, now });
+        this.renderChecks({ m });
     },
 
     /** Shows the figures, or hides all of them behind the "not loaded" message. */
@@ -822,13 +875,12 @@ export const MoneyManager = {
     renderWorth({ m, now }) {
         const dues = outstandingTotals({ purchases: AppState.purchaseHistory, wholesaleSales: AppState.salesHistory, retailSales: AppState.retailSalesHistory });
         const stock = m.stockNow;
-        const drawerSessions = this.drawerSessions(now);
-        const last = lastCountedSession(drawerSessions);
-        const drawer = last ? Number(last.closingBalance) : 0;
+        const drawer = this.drawerNow(now);
+        const drawerKnown = drawer.state === 'counted';
         const seeAccounts = this.canSeeAccounts();
         const cfg = seeAccounts ? this.cfg() : { ...this.cfg(), netWorthTerms: this.cfg().netWorthTerms.filter(x => x !== 'accounts') };
         const accounts = seeAccounts ? this.accountsTotal() : 0;
-        const worth = netWorth({ stock, receivable: dues.receivable.total, payable: dues.payable.total, accounts, drawer }, cfg);
+        const worth = netWorth({ stock, receivable: dues.receivable.total, payable: dues.payable.total, accounts, drawer: drawer.amount }, cfg);
         const seeStock = this.can('stockValue');
         this.text('moneyWorthValue', seeStock ? money(worth) : '—');
         const lyMonth = monthStart(now, -12);
@@ -838,13 +890,21 @@ export const MoneyManager = {
         const cmp = { ...vsItem(stock, lyClose, t('ui.money.stock_vs', { when: sinceLabel })), unknownText: t('ui.money.stock_vs_not_known', { when: sinceLabel }) };
         this.html('moneyWorthCompare', seeStock && Number.isFinite(stock) && (cmp.c || cmp.unknown) ? compareHtml([cmp]) : '');
         this.html('moneyWorthTakeaway', seeStock ? takeawayHtml(worthTakeaways({ worth, change: null, receivable: dues.receivable.total, sinceLabel, accountsKnown: accounts !== null || !cfg.netWorthTerms.includes('accounts') })) : '');
-        const term = (label, value, link, ref) => `<div class="ins-row"><span>${esc(t(label))}</span><span><span${ref ? ` data-metric-ref="${ref}"` : ''}>${money(value)}</span> <button type="button" class="ins-link" data-go="${link}">${esc(t(`ui.money.home_${link.replace(/-/g, '_')}`))} ›</button></span></div>`;
+        const drawerWhy = drawerKnown ? '' : t(`ui.money.drawer_${drawer.state}`, { days: DRAWER_MAX_AGE_DAYS });
+        this.html('moneyWorthCaveats', seeStock && worth !== null && cfg.netWorthTerms.includes('drawer') && !drawerKnown
+            ? `<div class="ins-caveat">⚠ ${esc(t('ui.money.worth_no_drawer', { why: drawerWhy }))}</div>` : '');
+        const go = (link) => `<button type="button" class="ins-link" data-go="${esc(link)}">${esc(t(`ui.money.home_${link.replace(/-/g, '_')}`))} ›</button>`;
+        const term = (label, value, link, ref) => `<div class="ins-row"><span>${esc(t(label))}</span><span><span${ref ? ` data-metric-ref="${ref}"` : ''}>${money(value)}</span> ${go(link)}</span></div>`;
+        // C9 not known (loading, not loaded, no count in 30 days): "—" and why, never ₹0 (#92)
+        const drawerRow = `<div class="ins-row" data-drawer="${esc(drawer.state)}"><span>${esc(t(drawerKnown ? 'ui.money.drawer_last' : 'ui.money.drawer_cash'))}`
+            + `${drawerKnown ? '' : `<br><small>${esc(drawerWhy)}</small>`}</span>`
+            + `<span><span data-metric-ref="C9">${drawerKnown ? money(drawer.amount) : '—'}</span> ${go('cash-management')}</span></div>`;
         const accountsNote = !seeAccounts && this.cfg().netWorthTerms.includes('accounts')
             ? `<div class="ins-row"><span>${esc(t('ui.money.other_accounts'))}</span><span>${esc(t('ui.money.accounts_owner_manager'))}</span></div>` : '';
         this.html('moneyWorthTerms',
             (seeStock && cfg.netWorthTerms.includes('stock') ? term('ui.money.stock_value', stock, 'stock', 'S4') : '')
             + (cfg.netWorthTerms.includes('receivable') ? term('ui.money.to_receive', dues.receivable.total, 'due', 'O4') : '')
-            + (cfg.netWorthTerms.includes('drawer') ? term(last ? 'ui.money.drawer_last' : 'ui.money.drawer_none', drawer, 'cash-management', 'C9') : '')
+            + (cfg.netWorthTerms.includes('drawer') ? drawerRow : '')
             + (cfg.netWorthTerms.includes('accounts') ? `<div class="ins-row"><span>${esc(t('ui.money.other_accounts'))}</span><span data-input>${money(accounts)}</span></div>` : accountsNote)
             + term('ui.money.to_pay', -dues.payable.total, 'due', 'O3')
             + (seeStock ? `<div class="ins-row ins-total"><span>${esc(t('ui.money.net_worth'))}</span><span data-metric-ref="M15">${money(worth)}</span></div>` : ''));

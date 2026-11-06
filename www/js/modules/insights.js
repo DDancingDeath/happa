@@ -19,7 +19,7 @@ import { can, canOpenTab, canOpenSection } from '../utils/role-access.js';
 import {
     moneySummary, periodRange, comparisonRanges, change, itemSummary, belowCostSales, lowProfitItems,
     purchaseItems, partySummary, stoppedComingCheck, overdueParties, seasonIndex, stockUpItems,
-    soldKgByMonth, seasonKgTotal, weeklyKgWindow, weeklyKgByItem, roundTo, sharePct, topShare, addsUp, fiscalYearLabel
+    soldKgByMonth, seasonKgTotal, weeklyKgWindow, weeklyKgByItem, roundTo, sharePct,     topShare, addsUp, fiscalYearLabel, stepDayOrWeek
 } from '../utils/business-metrics.js';
 import { insightsSettings } from '../utils/insights-config.js';
 import { getInsightsContext, setInsightsContext, contextMonth } from '../utils/insights-context.js';
@@ -28,7 +28,7 @@ import { MoneyManager } from './money.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import {
-    compareBarHtml, writeBar, compareTarget, choosePreset, chooseCompare, applyDates, applySaved, saveCurrentRange, removeCurrentRange, periodText, presetSelectValue
+    compareBarHtml, writeBar, compareTarget, choosePreset, chooseCompare, applyDates, applySaved, saveCurrentRange,     removeCurrentRange, periodText, presetSelectValue, toggleCompareBar
 } from '../ui/period-compare.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
@@ -93,6 +93,8 @@ export const InsightsManager = {
 
     setPreset(preset) {
         choosePreset(preset);
+        const sel = document.getElementById('insightsPreset');
+        if (sel) sel.value = presetSelectValue(getInsightsContext().preset);
         this.render();
     },
 
@@ -126,11 +128,19 @@ export const InsightsManager = {
         this.render();
     },
 
+    /** Phone: opens / closes the compare controls (#92). */
+    toggleCompare() {
+        toggleCompareBar('insights');
+    },
+
     step(dir) {
         const now = new Date();
         const r = this.range();
         const { preset } = getInsightsContext();
-        if (/year$/.test(preset)) {
+        const dayOrWeek = stepDayOrWeek(preset, dir, now);
+        if (dayOrWeek) {
+            setInsightsContext({ preset: dayOrWeek });
+        } else if (/year$/.test(preset)) {
             setInsightsContext({ preset: dir < 0 ? 'last-year' : 'this-year' });
         } else if (/-fy$/.test(preset)) {
             setInsightsContext({ preset: dir < 0 ? 'last-fy' : 'this-fy' });
@@ -206,6 +216,8 @@ export const InsightsManager = {
         const label = document.getElementById('insightsPeriodLabel');
         if (label) label.textContent = this.periodLabel(r);
         writeBar('insightsCmpBar', compareBarHtml('insights'));
+        const title = document.getElementById('insightsActionsTitle');
+        if (title) title.textContent = t('ui.insights.todo_for', { period: this.periodLabel(r) });
         const ok = this.covered(r.from);
         const m = ok ? moneySummary(this.input(r.from), r, { detail: true }) : null;
         if (this.section === 'actions') this.renderActions(m, r);
@@ -219,7 +231,7 @@ export const InsightsManager = {
         const lang = getLang();
         if (r.month) return formatMonth(r.from, { lang });
         const { preset } = getInsightsContext();
-        if (r.custom) return periodText(r, preset, lang);
+        if (r.custom || r.day || r.week) return periodText(r, preset, lang);
         if (preset === 'last-30') return t('ui.money.p_last_30');
         if (r.fy) return t('ui.money.fy_label', { years: fiscalYearLabel(r.fy) });
         return String(new Date(r.from).getFullYear());

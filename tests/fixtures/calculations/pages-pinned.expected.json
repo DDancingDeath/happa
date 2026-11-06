@@ -177,17 +177,21 @@
   },
   "insights.first": {
     "actions": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Nov 2026",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Nov 2026",
       "insightsActionsDues": "⏰8 parties owe you ₹41,439 for more than 30 days.Open Outstanding ›📤You owe 7 parties ₹1,52,097 for more than 30 days.Open Outstanding ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
       "insightsChecks": "✓ Items and parties add up to Money's sales"
     },
     "items": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Nov 2026",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Nov 2026",
       "insightsActionsDues": "⏰8 parties owe you ₹41,439 for more than 30 days.Open Outstanding ›📤You owe 7 parties ₹1,52,097 for more than 30 days.Open Outstanding ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
       "insightsItemsTable": "No sales in this period.",
@@ -197,9 +201,11 @@
     },
     "itemsRetail": "No sales in this period.",
     "customers": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Nov 2026",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Nov 2026",
       "insightsActionsDues": "⏰8 parties owe you ₹41,439 for more than 30 days.Open Outstanding ›📤You owe 7 parties ₹1,52,097 for more than 30 days.Open Outstanding ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
       "insightsItemsTable": "No sales in this period.",
@@ -235,17 +241,21 @@
   },
   "insights.jan31": {
     "actions": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Jan 2027",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Jan 2027",
       "insightsActionsDues": "⏰8 parties owe you ₹48,112 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,29,448 for more than 30 days.Open Outstanding ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
       "insightsChecks": "✓ Items and parties add up to Money's sales"
     },
     "items": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Jan 2027",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Jan 2027",
       "insightsActionsDues": "⏰8 parties owe you ₹48,112 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,29,448 for more than 30 days.Open Outstanding ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
       "insightsItemsTakeaway": "Mustard earned the most profit (₹921).Wheat sold well but earned only ₹11.6 per ₹100.",
@@ -256,9 +266,11 @@
     },
     "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearMustard₹5,914₹92115.6▲ 2%Rice₹3,582₹63217.6▲ 15%Gram₹3,524₹46013.1▼ 49%Maize₹2,395₹45519▲ 172%Wheat₹2,086₹37718.1▲ 2%",
     "customers": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Jan 2027",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Jan 2027",
       "insightsActionsDues": "⏰8 parties owe you ₹48,112 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,29,448 for more than 30 days.Open Outstanding ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
       "insightsItemsTakeaway": "Mustard earned the most profit (₹921).",
@@ -296,17 +308,21 @@
   },
   "insights.leapDay": {
     "actions": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Feb 2028",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Feb 2028",
       "insightsActionsDues": "⏰8 parties owe you ₹35,876 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,75,361 for more than 30 days.Open Outstanding ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
       "insightsChecks": "✓ Items and parties add up to Money's sales"
     },
     "items": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Feb 2028",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Feb 2028",
       "insightsActionsDues": "⏰8 parties owe you ₹35,876 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,75,361 for more than 30 days.Open Outstanding ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
       "insightsItemsTakeaway": "Mustard earned the most profit (₹1,645).",
@@ -317,9 +333,11 @@
     },
     "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearGram₹3,886₹59815.4▲ 87%Maize₹2,157₹35416.4▲ 6%Rice₹1,238₹25620.7▼ 24%Wheat₹1,399₹19614▼ 55%Mustard₹985₹18318.6▼ 80%",
     "customers": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Feb 2028",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Feb 2028",
       "insightsActionsDues": "⏰8 parties owe you ₹35,876 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,75,361 for more than 30 days.Open Outstanding ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
       "insightsItemsTakeaway": "Gram earned the most profit (₹598).",
@@ -357,17 +375,21 @@
   },
   "insights.mar31": {
     "actions": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Mar 2027",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Mar 2027",
       "insightsActionsDues": "⏰8 parties owe you ₹44,473 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,43,474 for more than 30 days.Open Outstanding ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
       "insightsChecks": "✓ Items and parties add up to Money's sales"
     },
     "items": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Mar 2027",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Mar 2027",
       "insightsActionsDues": "⏰8 parties owe you ₹44,473 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,43,474 for more than 30 days.Open Outstanding ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
       "insightsItemsTakeaway": "Gram earned the most profit (₹1,128).Mustard sold well but earned only ₹10.9 per ₹100.",
@@ -378,9 +400,11 @@
     },
     "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearGram₹5,922₹94616▼ 2%Mustard₹3,858₹61716▲ 6%Rice₹4,242₹49611.7▲ 130%Wheat₹1,826₹31517.2▲ 59%Maize₹1,870₹28915.5▲ 50%",
     "customers": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Mar 2027",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Mar 2027",
       "insightsActionsDues": "⏰8 parties owe you ₹44,473 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,43,474 for more than 30 days.Open Outstanding ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
       "insightsItemsTakeaway": "Gram earned the most profit (₹946).",
@@ -418,17 +442,21 @@
   },
   "insights.jan1": {
     "actions": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Jan 2027",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Jan 2027",
       "insightsActionsDues": "⏰8 parties owe you ₹34,678 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,34,230 for more than 30 days.Open Outstanding ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
       "insightsChecks": "✓ Items and parties add up to Money's sales"
     },
     "items": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Jan 2027",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Jan 2027",
       "insightsActionsDues": "⏰8 parties owe you ₹34,678 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,34,230 for more than 30 days.Open Outstanding ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
       "insightsItemsTakeaway": "Gram earned the most profit (₹177).",
@@ -439,9 +467,11 @@
     },
     "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearGram₹1,183₹17714.9▲ 225%Wheat₹644₹9614.9—",
     "customers": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Jan 2027",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Jan 2027",
       "insightsActionsDues": "⏰8 parties owe you ₹34,678 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,34,230 for more than 30 days.Open Outstanding ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
       "insightsItemsTakeaway": "Gram earned the most profit (₹177).",
@@ -624,9 +654,11 @@
   },
   "insights.first.window": {
     "actions": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Nov 2026",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Nov 2026",
       "insightsActionsDues": "⏰8 parties owe you ₹41,439 for more than 30 days.Open Outstanding ›📤You owe 7 parties ₹1,52,097 for more than 30 days.Open Outstanding ›",
       "insightsActionsStock": "🌾Stock up Rice: Jan is busy in 9 weeks, stock lasts about 0.7 weeks. (Weekly sales estimated from the last 4 weeks of bills loaded.)See rate trend ›🌾Stock up Mustard: Dec is busy in 4 weeks, stock lasts about 1.2 weeks. (Weekly sales estimated from the last 4 weeks of bills loaded.)See rate trend ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
@@ -640,9 +672,11 @@
   },
   "insights.jan31.window": {
     "actions": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Jan 2027",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Jan 2027",
       "insightsActionsDues": "⏰8 parties owe you ₹48,112 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,29,448 for more than 30 days.Open Outstanding ›",
       "insightsActionsStock": "🌾Stock up Rice: Feb is busy in 0 weeks, stock lasts about 1.6 weeks.See rate trend ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
@@ -656,9 +690,11 @@
   },
   "insights.leapDay.window": {
     "actions": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Feb 2028",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Feb 2028",
       "insightsActionsDues": "⏰8 parties owe you ₹35,876 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,75,361 for more than 30 days.Open Outstanding ›",
       "insightsActionsStock": "🌾Stock up Rice: Mar is busy in 0 weeks, stock lasts about 1.1 weeks.See rate trend ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
@@ -672,9 +708,11 @@
   },
   "insights.mar31.window": {
     "actions": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Mar 2027",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Mar 2027",
       "insightsActionsDues": "⏰8 parties owe you ₹44,473 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,43,474 for more than 30 days.Open Outstanding ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
       "insightsChecks": "✓ Items and parties add up to Money's sales"
@@ -687,9 +725,11 @@
   },
   "insights.jan1.window": {
     "actions": {
+      "insightsCmpToggle": "Compare ▾",
       "insightsPeriodLabel": "Jan 2027",
-      "insightsPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "insightsPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "insightsCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "insightsActionsTitle": "To do: Jan 2027",
       "insightsActionsDues": "⏰8 parties owe you ₹34,678 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,34,230 for more than 30 days.Open Outstanding ›",
       "insightsActionsStock": "🌾Stock up Rice: Feb is busy in 4 weeks, stock lasts about 1.5 weeks. (Weekly sales estimated from the last 4 weeks of bills loaded.)See rate trend ›",
       "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
@@ -703,8 +743,10 @@
   },
   "money.first": {
     "texts": {
+      "moneyCmpToggle": "Compare & share ▾",
       "moneyPeriodLabel": "1 Nov 2026",
-      "moneyPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "moneyPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "moneyNowLabel": "As of today, 1 Nov 2026",
       "moneyCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
       "moneyProfitValue": "₹0",
       "moneyProfitCompare": "▲ 100% vs Oct · ▲ 100% vs Nov 2025",
@@ -745,7 +787,8 @@
       "moneyWorthValue": "₹6,29,894",
       "moneyWorthCompare": "stock vs Nov 2025: not known",
       "moneyWorthTakeaway": "You are worth ₹6,29,894.₹42,698 of it is still with customers.",
-      "moneyWorthTerms": "Stock value₹7,31,948 Stock ›To receive₹42,698 Outstanding ›Cash in drawer (not counted lately)₹0 Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,52,097 Outstanding ›Net worth₹6,29,894",
+      "moneyWorthCaveats": "⚠ Net worth leaves out the drawer cash: not counted in the last 30 days.",
+      "moneyWorthTerms": "Stock value₹7,31,948 Stock ›To receive₹42,698 Outstanding ›Cash in drawernot counted in the last 30 days— Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,52,097 Outstanding ›Net worth₹6,29,894",
       "moneyAccounts": "🏦 Bank₹12,346 ✕🤝 Loan−₹5,001 ✕🏦 Odd₹0 ✕",
       "moneyAccType": "I have this I owe this",
       "moneyChecks": "✓ Numbers match Outstanding, the cash drawer and Stock"
@@ -759,8 +802,10 @@
   },
   "money.jan31": {
     "texts": {
+      "moneyCmpToggle": "Compare & share ▾",
       "moneyPeriodLabel": "1–31 Jan 2027",
-      "moneyPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "moneyPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "moneyNowLabel": "As of today, 31 Jan 2027",
       "moneyCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
       "moneyProfitValue": "-₹13,185",
       "moneyProfitCompare": "▼ 20% vs Dec · ▼ 26% vs Jan 2026",
@@ -802,7 +847,8 @@
       "moneyWorthValue": "₹7,82,002",
       "moneyWorthCompare": "stock vs Jan 2026: not known",
       "moneyWorthTakeaway": "You are worth ₹7,82,002.₹53,444 of it is still with customers.",
-      "moneyWorthTerms": "Stock value₹8,50,661 Stock ›To receive₹53,444 Outstanding ›Cash in drawer (not counted lately)₹0 Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,29,448 Outstanding ›Net worth₹7,82,002",
+      "moneyWorthCaveats": "⚠ Net worth leaves out the drawer cash: not counted in the last 30 days.",
+      "moneyWorthTerms": "Stock value₹8,50,661 Stock ›To receive₹53,444 Outstanding ›Cash in drawernot counted in the last 30 days— Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,29,448 Outstanding ›Net worth₹7,82,002",
       "moneyAccounts": "🏦 Bank₹12,346 ✕🤝 Loan−₹5,001 ✕🏦 Odd₹0 ✕",
       "moneyAccType": "I have this I owe this",
       "moneyChecks": "✓ Numbers match Outstanding, the cash drawer and Stock"
@@ -816,8 +862,10 @@
   },
   "money.leapDay": {
     "texts": {
+      "moneyCmpToggle": "Compare & share ▾",
       "moneyPeriodLabel": "1–29 Feb 2028",
-      "moneyPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "moneyPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "moneyNowLabel": "As of today, 29 Feb 2028",
       "moneyCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
       "moneyProfitValue": "-₹7,264",
       "moneyProfitCompare": "▲ 21% vs Jan · ▼ 91% vs Feb 2027",
@@ -859,7 +907,8 @@
       "moneyWorthValue": "₹10,36,790",
       "moneyWorthCompare": "stock vs Feb 2027: not known",
       "moneyWorthTakeaway": "You are worth ₹10,36,790.₹37,673 of it is still with customers.",
-      "moneyWorthTerms": "Stock value₹11,67,133 Stock ›To receive₹37,673 Outstanding ›Cash in drawer (not counted lately)₹0 Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,75,361 Outstanding ›Net worth₹10,36,790",
+      "moneyWorthCaveats": "⚠ Net worth leaves out the drawer cash: not counted in the last 30 days.",
+      "moneyWorthTerms": "Stock value₹11,67,133 Stock ›To receive₹37,673 Outstanding ›Cash in drawernot counted in the last 30 days— Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,75,361 Outstanding ›Net worth₹10,36,790",
       "moneyAccounts": "🏦 Bank₹12,346 ✕🤝 Loan−₹5,001 ✕🏦 Odd₹0 ✕",
       "moneyAccType": "I have this I owe this",
       "moneyChecks": "✓ Numbers match Outstanding, the cash drawer and Stock"
@@ -873,8 +922,10 @@
   },
   "money.mar31": {
     "texts": {
+      "moneyCmpToggle": "Compare & share ▾",
       "moneyPeriodLabel": "1–31 Mar 2027",
-      "moneyPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "moneyPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "moneyNowLabel": "As of today, 31 Mar 2027",
       "moneyCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
       "moneyProfitValue": "-₹14,256",
       "moneyProfitCompare": "▼ 121% vs Feb · ▼ 130% vs Mar 2026",
@@ -916,7 +967,8 @@
       "moneyWorthValue": "₹6,70,294",
       "moneyWorthCompare": "stock vs Mar 2026: not known",
       "moneyWorthTakeaway": "You are worth ₹6,70,294.₹49,350 of it is still with customers.",
-      "moneyWorthTerms": "Stock value₹7,93,313 Stock ›To receive₹49,350 Outstanding ›Cash in drawer (not counted lately)₹0 Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,79,714 Outstanding ›Net worth₹6,70,294",
+      "moneyWorthCaveats": "⚠ Net worth leaves out the drawer cash: not counted in the last 30 days.",
+      "moneyWorthTerms": "Stock value₹7,93,313 Stock ›To receive₹49,350 Outstanding ›Cash in drawernot counted in the last 30 days— Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,79,714 Outstanding ›Net worth₹6,70,294",
       "moneyAccounts": "🏦 Bank₹12,346 ✕🤝 Loan−₹5,001 ✕🏦 Odd₹0 ✕",
       "moneyAccType": "I have this I owe this",
       "moneyChecks": "✓ Numbers match Outstanding, the cash drawer and Stock"
@@ -930,8 +982,10 @@
   },
   "money.jan1": {
     "texts": {
+      "moneyCmpToggle": "Compare & share ▾",
       "moneyPeriodLabel": "1 Jan 2027",
-      "moneyPreset": "This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "moneyPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
+      "moneyNowLabel": "As of today, 1 Jan 2027",
       "moneyCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
       "moneyProfitValue": "-₹643",
       "moneyProfitCompare": "▼ 616% vs Dec · ▲ 52% vs Jan 2026",
@@ -972,7 +1026,8 @@
       "moneyWorthValue": "₹7,38,159",
       "moneyWorthCompare": "stock vs Jan 2026: not known",
       "moneyWorthTakeaway": "You are worth ₹7,38,159.₹36,925 of it is still with customers.",
-      "moneyWorthTerms": "Stock value₹8,34,583 Stock ›To receive₹36,925 Outstanding ›Cash in drawer (not counted lately)₹0 Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,40,694 Outstanding ›Net worth₹7,38,159",
+      "moneyWorthCaveats": "⚠ Net worth leaves out the drawer cash: not counted in the last 30 days.",
+      "moneyWorthTerms": "Stock value₹8,34,583 Stock ›To receive₹36,925 Outstanding ›Cash in drawernot counted in the last 30 days— Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,40,694 Outstanding ›Net worth₹7,38,159",
       "moneyAccounts": "🏦 Bank₹12,346 ✕🤝 Loan−₹5,001 ✕🏦 Odd₹0 ✕",
       "moneyAccType": "I have this I owe this",
       "moneyChecks": "✓ Numbers match Outstanding, the cash drawer and Stock"

@@ -2,6 +2,7 @@
 <div id="insights" class="tab ins-page">
     <div class="ins-head">
         <h2 class="ins-title"><span aria-hidden="true">💡</span> <span data-i18n="ui.insights.title">Insights</span></h2>
+        <button type="button" class="btn btn-secondary ins-cmp-toggle" id="insightsCmpToggle" aria-expanded="false" aria-controls="insightsCmpMore" data-onclick="insights.toggleCompare()"><span data-i18n="ui.cmp.toggle">Compare</span> <span class="ins-cmp-chev" aria-hidden="true">▾</span></button>
         <div class="ins-tabs" role="tablist">
             <button type="button" class="ins-tab active" data-insights-section="actions" role="tab" data-onclick="insights.setSection('actions')" data-i18n="ui.insights.tab_actions">To do</button>
             <button type="button" class="ins-tab" data-insights-section="items" role="tab" data-onclick="insights.setSection('items')" data-i18n="ui.insights.tab_items">Items</button>
@@ -13,6 +14,8 @@
             <span class="ins-period-label" id="insightsPeriodLabel"></span>
             <button type="button" class="ins-step" data-onclick="insights.step(1)" aria-label="Later" data-i18n-aria-label="ui.money.later">›</button>
             <select class="ins-preset" id="insightsPreset" data-onchange="insights.setPreset(this.value)" aria-label="Period" data-i18n-aria-label="ui.money.period">
+                <option value="today" data-i18n="ui.money.p_today">Today</option>
+                <option value="this-week" data-i18n="ui.money.p_this_week">This week</option>
                 <option value="this-month" data-i18n="ui.money.p_this_month">This month</option>
                 <option value="last-month" data-i18n="ui.money.p_last_month">Last month</option>
                 <option value="this-year" data-i18n="ui.money.p_this_year">This year</option>
@@ -28,7 +31,7 @@
 
     <section class="ins-section" data-insights-pane="actions">
         <div class="ins-card ins-wide">
-            <h3 class="ins-card-title" data-i18n="ui.insights.this_week">This week</h3>
+            <h3 class="ins-card-title" id="insightsActionsTitle"></h3>
             <div id="insightsActionsDues" data-metric="I10"></div>
             <div id="insightsActionsBelow" data-metric="I8"></div>
             <div id="insightsActionsLow" data-metric="I7"></div>

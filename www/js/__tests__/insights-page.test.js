@@ -117,6 +117,18 @@ describe('to-do list (I7, I8, overdue)', () => {
         expect(document.getElementById('insightsActionsBelow').textContent).toMatch(/below its cost/);
     });
 
+    test('the To do heading names the chosen period, not "This week" (#92)', () => {
+        InsightsManager.init('actions');
+        const title = () => document.getElementById('insightsActionsTitle').textContent;
+        expect(title()).toBe('To do: Oct 2026');
+        InsightsManager.setPreset('last-year');
+        expect(title()).toBe('To do: 2025');
+        InsightsManager.setPreset('this-week');
+        expect(title()).toBe('To do: This week, 19 Oct – 21 Oct');
+        InsightsManager.setPreset('today');
+        expect(title()).toBe('To do: Today, 21 Oct');
+    });
+
     test('a role without the profit permission gets no ₹-lost / per-₹100 cards, and no Seasons', () => {
         AppState.purchaseHistory.push({ id: 'pz', date: '2026-10-02', timestamp: new Date(2026, 9, 2).getTime(), grandTotal: 1000, items: [{ itemId: FIX.items[0].id, name: FIX.items[0].name, qty: 20, rate: 50, total: 1000 }] });
         AppState.retailSalesHistory.push({ id: 'rz', date: '2026-10-03', timestamp: new Date(2026, 9, 3).getTime(), total: 20, payment: { cash: 20 }, items: [{ itemId: FIX.items[0].id, name: FIX.items[0].name, qty: 1, rate: 20, total: 20 }] });
