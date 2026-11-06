@@ -11,7 +11,7 @@ import { t, getLang } from '../i18n/index.js';
 import { Helpers } from '../utils/helpers.js';
 import { formatDay, formatMonth, toLocalISODate } from '../utils/dates.js';
 import { fiscalYearLabel, customRangePreset, periodRange } from '../utils/business-metrics.js';
-import { getInsightsContext, setInsightsContext } from '../utils/insights-context.js';
+import { getInsightsContext, setInsightsContext, isPeriodPreset } from '../utils/insights-context.js';
 import {
     readSavedRanges, addSavedRange, removeSavedRange, savedRangeId, userRangesStore, encodeSavedRanges, decodeSavedRanges,
     withSavedRange, writeSavedRanges
@@ -72,11 +72,16 @@ function pushSaved(apply, local) {
 }
 
 /**
- * Label of any period: a month, a year, an FY, "Last 30 days", or "5 Oct – 20 Oct 2026" for chosen days.
- * @param {{from: number, to: number, month?: string, fy?: number, custom?: boolean, first?: string, last?: string}} r periodRange()
+ * Label of any period: today, this week, a month, a year, an FY, "Last 30 days", or "5 Oct – 20 Oct 2026" for chosen days.
+ * @param {{from: number, to: number, month?: string, fy?: number, custom?: boolean, day?: boolean, week?: boolean, first?: string, last?: string}} r periodRange()
  * @param {string} preset
  */
 export function periodText(r, preset, lang = getLang()) {
+    if (r.day) return t('ui.money.today_label', { day: formatDay(r.first, { lang, year: false }) }, lang);
+    if (r.week) {
+        return r.first === r.last ? t('ui.money.week_label_one', { day: formatDay(r.first, { lang, year: false }) }, lang)
+            : t('ui.money.week_label', { from: formatDay(r.first, { lang, year: false }), to: formatDay(r.last, { lang, year: false }) }, lang);
+    }
     if (r.custom) {
         const sameYear = r.first.slice(0, 4) === r.last.slice(0, 4);
         return r.first === r.last ? formatDay(r.first, { lang })
@@ -129,11 +134,13 @@ export function compareBarHtml(page, { share = false } = {}) {
     const saved = readSavedRanges(store());
     const current = savedRangeId(preset, compare);
     const isSaved = saved.some(x => x.id === current);
+    const savable = isPeriodPreset(preset) && (!compare || isPeriodPreset(compare));
     const savedLabel = (x) => {
         const a = periodText(periodRange(x.a), x.a);
         return x.b ? t('ui.cmp.a_vs_b', { a, b: periodText(periodRange(x.b), x.b) }) : a;
     };
     return (isEditing('a') || /^range:/.test(preset) ? datesHtml(page, 'a', preset) : '')
+        + `<div class="ins-cmp-more" id="${esc(page)}CmpMore">`
         + `<div class="ins-ab-bar">`
         + `<label class="ins-ab-pick"><span>${esc(t('ui.cmp.compare_with'))}</span>`
         + `<select id="${page}Compare" data-onchange="${page}.setCompare(this.value)">${options}</select></label>`
@@ -142,11 +149,28 @@ export function compareBarHtml(page, { share = false } = {}) {
             + saved.map(x => `<option value="${esc(x.id)}">${esc(savedLabel(x))}</option>`).join('') + '</select>' : '')
         + (isSaved
             ? `<button type="button" class="btn btn-secondary" data-onclick="${page}.removeRange()">${esc(t('ui.cmp.remove'))}</button>`
-            : `<button type="button" class="btn btn-secondary" data-onclick="${page}.saveRange()">${esc(t('ui.cmp.save'))}</button>`)
+            : savable ? `<button type="button" class="btn btn-secondary" data-onclick="${page}.saveRange()">${esc(t('ui.cmp.save'))}</button>` : '')
         + (share ? `<button type="button" class="btn btn-secondary" data-onclick="${page}.shareSummary()">${esc(t('ui.cmp.share'))}</button>`
             + `<button type="button" class="btn btn-secondary" data-onclick="${page}.printSummary()">${esc(t('ui.cmp.print'))}</button>` : '')
         + '</div>'
-        + (bValue === 'custom' ? datesHtml(page, 'b', compare) : '');
+        + (bValue === 'custom' ? datesHtml(page, 'b', compare) : '')
+        + '</div>';
+}
+
+/**
+ * Phone (#92): the closed-by-default "Compare & share" button opens / closes the compare, saved range and
+ * share controls under the period (desktop.css always shows them). The chosen-days boxes of the period stay out.
+ * @param {'money'|'insights'} page
+ * @returns {boolean} open
+ */
+export function toggleCompareBar(page) {
+    const btn = typeof document !== 'undefined' ? document.getElementById(`${page}CmpToggle`) : null;
+    const head = btn?.closest('.ins-head');
+    if (!btn || !head) return false;
+    const open = btn.getAttribute('aria-expanded') !== 'true';
+    btn.setAttribute('aria-expanded', String(open));
+    head.classList.toggle('ins-cmp-open', open);
+    return open;
 }
 
 /** Period select changed: 'custom' opens the two date boxes; anything else is the new period. */

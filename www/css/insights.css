@@ -303,3 +303,10 @@
 .ins-ab-saved { max-width: 100%; }
 .ins-ab-table .ins-cmp-up { color: var(--on-success-soft); }
 .ins-ab-table .ins-cmp-down { color: var(--on-danger-soft); }
+
+/* Phone (#92): compare, saved ranges and share stay behind one "Compare & share" button beside the title,
+   so the sticky head is only title, tabs and period. desktop.css always shows them. */
+.ins-head [hidden] { display: none; }
+.ins-cmp-toggle { position: absolute; top: 6px; right: 0; min-height: 44px; padding: 6px 12px; font-size: 14px; }
+.ins-cmp-toggle[aria-expanded="true"] .ins-cmp-chev { display: inline-block; transform: rotate(180deg); }
+.ins-head:not(.ins-cmp-open) .ins-cmp-more { display: none; }

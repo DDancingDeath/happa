@@ -643,6 +643,19 @@ export function lastCountedCash(sessions) {
 }
 
 /**
+ * M15's drawer term (C9, #92): the last counted cash when the sessions are loaded ('ready') and it was
+ * counted on one of the last 30 days (that day 30 days back included); null otherwise (loading, not
+ * loaded, no count in 30 days): Money › Worth shows "—" and M15 leaves it out.
+ */
+export function drawerCash(sessions, now, load = 'ready') {
+    if (load !== 'ready') return null;
+    const cut = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
+    const day = `${cut.getFullYear()}-${String(cut.getMonth() + 1).padStart(2, '0')}-${String(cut.getDate()).padStart(2, '0')}`;
+    const last = lastCountedCash((sessions || []).filter(s => s && String(s.date) >= day));
+    return last ? last.amount : null;
+}
+
+/**
  * M15 "other accounts" term (#74): the shared list in settings/accounts (the same on
  * every phone), each balance in whole rupees, liabilities negative.
  * @param {?Object<string, {balance: *, type?: string}>} map settings/accounts `accounts`
@@ -659,7 +672,7 @@ export function otherAccounts(map) {
 
 /**
  * M15 net worth: stock value (S4) + to receive (O4) + other accounts (shared,
- * owner-entered, liabilities negative; otherAccounts) + last counted drawer cash (C9) − to pay (O3).
+ * owner-entered, liabilities negative; otherAccounts) + last counted drawer cash (C9, drawerCash; 0 = left out) − to pay (O3).
  */
 export function netWorth(data, { accounts = 0, drawer = 0 } = {}) {
     const d = dueTotals(data);

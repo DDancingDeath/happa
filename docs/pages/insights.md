@@ -2,6 +2,10 @@
 
 Part of the [owner guide](../owner-guide.md) (one file per page). Hindi: [insights.hi.md](insights.hi.md). The codes in brackets are spec IDs in [calculations.md](../calculations.md).
 
+The **To do** list is headed with the chosen period ("To do: Oct 2026"): its low-profit and
+sold-below-cost cards are for that period; overdue dues and stock-up are for now. On a phone,
+"Also compare with" and saved ranges sit behind the **Compare** button next to the title.
+
 | On screen | How it is worked out |
 |---|---|
 | Item sales and profit (I1, I2) | Per item: sales, cost, profit, profit per ₹100; split retail / wholesale. |

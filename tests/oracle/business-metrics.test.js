@@ -12,7 +12,8 @@ import * as O from './oracle.js';
 import {
     moneySummary, itemSummary, partySummary, purchaseItems, billCount, outstandingTotals,
     periodRange, comparisonRanges, change, netWorth, seasonIndex, lowProfitItems, belowCostSales,
-    biggestChange, overdueParties, stoppedComing, expenseCategories, profitPerDay, stockUpItems, recordTime
+    biggestChange, overdueParties, stoppedComing, expenseCategories, profitPerDay, stockUpItems, recordTime,
+    stepDayOrWeek, drawerTerm
 } from '../../www/js/utils/business-metrics.js';
 import { INSIGHTS_DEFAULTS, insightsSettings } from '../../www/js/utils/insights-config.js';
 
@@ -238,6 +239,66 @@ describe('PERIOD and CMP', () => {
         expect(change(50, -100).dir).toBe('up');
         expect(change(10, 0)).toBeNull();
         expect(change(null, 5)).toBeNull();
+    });
+    test('today = midnight to the end of today, compared with yesterday, also on the 1st (#92)', () => {
+        const r = periodRange('today', now);
+        expect(span(r)).toEqual([new Date(2026, 9, 26), new Date(2026, 9, 27)]);
+        expect(span(comparisonRanges(r).previous)).toEqual([new Date(2026, 9, 25), new Date(2026, 9, 26)]);
+        expect(span(comparisonRanges(r).lastYear)).toEqual([new Date(2025, 9, 26), new Date(2025, 9, 27)]);
+        const first = periodRange('today', new Date(2026, 10, 1, 9));
+        expect(span(comparisonRanges(first).previous)).toEqual([new Date(2026, 9, 31), new Date(2026, 10, 1)]);
+    });
+    test('this week = Monday 00:00 to the end of today, compared with the same days of last week (#92, weeks from Monday)', () => {
+        // 26 Oct 2026 is a Monday, 1 Nov a Sunday
+        expect(span(periodRange('this-week', now))).toEqual([new Date(2026, 9, 26), new Date(2026, 9, 27)]);
+        const sun = periodRange('this-week', new Date(2026, 10, 1, 20));
+        expect(span(sun)).toEqual([new Date(2026, 9, 26), new Date(2026, 10, 2)]);
+        expect([sun.first, sun.last]).toEqual(['2026-10-26', '2026-11-01']);
+        expect(span(comparisonRanges(sun).previous)).toEqual([new Date(2026, 9, 19), new Date(2026, 9, 26)]);
+        // A week starting on the 1st (Monday 1 Mar 2027) is still compared with the week before, not 1 Feb
+        const mar = periodRange('this-week', new Date(2027, 2, 3, 10));
+        expect(span(mar)).toEqual([new Date(2027, 2, 1), new Date(2027, 2, 4)]);
+        expect(span(comparisonRanges(mar).previous)).toEqual([new Date(2027, 1, 22), new Date(2027, 1, 25)]);
+    });
+    test('‹ › from a day steps a day and from a week a week, never past today (#92)', () => {
+        const wed = new Date(2026, 9, 28, 10);
+        expect(stepDayOrWeek('today', -1, wed)).toBe('range:2026-10-27:2026-10-27');
+        expect(stepDayOrWeek('range:2026-10-27:2026-10-27', 1, wed)).toBe('today');
+        expect(stepDayOrWeek('today', 1, wed)).toBe('today');
+        expect(stepDayOrWeek('range:2026-10-01:2026-10-01', -1, wed)).toBe('range:2026-09-30:2026-09-30');
+        expect(stepDayOrWeek('this-week', -1, wed)).toBe('range:2026-10-19:2026-10-25');
+        expect(stepDayOrWeek('range:2026-10-19:2026-10-25', -1, wed)).toBe('range:2026-10-12:2026-10-18');
+        expect(stepDayOrWeek('range:2026-10-19:2026-10-25', 1, wed)).toBe('this-week');
+        expect(stepDayOrWeek('this-week', 1, wed)).toBe('this-week');
+        // Other periods are not days or weeks: the month / year stepper handles them
+        expect(stepDayOrWeek('this-month', -1, wed)).toBeNull();
+        expect(stepDayOrWeek('range:2026-10-20:2026-10-26', -1, wed)).toBeNull();
+        expect(stepDayOrWeek('range:2026-10-05:2026-10-20', -1, wed)).toBeNull();
+    });
+});
+
+describe('M15 drawer term (C9, #92)', () => {
+    const at = new Date(2026, 9, 26, 15);
+    const sessions = [
+        { date: '2026-10-20', signedOut: true, closingBalance: 250 },
+        { date: '2026-10-24', signedOut: true, counted: false, closingBalance: 999 },
+        { date: '2026-09-10', signedOut: true, closingBalance: 700 }
+    ];
+    const cases = [
+        ['counted', sessions, 'ready'],
+        ['loading', [], 'loading'],
+        ['not loaded', sessions, 'error'],
+        ['last count over 30 days ago', [sessions[2]], 'ready'],
+        ['last count exactly 30 days ago', [{ date: '2026-09-26', signedOut: true, closingBalance: 40 }], 'ready'],
+        ['never counted', [], 'ready']
+    ];
+    test.each(cases)('%s: the term == the oracle, and M15 leaves an unknown drawer out', (_, list, load) => {
+        const term = drawerTerm(list, load, at);
+        const want = O.drawerCash(list, at, load);
+        expect(term.amount).toBe(want);
+        expect(term.state === 'counted').toBe(want !== null);
+        const t = { stock: 1000, receivable: 500, payable: 300, accounts: 200, drawer: term.amount };
+        expect(netWorth(t)).toBe(1400 + (want ?? 0));
     });
 });
 

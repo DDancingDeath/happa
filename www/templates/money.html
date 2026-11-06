@@ -2,17 +2,20 @@
 <div id="money" class="tab ins-page">
     <div class="ins-head">
         <h2 class="ins-title"><span aria-hidden="true">💰</span> <span data-i18n="ui.money.title">Money</span></h2>
+        <button type="button" class="btn btn-secondary ins-cmp-toggle" id="moneyCmpToggle" aria-expanded="false" aria-controls="moneyCmpBar" data-onclick="money.toggleCompare()"><span data-i18n="ui.cmp.toggle_share">Compare &amp; share</span> <span class="ins-cmp-chev" aria-hidden="true">▾</span></button>
         <div class="ins-tabs" role="tablist">
             <button type="button" class="ins-tab active" data-money-section="profit" role="tab" data-onclick="money.setSection('profit')" data-i18n="ui.money.tab_profit">Profit</button>
             <button type="button" class="ins-tab" data-money-section="cash" role="tab" data-onclick="money.setSection('cash')" data-i18n="ui.money.tab_cash">Cash</button>
             <button type="button" class="ins-tab" data-money-section="spending" role="tab" data-onclick="money.setSection('spending')" data-i18n="ui.money.tab_spending">Spending</button>
             <button type="button" class="ins-tab" data-money-section="worth" role="tab" data-onclick="money.setSection('worth')" data-i18n="ui.money.tab_worth">Worth</button>
         </div>
-        <div class="ins-period">
+        <div class="ins-period" id="moneyPeriodBar">
             <button type="button" class="ins-step" data-onclick="money.step(-1)" aria-label="Earlier" data-i18n-aria-label="ui.money.earlier">‹</button>
             <span class="ins-period-label" id="moneyPeriodLabel"></span>
             <button type="button" class="ins-step" data-onclick="money.step(1)" aria-label="Later" data-i18n-aria-label="ui.money.later">›</button>
             <select class="ins-preset" id="moneyPreset" data-onchange="money.setPreset(this.value)" aria-label="Period" data-i18n-aria-label="ui.money.period">
+                <option value="today" data-i18n="ui.money.p_today">Today</option>
+                <option value="this-week" data-i18n="ui.money.p_this_week">This week</option>
                 <option value="this-month" data-i18n="ui.money.p_this_month">This month</option>
                 <option value="last-month" data-i18n="ui.money.p_last_month">Last month</option>
                 <option value="this-year" data-i18n="ui.money.p_this_year">This year</option>
@@ -22,6 +25,9 @@
                 <option value="last-30" data-i18n="ui.money.p_last_30">Last 30 days</option>
                 <option value="custom" data-i18n="ui.cmp.choose_dates">Choose dates…</option>
             </select>
+        </div>
+        <div class="ins-period" id="moneyNow" hidden>
+            <span class="ins-period-label" id="moneyNowLabel"></span>
         </div>
         <div class="ins-abbar" id="moneyCmpBar"></div>
     </div>
@@ -134,6 +140,7 @@
                 <div class="ins-hero-value" data-metric="M15" id="moneyWorthValue">—</div>
                 <div class="ins-compare" id="moneyWorthCompare"></div>
                 <div class="ins-takeaway" data-takeaway id="moneyWorthTakeaway"></div>
+                <div class="ins-caveats" id="moneyWorthCaveats"></div>
             </div>
             <div class="ins-card">
                 <h3 class="ins-card-title" data-i18n="ui.money.what_it_is_made_of">What it is made of</h3>

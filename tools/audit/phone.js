@@ -660,14 +660,15 @@ async function auditOneDay({ fake, moment, at, label, open, cmp, unknown, T, pas
     const ref = (id) => shownNumber(document.querySelector(`#moneyWorthTerms [data-metric-ref="${id}"]`)?.textContent);
     const counted = O.lastCountedCash(now.sessions);
     const recent = counted && counted.date >= isoDay(new Date(new Date(at).getFullYear(), new Date(at).getMonth(), new Date(at).getDate() - 30).getTime());
-    const drawerLabel = document.getElementById('moneyWorthTerms')?.textContent || '';
+    const drawerState = document.querySelector('#moneyWorthTerms [data-drawer]')?.dataset.drawer;
     // Bank balances (#74) are for the owner and managers with Money; a member's M15 leaves them out.
     const accountsTotal = pass.role === 'staff' ? 0 : O.otherAccounts(sharedAccounts(accounts));
-    if (counted && !recent) {
-        if (/not counted lately/i.test(drawerLabel)) unknown('C9_drawer', 'Worth (phone)', P('now'), 'last count older than 30 days: "not counted lately" shown', counted.amount);
+    if (!(counted && recent)) {
+        // No count in the last 30 days (#92): "—" with "not counted in the last 30 days", left out of M15
+        if (drawerState === 'old') unknown('C9_drawer', 'Worth (phone)', P('now'), counted ? 'last count older than 30 days: "—" shown' : 'never counted: "—" shown', counted ? counted.amount : 0);
         else cmp('C9_drawer_old_hidden', 'Worth (phone)', P('now'), 1, 0, null, at + 1, 'count');
     } else {
-        cmp('C9_drawer', 'Worth (phone)', P('now'), Math.round(counted ? counted.amount : 0), ref('C9'), null, at + 1);
+        cmp('C9_drawer', 'Worth (phone)', P('now'), Math.round(counted.amount), ref('C9'), null, at + 1);
     }
     const drawerShown = counted && recent ? counted.amount : 0;
     const worthWant = O.netWorth(now, { accounts: accountsTotal, drawer: drawerShown });

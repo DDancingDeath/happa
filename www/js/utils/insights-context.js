@@ -9,8 +9,11 @@
 
 const KEY = 'aadhat.insightsContext';
 const PRESETS = /^(this-month|last-month|this-year|last-year|this-fy|last-fy|last-30|all|month:\d{4}-\d{2}|range:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2})$/;
+/** Today / This week (#92) can be the period, but are not kept as saved ranges (firestore.rules lists those). */
+const CONTEXT_PRESETS = /^(today|this-week)$/;
+const isContextPreset = (/** @type {*} */ p) => PRESETS.test(String(p)) || CONTEXT_PRESETS.test(String(p));
 
-/** A period preset Money / Insights understand (PERIOD, PERIOD-FY, PERIOD-CUSTOM). */
+/** A period preset saved ranges keep (PERIOD, PERIOD-FY, PERIOD-CUSTOM). */
 export const isPeriodPreset = (/** @type {*} */ p) => PRESETS.test(String(p));
 
 const store = () => {
@@ -25,7 +28,7 @@ function load() {
     ctx = { preset: 'this-month', itemId: null, compare: null };
     try {
         const raw = JSON.parse(store()?.getItem(KEY) || 'null');
-        if (raw && PRESETS.test(String(raw.preset))) ctx.preset = raw.preset;
+        if (raw && isContextPreset(raw.preset)) ctx.preset = raw.preset;
         if (raw && typeof raw.itemId === 'string' && raw.itemId) ctx.itemId = raw.itemId;
         if (raw && PRESETS.test(String(raw.compare))) ctx.compare = raw.compare;
     } catch { /* ignore a broken value */ }
@@ -43,7 +46,7 @@ export function getInsightsContext() {
  */
 export function setInsightsContext(patch = {}) {
     const c = load();
-    if (patch.preset !== undefined && PRESETS.test(String(patch.preset))) c.preset = patch.preset;
+    if (patch.preset !== undefined && isContextPreset(patch.preset)) c.preset = patch.preset;
     if (patch.itemId !== undefined) c.itemId = patch.itemId || null;
     if (patch.compare !== undefined) c.compare = PRESETS.test(String(patch.compare)) ? patch.compare : null;
     try { store()?.setItem(KEY, JSON.stringify(c)); } catch { /* storage full or blocked */ }

@@ -601,7 +601,7 @@ export class StockManager {
                         <div style="text-align: right;">
                             <div style="font-size: 18px; font-weight: 700; color: #b02a37;">${e(stockKg(r.quantity))} kg</div>
                             <div style="color: #666; font-size: 12px; margin-top: 4px;">≈ ${e(formatRupees(r.value))}</div>
-                            <div style="color: #666; font-size: 12px;">avg ${formatRate(r.rate)}/kg</div>
+                            <div style="color: #666; font-size: 12px;">${e(t('ui.deadstock.avg_rate', { rate: formatRate(r.rate) }))}</div>
                         </div>
                     </div>
                 </div>`;
