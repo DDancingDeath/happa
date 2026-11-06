@@ -637,12 +637,12 @@
 }
 
 .bill-action-btn.btn-share {
-  background: #25d366;
-  color: #063;
+  background: var(--btn-success);
+  color: #fff;
 }
 
 .bill-action-btn.btn-share:hover {
-  background: #1ebe57;
+  background: #065f46;
 }
 
 @media (max-width: 480px) {

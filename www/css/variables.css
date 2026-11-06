@@ -295,6 +295,8 @@ body.dark-mode .nav-menu a.active {
   background: var(--info-soft) !important;
 }
 
+.dark-mode [style^="color: rgb(51, 51, 51)"],
+.dark-mode [style*=" color: rgb(51, 51, 51)"],
 .dark-mode [style^="color: #333"],
 .dark-mode [style*=" color: #333"],
 .dark-mode [style^="color: #212529"],
@@ -304,6 +306,14 @@ body.dark-mode .nav-menu a.active {
   color: var(--text-primary) !important;
 }
 
+.dark-mode [style^="color: rgb(102, 102, 102)"],
+.dark-mode [style*=" color: rgb(102, 102, 102)"],
+.dark-mode [style^="color: rgb(108, 117, 125)"],
+.dark-mode [style*=" color: rgb(108, 117, 125)"],
+.dark-mode [style^="color: rgb(85, 85, 85)"],
+.dark-mode [style*=" color: rgb(85, 85, 85)"],
+.dark-mode [style^="color: rgb(75, 85, 99)"],
+.dark-mode [style*=" color: rgb(75, 85, 99)"],
 .dark-mode [style^="color: #64748b"],
 .dark-mode [style*=" color: #64748b"],
 .dark-mode [style^="color: #666"],
@@ -351,6 +361,8 @@ body.dark-mode .nav-menu a.active {
   color: var(--on-danger-soft) !important;
 }
 
+.dark-mode [style^="color: rgb(138, 109, 0)"],
+.dark-mode [style*=" color: rgb(138, 109, 0)"],
 .dark-mode [style^="color:#92400e"],
 .dark-mode [style^="color: #9a3412"],
 .dark-mode [style*=" color: #9a3412"],
@@ -392,7 +404,8 @@ body.dark-mode .nav-menu a.active {
 }
 
 /* The old purple brand gradient still written inline by a few templates */
-[style*="linear-gradient(135deg, #5560d6"] {
+[style*="linear-gradient(135deg, #5560d6"],
+[style*="linear-gradient(135deg, rgb(85, 96, 214)"] {
   background: var(--primary-gradient) !important;
 }
 
