@@ -150,6 +150,22 @@ export function customRangePreset(fromIso, toIso, now = new Date()) {
 }
 
 /**
+ * PERIOD: 1 for a one-day period (Today, one chosen day), 7 for a week (This week, a chosen Monday–Sunday), else 0.
+ * @param {{from: number, preset?: string, custom?: boolean, first?: string, last?: string}} r periodRange()
+ * @returns {0|1|7}
+ */
+export function dayOrWeekSpan(r) {
+    if (r.preset === 'today' || (r.custom && r.first && r.first === r.last)) return 1;
+    if (r.preset === 'this-week') return 7;
+    if (r.custom && r.first && r.last) {
+        const a = new Date(r.from);
+        const sunday = toLocalISODate(new Date(a.getFullYear(), a.getMonth(), a.getDate() + 6));
+        if (a.getDay() === 1 && r.last === sunday) return 7;
+    }
+    return 0;
+}
+
+/**
  * PERIOD: ‹ › from a day or a week. Today and a one-day range step a day; this week and a Monday–Sunday
  * range step a week. Never past today: the current day / week becomes 'today' / 'this-week' again.
  * @param {string} preset
@@ -159,14 +175,7 @@ export function customRangePreset(fromIso, toIso, now = new Date()) {
  */
 export function stepDayOrWeek(preset, dir, now = new Date()) {
     const r = periodRange(preset, now);
-    let days = 0;
-    if (preset === 'today' || (r.custom && r.first === r.last)) days = 1;
-    else if (preset === 'this-week') days = 7;
-    else if (r.custom && r.first && r.last) {
-        const a = new Date(r.from);
-        const sunday = toLocalISODate(new Date(a.getFullYear(), a.getMonth(), a.getDate() + 6));
-        if (a.getDay() === 1 && r.last === sunday) days = 7;
-    }
+    const days = dayOrWeekSpan(r);
     if (!days) return null;
     const f = new Date(r.from);
     const start = new Date(f.getFullYear(), f.getMonth(), f.getDate() + Math.sign(dir) * days);
@@ -215,9 +224,10 @@ function shiftDate(ms, { years = 0, months = 0 }) {
 
 /**
  * CMP: the two comparison ranges for a period. A (partial) calendar month is
- * compared with the same days of the previous month; other periods with the
+ * compared with the same days of the previous month; a day or a week (dayOrWeekSpan)
+ * with the day / the same days of the week before; other periods with the
  * same length just before. "Last year" = the same dates one year earlier.
- * @param {{from: number, to: number, month?: string, preset?: string}} range
+ * @param {{from: number, to: number, month?: string, preset?: string, custom?: boolean, first?: string, last?: string}} range
  * @returns {{previous: ?{from: number, to: number}, lastYear: ?{from: number, to: number}}}
  */
 export function comparisonRanges(range) {
@@ -225,9 +235,9 @@ export function comparisonRanges(range) {
     let previous;
     const f = new Date(range.from);
     const rolling = range.preset === 'last-30' || (range.preset === 'this-month' && !range.month);
-    if (range.preset === 'today' || range.preset === 'this-week') {
-        // Yesterday / the same days of last week (Monday to the same weekday)
-        const back = range.preset === 'today' ? 1 : 7;
+    const back = dayOrWeekSpan(range);
+    if (back) {
+        // The day before / the same days of the week before (Monday to the same weekday), also on the 1st
         const t = new Date(range.to);
         previous = {
             from: new Date(f.getFullYear(), f.getMonth(), f.getDate() - back).getTime(),

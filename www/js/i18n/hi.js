@@ -2494,6 +2494,8 @@ export default {
     'ui.money.before': "पहले",
     'ui.money.yesterday': "कल",
     'ui.money.last_week': "पिछले हफ़्ते",
+    'ui.money.day_before': "पिछले दिन",
+    'ui.money.week_before': "उससे पिछले हफ़्ते",
     'ui.money.last_year': "पिछला साल",
     'ui.money.this_year': "यह साल",
     'ui.money.bills': "{count} बिल",

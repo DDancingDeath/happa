@@ -275,6 +275,15 @@ describe('PERIOD and CMP', () => {
         expect(stepDayOrWeek('range:2026-10-20:2026-10-26', -1, wed)).toBeNull();
         expect(stepDayOrWeek('range:2026-10-05:2026-10-20', -1, wed)).toBeNull();
     });
+    test('a chosen day / Monday–Sunday week (as ‹ › leave them) compares with the day / week before, also on the 1st (#92)', () => {
+        const at = new Date(2026, 11, 10, 10);
+        expect(span(comparisonRanges(periodRange('range:2026-12-01:2026-12-01', at)).previous)).toEqual([new Date(2026, 10, 30), new Date(2026, 11, 1)]);
+        expect(span(comparisonRanges(periodRange('range:2026-11-30:2026-11-30', at)).previous)).toEqual([new Date(2026, 10, 29), new Date(2026, 10, 30)]);
+        // Monday 1 June 2026 – Sunday 7 June
+        expect(span(comparisonRanges(periodRange('range:2026-06-01:2026-06-07', at)).previous)).toEqual([new Date(2026, 4, 25), new Date(2026, 5, 1)]);
+        // Any other chosen days keep CMP's rule (a range from the 1st: the same days of the month before)
+        expect(span(comparisonRanges(periodRange('range:2026-06-01:2026-06-05', at)).previous)).toEqual([new Date(2026, 4, 1), new Date(2026, 4, 6)]);
+    });
 });
 
 describe('M15 drawer term (C9, #92)', () => {

@@ -2494,6 +2494,8 @@ export default {
     'ui.money.before': "before",
     'ui.money.yesterday': "yesterday",
     'ui.money.last_week': "last week",
+    'ui.money.day_before': "the day before",
+    'ui.money.week_before': "the week before",
     'ui.money.last_year': "Last year",
     'ui.money.this_year': "This year",
     'ui.money.bills': "{count} bills",

@@ -27,7 +27,7 @@ import {
     moneySummary, periodRange, comparisonRanges, change, outstandingTotals, netWorth, fiscalYearLabel, periodCompare,
     itemSummary, biggestChange, profitPerDay, billTime, roundTo, sharePct, addsUp, netMoneyByDay,
     accountsTotal, accountsList, accountEntry, accountsFromPhone, MAX_WORTH_ACCOUNTS, expensePer100Sales,
-    drawerTerm, stepDayOrWeek, DRAWER_MAX_AGE_DAYS
+    drawerTerm, stepDayOrWeek, dayOrWeekSpan, DRAWER_MAX_AGE_DAYS
 } from '../utils/business-metrics.js';
 import { insightsSettings } from '../utils/insights-config.js';
 import { getInsightsContext, setInsightsContext } from '../utils/insights-context.js';
@@ -435,8 +435,11 @@ export const MoneyManager = {
         const prev = this.figuresFor(cmpR.previous, now);
         const ly = this.figuresFor(cmpR.lastYear, now);
         const lang = getLang();
+        const span = dayOrWeekSpan(r);
+        const prevKey = r.day ? 'ui.money.yesterday' : r.week ? 'ui.money.last_week'
+            : span === 1 ? 'ui.money.day_before' : span === 7 ? 'ui.money.week_before' : 'ui.money.before';
         const labels = {
-            prev: r.month ? formatMonth(cmpR.previous?.from, { lang, year: false }) : t(r.day ? 'ui.money.yesterday' : r.week ? 'ui.money.last_week' : 'ui.money.before'),
+            prev: r.month ? formatMonth(cmpR.previous?.from, { lang, year: false }) : t(prevKey),
             ly: r.month ? formatMonth(cmpR.lastYear?.from, { lang }) : t('ui.money.last_year')
         };
         const target = compareTarget(this.cfg(), now);
