@@ -341,3 +341,28 @@ describe('Properties and the property screen', () => {
     });
 });
 
+describe('Reports (Advanced)', () => {
+    afterEach(() => { rentalsRole.mockReturnValue('owner'); });
+
+    test('the yearly report for the owner and managers; deposits held and each property\'s expenses for every role; not in Simple', async () => {
+        setLang('en');
+        await show('advanced');
+        document.getElementById('rentals').insertAdjacentHTML('afterbegin', '<button id="rentReportsTab" data-rent-page="reports" hidden></button>');
+        _test.state.page = 'reports';
+        await _test.render();
+        const root = document.getElementById('rentalsBody');
+        expect(document.getElementById('rentReportsTab').hidden).toBe(false);
+        expect([...root.querySelectorAll('[data-onclick]')].map(b => b.getAttribute('data-onclick'))).toEqual([
+            'rentals.yearReport()', 'rentals.deposits()', "rentals.expenses('P2')", "rentals.expenses('P1')"
+        ]);
+        rentalsRole.mockReturnValue('member');
+        await _test.render();
+        expect(root.innerHTML).not.toContain('yearReport');
+        expect(root.innerHTML).toContain('rentals.deposits()');
+        _test.state.mode = 'simple';
+        await _test.render();
+        expect(_test.state.page).toBe('rent');
+        expect(document.getElementById('rentReportsTab').hidden).toBe(true);
+    });
+});
+
