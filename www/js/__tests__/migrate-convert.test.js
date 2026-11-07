@@ -192,6 +192,16 @@ describe('wipe', () => {
         expect(out).toMatch(/Aadhat role cleared on kept profiles .*: both \(staff\)$/m);
         expect(out).toMatch(/owner profiles deleted or cleared .*: owner$/m);
         expect(out).toMatch(/delete 13 docs .*keep 9 docs/);
+        expect(out).toMatch(/add --bundle/);
+        const checked = [];
+        const withBundle = await wipeProject({ project: 'new-proj', keyProject: 'new-proj', db, auth, log: (l) => checked.push(l),
+            oldProfiles: new Map([['both', { status: 'approved', role: 'staff' }], ['owner', { status: 'active' }]]) });
+        expect(withBundle.plan.find(p => p.coll === 'users').unconfirmed).toBe(1);
+        expect(checked.join('\n')).toMatch(/KEEP RENTALS ACCESS although .*: helper \(not in it\)$/m);
+        const pendingOld = [];
+        await wipeProject({ project: 'new-proj', keyProject: 'new-proj', db, auth, log: (l) => pendingOld.push(l),
+            oldProfiles: new Map([['both', { status: 'pending' }], ['helper', { status: 'approved' }]]) });
+        expect(pendingOld.join('\n')).toMatch(/KEEP RENTALS ACCESS although .*: both \(pending\)$/m);
         expect(db.deleted).toEqual([]);
         expect(auth.removed).toEqual([]);
         await expect(wipeProject({ project: 'aadhat-management', keyProject: 'aadhat-management', db, auth, dryRun: false })).rejects.toThrow(/OLD project/);

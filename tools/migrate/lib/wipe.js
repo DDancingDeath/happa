@@ -57,7 +57,7 @@ const hasAadhatRole = (u) => !!u?.role && u.role !== 'none';
 const countOf = async (query) => (await query.count().get()).data().count;
 
 /** Per root collection: what a run deletes and keeps (users: the exact profile ids). */
-async function planCollections(db, colls) {
+async function planCollections(db, colls, oldProfiles) {
     const plan = [];
     for (const coll of colls) {
         const mode = wipeMode(coll);
@@ -67,7 +67,12 @@ async function planCollections(db, colls) {
             const ids = snap.docs.filter(d => isWipedProfile(d.data())).map(d => d.id);
             const clear = snap.docs.filter(d => !isWipedProfile(d.data()) && hasAadhatRole(d.data()));
             const owners = snap.docs.filter(d => d.data().role === 'owner').map(d => d.id);
-            plan.push({ coll, mode, delete: ids.length, keep: snap.size - ids.length, ids, clear: clear.map(d => d.id), withRole: clear.map(d => `${d.id} (${d.data().role})`), owners });
+            // A kept rentRole may have come from the old app at the rehearsal: flag people the old app no longer approves.
+            const unconfirmed = oldProfiles ? snap.docs.filter(d => !isWipedProfile(d.data()))
+                .map(d => [d.id, oldProfiles.get(d.id)])
+                .filter(([, old]) => !old || ['pending', 'rejected', 'disabled'].includes(old.status))
+                .map(([id, old]) => `${id} (${old ? old.status : 'not in it'})`) : null;
+            plan.push({ coll, mode, delete: ids.length, keep: snap.size - ids.length, ids, clear: clear.map(d => d.id), withRole: clear.map(d => `${d.id} (${d.data().role})`), owners, unconfirmed });
             continue;
         }
         const total = await countOf(ref);
@@ -91,9 +96,10 @@ const NOTE = { keep: 'Rentals data', audit: 'RENT_* entries', users: 'profiles w
  * @param {Object} args.auth firebase-admin Auth
  * @param {boolean} [args.dryRun=true]
  * @param {string} [args.testDomain]
+ * @param {Map<string, Object>} [args.oldProfiles] the final bundle's users docs by uid: the kept profiles are checked against them
  * @param {(line: string) => void} [args.log]
  */
-export async function wipeProject({ project, keyProject, emulator = false, db, auth, dryRun = true, testDomain = DEFAULT_TEST_DOMAIN, log = () => {} }) {
+export async function wipeProject({ project, keyProject, emulator = false, db, auth, dryRun = true, testDomain = DEFAULT_TEST_DOMAIN, oldProfiles = null, log = () => {} }) {
     checkTarget({ project, keyProject });
     if (!keyProject && !emulator) throw new Error('wipe needs a service-account key for the project (--key)');
     testDomain = testDomain || DEFAULT_TEST_DOMAIN;
@@ -108,12 +114,14 @@ export async function wipeProject({ project, keyProject, emulator = false, db, a
     } while (pageToken);
 
     const colls = (await db.listCollections()).map(c => c.id).sort();
-    const plan = await planCollections(db, colls);
+    const plan = await planCollections(db, colls, oldProfiles);
     plan.forEach(p => {
         if (p.mode === 'delete') log(`  ${p.coll}: delete ${p.delete} docs`);
         else if (p.mode === 'keep') log(`  ${p.coll}: KEEP ${p.keep} docs (${NOTE.keep})`);
         else log(`  ${p.coll}: delete ${p.delete} docs, KEEP ${p.keep} (${NOTE[p.mode]})`);
-        if (p.withRole?.length) log(`    Aadhat role cleared on kept profiles (role 'none'; apply sets it again from the final backup): ${p.withRole.join(', ')}`);
+        if (p.withRole?.length) log(`    Aadhat role cleared on kept profiles (role 'none'; apply sets it again for the people in the final backup): ${p.withRole.join(', ')}`);
+        if (p.unconfirmed?.length) log(`    KEEP RENTALS ACCESS although the old app's final backup does not approve them (confirm each with the owner; remove the rentRole in Happa if not): ${p.unconfirmed.join(', ')}`);
+        if (p.mode === 'users' && !p.unconfirmed && p.keep) log('    (add --bundle <bundle.json> to check the kept profiles against the final backup)');
         if (p.owners?.length) log(`    owner profiles deleted or cleared (apply must re-create them: check each uid is in the final backup): ${p.owners.join(', ')}`);
     });
     const docs = plan.reduce((n, p) => n + p.delete, 0);
@@ -122,7 +130,7 @@ export async function wipeProject({ project, keyProject, emulator = false, db, a
     log(`Auth test logins (*${testDomain}): ${testUsers.length}: ${testUsers.map(u => u.email).join(', ') || 'none'}`);
     log(`Auth service accounts (denylist, never carried): ${serviceUsers.length}: ${serviceUsers.map(u => u.email).join(', ') || 'none'}`);
     log(`Cost: about ${docs} deletes (+ subcollection docs) and as many reads; Spark allows 20,000 deletes and 50,000 reads a day.`);
-    const summary = { docs, kept, collections: colls, plan: plan.map(({ ids, clear, withRole, owners, ...p }) => p), testUsers: testUsers.length, serviceUsers: serviceUsers.length };
+    const summary = { docs, kept, collections: colls, plan: plan.map(({ ids, clear, withRole, owners, unconfirmed, ...p }) => ({ ...p, ...(unconfirmed ? { unconfirmed: unconfirmed.length } : {}) })), testUsers: testUsers.length, serviceUsers: serviceUsers.length };
     if (dryRun) {
         log('Dry run: nothing was deleted. Add --yes to delete.');
         return { ...summary, deleted: false };

@@ -10,6 +10,7 @@
  *
  *   node tools/migrate/migrate.js convert --in rest-docs.json --out backup.json [--exclude a,b] [--exported-at ISO]
  *   node tools/migrate/migrate.js wipe --project <newProjectId> (--key service-account.json | --emulator) [--yes] [--test-domain @happa.local]
+ *        [--bundle tools/migrate/out/bundle.json]
  *   node tools/migrate/migrate.js auth:import --users users.json --hash-params hash-params.txt --project <newProjectId>
  *        (--key service-account.json | --emulator) [--yes]
  *   node tools/migrate/migrate.js auth:filter --users users.json --out users-filtered.json
@@ -139,10 +140,17 @@ async function wipe() {
     const { getAuth } = await import('firebase-admin/auth');
     await initAdmin({ key, project });
     const dryRun = !flag('--yes');
+    let oldProfiles = null;
+    if (arg('--bundle')) {
+        const { validateBundle } = await import('./lib/apply.js');
+        const bundle = JSON.parse(fs.readFileSync(arg('--bundle'), 'utf8'));
+        validateBundle(bundle);
+        oldProfiles = new Map(bundle.writes.filter(w => w.coll === 'users').map(w => [w.id, w.data || {}]));
+    }
     console.log(`Target project: ${project}${targetNote(emulator)}${dryRun ? ' — DRY RUN' : ' — DELETING FIRESTORE DATA (RENTALS DATA IS KEPT) + TEST AND SERVICE-ACCOUNT LOGINS'}`);
     await wipeProject({
         project, keyProject: key?.project_id, emulator: !!emulator, db: getFirestore(), auth: getAuth(), dryRun,
-        testDomain: arg('--test-domain'), log: (line) => console.log(line)
+        testDomain: arg('--test-domain'), oldProfiles, log: (line) => console.log(line)
     });
 }
 

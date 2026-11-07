@@ -157,14 +157,15 @@ async function main() {
     done();
 
     done = step('4. migrate.js wipe (dry run, then --yes)');
-    const dry = migrate('wipe', '--project', PROJECT, '--emulator');
+    const dry = migrate('wipe', '--project', PROJECT, '--emulator', '--bundle', path.join(planDir, 'bundle.json'));
     ['rent_properties: KEEP 1 docs', 'rent_units: KEEP 1 docs', 'dev_rent_units: KEEP 1 docs', 'auditLogs: delete 2 docs, KEEP 1 (RENT_* entries)']
         .forEach(s => { if (!dry.includes(s)) throw new Error(`wipe dry run did not print "${s}"`); });
     const seeded = (list) => list.filter(d => d.coll === 'users').length;
     const users = `users: delete ${seeded(RENTALS_SEED.wiped) + (REAL ? 0 : seeded(RENTALS_SEED.replaced))} docs, KEEP ${seeded(RENTALS_SEED.kept) + (REAL ? 0 : seeded(RENTALS_SEED.merged))} (profiles with a rentRole)`;
     if (!dry.includes(users)) throw new Error(`wipe dry run did not print "${users}"`);
     if (!/Aadhat role cleared on kept profiles .*kept-login \(staff\)/.test(dry)) throw new Error('wipe dry run did not list the kept profiles whose Aadhat role it clears');
-    migrate('wipe', '--project', PROJECT, '--emulator', '--yes');
+    if (!/KEEP RENTALS ACCESS although .*kept-login \(not in it\)/.test(dry)) throw new Error('wipe --bundle did not flag the kept Rentals profile missing from the final backup');
+    migrate('wipe', '--project', PROJECT, '--emulator', '--bundle', path.join(planDir, 'bundle.json'), '--yes');
     done();
 
     done = step('5. migrate.js apply (dry run, then --yes)');

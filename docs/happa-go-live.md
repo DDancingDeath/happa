@@ -248,9 +248,13 @@ person). Details: the #232 README,
    full copy, including `auditLogs`), and the owner's local read-only export
    `Q:\aadhat\rentals-real\tmp\export-rentals.mjs` (every `rent_*` collection,
    `users` and the `RENT_*` audit entries, with `SHA256SUMS`).
-2. Run the `wipe` dry run and check its `KEEP` lines (per collection) against
+2. Run the `wipe` dry run with `--bundle` (the final bundle from `plan`) and
+   check its `KEEP` lines (per collection) against
    the backup's counts, and the owner profiles it lists as deleted or cleared
-   (each must be in the final backup). Only then run it
+   (each must be in the final backup). Go through the **KEEP RENTALS ACCESS
+   although…** list with the owner: a `rentRole` there may be a copy of the old
+   app's from the rehearsal for someone the old app has since removed; remove it
+   in Happa (Settings › Roles & access) if so. Only then run it
    with `--yes`, and run `apply` straight after it. A rerun before Happa is in
    use is again `wipe --yes` then `apply --restart` (`apply` never removes a
    profile, so the `wipe` is what drops people the old app removed).

@@ -15,8 +15,8 @@
  *   (Rentals data is real: owner, 7 Nov 2026): the old profile's `rentRole` is
  *   never written and Happa's is put back, except for a person the old app
  *   disabled or rejected. Aadhat roles come from the old app only: a Rentals
- *   helper approved in Happa but pending in the old app keeps Happa's approval
- *   (status, approvedAt/By) for Rentals only, with role 'none'.
+ *   helper approved in Happa after the old app's pending profile was made keeps
+ *   Happa's approval (status, approvedAt/By) for Rentals only, with role 'none'.
  */
 import { createHash } from 'crypto';
 import backupLib from '../../backup/backup-lib.js';
@@ -32,12 +32,16 @@ export const KEEP_USER_FIELDS = ['rentRole'];
 const APPROVAL_FIELDS = ['status', 'approvedAt', 'approvedBy'];
 const REMOVED_STATUSES = ['disabled', 'rejected'];
 const hasRentRole = (u) => !!u && u.rentRole !== undefined && u.rentRole !== null && u.rentRole !== '';
+const millis = (v) => (typeof v === 'number' ? v : typeof v?.toMillis === 'function' ? v.toMillis() : NaN);
 
 /**
  * The profile apply writes: the bundle's without its KEEP_USER_FIELDS, plus
  * Happa's (unless the old app removed the person). A Rentals helper Happa
- * approved but the old app has pending keeps Happa's approval, for Rentals
- * only (role 'none': the old app gave no Aadhat role).
+ * approved after the old app's pending profile was made keeps Happa's
+ * approval, for Rentals only (role 'none': the old app gave no Aadhat role).
+ * An older approval is the rehearsal's copy of one the old app has since
+ * withdrawn (it deletes a removed person's profile; a sign-in re-creates it
+ * as pending), so it is not kept.
  * @returns {{data: Object, kept: string[], dropped: string[], approval: boolean}}
  */
 export function profileWrite(bundleData, happa) {
@@ -47,7 +51,8 @@ export function profileWrite(bundleData, happa) {
     if (!happa || REMOVED_STATUSES.includes(bundleData?.status)) return { data, kept: [], dropped, approval: false };
     const kept = KEEP_USER_FIELDS.filter(f => f in happa);
     kept.forEach(f => { data[f] = happa[f]; });
-    const approval = hasRentRole(happa) && bundleData?.status === 'pending' && ![...REMOVED_STATUSES, 'pending'].includes(happa.status);
+    const approval = hasRentRole(happa) && bundleData?.status === 'pending' && ![...REMOVED_STATUSES, 'pending'].includes(happa.status)
+        && millis(happa.approvedAt) > millis(bundleData.createdAt);
     if (approval) {
         APPROVAL_FIELDS.forEach(f => { if (f in happa) data[f] = happa[f]; else delete data[f]; });
         data.role = 'none';
@@ -212,6 +217,7 @@ export async function applyBundle({
         if (r.dropped.length && !r.kept.length) droppedProfiles++;
         if (hasRentRole(happa) && !r.kept.length) log(`users/${w.id}: removed in the old app (status ${r.data.status}), so its Happa rentRole was not kept`);
         if (r.approval) log(`users/${w.id}: pending in the old app but approved in Happa with a rentRole: kept for Rentals only (role 'none')`);
+        else if (hasRentRole(happa) && r.data.status === 'pending' && happa.status !== 'pending') log(`users/${w.id}: pending in the old app, and its Happa approval is older than that profile: left pending (re-approve in Happa if wanted)`);
         return r.data;
     };
     while (cursor.next < stop) {

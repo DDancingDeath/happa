@@ -156,16 +156,18 @@ describe('apply: writes', () => {
         expect(profileWrite({ role: 'staff', rentRole: 'manager' }, { role: 'staff' })).toMatchObject({ data: { role: 'staff' }, dropped: ['rentRole'] });
         expect(profileWrite({ role: 'staff', rentRole: 'manager' }, undefined).data).toEqual({ role: 'staff' });
 
-        const pending = { name: 'P', role: 'staff', status: 'pending' };
+        const pending = { name: 'P', role: 'staff', status: 'pending', createdAt: 5 };
         expect(profileWrite(pending, { role: 'none', status: 'active', rentRole: 'member', approvedAt: 7, approvedBy: 'o' }))
-            .toEqual({ data: { name: 'P', role: 'none', status: 'active', rentRole: 'member', approvedAt: 7, approvedBy: 'o' }, kept: ['rentRole'], dropped: [], approval: true });
-        // removed in the old app (profile deleted), then re-created as pending by a sign-in: no Aadhat role comes back
-        expect(profileWrite({ role: 'staff', status: 'pending', createdAt: 9 }, { role: 'manager', status: 'active', rentRole: 'member', approvedAt: 1 }).data)
-            .toEqual({ role: 'none', status: 'active', createdAt: 9, rentRole: 'member', approvedAt: 1 });
-        expect(profileWrite(pending, { status: 'approved', rentRole: 'member' }).data).toEqual({ name: 'P', role: 'none', status: 'approved', rentRole: 'member' });
-        expect(profileWrite(pending, { role: 'staff', status: 'pending', rentRole: 'member' })).toMatchObject({ data: pending, approval: false });
-        expect(profileWrite(pending, { role: 'staff', status: 'active', rentRole: null })).toMatchObject({ data: { ...pending, rentRole: null }, approval: false });
-    });
+            .toEqual({ data: { name: 'P', role: 'none', status: 'active', createdAt: 5, rentRole: 'member', approvedAt: 7, approvedBy: 'o' }, kept: ['rentRole'], dropped: [], approval: true });
+        expect(profileWrite(pending, { status: 'approved', rentRole: 'member', approvedAt: FakeTimestamp.fromMillis(9) }).data)
+            .toMatchObject({ name: 'P', role: 'none', status: 'approved', rentRole: 'member' });
+        // removed in the old app (profile deleted), then re-created as pending by a sign-in: the rehearsal's older approval is not kept
+        expect(profileWrite({ role: 'staff', status: 'pending', createdAt: 9 }, { role: 'manager', status: 'active', rentRole: 'member', approvedAt: 1 }))
+            .toMatchObject({ data: { role: 'staff', status: 'pending', createdAt: 9, rentRole: 'member' }, approval: false });
+        expect(profileWrite({ ...pending, createdAt: undefined }, { status: 'active', rentRole: 'member', approvedAt: 7 }).approval).toBe(false);
+        expect(profileWrite(pending, { status: 'active', rentRole: 'member' }).approval).toBe(false);
+        expect(profileWrite(pending, { role: 'staff', status: 'pending', rentRole: 'member', approvedAt: 7 })).toMatchObject({ data: { ...pending, rentRole: 'member' }, approval: false });
+        expect(profileWrite(pending, { role: 'staff', status: 'active', rentRole: null, approvedAt: 7 })).toMatchObject({ data: { ...pending, rentRole: null }, approval: false });    });
     test('a rerun keeps opening balances already paid in the new app and removes ones no longer due', async () => {
         const backup = load();
         const bundle = makeBundle(backup);
