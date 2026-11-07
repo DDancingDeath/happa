@@ -234,6 +234,7 @@ const badge = (cls, key) => `<span class="rent-badge rent-badge-${cls}">${et(key
 /** REM-2 and REM-4 for Today, the bell and Needs attention, saved from complete data only. */
 function notePage(d, ix, rows) {
     noteRent(state, rows, store.truncatedKeys());
+    state.leaseNotes = JSON.stringify(leaseReminder(localStorage, AppState.currentUser?.uid, state.month)?.items || null);
     if (state.errors.size || store.truncatedKeys().length) return;
     void import('./rent-report.js').then((m) => {
         m.noteLeases(d, state.month, u => placeOf(ix, u));
@@ -255,7 +256,7 @@ function renderMonth(d, ix, rows) {
     const sum = summarize(rows);
     const all = tenantRows(d, state.month);
     const owe = all.filter(a => a.dues.total > 0);
-    const shown = state.onlyLate ? owe.filter(a => a.late) : owe;
+    const shown = state.onlyLate && owe.some(a => a.late) ? owe.filter(a => a.late) : owe;
     const paid = all.filter(a => !a.ended && a.dues.total <= 0);
     const title = `<h3 class="rent-month-title">${esc(monthLabel(state.month, lang))}</h3>`;
     if (!d.properties.length) {
@@ -284,7 +285,6 @@ function attentionHtml(d, ix) {
     const uid = AppState.currentUser?.uid;
     const rem = rentReminder(localStorage, uid, state.month);
     const notes = leaseReminder(localStorage, uid, state.month);
-    state.leaseNotes = JSON.stringify(notes?.items || null);
     const rows = [];
     if (rem?.late) {
         rows.push(`<button type="button" class="rent-attn-row" data-onclick="rentals.onlyLate(true)"><span>${et('ui.today.reminder_rent_units', { count: rem.dueUnits, late: rem.late })}</span><strong>${money(rem.due)}</strong></button>`);
@@ -574,6 +574,7 @@ export const RentalsModule = {
             store.attach(state.month, onData);
         }
         state.lazyFailed = false;
+        state.onlyLate = false;
         state.mode = savedMode();
         render();
     },

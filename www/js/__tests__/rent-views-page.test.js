@@ -161,6 +161,16 @@ describe('This month in Simple', () => {
         RentalsModule.api.onlyLate(false);
     });
 
+    test('no properties: the start hint, and the page settles (no render loop from the lease reminders)', async () => {
+        global.__rentData = { ...DATA, properties: [], units: [], tenants: [], leases: [], charges: [] };
+        const root = await show('simple');
+        expect(root.textContent).toContain('Start by adding a property and its units.');
+        let renders = 0;
+        new MutationObserver(() => { renders++; }).observe(root, { childList: true });
+        await new Promise(r => setTimeout(r, 300));
+        expect(renders).toBeLessThanOrEqual(1);
+    });
+
     test('the choice is kept per user; Property wise / Unit wise open Advanced', async () => {
         await show('simple');
         RentalsModule.api.setMode('advanced');
