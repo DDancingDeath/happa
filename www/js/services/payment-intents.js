@@ -28,6 +28,8 @@ const MAX_INTENTS = 50;
 
 /** @type {Record<string, Intent>} used when localStorage can't be */
 let memory = {};
+/** localStorage holds every intent (the one source, shared by tabs) until a write to it fails. */
+let stored = true;
 
 /**
  * Key of one payment intent: same kind of action, same bill(s) and the same amounts.
@@ -51,12 +53,12 @@ function store() {
 /** @returns {Record<string, Intent>} */
 function readAll() {
     const s = store();
-    if (!s) return memory;
+    if (!s || !stored) return { ...memory };
     try {
         const parsed = JSON.parse(s.getItem(STORE_KEY) || '{}');
-        return parsed && typeof parsed === 'object' ? { ...memory, ...parsed } : memory;
+        return parsed && typeof parsed === 'object' ? parsed : { ...memory };
     } catch (_) {
-        return memory;
+        return { ...memory };
     }
 }
 
@@ -64,7 +66,7 @@ function readAll() {
 function writeAll(all) {
     memory = all;
     const s = store();
-    if (s) safeSetItem(STORE_KEY, JSON.stringify(all), s);
+    if (s && stored) stored = safeSetItem(STORE_KEY, JSON.stringify(all), s).ok;
 }
 
 /**
@@ -136,6 +138,7 @@ export function settlePaymentIntent(key) {
 /** Tests: forget every intent. */
 export function forgetPaymentIntents() {
     memory = {};
+    stored = true;
     const s = store();
     try {
         s?.removeItem(STORE_KEY);

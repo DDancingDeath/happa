@@ -33,6 +33,14 @@ describe('payment intents', () => {
         expect(isRetryOf(pendingPaymentIntent(key, 2000), 1000 + PAYMENT_RETRY_WINDOW_MS)).toBe(false);
     });
 
+    test('localStorage is the one source: an intent settled in another tab stays settled here', () => {
+        paymentIntentIds(key, ['r1'], 1000);
+        localStorage.setItem('aadhat.paymentIntents', '{}');
+        expect(pendingPaymentIntent(key, 2000)).toBeNull();
+        paymentIntentIds(paymentIntentKey({ billType: 'retail', billId: 'r2', cash: 5 }), ['r2'], 3000);
+        expect(Object.keys(JSON.parse(localStorage.getItem('aadhat.paymentIntents')))).toEqual(['pay|retail|r2|5|0']);
+    });
+
     test('a bill tried before keeps its id when the same payment is spread differently', () => {
         const [a, b] = paymentIntentIds(key, ['A', 'B'], 1000);
         const [c, a2] = paymentIntentIds(key, ['C', 'A'], 2000);
