@@ -107,8 +107,9 @@ async function waitFor(test) {
     expect(test()).toBeTruthy();
 }
 const body = () => document.getElementById('rentalsBody');
-async function show(page, { view = 'properties', openProperty = '' } = {}) {
+async function show(page, { view = 'properties', openProperty = '', mode = 'advanced' } = {}) {
     _test.state.page = page;
+    _test.state.mode = mode;
     _test.state.view = view;
     _test.state.openProperty = openProperty;
     await _test.render();
@@ -189,7 +190,8 @@ describe.each(['en', 'hi'])('pages (%s)', (lang) => {
             aroraMarket: await show('rent', { openProperty: 'P2' }),
             unitList: await show('rent', { view: 'units' }),
             tenants: await show('tenants'),
-            properties: await show('properties')
+            properties: await show('properties'),
+            thisMonthSimple: await show('rent', { mode: 'simple' })
         };
         expect(out).toMatchSnapshot();
     });
