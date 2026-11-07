@@ -28,8 +28,8 @@ async function retailWithTypedLine(page, customer) {
     await page.fill('#saleRate', '36');
     await page.fill('#saleWeight', '4');
     await page.fill('#saleCustomerName', customer);
-    // Paid in cash for both lines (52 + 144)
-    await page.fill('#saleCashPayment', '196');
+    // Paid for the line on the bill only: a red payment check would mark Save blocked
+    await page.fill('#saleCashPayment', '52');
 }
 
 test('Save with a typed retail line asks; "Add this line and save" bills it (S-1)', async ({ page, problems }, testInfo) => {
@@ -44,6 +44,12 @@ test('Save with a typed retail line asks; "Add this line and save" bills it (S-1
     await expect(dialog.locator('[data-choice="discard"]')).toHaveText('Discard line and save');
     await shot(page, testInfo, 'S1-after-prompt');
     await dialog.locator('[data-choice="add"]').click();
+    // The line is on the bill now; the payment check still guards the new total (unchanged rule)
+    await expect(page.locator('#saleTotal')).toHaveText('196');
+    await expectToast(page, /₹144 less than the bill total/);
+    expect((await listDocs('dev_retailSales')).find(d => d.customerName === customer)).toBeUndefined();
+    await page.fill('#saleCashPayment', '196');
+    await clickAfterTyping(page, '#saveSaleBtn');
     await page.waitForTimeout(300);
     await confirmModalIfOpen(page); // stock shortfall: no Rice was bought in this dataset
     await expectToast(page, /Sale completed successfully/);
@@ -93,11 +99,14 @@ test('a half-typed line is named and focused; the bill waits (S-1)', async ({ pa
     await page.click('#saleModeBtn');
     const before = (await listDocs('dev_retailSales')).length;
     await page.selectOption('#saleItem', await optionValue(page, '#saleItem', 'Wheat'));
-    await page.fill('#saleRate', '');
+    await page.fill('#saleRate', '26');
     await page.fill('#saleWeight', '2');
+    await page.click('#saleSection .add-to-bill-btn');
     await page.fill('#saleCashPayment', '52');
+    // Add empties the rate box: a weight typed now has no rate
+    await page.fill('#saleWeight', '3');
     await clickAfterTyping(page, '#saveSaleBtn');
-    await expectToast(page, 'Wheat is not on the bill yet: type its rate and tap Add to Bill, or clear it.');
+    await expectToast(page, /^.+ is not on the bill yet: type its rate and tap Add to Bill, or clear it\.$/);
     await expect(page.locator('#saleRate')).toBeFocused();
     await expect(page.locator('.pending-line-dialog')).toHaveCount(0);
     await shot(page, testInfo, 'S1-half-typed');
