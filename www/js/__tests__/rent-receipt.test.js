@@ -179,6 +179,9 @@ describe('dialogs: receipt, reprint from the list, cancel', () => {
         });
         await showReceipt(e, base());
         expect(document.body.innerHTML).toContain("receiptAction('void')");
+        // WhatsApp is the one filled button; print, image, PDF and Cancel receipt sit under More options (#157 UX redesign).
+        expect([...document.querySelectorAll('.rent-btn-primary')].map(b => b.getAttribute('data-onclick'))).toEqual(["rentals.receiptAction('wa')"]);
+        expect([...document.querySelectorAll('details.rent-more button')].map(b => b.getAttribute('data-onclick').match(/'(\w+)'/)[1])).toEqual(['print', 'image', 'pdf', 'void']);
         await action(e, 'void');
         expect(store.voidReceipt).toHaveBeenCalledWith('L1_2026-10_0', 'wrong month');
         expect(AuditService.log).toHaveBeenCalledWith('RENT_RECEIPT_VOID', { receiptId: 'L1_2026-10_0', no: 'R-2026-0007', reason: 'wrong month' });

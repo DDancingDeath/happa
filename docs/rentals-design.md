@@ -786,3 +786,25 @@ cash drawer: rent money never goes into it."*
 - **Files (lazy, not precached; budget 18 KB):** `rent-report.js` (screens), `rent-report-store.js`
   (repository), `rent-math-report.js` (pure maths, oracle `tests/oracle/rent-report.test.js`). The
   precached `rentals.js` only gained the buttons and the lazy calls (still under 137 KB).
+
+## 17. Simple and Advanced (UX redesign, #157, Nov 2026)
+
+"Simple by default. Powerful when needed." One module, one store, one set of maths and actions; Simple and
+Advanced only change what is drawn. Advanced never grants a permission (role checks are unchanged).
+
+- **Mode:** `localStorage['happa.rentMode.<uid>']` = `simple` | `advanced`, per person on the phone; everyone starts
+  in Simple (owner-adjustable default). Not in Firestore (rentals-only helpers can't read `users/{uid}/preferences`
+  or `settings/app`, and it would cost reads). `happa.rentView` (Property wise / Unit wise) stays as Advanced's
+  sub-view; choosing one of them switches to Advanced. Module API: `setMode('simple'|'advanced')`.
+- **This month** (the first tab, route `rent`; the label was "Rent"): Simple shows RENT-2 of RENT-1 as a bar, RENT-4,
+  **Needs attention** (REM-2 and REM-4 read back with `rentReminder` / `leaseReminder` from `utils/reminders.js`, the
+  same records Today and the bell show, so the three always agree; a REM-4 item opens Change rent or the agreement),
+  **To collect** (`rent-views.tenantRows`: one row per active lease plus each ended lease that still owes, late first,
+  then oldest month, then most due; it replaced `accounts()`), Paid this month (folded) and the vacant units link.
+  The sticky Record payment is the one filled button.
+- **Advanced** This month is the previous Rent page (`rent-advanced.js`, lazy): Property wise / Unit wise, every
+  total, filters. Tenants who moved out owing are listed once at the bottom (no longer repeated under every
+  property's detail). Owners and managers get links to Settings › Rentals and (owner) Roles & access, which
+  replaced the Access tab (`page('access')` still opens Roles & access).
+- **Files:** `rent-pages.js` (Tenants, Properties and their forms) and `rent-advanced.js` are lazy (§4).
+

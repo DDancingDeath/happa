@@ -1,6 +1,7 @@
 /**
  * Rent page views (#170): Property wise (cards -> detail grouped by type) and
  * Unit wise (filters, search) render from the same unit rows; one language at a time.
+ * Those are This month in Advanced; Simple (#157 UX redesign) lists who owes, late first.
  */
 const DATA = {
     properties: [{ id: 'P1', name: 'Gupta Bhawan' }, { id: 'P2', name: 'Arora Market' }],
@@ -27,6 +28,8 @@ jest.mock('../ui/ui-manager.js', () => ({ UIManager: { showToast: jest.fn(), sho
 jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}) } }));
 
 import { _test, RentalsModule } from '../rentals/rentals.js';
+import { AppState } from '../utils/state.js';
+import { saveLeaseReminders } from '../utils/reminders.js';
 import { setLang, resetLangForTests } from '../i18n/index.js';
 import { monthKey } from '../rentals/rent-math.js';
 
@@ -39,24 +42,25 @@ global.__rentData = {
     ]
 };
 
-function show() {
+async function show(mode = 'advanced') {
     document.body.innerHTML = '<div id="rentals" class="tab active"><div id="rentalsNotice"></div><div id="rentalsBody"></div></div>';
     window.app = { rentals: { ...RentalsModule.api } };
     _test.state.page = 'rent';
+    _test.state.mode = mode;
     _test.state.month = M;
     ['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges', 'monthExpenses'].forEach(k => _test.state.loaded.add(k));
-    _test.render();
+    await _test.render();
     return document.getElementById('rentalsBody');
 }
 
 afterEach(() => { localStorage.clear(); resetLangForTests(); });
 
-test('property wise (default): cards with type counts, then a property grouped by type', () => {
+test('property wise (default): cards with type counts, then a property grouped by type', async () => {
     setLang('en');
     localStorage.clear();
     _test.state.view = 'properties';
     _test.state.openProperty = '';
-    let root = show();
+    let root = await show();
     expect(root.textContent).toContain('2 flats · 1 commercial');
     expect(root.textContent).toContain('2 occupied · 1 vacant');
     expect(root.textContent).toMatch(/This month: ₹20,000 rent, ₹10,000 collected/);
@@ -71,40 +75,40 @@ test('property wise (default): cards with type counts, then a property grouped b
     expect(root.querySelectorAll('button[data-onclick*="rentals.pay"]').length).toBe(1);
 });
 
-test('unit wise: remembered per device, filters and search redraw only the list', () => {
+test('unit wise: remembered per device, filters and search redraw only the list', async () => {
     setLang('en');
     _test.state.openProperty = '';
-    RentalsModule.api.setView('units');
+    await RentalsModule.api.setView('units');
     expect(localStorage.getItem('happa.rentView')).toBe('units');
-    const root = show();
+    const root = await show();
     expect(root.querySelectorAll('[data-unit]').length).toBe(4);
     const search = root.querySelector('input[type=search]');
-    RentalsModule.api.filterUnits('q', 'shyam');
+    await RentalsModule.api.filterUnits('q', 'shyam');
     expect(document.querySelector('input[type=search]')).toBe(search);
     expect([...root.querySelectorAll('[data-unit]')].map(e => e.getAttribute('data-unit'))).toEqual(['U3']);
-    RentalsModule.api.filterUnits('q', '');
-    RentalsModule.api.filterUnits('status', 'vacant');
+    await RentalsModule.api.filterUnits('q', '');
+    await RentalsModule.api.filterUnits('status', 'vacant');
     expect([...root.querySelectorAll('[data-unit]')].map(e => e.getAttribute('data-unit')).sort()).toEqual(['U2', 'U4']);
     RentalsModule.api.filterUnits('status', '');
 });
 
-test('Hindi: type words and counts in Hindi only', () => {
+test('Hindi: type words and counts in Hindi only', async () => {
     setLang('hi');
     _test.state.view = 'properties';
     _test.state.openProperty = '';
-    const text = show().textContent.replace(/Gupta Bhawan|Arora Market|Ram|Shyam|Shop 3|2B|3A|G1/g, '');
+    const text = (await show()).textContent.replace(/Gupta Bhawan|Arora Market|Ram|Shyam|Shop 3|2B|3A|G1/g, '');
     expect(text).toContain('2 फ़्लैट · 1 कमर्शियल');
     expect(text).not.toMatch(/[A-Za-z]{3,}/);
 });
 
-test('no properties yet: the Rent page offers Add property, and the side menu marks only the open Rentals page', () => {
+test('no properties yet: the Rent page offers Add property, and the side menu marks only the open Rentals page', async () => {
     setLang('en');
     _test.state.view = 'properties';
     _test.state.openProperty = '';
     const saved = global.__rentData;
     global.__rentData = { ...DATA, properties: [], units: [], tenants: [], leases: [], charges: [] };
     try {
-        show();
+        await show();
         document.body.insertAdjacentHTML('afterbegin', '<nav class="nav-menu"><a data-biz="all" class="active">Settings</a><a data-biz="rentals" data-rent-nav="rent">Rent</a></nav>');
         _test.render();
         const add = document.querySelector('#rentalsBody button[data-onclick*="rentals.page(\'properties\')"]');
@@ -113,4 +117,68 @@ test('no properties yet: the Rent page offers Add property, and the side menu ma
     } finally {
         global.__rentData = saved;
     }
+});
+
+describe('This month in Simple', () => {
+    const OWES = () => ({
+        ...DATA,
+        tenants: [...DATA.tenants, { id: 'T3', name: 'Hari' }],
+        charges: [
+            ...global.__rentData.charges,
+            { id: 'L3_2025-11', leaseId: 'L3', unitId: 'U3', tenantId: 'T2', month: '2025-11', dueDay: 28, amount: 12000, paid: 0, payments: [] },
+            { id: 'L9_2025-12', leaseId: 'L9', unitId: 'U2', tenantId: 'T3', tenantName: 'Hari', month: '2025-12', dueDay: 10, amount: 5000, paid: 0, payments: [] }
+        ]
+    });
+    let saved;
+    beforeEach(() => { saved = global.__rentData; global.__rentData = OWES(); AppState.currentUser = { uid: 'u1' }; setLang('en'); });
+    afterEach(() => { global.__rentData = saved; });
+
+    test('collected of the month rent, who owes (a moved-out tenant once, late first), paid folded, one filled button', async () => {
+        const root = await show('simple');
+        expect(root.textContent).toContain('Collected ₹10,000 of ₹20,000');
+        expect(root.textContent).toContain('Total due (all months): ₹27,000');
+        const owing = [...root.querySelectorAll('#rentalsBody > .rent-list > [data-lease]')].map(e => e.getAttribute('data-lease'));
+        expect(owing).toEqual(['L3', 'L9']);
+        const hari = root.querySelector('[data-lease="L9"]').textContent;
+        expect(hari).toContain('Moved out');
+        expect(hari).toContain('3A, Gupta Bhawan');
+        expect(root.querySelector('details.rent-more').textContent).toContain('Ram');
+        expect(root.textContent).toContain('2 vacant units');
+        expect(root.querySelectorAll('.rent-btn-primary').length).toBe(1);
+        expect(root.querySelector('.rent-filters, .rent-prop-card')).toBeNull();
+    });
+
+    test('Needs attention shows what Today shows (REM-2, REM-4) and opens the action', async () => {
+        saveLeaseReminders(localStorage, { uid: 'u1', month: M, items: [{ kind: 'increase', place: 'Flat 2B, Gupta Bhawan', tenant: 'Ram', pct: 5, newRent: 8400 }] });
+        const root = await show('simple');
+        const rows = [...root.querySelectorAll('.rent-attn-row')];
+        expect(rows[0].textContent).toContain('2 units owe rent · 1 late');
+        expect(rows[0].textContent).toContain('₹27,000');
+        expect(rows[1].textContent).toContain('rent increase due: 5% → ₹8,400');
+        expect(rows[1].getAttribute('data-onclick')).toBe("rentals.editLease('L1')");
+        RentalsModule.api.onlyLate(true);
+        expect([...document.querySelectorAll('#rentalsBody > .rent-list > [data-lease]')].map(e => e.getAttribute('data-lease'))).toEqual(['L3', 'L9']);
+        RentalsModule.api.onlyLate(false);
+    });
+
+    test('no properties: the start hint, and the page settles (no render loop from the lease reminders)', async () => {
+        global.__rentData = { ...DATA, properties: [], units: [], tenants: [], leases: [], charges: [] };
+        const root = await show('simple');
+        expect(root.textContent).toContain('Start by adding a property and its units.');
+        let renders = 0;
+        new MutationObserver(() => { renders++; }).observe(root, { childList: true });
+        await new Promise(r => setTimeout(r, 300));
+        expect(renders).toBeLessThanOrEqual(1);
+    });
+
+    test('the choice is kept per user; Property wise / Unit wise open Advanced', async () => {
+        await show('simple');
+        RentalsModule.api.setMode('advanced');
+        expect(localStorage.getItem('happa.rentMode.u1')).toBe('advanced');
+        RentalsModule.api.setMode('simple');
+        expect(localStorage.getItem('happa.rentMode.u1')).toBe('simple');
+        await RentalsModule.api.setView('properties');
+        expect(_test.state.mode).toBe('advanced');
+        expect(localStorage.getItem('happa.rentMode.u1')).toBe('advanced');
+    });
 });
