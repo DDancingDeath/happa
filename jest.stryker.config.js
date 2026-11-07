@@ -27,7 +27,7 @@ const CASH = [oracle(['screens']), www(['cash-characterisation', 'rounding', 'bi
 
 // Rentals money maths (#157): the pure and fake-Firestore suites, not the DOM screens.
 const RENT_MATH = [oracle(['rent', 'rent-receipt']),
-    www(['rent-math', 'rent-advance', 'rent-expense', 'rent-views', 'rent-public'])];
+    www(['rent-math', 'rent-movein', 'rent-advance', 'rent-expense', 'rent-views', 'rent-public'])];
 const RENT_LEDGER = [oracle(['rent', 'rent-receipt']), www(['rent-math', 'rent-advance', 'rent-deposit', 'rent-expense'])];
 const RENT_REPORT = [oracle(['rent-report']), www(['rent-report'])];
 
