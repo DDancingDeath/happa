@@ -251,7 +251,9 @@ person). Details: the #232 README,
 2. Run the `wipe` dry run and check its `KEEP` lines (per collection) against
    the backup's counts, and the owner profiles it lists as deleted or cleared
    (each must be in the final backup). Only then run it
-   with `--yes`, and run `apply` straight after it.
+   with `--yes`, and run `apply` straight after it. A rerun before Happa is in
+   use is again `wipe --yes` then `apply --restart` (`apply` never removes a
+   profile, so the `wipe` is what drops people the old app removed).
 3. After `apply`, open Rentals as the owner: properties, units, tenants and
    receipts are all still there, and the Rentals helpers still have their role.
 
