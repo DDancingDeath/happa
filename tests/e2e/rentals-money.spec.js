@@ -46,19 +46,19 @@ test('the deposit ledger: received, refunded, and the deposits-held list', async
 
     await button(row(page, tenant), 'Deposit').click();
     await expect(box).toContainText(`Security deposit: ${tenant}`);
-    await expect(box).toContainText('Agreed deposit₹10,000');
-    await expect(box).toContainText('Deposit held₹0');
+    await expect(box).toContainText(/Agreed deposit\s*₹10,000/);
+    await expect(box).toContainText(/Deposit held\s*₹0/);
     await button(box, 'Deposit received').click();
     await expect(page.locator('#rentPayAmount'), 'filled with the agreed deposit').toHaveValue('10000');
     await dialogButton(page, true);
     await toastHas(page, 'Saved ₹10,000. Deposit held: ₹10,000');
-    await expect(box).toContainText('Deposit held₹10,000');
+    await expect(box).toContainText(/Deposit held\s*₹10,000/);
 
     await button(box, 'Refund deposit').click();
     await page.fill('#rentPayAmount', '3000');
     await dialogButton(page, true);
     await toastHas(page, 'Saved ₹3,000. Deposit held: ₹7,000');
-    await expect(box).toContainText('Deposit held₹7,000');
+    await expect(box).toContainText(/Deposit held\s*₹7,000/);
     await expect(box).toContainText('Refunded');
     await closeDialog(page);
 

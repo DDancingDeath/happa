@@ -92,7 +92,7 @@ async function pay(page, tenant, amount, { confirm = '' } = {}) {
     await page.fill('#rentPayAmount', String(amount));
     await dialogButton(page, true);
     if (confirm) await confirmModal(page, confirm);
-    const title = page.locator('#rentDialogBody h3');
+    const title = dialog(page).getByRole('heading', { name: /Rent receipt R-/ });
     await expect(title).toHaveText(/Rent receipt R-\d{4}-\d{4}/, { timeout: 15000 });
     return (await title.innerText()).match(/R-\d{4}-\d{4}/)[0];
 }
