@@ -54,13 +54,15 @@ beforeEach(() => {
     _test.state.month = MONTH;
 });
 
-test('the Tenants page offers 💰 Deposit per tenant and Deposits held', async () => {
+test('the tenant screen offers 💰 Deposit; Tenants in Advanced offers Deposits held', async () => {
     _test.state.page = 'tenants';
+    _test.state.mode = 'advanced';
     ['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges', 'monthExpenses'].forEach(k => _test.state.loaded.add(k));
     await _test.render();
-    const html = document.getElementById('rentalsBody').innerHTML;
-    expect(html).toContain("data-onclick=\"rentals.deposit('T1')");
-    expect(html).toContain('data-onclick="rentals.deposits()"');
+    expect(document.getElementById('rentalsBody').innerHTML).toContain('data-onclick="rentals.deposits()"');
+    RentalsModule.api.openTenant('T1');
+    expect(document.getElementById('rentalsBody').innerHTML).toContain("data-onclick=\"rentals.deposit('T1')");
+    _test.state.detail = '';
 });
 
 test('the ledger: agreed and held (RENT-14), entries newest first; a member gets no edit / remove', async () => {

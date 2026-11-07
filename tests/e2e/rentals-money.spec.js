@@ -4,7 +4,7 @@
  * a property expense (RENT-17) in the yearly report and its CSV (RENT-19).
  */
 const { test, expect, login } = require('./support/app');
-const { button, dialog, row, dialogButton, closeDialog, toastHas, showPage, rentRow, setUpTenant, pay } = require('./support/rentals');
+const { button, dialog, row, dialogButton, closeDialog, toastHas, showPage, openTenant, rentRow, setUpTenant, pay } = require('./support/rentals');
 
 test('a payment over the due carries an advance; its receipt is cancelled with a reason', async ({ page, problems }) => {
     await login(page, 'owner');
@@ -19,8 +19,8 @@ test('a payment over the due carries an advance; its receipt is cancelled with a
     await closeDialog(page);
     await expect(await rentRow(page, tenant)).toContainText('Paid');
 
-    await showPage(page, 'tenants');
-    await button(row(page, tenant), 'Receipts').click();
+    const screen = await openTenant(page, tenant);
+    await button(screen, 'Receipts').click();
     await expect(box).toContainText(`Receipts: ${tenant}`);
     await expect(box).toContainText(no);
     await button(box, 'View').click();
@@ -32,7 +32,7 @@ test('a payment over the due carries an advance; its receipt is cancelled with a
     await save.click();
     await toastHas(page, `Receipt ${no} cancelled`);
 
-    await button(row(page, tenant), 'Receipts').click();
+    await button(screen, 'Receipts').click();
     await expect(box).toContainText('CANCELLED');
     await closeDialog(page);
     expect(problems.pageErrors).toEqual([]);
@@ -44,7 +44,7 @@ test('the deposit ledger: received, refunded, and the deposits-held list', async
     const { tenant } = await setUpTenant(page, { units: [['A', 4000]], deposit: 10000 });
     const box = dialog(page);
 
-    await button(row(page, tenant), 'Deposit').click();
+    await button(await openTenant(page, tenant), 'Deposit').click();
     await expect(box).toContainText(`Security deposit: ${tenant}`);
     await expect(box).toContainText(/Agreed deposit\s*₹10,000/);
     await expect(box).toContainText(/Deposit held\s*₹0/);
@@ -62,6 +62,8 @@ test('the deposit ledger: received, refunded, and the deposits-held list', async
     await expect(box).toContainText('Refunded');
     await closeDialog(page);
 
+    await page.evaluate(() => window.app.rentals.setMode('advanced'));
+    await showPage(page, 'tenants');
     await button(page.locator('#rentalsBody'), 'Deposits held').click();
     await expect(box.getByRole('listitem').filter({ hasText: tenant })).toContainText('₹7,000');
     await closeDialog(page);
