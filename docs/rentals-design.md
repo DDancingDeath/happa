@@ -820,4 +820,11 @@ Advanced only change what is drawn. Advanced never grants a permission (role che
   This month); Remove stays hidden while `unit.leaseId` is set (unchanged rule). Add property is a form; size and
   floor are under More in the unit form. Expenses and This month for the property are in Advanced (Expenses opens
   the existing sheet, not a tab: deviation from the plan, no extra reads).
+- **Meter readings** (PR7, MONEY): Needs attention shows REM-7 (`rent-views.meterPending`: active leases billed by
+  our meter whose month's charge has no electricity; pure, in the precached file because the This month render
+  is synchronous: deviation from the plan's lazy group, ~0.3 KB). It opens `rent-meter.js` (lazy, 8 KB budget):
+  one row per pending tenancy with the same locks as one reading (a known previous reading is fixed; a member
+  keeps the unit's rate). Save validates every filled row with `meterBill` (the sheet stays open at a bad row);
+  then each row goes through `store.recordMeter` in turn, skipping a charge that got a reading meanwhile. One
+  success toast, or a toast plus a ✓/✗ list. `dialog({ check })` is the same change as PR6.
 

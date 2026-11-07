@@ -365,6 +365,14 @@ www/js/rentals/rent-expense.js: cls
 www/js/rentals/rent-expense.js: field
 www/js/rentals/rent-link.js: action
 www/js/rentals/rent-link.js: cls
+www/js/rentals/rent-meter.js: i
+www/js/rentals/rent-meter.js: i
+www/js/rentals/rent-meter.js: i
+www/js/rentals/rent-meter.js: i (markup via num)
+www/js/rentals/rent-meter.js: i (markup via num)
+www/js/rentals/rent-meter.js: i (markup via num)
+www/js/rentals/rent-meter.js: i (markup via rowHtml)
+www/js/rentals/rent-meter.js: id
 www/js/rentals/rent-pages.js: ELEC_MODES (markup via map(m => `<option value="${m}"${m === mode ? ' selected' : ''}>${et(`ui.rent.elec_${m}`)}</option>`))
 www/js/rentals/rent-pages.js: PROPERTY_KINDS (markup via map(k => `<option value="${k}"${k === cur ? ' selected' : ''}>${esc(kindLabel(k))}</option>`))
 www/js/rentals/rent-pages.js: UNIT_TYPES (markup via map(k => `<option value="${k}"${k === unitType(unit) ? ' selected' : ''}>${esc(c.typeLabel(k))}</option>`))

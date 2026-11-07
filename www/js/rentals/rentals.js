@@ -22,7 +22,7 @@ import { noteRent, rentReminder, leaseReminder, leaseReminderText } from '../uti
 import { APP_IDENTITY } from '../config/app-identity.js';
 import { isShareToken, publicLink } from './rent-public.js';
 import {
-    UNIT_TYPES, VIEW_KEY, unitRows, summarize, tenantRows, placeText, typedPlace
+    UNIT_TYPES, VIEW_KEY, unitRows, summarize, tenantRows, placeText, typedPlace, meterPending
 } from './rent-views.js';
 import {
     PAYMENT_MODES, normalizeRentSettings, monthKey, monthLabel, monthsToCharge, chargeDue, leaseDues,
@@ -297,6 +297,8 @@ function attentionHtml(d, ix) {
     if (rem?.late) {
         rows.push(`<button type="button" class="rent-attn-row" data-onclick="rentals.onlyLate(true)"><span>${et('ui.today.reminder_rent_units', { count: rem.dueUnits, late: rem.late })}</span><strong>${money(rem.due)}</strong></button>`);
     }
+    const meters = meterPending(d, state.month).length;
+    if (meters) rows.push(`<button type="button" class="rent-attn-row" data-onclick="rentals.meters()"><span>⚡ ${et('ui.rent.meter_pending', { n: meters })}</span></button>`);
     for (const x of notes?.items || []) {
         const lease = d.leases.find(l => placeOf(ix, l.unitId) === x.place && ix.tenants.get(l.tenantId)?.name === x.tenant);
         const fn = !lease ? '' : x.kind === 'increase' ? 'editLease' : isManager() ? 'agreement' : '';
@@ -571,7 +573,7 @@ const unitCtx = () => ({
 
 /** Runs function `fn` of a lazy file (rent-unit.js / rent-link.js) with what it needs from here. */
 function lazyUi(file, fn, ...args) {
-    return (file === './rent-unit.js' ? loadPages().then(unitMod) : file === './rent-deposit.js' ? import('./rent-deposit.js') : file === './rent-expense.js' ? import('./rent-expense.js') : file === './rent-report.js' ? import('./rent-report.js') : import('./rent-link.js')).then(
+    return (file === './rent-unit.js' ? loadPages().then(unitMod) : file === './rent-deposit.js' ? import('./rent-deposit.js') : file === './rent-expense.js' ? import('./rent-expense.js') : file === './rent-report.js' ? import('./rent-report.js') : file === './rent-meter.js' ? import('./rent-meter.js') : import('./rent-link.js')).then(
         (m) => Promise.resolve().then(() => m[fn](unitCtx(), ...args)).catch((e) => {
             console.error(`Rentals ${fn} failed:`, e);
             fail('msg.rent.save_failed');
@@ -589,8 +591,11 @@ const expUi = (fn, ...args) => lazyUi('./rent-expense.js', fn, ...args);
 
 let dialogResolve = null;
 
-/** Rentals form dialog (template #rentDialog); resolves true on Save. Inputs stay readable after it closes. `info`: no Save button. */
-function dialog(html, { info = false } = {}) {
+/**
+ * Rentals form dialog (template #rentDialog); resolves true on Save. Inputs stay readable after it closes.
+ * `info`: no Save button; `check`: on Save, false keeps it open (it shows the error at the field).
+ */
+function dialog(html, { info = false, check = null } = {}) {
     dialogResolve?.(false);
     const box = byId('rentDialog');
     const body = byId('rentDialogBody');
@@ -602,6 +607,7 @@ function dialog(html, { info = false } = {}) {
     body.querySelector('input, select')?.focus();
     return new Promise((resolve) => {
         dialogResolve = (v) => {
+            if (v === true && check && !check()) return;
             dialogClosedAt = Date.now();
             box.hidden = true;
             dialogResolve = null;
@@ -665,7 +671,8 @@ export const RentalsModule = {
         deposit: (id) => depUi('showDeposit', id), deposits: () => depUi('showHeld'), depositAction: (a, id, i) => depUi('action', a, id, i), advanceToDeposit: (id) => depUi('advanceAction', id),
         expenses: (pid) => expUi('showExpenses', pid), expenseAction: (a, pid, id) => expUi('action', a, pid, id),
         agreement: (id) => lazyUi('./rent-report.js', 'editAgreement', id), yearReport: () => lazyUi('./rent-report.js', 'showYearReport'),
-        reportAction: (a, v) => lazyUi('./rent-report.js', 'action', a, v)
+        reportAction: (a, v) => lazyUi('./rent-report.js', 'action', a, v),
+        meters: () => lazyUi('./rent-meter.js', 'showMeters'), meterPreview: () => lazyUi('./rent-meter.js', 'preview')
     }
 };
 
