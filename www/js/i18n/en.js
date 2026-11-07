@@ -2380,6 +2380,7 @@ export default {
     'ui.rent.let_out': "Let out",
     'ui.rent.let_unit': "Let out a unit",
     'ui.rent.more_actions': "More actions",
+    'ui.rent.more_tenancy': "More: second phone, due day, yearly increase, electricity",
     'ui.rent.more_unit': "More: size, floor",
     'ui.rent.move_out_who': "Move {name} out of {place}",
     'ui.rent.needs_attention': "Needs attention",

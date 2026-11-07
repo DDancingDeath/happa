@@ -67,8 +67,8 @@ function elecFieldsHtml(mode, meterNo = '') {
 }
 
 /**
- * The tenant fields. toggle: Add unit shows them only after "Occupied — add tenant
- * now"; fixedTenant: Move in from the Tenants page; newUnit: opening meter reading.
+ * The tenant fields: who, rent, start date and deposit; the rest under More (defaults unchanged). toggle: Add unit
+ * shows them only after "Occupied — add tenant now"; fixedTenant: Move in from the Tenants page; newUnit: opening meter reading.
  */
 function tenantSectionHtml({ toggle = false, rent = 0, fixedTenant = null, newUnit = false, meterRate = '', defs = normalizeRentSettings(null), deposit = 0, elec = '' } = {}) {
     const d = store.snapshot();
@@ -84,23 +84,27 @@ function tenantSectionHtml({ toggle = false, rent = 0, fixedTenant = null, newUn
             <div id="rentTNewBox">
                 ${lbl('ui.rent.tenant_name', `<input id="rentTName" type="text" maxlength="80">`)}
                 ${lbl('ui.rent.phone_required', `<input id="rentTPhone" type="tel" maxlength="20" inputmode="tel">`)}
-                ${lbl('ui.rent.phone2', `<input id="rentTPhone2" type="tel" maxlength="20" inputmode="tel">`)}
             </div>`;
+    const phone2 = fixedTenant ? '' : `<div id="rentTNewBox2">${lbl('ui.rent.phone2', `<input id="rentTPhone2" type="tel" maxlength="20" inputmode="tel">`)}</div>`;
     const box = `<div id="rentTBox" class="rent-tenant-section"${toggle ? ' hidden' : ''}>
         <h4 class="rent-group-title">${et('ui.rent.tenant_if_occupied')}</h4>
         ${who}
         ${lbl('ui.rent.monthly_rent', `<input id="rentTRent" type="number" inputmode="decimal" min="0" step="1" value="${esc(rent || 0)}">`)}
         ${lbl('ui.rent.start_date', `<input id="rentTDate" type="date" value="${esc(todayLocalISO())}">`)}
+        ${lbl('ui.rent.deposit', `<input id="rentTDeposit" type="number" inputmode="decimal" min="0" step="1" value="${esc(deposit)}">`)}
+        <p class="rent-help">${et('ui.rent.deposit_note')}</p>
+        <details class="rent-more" id="rentTMore"><summary>${et('ui.rent.more_tenancy')}</summary>
+        ${phone2}
         <label class="rent-check"><input id="rentTProRate" type="checkbox"> ${et('ui.rent.pro_rate_first')}</label>
         ${lbl('ui.rent.due_day', `<input id="rentTDay" type="number" min="1" max="28" step="1" value="${esc(defs.dueDay)}">`)}
         ${lbl('ui.rent.increase_pct', `<input id="rentTPct" type="number" min="0" max="100" step="0.5" value="${esc(defs.increasePct)}">`)}
-        ${lbl('ui.rent.deposit', `<input id="rentTDeposit" type="number" inputmode="decimal" min="0" step="1" value="${esc(deposit)}">`)}
-        <p class="rent-help">${et('ui.rent.deposit_note')}</p>
         ${elecFieldsHtml(mode)}
         ${newUnit ? `<div id="rentTMeterBox"${mode === 'meter' ? '' : ' hidden'}>
             ${lbl('ui.rent.opening_reading', `<input id="rentTOpen" type="number" inputmode="decimal" min="0" step="0.01">`)}
             ${lbl('ui.rent.meter_rate', `<input id="rentTRate" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(rate)}">`)}
         </div>` : ''}
+        </details>
+        <p id="rentTError" class="rent-field-error" role="alert" hidden></p>
     </div>`;
     return (toggle ? `<label class="rent-check rent-occupied-toggle"><input id="rentTOn" type="checkbox" data-onchange="rentals.tenantToggle(this)"> ${et('ui.rent.occupied_add_tenant')}</label>` : '') + box;
 }
@@ -111,8 +115,7 @@ function tenantToggle(cb) {
 }
 
 function tenantPick(sel) {
-    const box = byId('rentTNewBox');
-    if (box) box.hidden = !!sel?.value;
+    ['rentTNewBox', 'rentTNewBox2'].forEach((id) => { const box = byId(id); if (box) box.hidden = !!sel?.value; });
 }
 
 function tenantElec(sel) {
@@ -136,7 +139,7 @@ function readTenantSection({ newUnit = false, given = null } = {}) {
     if (!tenantId && !tenant) {
         const raw = { name: val('rentTName'), phone: val('rentTPhone'), phone2: val('rentTPhone2') };
         const err = tenantError(raw);
-        if (err) return { error: err };
+        if (err) return { error: err, field: err !== 'msg.rent.bad_phone' ? 'rentTName' : mobile10(raw.phone) ? 'rentTPhone2' : 'rentTPhone' };
         tenant = { name: raw.name, phone: mobile10(raw.phone), ...(raw.phone2 ? { phone2: mobile10(raw.phone2) } : {}) };
     }
     const startDate = val('rentTDate');
@@ -149,7 +152,33 @@ function readTenantSection({ newUnit = false, given = null } = {}) {
     };
     const meter = newUnit && elec === 'meter' ? { reading: numOrNull('rentTOpen'), rate: numOrNull('rentTRate') } : null;
     const err = moveInError(lease, meter, c.state.month, c.isOwner ? '' : localISODaysAgo(EDIT_DAYS));
-    return err ? { error: err } : { tenant, tenantId, lease, meter };
+    return err ? { error: err, field: errorField(err, lease, meter) } : { tenant, tenantId, lease, meter };
+}
+
+const okAmount = (n) => Number.isFinite(n) && n >= 0;
+/** The field a move-in error is about. */
+function errorField(err, lease, meter) {
+    const key = err.replace('msg.rent.', '');
+    if (key === 'bad_amount') return okAmount(lease.rent) ? 'rentTDeposit' : 'rentTRent';
+    if (key === 'bad_reading') return meter && meter.reading !== null && !okAmount(meter.reading) ? 'rentTOpen' : 'rentTRate';
+    return { bad_due_day: 'rentTDay', bad_percent: 'rentTPct', bad_elec_mode: 'rentTElec' }[key] || 'rentTDate';
+}
+
+/** For a dialog's check: false after showing the error at its field (More opens when the field is in it). */
+function checkTenantSection(opts) {
+    const r = readTenantSection(opts);
+    const box = byId('rentTError');
+    if (box) box.hidden = !r?.error;
+    if (!r?.error) return true;
+    const input = byId(r.field);
+    const more = input?.closest('details');
+    if (more) more.open = true;
+    if (box) {
+        box.textContent = t(r.error);
+        input?.closest('label')?.after(box);
+    }
+    input?.focus();
+    return false;
 }
 
 /** Saves a move-in from the tenant section (or a change of unit: `save`); true when saved. */
@@ -300,6 +329,13 @@ async function archiveProperty(id) {
     if (done !== null) c.back();
 }
 
+/** The tenant's rent defaults to the unit rent typed above. */
+function unitRentToTenant() {
+    const rentInput = byId('rentTRent');
+    const rent = Number(val('rentUnitRent') || 0);
+    if (rentInput && Number(rentInput.value) === 0 && rent > 0) rentInput.value = String(rent);
+}
+
 async function unitDialog(title, unit, { withTenant = false, defs = null } = {}) {
     const ok = await c.dialog(`<h3>${esc(title)}</h3>
         ${lbl('ui.rent.unit_label', `<input id="rentUnitLabel" type="text" maxlength="60" value="${esc(unit?.label || '')}">`)}
@@ -308,7 +344,7 @@ async function unitDialog(title, unit, { withTenant = false, defs = null } = {})
         <details class="rent-more"${unit?.floor || Number.isFinite(unit?.area) ? ' open' : ''}><summary>${et('ui.rent.more_unit')}</summary>
         ${lbl('ui.rent.unit_area', `<input id="rentUnitArea" type="number" inputmode="decimal" min="0" step="1" value="${esc(unit?.area ?? '')}">`)}
         ${lbl('ui.rent.unit_floor', `<input id="rentUnitFloor" type="text" maxlength="20" value="${esc(unit?.floor || '')}">`)}</details>
-        ${withTenant ? tenantSectionHtml({ toggle: true, rent: unit?.rent ?? 0, newUnit: true, defs: defs || undefined }) : ''}`);
+        ${withTenant ? tenantSectionHtml({ toggle: true, rent: unit?.rent ?? 0, newUnit: true, defs: defs || undefined }) : ''}`, withTenant ? { check: () => { unitRentToTenant(); return checkTenantSection({ newUnit: true }); } } : {});
     if (!ok) return null;
     const area = val('rentUnitArea');
     const u = {
@@ -319,9 +355,7 @@ async function unitDialog(title, unit, { withTenant = false, defs = null } = {})
     const err = unitError(u) || unitExtraError(u);
     if (err) { fail(err); return null; }
     if (!withTenant) return u;
-    // The tenant's rent defaults to the unit rent typed above.
-    const rentInput = byId('rentTRent');
-    if (rentInput && Number(rentInput.value) === 0 && u.rent > 0) rentInput.value = String(u.rent);
+    unitRentToTenant();
     const occ = readTenantSection({ newUnit: true });
     if (occ?.error) { fail(occ.error); return null; }
     return { ...u, occ };
@@ -357,7 +391,7 @@ async function archiveUnit(id) {
 }
 
 const NAMES = {
-    tenantSectionHtml, tenantToggle, tenantPick, tenantElec, elecFieldsHtml, readTenantSection, saveMoveIn, fillRent, saveRent, refreshLinkNames,
+    tenantSectionHtml, tenantToggle, tenantPick, tenantElec, elecFieldsHtml, readTenantSection, checkTenantSection, saveMoveIn, fillRent, saveRent, refreshLinkNames,
     renderProperties, renderProperty, addProperty, editProperty, archiveProperty, addUnit, editUnit, archiveUnit
 };
 /** Each function takes rentals.js's context first, like the other lazy Rentals files. */
