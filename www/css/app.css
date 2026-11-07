@@ -8449,7 +8449,7 @@ body.dark-mode .notif-panel-actions {
     line-height: 1.4;
 }
 .ins-action-icon { font-size: 22px; line-height: 1; }
-.ins-action .btn { margin-top: 8px; min-height: 40px; }
+.ins-action .btn { margin-top: 8px; min-height: 44px; }
 
 .ins-heat { border-collapse: separate; border-spacing: 2px; font-size: 12px; }
 .ins-heat th { font-weight: 500; color: var(--text-secondary); padding: 2px; }
