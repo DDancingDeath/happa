@@ -25,19 +25,29 @@ const BUSINESS_METRICS = [oracle(['business-metrics', 'period-compare', 'fy-peri
 const TODAY = [oracle(['screens']), www(['today-characterisation', 'rounding', 'bill-date'])];
 const CASH = [oracle(['screens']), www(['cash-characterisation', 'rounding', 'bill-date', 'complete-all-due'])];
 
+// Rentals money maths (#157): the pure and fake-Firestore suites, not the DOM screens.
+const RENT_MATH = [oracle(['rent', 'rent-receipt']),
+    www(['rent-math', 'rent-movein', 'rent-advance', 'rent-expense', 'rent-views', 'rent-public'])];
+const RENT_LEDGER = [oracle(['rent', 'rent-receipt']), www(['rent-math', 'rent-advance', 'rent-deposit', 'rent-expense'])];
+const RENT_REPORT = [oracle(['rent-report']), www(['rent-report'])];
+
 /** Suites per mutated file; a file not listed gets CORE + the oracle. */
 const TESTS_FOR = {
     'www/js/utils/finance-calc.js': FINANCE_CALC,
     'www/js/utils/business-metrics.js': BUSINESS_METRICS,
     'www/js/utils/calc/today.js': TODAY,
-    'www/js/utils/calc/cash.js': CASH
+    'www/js/utils/calc/cash.js': CASH,
+    'www/js/rentals/rent-math.js': RENT_MATH,
+    'www/js/rentals/rent-math-ledger.js': RENT_LEDGER,
+    'www/js/rentals/rent-math-report.js': RENT_REPORT
 };
 
 // A matrix entry may be a line range of a file ("file.js:1-480"): the file's suites
 const mutated = String(process.env.STRYKER_MUTATE || '').replace(/\\/g, '/').replace(/:[\d-]+$/, '');
 const testMatch = mutated
     ? (TESTS_FOR[mutated] || [CORE, ORACLE])
-    : [...new Set([CORE, ORACLE, ...FINANCE_CALC, ...BUSINESS_METRICS, ...TODAY, ...CASH])];
+    : [...new Set([CORE, ORACLE, ...FINANCE_CALC, ...BUSINESS_METRICS, ...TODAY, ...CASH,
+        ...RENT_MATH, ...RENT_LEDGER, ...RENT_REPORT])];
 
 module.exports = {
     ...base,
