@@ -3,6 +3,7 @@ import {
     unitRows, summarize, propertySummaries, groupByType, filterRows, typedPlace, placeText, unitType, unitExtraError, UNIT_TYPES, moveTarget, tenantRows, tenantDues
 } from '../rentals/rent-views.js';
 import { rentTotals } from '../rentals/rent-math.js';
+import { propertyRows } from '../rentals/rent-pages.js';
 
 const MONTH = '2026-10';
 const TODAY = new Date(2026, 9, 20);
@@ -203,3 +204,22 @@ describe('This month list (tenantRows): one row per tenancy that owes or is acti
         expect(rows.map(r => [r.leaseId, r.late, r.dues.total])).toEqual([['L9', true, 5000], ['L1', true, 8000], ['L2', false, 9000]]);
     });
 });
+
+test('propertyRows: A–Z, units let (active lease or the unit\'s leaseId), and owed there by a moved-out tenant too', () => {
+    const d = {
+        properties: [{ id: 'P1', name: 'Zed' }, { id: 'P2', name: 'Arora' }],
+        units: [{ id: 'U1', propertyId: 'P1', label: 'B' }, { id: 'U2', propertyId: 'P1', label: 'A', leaseId: 'L9' }, { id: 'U3', propertyId: 'P2', label: 'G' }],
+        leases: [{ id: 'L1', unitId: 'U1', tenantId: 'T1', status: 'active' }],
+        tenants: [{ id: 'T1', name: 'Ram' }, { id: 'T2', name: 'Om' }],
+        charges: [
+            { id: 'c1', leaseId: 'L1', unitId: 'U1', tenantId: 'T1', month: '2026-01', dueDay: 5, amount: 5000, paid: 1000 },
+            { id: 'c2', leaseId: 'L0', unitId: 'U3', tenantId: 'T2', month: '2025-12', dueDay: 5, amount: 3000, paid: 0 }
+        ]
+    };
+    const out = propertyRows(d, tenantRows(d, '2026-02', new Date(2026, 1, 20)));
+    expect(out.map(r => [r.property.id, r.units.map(u => u.id), r.let, r.owed, r.late])).toEqual([
+        ['P2', ['U3'], 0, 3000, true],
+        ['P1', ['U2', 'U1'], 2, 4000, true]
+    ]);
+});
+

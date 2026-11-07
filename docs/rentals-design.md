@@ -813,4 +813,11 @@ Advanced only change what is drawn. Advanced never grants a permission (role che
   `rent-unit.toUnit` change of unit, which confirms with the tenant, both units and the dues) and Move out ("Move
   Ram out of Flat 1A") are their own actions (owner-adjustable default). Remove names the tenant. Code:
   `rent-tenants.js` (lazy, loaded with `rent-pages.js`).
+- **Properties** (PR5): rows with units, let and owed there (`rent-pages.propertyRows`: RENT-4 over the
+  `tenantRows` whose unit is in the property, so a moved-out tenant's months count where they were). The property's
+  screen uses the same `detail` state as a tenant's; each screen pushes `{ rentDetail: n, rentPage, rentId }`, so
+  Back from a tenant opened at a property returns to the property. Occupancy is the active lease on the unit (as
+  This month); Remove stays hidden while `unit.leaseId` is set (unchanged rule). Add property is a form; size and
+  floor are under More in the unit form. Expenses and This month for the property are in Advanced (Expenses opens
+  the existing sheet, not a tab: deviation from the plan, no extra reads).
 

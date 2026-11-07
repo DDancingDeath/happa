@@ -13,11 +13,11 @@ import { t } from '../i18n/index.js';
 import { AuditService } from '../services/audit.js';
 import * as store from './rent-store.js';
 import { isShareToken } from './rent-public.js';
-import { UNIT_TYPES, unitType, unitExtraError } from './rent-views.js';
+import { UNIT_TYPES, unitType, unitExtraError, tenantRows, typedPlace } from './rent-views.js';
 import {
     PROPERTY_KINDS, MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, normalizeRentSettings,
     propertyError, unitError, tenantError, moveInError,
-    ELEC_MODES, mobile10, firstMonthRent
+    ELEC_MODES, mobile10, firstMonthRent, rentTotals
 } from './rent-math.js';
 
 const esc = (v) => Helpers.escapeHtml(v);
@@ -31,8 +31,6 @@ const lbl = (key, field) => `<label class="rent-label">${et(key)}${field}</label
 const val = (id) => (byId(id)?.value ?? '').trim();
 
 const kindLabel = (k) => t(`ui.rent.kind_${PROPERTY_KINDS.includes(k) ? k : 'other'}`);
-
-const confirmRemove = () => UIManager.showModal(t('msg.rent.confirm_remove'), t('ui.rent.remove'), true);
 
 /** After a rename: linked tenants' pages show the new tenant / property / unit names. */
 function refreshLinkNames(affects) {
@@ -189,66 +187,98 @@ function fillRent(select) {
 
 // ---------- Properties ----------
 
-function renderProperties(d) {
-    const ix = c.index(d);
-    const manage = c.canWrite;
-    const kinds = PROPERTY_KINDS.map(k => `<option value="${k}">${esc(kindLabel(k))}</option>`).join('');
-    const form = manage ? `<div class="rent-form">
-            <h3>${et('ui.rent.add_property')}</h3>
-            <input id="rentPropName" type="text" maxlength="80" placeholder="${et('ui.rent.property_name')}">
-            <input id="rentPropAddress" type="text" maxlength="200" placeholder="${et('ui.rent.address')}">
-            <select id="rentPropKind">${kinds}</select>
-            ${btn(' rent-btn-primary', 'addProperty', '', 'ui.rent.add')}
-        </div>` : '';
-    const report = c.isManager ? `<div class="rent-actions">${btn('', 'yearReport', '', 'ui.rent.yr_btn', '📊 ')}</div>` : '';
-    const leaseById = ix.leases;
-    const cards = [...d.properties].sort((a, b) => a.name.localeCompare(b.name)).map(p => {
-        const units = d.units.filter(u => u.propertyId === p.id).sort((a, b) => a.label.localeCompare(b.label));
-        const pid = js(p.id);
-        const unitRows = units.map(u => {
-            const lease = u.leaseId ? leaseById.get(u.leaseId) : null;
-            const who = lease ? esc(ix.tenants.get(lease.tenantId)?.name || t('ui.rent.occupied')) : et('ui.rent.vacant');
-            const uid = js(u.id);
-            const size = [u.floor ? t('ui.rent.floor_value', { floor: u.floor }) : '', Number.isFinite(u.area) ? t('ui.rent.area_value', { area: u.area }) : ''].filter(Boolean).join(' · ');
-            return `<li class="rent-unit"><span><span class="rent-kind">${esc(c.typeLabel(unitType(u)))}</span> <strong>${esc(u.label)}</strong> · ${money(u.rent || 0)} · ${who}${size ? ` · ${esc(size)}` : ''}</span>
-                ${manage ? `<span>${btn(' rent-btn-small', 'editUnit', `'${uid}'`, 'ui.rent.edit')}
-                ${u.leaseId ? '' : btn(' rent-btn-small', 'archiveUnit', `'${uid}'`, 'ui.rent.remove')}</span>` : ''}</li>`;
-        }).join('');
-        const occupied = units.some(u => u.leaseId);
-        return `<div class="rent-row">
-            <div class="rent-name">${esc(p.name)} <span class="rent-kind">${esc(kindLabel(p.kind))}</span></div>
-            ${p.address ? `<div class="rent-sub">${esc(p.address)}</div>` : ''}
-            <ul class="rent-units">${unitRows || `<li class="rent-empty">${et('ui.rent.no_units')}</li>`}</ul>
-            ${manage ? `<div class="rent-actions">
-                ${btn(' rent-btn-primary', 'addUnit', `'${pid}'`, 'ui.rent.add_unit')}
-                ${btn('', 'editProperty', `'${pid}'`, 'ui.rent.edit')}
-                ${btn('', 'expenses', `'${pid}'`, 'ui.rent.exp_btn', '💸 ')}
-                ${occupied ? '' : btn('', 'archiveProperty', `'${pid}'`, 'ui.rent.remove')}
-            </div>` : ''}
-        </div>`;
-    }).join('');
-    return form + report + (cards || `<p class="rent-empty">${et('ui.rent.no_properties')}</p>`);
+/** Properties A–Z with their units (A–Z), how many are let, and what is owed there over all months (RENT-4; moved-out tenants too). */
+export function propertyRows({ properties = [], units = [], leases = [] }, tRows) {
+    const let_ = new Set(leases.filter(l => l.status === 'active').map(l => l.unitId));
+    return [...properties].sort((a, b) => a.name.localeCompare(b.name)).map((p) => {
+        const mine = units.filter(u => u.propertyId === p.id).sort((a, b) => a.label.localeCompare(b.label));
+        const ids = new Set(mine.map(u => u.id));
+        const owing = tRows.filter(r => ids.has(r.unitId) && r.dues.total > 0);
+        return { property: p, units: mine, let: mine.filter(u => u.leaseId || let_.has(u.id)).length, owed: rentTotals(owing.flatMap(r => r.dues.charges)).due, late: owing.some(r => r.late) };
+    });
 }
 
+const menuHtml = (items, label) => (items.length ? `<details class="rent-menu"><summary aria-label="${esc(label)}">⋯</summary><div class="rent-menu-list">${items.join('')}</div></details>` : '');
+
+/** Properties A–Z: units, how many are let and what is owed there; tap opens the property. */
+function renderProperties(d) {
+    const adv = c.state.mode === 'advanced';
+    const add = c.canWrite ? btn(' rent-btn-primary', 'addProperty', '', 'ui.rent.add_property', '+ ') : '';
+    const report = c.isManager ? btn('', 'yearReport', '', 'ui.rent.yr_btn', '📊 ') : '';
+    const rows = propertyRows(d, tenantRows(d, c.state.month)).map(({ property: p, units, let: n, owed, late }) => `
+        <button type="button" class="rent-row rent-prop-card" data-property="${esc(p.id)}" data-onclick="rentals.showProperty('${js(p.id)}')">
+            <span class="rent-row-head"><span><span class="rent-name">${esc(p.name)}</span>
+                <span class="rent-sub">${units.length ? et(units.length === 1 ? 'ui.rent.prop_unit_let' : 'ui.rent.prop_units_let', { units: units.length, n }) : et('ui.rent.no_units')}</span>
+                ${adv ? `<span class="rent-sub">${esc([p.address, kindLabel(p.kind)].filter(Boolean).join(' · '))}</span>` : ''}</span>
+            <span class="rent-row-right">${owed > 0 ? `<span class="rent-due">${et('ui.rent.owed', { amount: formatINR(owed) })}</span>` : ''}${late ? c.badge('late', 'ui.rent.status_late') : ''}</span></span>
+        </button>`).join('');
+    return `<div class="rent-toolbar">${report}${add}</div>
+        ${rows || `<p class="rent-empty">${et(c.canWrite ? 'ui.rent.start_hint' : 'ui.rent.no_properties')}</p>`}`;
+}
+
+/** A property: its units with the tenant (tap opens them) or Vacant (Let out); Advanced adds Expenses and This month. */
+function renderProperty(d, id) {
+    const p = d.properties.find(x => x.id === id);
+    if (!p) return null;
+    const w = c.canWrite;
+    const pid = js(id);
+    const tRows = new Map(tenantRows(d, c.state.month).map(r => [r.leaseId, r]));
+    const leases = new Map(d.leases.filter(l => l.status === 'active').map(l => [l.unitId, l]));
+    const names = new Map(d.tenants.map(x => [x.id, x.name]));
+    const units = d.units.filter(u => u.propertyId === id).sort((a, b) => a.label.localeCompare(b.label));
+    const adv = c.state.mode === 'advanced';
+    const rows = units.map((u) => {
+        const lease = leases.get(u.id) || null;
+        const r = lease ? tRows.get(lease.id) : null;
+        const uid = js(u.id);
+        const size = adv ? [u.floor ? t('ui.rent.floor_value', { floor: u.floor }) : '', Number.isFinite(u.area) ? t('ui.rent.area_value', { area: u.area }) : ''].filter(Boolean).join(' · ') : '';
+        const sub = [lease ? names.get(lease.tenantId) || t('ui.rent.occupied') : t('ui.rent.vacant'), size].filter(Boolean).join(' · ');
+        const right = `<span class="rent-row-right"><span class="rent-due">${money(lease ? lease.rent : u.rent || 0)}</span>${r?.dues.total > 0 ? c.badge(r.late ? 'late' : 'due', r.late ? 'ui.rent.status_late' : 'ui.rent.status_due') : ''}</span>`;
+        const main = `<span class="rent-row-head"><span><span class="rent-name">${esc(typedPlace(c.typeWord(unitType(u)), u.label, ''))}</span><span class="rent-sub">${esc(sub)}</span></span>${right}</span>`;
+        const menu = w ? menuHtml([btn('', 'editUnit', `'${uid}'`, 'ui.rent.edit'), u.leaseId || lease ? '' : btn(' rent-btn-danger', 'archiveUnit', `'${uid}'`, 'ui.rent.remove')].filter(Boolean), t('ui.rent.more_actions')) : '';
+        return `<div class="rent-list-row rent-unit-row" data-unit="${esc(u.id)}">
+            ${lease ? `<button type="button" class="rent-tap" data-onclick="rentals.openTenant('${js(lease.tenantId)}')">${main}</button>` : `<div class="rent-tap">${main}</div>`}
+            ${!lease && !u.leaseId && w ? btn(' rent-btn-small', 'addTenantToUnit', `'${uid}'`, 'ui.rent.let_out') : ''}${menu}
+        </div>`;
+    }).join('');
+    const occupied = units.some(u => u.leaseId || leases.has(u.id));
+    const menu = w ? menuHtml([btn('', 'editProperty', `'${pid}'`, 'ui.rent.edit'), occupied ? '' : btn(' rent-btn-danger', 'archiveProperty', `'${pid}'`, 'ui.rent.remove')].filter(Boolean), t('ui.rent.more_actions')) : '';
+    const more = adv ? `<div class="rent-actions">${w ? btn('', 'expenses', `'${pid}'`, 'ui.rent.exp_btn') : ''}${btn('', 'propertyMonth', `'${pid}'`, 'ui.nav.rent')}</div>` : '';
+    return `<div class="rent-detail" data-property-detail="${esc(id)}">
+        <div class="rent-detail-bar">${btn(' rent-btn-small', 'back', '', 'ui.nav.properties', '← ')}${menu}</div>
+        <h3 class="rent-name" id="rentDetailTitle" tabindex="-1">${esc(p.name)}</h3>
+        <div class="rent-sub">${esc([p.address, kindLabel(p.kind)].filter(Boolean).join(' · '))}</div>
+        ${more}
+        <div class="rent-section-title"><span>${et('ui.rent.units')}</span>${w ? btn(' rent-btn-primary', 'addUnit', `'${pid}'`, 'ui.rent.add_unit', '+ ') : ''}</div>
+        <div class="rent-list">${rows || `<p class="rent-empty">${et('ui.rent.no_units')}</p>`}</div>
+    </div>`;
+}
+
+const kindOptions = (cur) => PROPERTY_KINDS.map(k => `<option value="${k}"${k === cur ? ' selected' : ''}>${esc(kindLabel(k))}</option>`).join('');
+
 async function addProperty() {
+    if (store.snapshot().properties.length >= MAX_PROPERTIES) {
+        return fail('msg.rent.max_properties', { max: MAX_PROPERTIES });
+    }
+    const ok = await c.dialog(`<h3>${et('ui.rent.add_property')}</h3>
+        ${lbl('ui.rent.property_name', '<input id="rentPropName" type="text" maxlength="80">')}
+        ${lbl('ui.rent.address', '<input id="rentPropAddress" type="text" maxlength="200">')}
+        ${lbl('ui.rent.kind', `<select id="rentPropKind">${kindOptions('')}</select>`)}`);
+    if (!ok) return;
     const kind = val('rentPropKind');
     const p = { name: val('rentPropName'), address: val('rentPropAddress'), kind: PROPERTY_KINDS.includes(kind) ? kind : 'other', notes: '' };
     const err = propertyError(p);
     if (err) return fail(err);
-    if (store.snapshot().properties.length >= MAX_PROPERTIES) {
-        return fail('msg.rent.max_properties', { max: MAX_PROPERTIES });
-    }
     await saveRent(() => store.addProperty(p));
 }
 
 async function editProperty(id) {
     const p = store.snapshot().properties.find(x => x.id === id);
     if (!p) return;
-    const kinds = PROPERTY_KINDS.map(k => `<option value="${k}"${k === p.kind ? ' selected' : ''}>${esc(kindLabel(k))}</option>`).join('');
     const ok = await c.dialog(`<h3>${et('ui.rent.edit')}</h3>
         ${lbl('ui.rent.property_name', `<input id="rentEditPropName" type="text" maxlength="80" value="${esc(p.name)}">`)}
         ${lbl('ui.rent.address', `<input id="rentEditPropAddress" type="text" maxlength="200" value="${esc(p.address || '')}">`)}
-        ${lbl('ui.rent.kind', `<select id="rentEditPropKind">${kinds}</select>`)}`);
+        ${lbl('ui.rent.kind', `<select id="rentEditPropKind">${kindOptions(p.kind)}</select>`)}`);
     if (!ok) return;
     const kind = val('rentEditPropKind');
     const next = { name: val('rentEditPropName'), address: val('rentEditPropAddress'), kind: PROPERTY_KINDS.includes(kind) ? kind : 'other' };
@@ -259,13 +289,15 @@ async function editProperty(id) {
 }
 
 async function archiveProperty(id) {
-    if (!await confirmRemove()) return;
+    const name = store.snapshot().properties.find(p => p.id === id)?.name || '';
+    if (!await UIManager.showModal(t('msg.rent.confirm_remove_property', { name }), t('ui.rent.remove'), true)) return;
     const units = store.snapshot().units.filter(u => u.propertyId === id);
     if (units.some(u => u.leaseId)) return fail('msg.rent.has_tenant');
-    await saveRent(async () => {
+    const done = await saveRent(async () => {
         for (const u of units) await store.updateUnit(u.id, { archived: true });
         await store.updateProperty(id, { archived: true });
     });
+    if (done !== null) c.back();
 }
 
 async function unitDialog(title, unit, { withTenant = false, defs = null } = {}) {
@@ -273,8 +305,9 @@ async function unitDialog(title, unit, { withTenant = false, defs = null } = {})
         ${lbl('ui.rent.unit_label', `<input id="rentUnitLabel" type="text" maxlength="60" value="${esc(unit?.label || '')}">`)}
         ${lbl('ui.rent.unit_type', `<select id="rentUnitType">${UNIT_TYPES.map(k => `<option value="${k}"${k === unitType(unit) ? ' selected' : ''}>${esc(c.typeLabel(k))}</option>`).join('')}</select>`)}
         ${lbl('ui.rent.monthly_rent', `<input id="rentUnitRent" type="number" inputmode="decimal" min="0" step="1" value="${esc(unit?.rent ?? 0)}">`)}
+        <details class="rent-more"${unit?.floor || Number.isFinite(unit?.area) ? ' open' : ''}><summary>${et('ui.rent.more_unit')}</summary>
         ${lbl('ui.rent.unit_area', `<input id="rentUnitArea" type="number" inputmode="decimal" min="0" step="1" value="${esc(unit?.area ?? '')}">`)}
-        ${lbl('ui.rent.unit_floor', `<input id="rentUnitFloor" type="text" maxlength="20" value="${esc(unit?.floor || '')}">`)}
+        ${lbl('ui.rent.unit_floor', `<input id="rentUnitFloor" type="text" maxlength="20" value="${esc(unit?.floor || '')}">`)}</details>
         ${withTenant ? tenantSectionHtml({ toggle: true, rent: unit?.rent ?? 0, newUnit: true, defs: defs || undefined }) : ''}`);
     if (!ok) return null;
     const area = val('rentUnitArea');
@@ -316,13 +349,16 @@ async function editUnit(id) {
 }
 
 async function archiveUnit(id) {
-    if (!await confirmRemove()) return;
+    const d = store.snapshot();
+    const u = d.units.find(x => x.id === id);
+    const msg = t('msg.rent.confirm_remove_unit', { unit: u?.label || '', property: d.properties.find(p => p.id === u?.propertyId)?.name || '' });
+    if (!await UIManager.showModal(msg, t('ui.rent.remove'), true)) return;
     await saveRent(() => store.updateUnit(id, { archived: true }));
 }
 
 const NAMES = {
     tenantSectionHtml, tenantToggle, tenantPick, tenantElec, elecFieldsHtml, readTenantSection, saveMoveIn, fillRent, saveRent, refreshLinkNames,
-    renderProperties, addProperty, editProperty, archiveProperty, addUnit, editUnit, archiveUnit
+    renderProperties, renderProperty, addProperty, editProperty, archiveProperty, addUnit, editUnit, archiveUnit
 };
 /** Each function takes rentals.js's context first, like the other lazy Rentals files. */
 export const pages = Object.fromEntries(Object.entries(NAMES).map(([k, f]) => [k, (ctx, ...a) => { c = ctx; return f(...a); }]));
