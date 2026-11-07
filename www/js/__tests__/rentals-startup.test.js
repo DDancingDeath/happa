@@ -29,14 +29,15 @@ const RENT_COLLECTION = /['"`](?:dev_)?rent_[a-z]/;
 // the advance (#157, RENT-16): it runs inside the precached payment (oldest months first), monthly-charge and
 // move-out transactions. 140 → 137 KB (#157, property expenses): maths only the lazy screens use (deposit ledger,
 // expense form, receipt amounts, the change of unit's move month) moved to the lazy rent-math-ledger.js, which pays
-// for the expense summary on the Rent page.
+// for the expense summary on the Rent page. The Tenants and Properties pages moved to the lazy rent-pages.js (#157, UX
+// redesign PR1), which made room for the redesign; the budget was not raised.
 const PRECACHE_BUDGET_BYTES = 137 * 1024;
 /** Loaded with import() only when used (file: its importer, or the lazy files that import it); not precached, own budget per feature. */
 const LAZY = {
     'rent-receipt.js': 'rentals.js', 'rent-receipt-store.js': 'rent-receipt.js', 'rent-unit.js': 'rentals.js', 'rent-link.js': 'rentals.js',
     'rent-deposit.js': 'rentals.js', 'rent-deposit-store.js': 'rent-deposit.js', 'rent-expense.js': 'rentals.js', 'rent-expense-store.js': 'rent-expense.js',
     'rent-math-ledger.js': ['rent-deposit-store.js', 'rent-deposit.js', 'rent-expense.js', 'rent-receipt.js', 'rent-unit.js'],
-    'rent-report.js': 'rentals.js', 'rent-report-store.js': 'rent-report.js', 'rent-math-report.js': 'rent-report.js'
+    'rent-report.js': 'rentals.js', 'rent-report-store.js': 'rent-report.js', 'rent-math-report.js': 'rent-report.js', 'rent-pages.js': 'rentals.js'
 };
 const LAZY_URLS = [...Object.keys(LAZY).map(n => `/js/rentals/${n}`), '/css/rent-receipt.css'];
 const LAZY_BUDGETS = {
@@ -46,7 +47,8 @@ const LAZY_BUDGETS = {
     deposits: [['/js/rentals/rent-deposit.js', '/js/rentals/rent-deposit-store.js'], 22 * 1024],
     expenses: [['/js/rentals/rent-expense.js', '/js/rentals/rent-expense-store.js'], 12 * 1024],
     'ledger maths': [['/js/rentals/rent-math-ledger.js'], 10 * 1024],
-    'agreement and reports': [['/js/rentals/rent-report.js', '/js/rentals/rent-report-store.js', '/js/rentals/rent-math-report.js'], 18 * 1024]
+    'agreement and reports': [['/js/rentals/rent-report.js', '/js/rentals/rent-report-store.js', '/js/rentals/rent-math-report.js'], 18 * 1024],
+    'tenants and properties pages': [['/js/rentals/rent-pages.js'], 32 * 1024]
 };
 /** Size as served (LF line endings), the same on a Windows checkout and in CI. */
 const sizeOf = (f) => Buffer.byteLength(read(f).replace(/\r\n/g, '\n'));
@@ -138,7 +140,7 @@ describe('Rentals are not loaded at start-up (#149, #170)', () => {
             expect(files.filter(f => path.basename(f) !== name && read(f).includes(`./${name}`)).map(f => path.basename(f)).sort()).toEqual([by].flat());
         });
         const src = read(path.join(RENTALS, 'rentals.js'));
-        ['rent-receipt', 'rent-unit', 'rent-link', 'rent-deposit', 'rent-expense', 'rent-report'].forEach((n) => {
+        ['rent-receipt', 'rent-unit', 'rent-link', 'rent-deposit', 'rent-expense', 'rent-report', 'rent-pages'].forEach((n) => {
             expect(src).toMatch(new RegExp(`import\\(\\s*'\\./${n}\\.js'\\s*\\)`));
             expect(src).not.toMatch(new RegExp(`^import .*${n}`, 'm'));
         });

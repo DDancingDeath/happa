@@ -54,10 +54,10 @@ beforeEach(() => {
     _test.state.month = MONTH;
 });
 
-test('the Tenants page offers 💰 Deposit per tenant and Deposits held', () => {
+test('the Tenants page offers 💰 Deposit per tenant and Deposits held', async () => {
     _test.state.page = 'tenants';
     ['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges', 'monthExpenses'].forEach(k => _test.state.loaded.add(k));
-    _test.render();
+    await _test.render();
     const html = document.getElementById('rentalsBody').innerHTML;
     expect(html).toContain("data-onclick=\"rentals.deposit('T1')");
     expect(html).toContain('data-onclick="rentals.deposits()"');
