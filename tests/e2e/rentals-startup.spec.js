@@ -5,6 +5,7 @@
  * (so the probe really sees them) and only after the app-shown timing mark.
  */
 const { test, expect, login } = require('./support/app');
+const { addProperty, openProperty } = require('./support/rentals');
 
 const RENT_RE = /(?<![a-z])rent_(properties|units|tenants|leases|charges)/;
 const RENTALS_FILE = /\/js\/rentals\/|\/templates\/rentals\.html|\/css\/rentals\.css/;
@@ -47,10 +48,8 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await login(page, 'owner');
     const stamp = String(Date.now()).slice(-6);
     await page.evaluate(() => window.app.rentals.open('properties'));
-    await page.waitForSelector('#rentPropName');
-    await page.fill('#rentPropName', `Gali ${stamp}`);
-    await page.click('#rentalsBody .rent-form button');
-    const card = page.locator('.rent-row', { hasText: `Gali ${stamp}` });
+    await addProperty(page, `Gali ${stamp}`);
+    const card = await openProperty(page, `Gali ${stamp}`);
     await card.locator('button', { hasText: 'Add unit' }).click();
     await page.fill('#rentUnitLabel', `G${stamp}`);
     await page.selectOption('#rentUnitType', 'commercial');

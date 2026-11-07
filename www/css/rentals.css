@@ -88,7 +88,12 @@ button.rent-attn-row { cursor: pointer; }
 .rent-toolbar .rent-btn-primary { margin-left: auto; }
 .rent-tenant-row { display: block; width: 100%; border: 0; border-top: 1px solid var(--border-color); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .rent-list > .rent-tenant-row:first-child { border-top: 0; }
-.rent-tenant-row .rent-name, .rent-tenant-row .rent-sub, .rent-tenant-row .rent-due { display: block; }
+.rent-tenant-row .rent-name, .rent-tenant-row .rent-sub, .rent-tenant-row .rent-due,
+.rent-prop-card .rent-name, .rent-prop-card .rent-sub, .rent-prop-card .rent-due, .rent-tap .rent-name, .rent-tap .rent-sub, .rent-tap .rent-due { display: block; }
+.rent-unit-row { display: flex; align-items: center; gap: 8px; }
+.rent-tap { flex: 1; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
+button.rent-tap { cursor: pointer; }
+.rent-section-title .rent-btn-primary { margin-left: auto; }
 .rent-detail-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .rent-detail .rent-summary { margin-top: 12px; }
 .rent-menu { position: relative; }

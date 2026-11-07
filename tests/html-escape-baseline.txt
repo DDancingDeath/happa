@@ -366,8 +366,7 @@ www/js/rentals/rent-expense.js: field
 www/js/rentals/rent-link.js: action
 www/js/rentals/rent-link.js: cls
 www/js/rentals/rent-pages.js: ELEC_MODES (markup via map(m => `<option value="${m}"${m === mode ? ' selected' : ''}>${et(`ui.rent.elec_${m}`)}</option>`))
-www/js/rentals/rent-pages.js: PROPERTY_KINDS (markup via map(k => `<option value="${k}"${k === p.kind ? ' selected' : ''}>${esc(kindLabel(k))}</option>`))
-www/js/rentals/rent-pages.js: PROPERTY_KINDS (markup via map(k => `<option value="${k}">${esc(kindLabel(k))}</option>`))
+www/js/rentals/rent-pages.js: PROPERTY_KINDS (markup via map(k => `<option value="${k}"${k === cur ? ' selected' : ''}>${esc(kindLabel(k))}</option>`))
 www/js/rentals/rent-pages.js: UNIT_TYPES (markup via map(k => `<option value="${k}"${k === unitType(unit) ? ' selected' : ''}>${esc(c.typeLabel(k))}</option>`))
 www/js/rentals/rent-pages.js: args
 www/js/rentals/rent-pages.js: attrs
@@ -375,10 +374,12 @@ www/js/rentals/rent-pages.js: cls
 www/js/rentals/rent-pages.js: field
 www/js/rentals/rent-pages.js: fn
 www/js/rentals/rent-pages.js: icon
+www/js/rentals/rent-pages.js: items.join('') ← items
 www/js/rentals/rent-pages.js: k
 www/js/rentals/rent-pages.js: k
-www/js/rentals/rent-pages.js: k
+www/js/rentals/rent-pages.js: late ? c.badge('late', 'ui.rent.status_late') : '' ← c.badge('late', 'ui.rent.status_late')
 www/js/rentals/rent-pages.js: m
+www/js/rentals/rent-pages.js: r?.dues.total > 0 ? c.badge(r.late ? 'late' : 'due', r.late ? 'ui.rent.status_late' : 'ui.rent.status_due') : '' ← c.badge(r.late ? 'late' : 'due', r.late ? 'ui.rent.status_late' : 'ui.rent.statu
 www/js/rentals/rent-receipt.js: a
 www/js/rentals/rent-receipt.js: cls
 www/js/rentals/rent-receipt.js: i
@@ -425,6 +426,7 @@ www/js/rentals/rentals.js: html (sink)
 www/js/rentals/rentals.js: icon
 www/js/rentals/rentals.js: lazyMods.advanced.renderAdvanced(unitCtx(), d, rows) (sink)
 www/js/rentals/rentals.js: lazyMods.pages.renderProperties(unitCtx(), d) (sink)
+www/js/rentals/rentals.js: lazyMods.pages.renderProperty(unitCtx(), d, state.detail) (sink)
 www/js/rentals/rentals.js: lazyMods.pages.renderTenant(unitCtx(), d, state.detail) (sink)
 www/js/rentals/rentals.js: lazyMods.pages.renderTenants(unitCtx(), d) (sink)
 www/js/rentals/rentals.js: m

@@ -116,10 +116,10 @@ async function show(page, { view = 'properties', openProperty = '', mode = 'adva
     await _test.render();
     return lines(body());
 }
-/** A tenant's own screen (Simple). */
-async function tenant(id) {
-    _test.state.mode = 'simple';
-    RentalsModule.api.openTenant(id);
+/** A tenant's or (`prop`) a property's own screen (Simple, or `mode`). */
+async function tenant(id, { prop = false, mode = 'simple' } = {}) {
+    _test.state.mode = mode;
+    RentalsModule.api[prop ? 'showProperty' : 'openTenant'](id);
     await flush();
     const out = lines(body());
     _test.state.detail = '';
@@ -203,7 +203,9 @@ describe.each(['en', 'hi'])('pages (%s)', (lang) => {
             thisMonthSimple: await show('rent', { mode: 'simple' }),
             tenantsSimple: await show('tenants', { mode: 'simple' }),
             tenantGita: await tenant('T4'),
-            tenantHari: await tenant('T5')
+            tenantHari: await tenant('T5'),
+            propertyGupta: await tenant('P1', { prop: true }),
+            propertyAroraAdvanced: await tenant('P2', { prop: true, mode: 'advanced' })
         };
         expect(out).toMatchSnapshot();
     });

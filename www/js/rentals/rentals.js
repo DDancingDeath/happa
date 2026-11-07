@@ -215,7 +215,8 @@ function render() {
         if (state.lazyFailed) return;
         return loadMod(need).then(() => { if (isVisible()) render(); }, () => { state.lazyFailed = true; fail('msg.rent.could_not_load'); render(); });
     }
-    const detail = state.page === 'tenants' && state.detail ? lazyMods.pages.renderTenant(unitCtx(), d, state.detail) : null;
+    const detail = !state.detail ? null : state.page === 'tenants' ? lazyMods.pages.renderTenant(unitCtx(), d, state.detail)
+        : state.page === 'properties' ? lazyMods.pages.renderProperty(unitCtx(), d, state.detail) : null;
     if (state.detail && !detail) {
         state.detail = '';
         if (history.state?.rentDetail === state.detailKey) history.back();
@@ -353,26 +354,41 @@ function setView(view) {
     render();
 }
 
-/** The tenant's own screen, on the Tenants page; Back (in the page or the phone's) returns to the list. */
+/** A tenant's or property's screen; Back (page or phone) returns to the screen before it. */
 let popBound = false;
 let detailSeq = 0;
 let dialogClosedAt = 0;
-function openTenant(id) {
-    // The phone's Back closes the screen: it adds a history entry (listener added on first use, not at start-up).
+// Entries up to this key belong to screens left through the menu; Back does not reopen them.
+let staleKeys = 0;
+function openDetail(page, id) {
     if (!popBound) {
         popBound = true;
         window.addEventListener('popstate', (e) => {
             // Back that only closed a form (NavigationManager closes it first) keeps the screen.
-            if (Date.now() - dialogClosedAt < 300) return;
-            if (state.detail && e.state?.rentDetail !== state.detailKey) { state.detail = ''; if (isVisible()) render(); }
+            if (!state.detail || Date.now() - dialogClosedAt < 300) return;
+            const s = e.state || {};
+            if (s.rentDetail === state.detailKey) return;
+            if (s.rentDetail > staleKeys && s.rentDetail < state.detailKey && s.rentId) {
+                Object.assign(state, { page: s.rentPage, detail: s.rentId, detailKey: s.rentDetail });
+            } else state.detail = '';
+            if (isVisible()) render();
         });
     }
-    state.page = 'tenants';
+    state.page = page;
     state.detail = String(id || '');
     state.detailKey = ++detailSeq;
-    try { history.pushState({ ...(history.state || {}), rentDetail: state.detailKey }, ''); } catch (_) { /* no history */ }
+    try { history.pushState({ ...(history.state || {}), rentDetail: state.detailKey, rentPage: page, rentId: state.detail }, ''); } catch (_) { /* no history */ }
     render();
     byId('rentDetailTitle')?.focus?.();
+}
+const openTenant = (id) => openDetail('tenants', id);
+const showProperty = (id) => openDetail('properties', id);
+
+/** Advanced's This month, opened at property `pid`. */
+function propertyMonth(pid) {
+    state.view = 'properties';
+    state.openProperty = pid || '';
+    return RentalsModule.enter('rent');
 }
 
 function back() {
@@ -606,6 +622,7 @@ export const RentalsModule = {
         if (token !== state.entry) return;
         state.page = PAGES.includes(page) ? page : 'rent';
         state.detail = '';
+        staleKeys = detailSeq;
         NavigationManager.showTab('rentals');
         if (!store.isAttached()) {
             state.month = monthKey();
@@ -636,7 +653,7 @@ export const RentalsModule = {
         filterUnits: lazyCall('advanced', 'filterUnits'),
         ...Object.fromEntries(['meter', 'editLease', 'addTenant', 'editTenant', 'archiveTenant', 'moveIn', 'moveOut', 'fillRent', 'addProperty', 'editProperty',
             'archiveProperty', 'addUnit', 'editUnit', 'archiveUnit', 'tenantToggle', 'tenantPick', 'tenantElec', 'changeUnit', 'tenantList', 'remindTenant'].map(n => [n, pg(n)])),
-        openTenant, back,
+        openTenant, showProperty, propertyMonth, back,
         shareLink: (id) => lazyUi('./rent-link.js', 'shareLink', id), linkAction: (a, id) => lazyUi('./rent-link.js', 'linkAction', a, id), setView, openProperty,
         addTenantToUnit: (unitId) => unitUi('toUnit', null, unitId),
         receipts: (tenantId) => receiptUi('showHistory', tenantId),

@@ -4,7 +4,7 @@
  * a property expense (RENT-17) in the yearly report and its CSV (RENT-19).
  */
 const { test, expect, login } = require('./support/app');
-const { button, dialog, row, dialogButton, closeDialog, toastHas, showPage, openTenant, rentRow, setUpTenant, pay } = require('./support/rentals');
+const { button, dialog, dialogButton, closeDialog, toastHas, showPage, openTenant, rentRow, setUpTenant, pay, openProperty } = require('./support/rentals');
 
 test('a payment over the due carries an advance; its receipt is cancelled with a reason', async ({ page, problems }) => {
     await login(page, 'owner');
@@ -78,8 +78,9 @@ test('a property expense shows in the month, the yearly report and its CSV', asy
     await pay(page, tenant, 4000);
     await closeDialog(page);
 
-    await showPage(page, 'properties');
-    await button(row(page, prop), 'Expenses').click();
+    // Expenses are on the property's screen in Advanced.
+    await page.evaluate(() => window.app.rentals.setMode('advanced'));
+    await button(await openProperty(page, prop), 'Expenses').click();
     await expect(box).toContainText(`Expenses: ${prop}`);
     await expect(box).toContainText('No expenses recorded yet.');
     await button(box, 'Add expense').click();
@@ -91,6 +92,7 @@ test('a property expense shows in the month, the yearly report and its CSV', asy
     await expect(box).toContainText(/Expenses this month.*₹1,500/s);
     await closeDialog(page);
 
+    await showPage(page, 'properties');
     await button(page.locator('#rentalsBody'), 'Yearly report').click();
     const report = page.locator('#rentReport');
     await expect(report).toContainText('Yearly report');

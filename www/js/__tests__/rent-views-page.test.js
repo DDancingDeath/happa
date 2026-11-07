@@ -269,3 +269,55 @@ describe('Tenants and the tenant screen', () => {
     });
 });
 
+describe('Properties and the property screen', () => {
+    async function properties(mode = 'simple') {
+        await show(mode);
+        _test.state.page = 'properties';
+        _test.state.detail = '';
+        await _test.render();
+        return document.getElementById('rentalsBody');
+    }
+    afterEach(() => { rentalsRole.mockReturnValue('owner'); _test.state.detail = ''; });
+
+    test('Simple list: units, how many let and what is owed there; one filled Add property; no inline form', async () => {
+        setLang('en');
+        const root = await properties();
+        expect([...root.querySelectorAll('[data-property]')].map(e => e.getAttribute('data-property'))).toEqual(['P2', 'P1']);
+        expect(root.querySelector('[data-property="P1"]').textContent.replace(/\s+/g, ' ')).toContain('3 units · 2 let ₹10,000 owed');
+        expect(root.querySelector('[data-property="P2"]').textContent).toContain('1 unit · 0 let');
+        expect(root.querySelector('#rentPropName')).toBeNull();
+        expect(root.querySelectorAll('.rent-btn-primary').length).toBe(1);
+    });
+
+    test('property → tenant → Back returns to the property, Back again to the list; vacant units offer Let out', async () => {
+        setLang('en');
+        await properties();
+        RentalsModule.api.showProperty('P1');
+        const root = document.getElementById('rentalsBody');
+        expect(root.querySelector('#rentDetailTitle').textContent).toBe('Gupta Bhawan');
+        expect(root.querySelector('[data-unit="U2"]').innerHTML).toContain("rentals.addTenantToUnit('U2')");
+        expect(root.querySelector('[data-unit="U1"] button.rent-tap').getAttribute('data-onclick')).toBe("rentals.openTenant('T1')");
+        expect(root.querySelector('[data-unit="U1"]').innerHTML).not.toContain('archiveUnit');
+        expect(root.textContent).not.toContain('Expenses');
+        RentalsModule.api.openTenant('T1');
+        expect(root.querySelector('#rentDetailTitle').textContent).toBe('Ram');
+        RentalsModule.api.back();
+        await new Promise(r => setTimeout(r, 20));
+        expect(root.querySelector('#rentDetailTitle').textContent).toBe('Gupta Bhawan');
+        RentalsModule.api.back();
+        await new Promise(r => setTimeout(r, 20));
+        expect(root.querySelector('#rentDetailTitle')).toBeNull();
+        expect(root.querySelector('[data-property="P1"]')).not.toBeNull();
+    });
+
+    test('a member keeps the actions they have today (Q1) but has no Yearly report; Advanced adds Expenses and This month', async () => {
+        rentalsRole.mockReturnValue('member');
+        const root = await properties('advanced');
+        expect(root.innerHTML).not.toContain('yearReport');
+        RentalsModule.api.showProperty('P1');
+        expect(root.innerHTML).toContain("rentals.addUnit('P1')");
+        expect(root.innerHTML).toContain("rentals.expenses('P1')");
+        expect(root.innerHTML).toContain("rentals.propertyMonth('P1')");
+    });
+});
+
