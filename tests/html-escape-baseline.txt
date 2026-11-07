@@ -355,6 +355,23 @@ www/js/rentals/rent-expense.js: cls
 www/js/rentals/rent-expense.js: field
 www/js/rentals/rent-link.js: action
 www/js/rentals/rent-link.js: cls
+www/js/rentals/rent-pages.js: ELEC_MODES (markup via map(m => `<option value="${m}"${m === mode ? ' selected' : ''}>${et(`ui.rent.elec_${m}`)}</option>`))
+www/js/rentals/rent-pages.js: PROPERTY_KINDS (markup via map(k => `<option value="${k}"${k === p.kind ? ' selected' : ''}>${esc(kindLabel(k))}</option>`))
+www/js/rentals/rent-pages.js: PROPERTY_KINDS (markup via map(k => `<option value="${k}">${esc(kindLabel(k))}</option>`))
+www/js/rentals/rent-pages.js: UNIT_TYPES (markup via map(k => `<option value="${k}"${k === unitType(unit) ? ' selected' : ''}>${esc(c.typeLabel(k))}</option>`))
+www/js/rentals/rent-pages.js: args
+www/js/rentals/rent-pages.js: attrs
+www/js/rentals/rent-pages.js: c.receiptsBtn(tn.id)
+www/js/rentals/rent-pages.js: cls
+www/js/rentals/rent-pages.js: field
+www/js/rentals/rent-pages.js: fn
+www/js/rentals/rent-pages.js: icon
+www/js/rentals/rent-pages.js: k
+www/js/rentals/rent-pages.js: k
+www/js/rentals/rent-pages.js: k
+www/js/rentals/rent-pages.js: m
+www/js/rentals/rent-pages.js: u ? u.unitPickHtml(c.unitCtx(), 'rentEditUnit', d, { current: lease?.unitId }) : '' ← u.unitPickHtml(c.unitCtx(), 'rentEditUnit', d, { current: lease?.unitId })
+www/js/rentals/rent-pages.js: where ← c.elecTag(lease)
 www/js/rentals/rent-receipt.js: a
 www/js/rentals/rent-receipt.js: cls
 www/js/rentals/rent-receipt.js: i
@@ -370,12 +387,8 @@ www/js/rentals/rent-unit.js: c.tenantSectionHtml({ rent: shown.rent, meterRate: 
 www/js/rentals/rent-unit.js: id
 www/js/rentals/rent-unit.js: id
 www/js/rentals/rent-unit.js: id (markup via unitPickHtml)
-www/js/rentals/rentals.js: ELEC_MODES (markup via map(m => `<option value="${m}"${m === mode ? ' selected' : ''}>${et(`ui.rent.elec_${m}`)}</option>`))
 www/js/rentals/rentals.js: PAYMENT_MODES (markup via map(m => `<option value="${m}">${esc(modeLabel(m))}</option>`))
-www/js/rentals/rentals.js: PROPERTY_KINDS (markup via map(k => `<option value="${k}"${k === p.kind ? ' selected' : ''}>${esc(kindLabel(k))}</option>`))
-www/js/rentals/rentals.js: PROPERTY_KINDS (markup via map(k => `<option value="${k}">${esc(kindLabel(k))}</option>`))
 www/js/rentals/rentals.js: TemplateLoader.loadTemplate('rentals') (sink)
-www/js/rentals/rentals.js: UNIT_TYPES (markup via map(k => `<option value="${k}"${k === unitType(unit) ? ' selected' : ''}>${esc(typeLabel(k))}</option>`))
 www/js/rentals/rentals.js: args
 www/js/rentals/rentals.js: attrs
 www/js/rentals/rentals.js: cls
@@ -384,13 +397,10 @@ www/js/rentals/rentals.js: field
 www/js/rentals/rentals.js: fn
 www/js/rentals/rentals.js: html (sink)
 www/js/rentals/rentals.js: icon
-www/js/rentals/rentals.js: k
-www/js/rentals/rentals.js: k
-www/js/rentals/rentals.js: k
 www/js/rentals/rentals.js: m
-www/js/rentals/rentals.js: m
+www/js/rentals/rentals.js: pagesMod.renderProperties(unitCtx(), d) (sink)
+www/js/rentals/rentals.js: pagesMod.renderTenants(unitCtx(), d) (sink)
 www/js/rentals/rentals.js: s.status ← s = chargeStatus(charge) (markup via badge)
-www/js/rentals/rentals.js: u ? u.unitPickHtml(unitCtx(), 'rentEditUnit', d, { current: lease?.unitId }) : '' ← u.unitPickHtml(unitCtx(), 'rentEditUnit', d, { current: lease?.unitId })
 www/js/services/exporter.js: html
 www/js/ui/bill-highlight.js: ICON.block ← ICON = { block: '⛔', warn: '⚠️' }
 www/js/ui/bill-row.js: onclick || '' ← onclick

@@ -83,7 +83,7 @@ test('saved without a receipt (refused): a distinct warning, reported, then the 
 test('Receipts on a tenant opens their payment history; managers may cancel', async () => {
     _test.state.page = 'tenants';
     _test.state.loaded = new Set(['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges', 'monthExpenses']);
-    _test.render();
+    await _test.render();
     expect(document.getElementById('rentalsBody').innerHTML).toContain("data-onclick=\"rentals.receipts('T1')");
     await RentalsModule.api.receipts('T1');
     expect(receipt.showHistory).toHaveBeenCalledWith(expect.objectContaining({ canVoid: false }), 'T1');

@@ -275,7 +275,7 @@ In order:
   `rent-receipt-store.js`, the unit picker / change of unit `rent-unit.js`, the tenant link actions
   `rent-link.js`, the deposit ledger `rent-deposit.js` + `rent-deposit-store.js` and property expenses
   `rent-expense.js` + `rent-expense-store.js`, agreement terms, lease reminders and the yearly report `rent-report.js` +
-  `rent-report-store.js` + `rent-math-report.js`, even later: `rentals.js` imports them only when used; they are in
+  `rent-report-store.js` + `rent-math-report.js`, the Tenants and Properties pages and their forms `rent-pages.js`, even later: `rentals.js` imports them only when used; they are in
   the service worker's `LAZY_ASSETS`, not `STATIC_ASSETS`); its data is in `rent_*`
   collections (all access in `rentals/rent-store.js`; receipt list / issue-later / cancel in
   `rentals/rent-receipt-store.js`), roles in

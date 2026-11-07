@@ -111,7 +111,7 @@ async function show(page, { view = 'properties', openProperty = '' } = {}) {
     _test.state.page = page;
     _test.state.view = view;
     _test.state.openProperty = openProperty;
-    _test.render();
+    await _test.render();
     if (page === 'tenants') await waitFor(() => document.querySelector('#rentTenantUnit'));
     return lines(body());
 }
