@@ -32,6 +32,7 @@ import path from 'path';
 import { spawn, spawnSync } from 'child_process';
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
+import { RENTALS_SEED } from './rentals-seed.js';
 
 process.env.TZ = 'Asia/Kolkata';
 const require = createRequire(import.meta.url);
@@ -146,8 +147,7 @@ async function main() {
     // a service-account login an earlier rehearsal imported (#101): wipe must delete it
     await signUp('staging-readonly@aadhat.local', 'Rehearsal#2', 'rehearsal-staging-ro');
     // Rentals data is real: wipe must keep it and apply must not overwrite it (rentals-seed.js)
-    const { RENTALS_SEED } = await import('./rentals-seed.js');
-    for (const d of [...RENTALS_SEED.kept, ...RENTALS_SEED.wiped, ...(REAL ? [] : RENTALS_SEED.merged)]) await setDoc(d.coll, d.id, d.data);
+    for (const d of [...RENTALS_SEED.kept, ...RENTALS_SEED.wiped, ...(REAL ? [] : [...RENTALS_SEED.merged, ...RENTALS_SEED.replaced])]) await setDoc(d.coll, d.id, d.data);
     done();
 
     done = step('3. migrate.js plan');
@@ -160,7 +160,9 @@ async function main() {
     const dry = migrate('wipe', '--project', PROJECT, '--emulator');
     ['rent_properties: KEEP 1 docs', 'rent_units: KEEP 1 docs', 'dev_rent_units: KEEP 1 docs', 'auditLogs: delete 2 docs, KEEP 1 (RENT_* entries)']
         .forEach(s => { if (!dry.includes(s)) throw new Error(`wipe dry run did not print "${s}"`); });
-    if (!/users: delete 3 docs, KEEP \d+ \(profiles/.test(dry)) throw new Error('wipe dry run did not print the profiles it deletes and keeps');
+    const seeded = (list) => list.filter(d => d.coll === 'users').length;
+    const users = `users: delete ${seeded(RENTALS_SEED.wiped) + (REAL ? 0 : seeded(RENTALS_SEED.replaced))} docs, KEEP ${seeded(RENTALS_SEED.kept) + (REAL ? 0 : seeded(RENTALS_SEED.merged))} (profiles with a rentRole)`;
+    if (!dry.includes(users)) throw new Error(`wipe dry run did not print "${users}"`);
     migrate('wipe', '--project', PROJECT, '--emulator', '--yes');
     done();
 

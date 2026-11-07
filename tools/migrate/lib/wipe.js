@@ -5,9 +5,10 @@
  * twins):
  * - `rent_*` (and `dev_rent_*`) collections are kept whole;
  * - `auditLogs`: only the entries whose action starts with `RENT_` are kept;
- * - `users`: profiles are kept (they hold `rentRole`; apply merges the old
- *   profiles into them). Deleted are only the profiles of the logins wipe
- *   deletes (test domain, denylisted service accounts) that have no rentals role.
+ * - `users`: profiles with a `rentRole` are kept (apply then writes the old
+ *   profile over them and puts Happa's rentRole back); every other profile is
+ *   deleted (apply re-creates the old app's people from the final backup, so a
+ *   person removed there after a rehearsal keeps no access).
  * Every other root collection is deleted with its subcollections. In Auth it
  * deletes the users whose email ends with `--test-domain` (default
  * `@happa.local`, the test logins) and the service-account logins on the
@@ -35,7 +36,7 @@ export function isTestLogin(user, domain = DEFAULT_TEST_DOMAIN) {
 
 /**
  * How wipe treats a root collection: 'keep' (Rentals), 'audit' (keeps the
- * RENT_* entries), 'users' (keeps the profiles, see isWipedProfile) or 'delete'.
+ * RENT_* entries), 'users' (keeps the profiles with a rentRole) or 'delete'.
  */
 export function wipeMode(coll) {
     if (RENT_COLLECTION.test(coll)) return 'keep';
@@ -48,24 +49,24 @@ export function wipeMode(coll) {
 export const isRentAudit = (d) => typeof d?.action === 'string' && d.action.startsWith(RENT_AUDIT_PREFIX);
 export const hasRentRole = (u) => u?.rentRole !== undefined && u?.rentRole !== null && u?.rentRole !== '';
 
-/** A profile wipe deletes: one of a login wipe deletes (by uid or email), unless it has a rentals role. */
-export function isWipedProfile(id, data, { wipedUids = new Set(), testDomain = DEFAULT_TEST_DOMAIN } = {}) {
-    if (hasRentRole(data)) return false;
-    return wipedUids.has(id) || isTestLogin(data, testDomain) || isServiceAccountEmail(data?.email);
-}
+/** A profile wipe deletes: every one without a rentals role. */
+export const isWipedProfile = (data) => !hasRentRole(data);
 
 const countOf = async (query) => (await query.count().get()).data().count;
 
 /** Per root collection: what a run deletes and keeps (users: the exact profile ids). */
-async function planCollections(db, colls, profileCtx) {
+async function planCollections(db, colls) {
     const plan = [];
     for (const coll of colls) {
         const mode = wipeMode(coll);
         const ref = db.collection(coll);
         if (mode === 'users') {
-            const snap = await ref.select('email', 'rentRole').get();
-            const ids = snap.docs.filter(d => isWipedProfile(d.id, d.data(), profileCtx)).map(d => d.id);
-            plan.push({ coll, mode, delete: ids.length, keep: snap.size - ids.length, ids });
+            const snap = await ref.select('role', 'rentRole').get();
+            const ids = snap.docs.filter(d => isWipedProfile(d.data())).map(d => d.id);
+            const withRole = snap.docs.filter(d => !isWipedProfile(d.data()) && d.data().role && d.data().role !== 'none')
+                .map(d => `${d.id} (${d.data().role})`);
+            const owners = snap.docs.filter(d => isWipedProfile(d.data()) && d.data().role === 'owner').map(d => d.id);
+            plan.push({ coll, mode, delete: ids.length, keep: snap.size - ids.length, ids, withRole, owners });
             continue;
         }
         const total = await countOf(ref);
@@ -78,7 +79,7 @@ async function planCollections(db, colls, profileCtx) {
     return plan;
 }
 
-const NOTE = { keep: 'Rentals data', audit: 'RENT_* entries', users: 'profiles; deleted: test and service-account profiles without a rentals role' };
+const NOTE = { keep: 'Rentals data', audit: 'RENT_* entries', users: 'profiles with a rentRole' };
 
 /**
  * @param {Object} args
@@ -104,14 +105,16 @@ export async function wipeProject({ project, keyProject, emulator = false, db, a
         page.users.filter(u => isServiceAccountEmail(u.email)).forEach(u => serviceUsers.push(u));
         pageToken = page.pageToken;
     } while (pageToken);
-    const wipedUids = new Set([...testUsers, ...serviceUsers].map(u => u.uid));
 
     const colls = (await db.listCollections()).map(c => c.id).sort();
-    const plan = await planCollections(db, colls, { wipedUids, testDomain });
+    const plan = await planCollections(db, colls);
     plan.forEach(p => {
         if (p.mode === 'delete') log(`  ${p.coll}: delete ${p.delete} docs`);
         else if (p.mode === 'keep') log(`  ${p.coll}: KEEP ${p.keep} docs (${NOTE.keep})`);
         else log(`  ${p.coll}: delete ${p.delete} docs, KEEP ${p.keep} (${NOTE[p.mode]})`);
+        // A kept profile keeps its Aadhat role until apply writes the old profile over it.
+        if (p.withRole?.length) log(`    kept with an Aadhat role too (check each against the final backup): ${p.withRole.join(', ')}`);
+        if (p.owners?.length) log(`    owner profiles deleted (apply must re-create them: check each uid is in the final backup): ${p.owners.join(', ')}`);
     });
     const docs = plan.reduce((n, p) => n + p.delete, 0);
     const kept = plan.reduce((n, p) => n + p.keep, 0);
@@ -119,7 +122,7 @@ export async function wipeProject({ project, keyProject, emulator = false, db, a
     log(`Auth test logins (*${testDomain}): ${testUsers.length}: ${testUsers.map(u => u.email).join(', ') || 'none'}`);
     log(`Auth service accounts (denylist, never carried): ${serviceUsers.length}: ${serviceUsers.map(u => u.email).join(', ') || 'none'}`);
     log(`Cost: about ${docs} deletes (+ subcollection docs) and as many reads; Spark allows 20,000 deletes and 50,000 reads a day.`);
-    const summary = { docs, kept, collections: colls, plan: plan.map(({ ids, ...p }) => p), testUsers: testUsers.length, serviceUsers: serviceUsers.length };
+    const summary = { docs, kept, collections: colls, plan: plan.map(({ ids, withRole, owners, ...p }) => p), testUsers: testUsers.length, serviceUsers: serviceUsers.length };
     if (dryRun) {
         log('Dry run: nothing was deleted. Add --yes to delete.');
         return { ...summary, deleted: false };

@@ -66,12 +66,11 @@ function revive(v) {
 }
 const backupDocs = (coll) => backup.collections[coll] || [];
 const MERGED = SYNTHETIC ? RENTALS_SEED.merged : [];
-/** A carried profile as apply leaves it: merged into Happa's, Happa's rentRole kept. */
+/** A carried profile as apply leaves it: the old profile, with Happa's rentRole put back. */
 function expectedProfile(id, old) {
     const happa = MERGED.find(d => d.coll === 'users' && d.id === id)?.data;
     if (!happa) return old;
-    const keep = Object.fromEntries(KEEP_USER_FIELDS.filter(f => f in happa).map(f => [f, happa[f]]));
-    return { ...happa, ...old, ...keep };
+    return { ...old, ...Object.fromEntries(KEEP_USER_FIELDS.filter(f => f in happa).map(f => [f, happa[f]])) };
 }
 
 let app;
@@ -197,6 +196,9 @@ test('Rentals data survives wipe + apply: rent_* (and dev_rent_*), RENT_* audit 
     RENTALS_SEED.wiped.forEach(({ coll, id }) => assert.equal(data[coll]?.has(id) ?? false, false, `${coll}/${id} wiped`));
     assert.deepEqual([...(data.auditLogs?.keys() || [])], RENTALS_SEED.kept.filter(d => d.coll === 'auditLogs').map(d => d.id), 'only the RENT_* audit entries are left');
     MERGED.forEach(({ id, data: d }) => assert.equal(data.users.get(id)?.rentRole, d.rentRole, `users/${id}: Happa's rentRole kept over the old profile's`));
+    const old = (id) => backupDocs('users').find(u => u.id === id)?.data || {};
+    MERGED.forEach(({ id }) => assert.equal(data.users.get(id)?.role, old(id).role, `users/${id}: the old profile's role, not Happa's`));
+    (SYNTHETIC ? RENTALS_SEED.replaced : []).forEach(({ id }) => assert.deepEqual(norm(data.users.get(id)), norm(old(id)), `users/${id}: the stale Happa copy is replaced by the old profile`));
     console.log(`  Rentals data kept: ${RENTALS_SEED.kept.length} docs in ${KEPT_COLLS.join(', ')}; ${MERGED.length} profiles kept their rentRole; ${RENTALS_SEED.wiped.length} rehearsal docs wiped`);
 });
 

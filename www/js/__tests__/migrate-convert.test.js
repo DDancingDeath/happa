@@ -143,10 +143,10 @@ describe('wipe', () => {
         users: {
             u0: { email: 'a.test@happa.local', role: 'staff' },
             u2: { email: 'staging-readonly@aadhat.local', role: 'staff' },
-            'old-test': { email: 'old.test@happa.local', role: 'owner' },
-            'test-renter': { email: 'r.test@happa.local', rentRole: 'member' },
             owner: { email: 'owner@gmail.com', role: 'owner' },
+            removed: { email: 'removed@gmail.com', role: 'manager', status: 'approved' },
             helper: { email: 'helper@gmail.com', role: 'none', rentRole: 'member' },
+            both: { email: 'both@gmail.com', role: 'staff', rentRole: 'manager' },
             gone: { email: 'gone@gmail.com', rentRole: null }
         }
     });
@@ -167,12 +167,8 @@ describe('wipe', () => {
         ['items', 'dev_items', 'settings', 'rentals', 'rent', 'my_rent_x', 'Rent_units', 'dev_dev_rent_x'].forEach(c => expect(wipeMode(c)).toBe('delete'));
         expect(isRentAudit({ action: 'RENT_PAYMENT' })).toBe(true);
         [{ action: 'ADD_ITEM' }, { action: 'rent_payment' }, { action: 'XRENT_' }, {}, null].forEach(d => expect(isRentAudit(d)).toBe(false));
-        const ctx = { wipedUids: new Set(['u9']) };
-        expect(isWipedProfile('u9', { email: 'real@gmail.com' }, ctx)).toBe(true);
-        expect(isWipedProfile('x', { email: 'x.test@happa.local' }, ctx)).toBe(true);
-        expect(isWipedProfile('x', { email: 'staging-owner@aadhat.local' }, ctx)).toBe(true);
-        expect(isWipedProfile('u9', { email: 'x.test@happa.local', rentRole: 'member' }, ctx)).toBe(false);
-        expect(isWipedProfile('x', { email: 'real@gmail.com' }, ctx)).toBe(false);
+        [{ role: 'owner' }, { role: 'manager', status: 'approved' }, { rentRole: null }, { rentRole: '' }, {}].forEach(u => expect(isWipedProfile(u)).toBe(true));
+        [{ rentRole: 'member' }, { role: 'none', rentRole: 'manager' }, { role: 'staff', rentRole: 'member' }].forEach(u => expect(isWipedProfile(u)).toBe(false));
     });
 
     test('dry run counts what is deleted and kept per collection, deletes nothing; refuses the old project', async () => {
@@ -180,16 +176,18 @@ describe('wipe', () => {
         const auth = fakeAuth(['a.test@happa.local', 'real@gmail.com', 'staging-readonly@aadhat.local']);
         const lines = [];
         const r = await wipeProject({ project: 'new-proj', keyProject: 'new-proj', db, auth, log: (l) => lines.push(l) });
-        expect(r).toMatchObject({ docs: 11, kept: 11, testUsers: 1, serviceUsers: 1, deleted: false });
+        expect(r).toMatchObject({ docs: 13, kept: 9, testUsers: 1, serviceUsers: 1, deleted: false });
         expect(Object.fromEntries(r.plan.map(p => [p.coll, [p.delete, p.keep]]))).toEqual({
             auditLogs: [3, 2], dev_auditLogs: [1, 1], dev_items: [1, 0], dev_rent_units: [0, 1], items: [3, 0],
-            rent_public: [0, 1], rent_units: [0, 2], users: [3, 4]
+            rent_public: [0, 1], rent_units: [0, 2], users: [5, 2]
         });
         const out = lines.join('\n');
         expect(out).toMatch(/rent_units: KEEP 2 docs/);
         expect(out).toMatch(/auditLogs: delete 3 docs, KEEP 2 \(RENT_\* entries\)/);
-        expect(out).toMatch(/users: delete 3 docs, KEEP 4/);
-        expect(out).toMatch(/delete 11 docs .*keep 11 docs/);
+        expect(out).toMatch(/users: delete 5 docs, KEEP 2 \(profiles with a rentRole\)/);
+        expect(out).toMatch(/kept with an Aadhat role too .*: both \(staff\)/);
+        expect(out).toMatch(/owner profiles deleted .*: owner$/m);
+        expect(out).toMatch(/delete 13 docs .*keep 9 docs/);
         expect(db.deleted).toEqual([]);
         expect(auth.removed).toEqual([]);
         await expect(wipeProject({ project: 'aadhat-management', keyProject: 'aadhat-management', db, auth, dryRun: false })).rejects.toThrow(/OLD project/);
@@ -198,7 +196,7 @@ describe('wipe', () => {
         expect(db.deleted).toEqual([]);
     });
 
-    test('--yes keeps Rentals data, RENT_* audit entries and profiles; deletes the rest, the test logins and denylisted service accounts', async () => {
+    test('--yes keeps Rentals data, RENT_* audit entries and profiles with a rentRole; deletes the rest, the test logins and denylisted service accounts', async () => {
         const db = fakeDb(rehearsal());
         const auth = fakeAuth(['a.test@happa.local', 'real@gmail.com', 'staging-readonly@aadhat.local']);
         const r = await wipeProject({ project: 'new-proj', keyProject: 'new-proj', db, auth, dryRun: false });
@@ -207,7 +205,7 @@ describe('wipe', () => {
         expect(left).toEqual({
             rent_units: ['d0', 'd1'], rent_public: ['d0'], dev_rent_units: ['d0'],
             auditLogs: ['a2', 'a5'], dev_auditLogs: ['d1'],
-            users: ['gone', 'helper', 'owner', 'test-renter']
+            users: ['both', 'helper']
         });
         expect(db.store.get('users').get('helper')).toEqual({ email: 'helper@gmail.com', role: 'none', rentRole: 'member' });
         expect(db.deleted.filter(p => /rent_/.test(p))).toEqual([]);

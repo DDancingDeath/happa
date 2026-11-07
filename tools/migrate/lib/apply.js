@@ -10,10 +10,10 @@
  *   a run stops at its write budget (Spark: 20,000 writes/day, 8,000 of them
  *   kept for the shop) and the next run continues from the cursor.
  * - dev_ collections are never written unless dev (then every write goes to dev_<name>).
- * - users and settings docs are merged into what the target already has, so
- *   fields only Happa has survive. A profile's `rentRole` that Happa already has
- *   is kept over the bundle's (Rentals data is real: owner, 7 Nov 2026).
- *   settings/team is the derived team directory and is replaced as a whole.
+ * - A users doc still replaces the target profile (so a removal in the old app,
+ *   which deletes fields, carries over), but Happa's own Rentals fields
+ *   (`rentRole`) are copied into it: Rentals data is real (owner, 7 Nov 2026).
+ *   Not for a profile the old app disabled or rejected: that removes access.
  */
 import { createHash } from 'crypto';
 import backupLib from '../../backup/backup-lib.js';
@@ -24,11 +24,22 @@ export const DEFAULT_BUDGET = MIGRATION_DAILY_WRITES;
 export const BATCH_SIZE = 400;
 export const CURSOR_VERSION = 1;
 const OPENING_COLLS = ['purchases', 'retailSales', 'wholesaleSales'];
-/** Rentals fields of a profile that Happa's value wins over the bundle's. */
+/** Profile fields only Happa sets (Rentals): its value survives the bundle's profile. */
 export const KEEP_USER_FIELDS = ['rentRole'];
+const REMOVED_STATUSES = ['disabled', 'rejected'];
 
-/** Whether a write merges into the target doc instead of replacing it. */
-export const mergesInto = (w) => w.coll === 'users' || (w.coll === 'settings' && w.id !== 'team');
+/**
+ * The profile apply writes: the bundle's, plus Happa's KEEP_USER_FIELDS
+ * (they win), unless the old app removed the person.
+ * @returns {{data: Object, kept: string[]}}
+ */
+export function profileWrite(bundleData, happa) {
+    const data = { ...bundleData };
+    if (!happa || REMOVED_STATUSES.includes(bundleData?.status)) return { data, kept: [] };
+    const kept = KEEP_USER_FIELDS.filter(f => f in happa);
+    kept.forEach(f => { data[f] = happa[f]; });
+    return { data, kept };
+}
 
 export function bundleHash(bundle) {
     return createHash('sha256').update(JSON.stringify(bundle.writes)).digest('hex').slice(0, 32);
@@ -176,11 +187,14 @@ export async function applyBundle({
         const snap = await db.collection(targetColl('users', dev)).get();
         profiles = new Map(snap.docs.map(d => [d.id, d.data() || {}]));
     }
+    let keptProfiles = 0;
     const docData = (w) => {
         const data = deser(w.data);
-        const have = w.coll === 'users' && profiles.get(w.id);
-        if (have) KEEP_USER_FIELDS.forEach(f => { if (f in have) delete data[f]; });
-        return data;
+        if (w.coll !== 'users') return data;
+        const r = profileWrite(data, profiles.get(w.id));
+        if (r.kept.length) keptProfiles++;
+        else if (profiles.get(w.id)?.rentRole && !r.data.rentRole) log(`users/${w.id}: removed in the old app (status ${r.data.status}), so its Happa rentRole was not kept`);
+        return r.data;
     };
     while (cursor.next < stop) {
         const slice = bundle.writes.slice(cursor.next, Math.min(stop, cursor.next + batchSize));
@@ -191,9 +205,7 @@ export async function applyBundle({
                 cursor.skipped.push(`${w.coll}/${w.id}`);
                 return;
             }
-            const ref = db.collection(targetColl(w.coll, dev)).doc(w.id);
-            if (mergesInto(w)) batch.set(ref, docData(w), { merge: true });
-            else batch.set(ref, docData(w));
+            batch.set(db.collection(targetColl(w.coll, dev)).doc(w.id), docData(w));
             n++;
         });
         if (n) await batch.commit();
@@ -204,6 +216,7 @@ export async function applyBundle({
         log(`Wrote ${cursor.next}/${run.total}`);
     }
     if (keep.size) log(`Kept ${keep.size} opening balances that already have payments in the new app.`);
+    if (keptProfiles) log(`Kept Happa's ${KEEP_USER_FIELDS.join(', ')} on ${keptProfiles} profiles.`);
     cursor.runs.push({ at: startedAt, writes: written, upTo: cursor.next });
     saveCursor(cursor);
     const status = cursor.next >= run.total ? 'done' : 'budget';

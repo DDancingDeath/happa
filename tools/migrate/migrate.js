@@ -18,7 +18,7 @@
  * `plan` leaves their users docs out, `auth:import` / `auth:filter` their logins, and `wipe` deletes them from Auth.
  *
  * `plan` and `convert` are offline. `apply`, `wipe` and `auth:import` are dry runs unless --yes is given.
- * `wipe` never deletes the Rentals data (rent_*, RENT_* audit entries, profiles with their rentRole: lib/wipe.js).
+ * `wipe` never deletes the Rentals data (rent_*, RENT_* audit entries, profiles with a rentRole: lib/wipe.js).
  * `--emulator` uses the local Firebase emulators (FIRESTORE_EMULATOR_HOST / FIREBASE_AUTH_EMULATOR_HOST)
  * and needs a demo-* --project (a real project id is refused).
  */

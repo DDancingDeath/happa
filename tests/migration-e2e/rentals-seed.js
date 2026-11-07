@@ -23,10 +23,14 @@ export const RENTALS_SEED = {
         { coll: 'users', id: 'rehearsal-staging-ro', data: { email: 'staging-readonly@aadhat.local', role: 'staff', status: 'active' } },
         { coll: 'users', id: 'old-test-profile', data: { email: 'old.test@happa.local', role: 'owner' } }
     ],
-    /** synthetic backup only: profiles the bundle also writes; Happa's rentRole survives apply */
+    /** synthetic backup only: profiles the bundle also writes; apply writes the old profile and puts Happa's rentRole back */
     merged: [
-        { coll: 'users', id: 'old-member-04', data: { rentRole: 'member', name: 'Helper in Happa' } },
+        { coll: 'users', id: 'old-member-04', data: { rentRole: 'member', name: 'Helper in Happa', role: 'manager' } },
         // the old profile says rentRole 'manager': Happa's wins
         { coll: 'users', id: 'old-manager-02', data: { rentRole: 'member' } }
+    ],
+    /** synthetic backup only: a stale rehearsal copy (no rentRole) with more access than the final backup gives; wipe deletes it, apply re-creates the old one */
+    replaced: [
+        { coll: 'users', id: 'old-pending-05', data: { email: 'new@old-shop.test', role: 'manager', status: 'approved' } }
     ]
 };

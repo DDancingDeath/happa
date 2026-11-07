@@ -235,9 +235,10 @@ Users must list no `staging-*@aadhat.local` login.
 **Rentals data in `happa-bfc07` is real (owner, 7 Nov 2026) and must survive
 go-live.** `wipe` keeps it (hard-coded, no flag): every `rent_*` (and
 `dev_rent_*`) collection, the `auditLogs` entries whose action starts with
-`RENT_`, and the `users` profiles (with their `rentRole`; it deletes only the
-test and service-account profiles that have no `rentRole`). `apply` merges the
-old profiles into Happa's and keeps Happa's `rentRole`. Details: the #232 README,
+`RENT_`, and the `users` profiles that have a `rentRole` (every other profile is
+deleted and `apply` re-creates it from the final backup). `apply` puts Happa's
+`rentRole` back on a profile it rewrites, unless the old app disabled or
+rejected that person. Details: the #232 README,
 "After a rehearsal: `wipe`". Before `wipe`:
 
 1. Take a fresh Rentals backup and keep it outside the repo (`Q:\aadhat-data\`):
@@ -246,7 +247,9 @@ old profiles into Happa's and keeps Happa's `rentRole`. Details: the #232 README
    `Q:\aadhat\rentals-real\tmp\export-rentals.mjs` (every `rent_*` collection,
    `users` and the `RENT_*` audit entries, with `SHA256SUMS`).
 2. Run the `wipe` dry run and check its `KEEP` lines (per collection) against
-   the backup's counts. Only then run it with `--yes`.
+   the backup's counts, the kept profiles it lists with an Aadhat role, and the
+   deleted owner profiles (each must be in the final backup). Only then run it
+   with `--yes`, and run `apply` straight after it.
 3. After `apply`, open Rentals as the owner: properties, units, tenants and
    receipts are all still there, and the Rentals helpers still have their role.
 
