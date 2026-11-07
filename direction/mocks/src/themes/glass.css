@@ -1,0 +1,75 @@
+/* Glassmorphism: CSS-only colour mesh behind translucent, blurred layers (no images) */
+[data-theme="glass"] {
+  color-scheme: light;
+  --bg: #eef1f8;
+  --page-bg: radial-gradient(70% 45% at 0% 0%, #c7d2fe 0%, transparent 70%), radial-gradient(60% 40% at 100% 25%, #fbcfe8 0%, transparent 70%), radial-gradient(70% 45% at 40% 100%, #bae6fd 0%, transparent 70%), #eef1f8;
+  --surface: rgba(255, 255, 255, 0.68);
+  --surface-2: rgba(255, 255, 255, 0.5);
+  --surface-3: rgba(255, 255, 255, 0.78);
+  --line: rgba(20, 30, 70, 0.08);
+  --line-strong: rgba(20, 30, 70, 0.16);
+  --ink: #141a2e;
+  --ink-2: #39415c;
+  --ink-3: #4f5873;
+  --ink-placeholder: #5c6580;
+  --accent: #4f46e5;
+  --accent-text: #3f37c9;
+  --warning: #964805;
+  --accent-soft: rgba(99, 102, 241, 0.14);
+  --panel-border: rgba(255, 255, 255, 0.75);
+  --panel-shadow: 0 10px 30px -14px rgba(30, 40, 100, 0.25);
+  --panel-blur: blur(18px) saturate(160%);
+  --input-bg: rgba(255, 255, 255, 0.7);
+  --input-border: rgba(255, 255, 255, 0.9);
+  --bar-bg: rgba(255, 255, 255, 0.55);
+  --bar-border: rgba(255, 255, 255, 0.7);
+  --bar-blur: blur(20px) saturate(180%);
+  --seg-track: rgba(255, 255, 255, 0.4);
+  --seg-on: rgba(255, 255, 255, 0.9);
+  --sidebar-bg: rgba(255, 255, 255, 0.35);
+  --r-control: 12px;
+  --r-panel: 18px;
+  --r-sheet: 24px;
+}
+[data-theme="glass"][data-mode="dark"] {
+  color-scheme: dark;
+  --bg: #0b0d1a;
+  --page-bg: radial-gradient(70% 45% at 0% 0%, rgba(79, 70, 229, 0.45) 0%, transparent 70%), radial-gradient(60% 40% at 100% 30%, rgba(190, 24, 93, 0.3) 0%, transparent 70%), radial-gradient(70% 45% at 40% 100%, rgba(14, 116, 144, 0.35) 0%, transparent 70%), #0b0d1a;
+  --surface: rgba(14, 16, 34, 0.62);
+  --surface-2: rgba(14, 16, 34, 0.5);
+  --surface-3: rgba(255, 255, 255, 0.12);
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --ink: #eef0ff;
+  --ink-2: #bcc0dc;
+  --ink-3: #a6acce;
+  --ink-placeholder: #9ca2c4;
+  --accent: #5b54e8;
+  --accent-text: #b3b5ff;
+  --accent-soft: rgba(124, 120, 248, 0.2);
+  --mode-sale: #057a55;
+  --mode-sale-soft: rgba(74, 222, 155, 0.14);
+  --positive: #5be3a6;
+  --positive-soft: rgba(74, 222, 155, 0.14);
+  --negative: #ff8aa0;
+  --negative-soft: rgba(251, 113, 133, 0.16);
+  --warning: #fcd34d;
+  --warning-soft: rgba(251, 191, 36, 0.14);
+  --panel-border: rgba(255, 255, 255, 0.12);
+  --panel-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.6);
+  --input-bg: rgba(10, 12, 26, 0.55);
+  --input-border: rgba(255, 255, 255, 0.16);
+  --bar-bg: rgba(15, 18, 36, 0.55);
+  --bar-border: rgba(255, 255, 255, 0.1);
+  --seg-track: rgba(10, 12, 26, 0.4);
+  --seg-on: rgba(255, 255, 255, 0.16);
+  --sidebar-bg: rgba(255, 255, 255, 0.04);
+  --toast-bg: rgba(40, 42, 70, 0.9);
+  --scrim: rgba(0, 0, 0, 0.5);
+}
+/* Low-end phones / "reduce transparency": same look without blur, surfaces made opaque enough for contrast */
+@media (prefers-reduced-transparency: reduce) {
+  [data-theme="glass"] { --panel-blur: none; --bar-blur: none; --surface: rgba(255, 255, 255, 0.92); }
+  [data-theme="glass"][data-mode="dark"] { --surface: rgba(30, 32, 56, 0.94); }
+}
+.perf-lite[data-theme="glass"], .perf-lite [data-theme="glass"] { --panel-blur: none; --bar-blur: none; }

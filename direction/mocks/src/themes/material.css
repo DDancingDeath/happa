@@ -1,0 +1,97 @@
+/* Material: Material 3 tonal surfaces (baseline seed #6750A4), pill buttons, filled text fields */
+[data-theme="material"] {
+  color-scheme: light;
+  --bg: #fef7ff;
+  --page-bg: #fef7ff;
+  --surface: #fef7ff;
+  --surface-2: #ece6f0;
+  --surface-3: #e6e0e9;
+  --line: #cac4d0;
+  --line-strong: #79747e;
+  --ink: #1d1b20;
+  --ink-2: #49454f;
+  --ink-3: #5f5b66;
+  --ink-placeholder: #5d5864;
+  --accent: #6750a4;
+  --accent-hover: #5b4692;
+  --accent-text: #6750a4;
+  --accent-soft: #e8def8;
+  --mode-sale: #386a20;
+  --mode-sale-soft: #d7f0c6;
+  --mode-wholesale: #7d5260;
+  --mode-wholesale-soft: #ffd8e4;
+  --mode-rentals: #006a6a;
+  --positive: #386a20;
+  --positive-soft: #d7f0c6;
+  --negative: #b3261e;
+  --negative-soft: #f9dedc;
+  --warning: #8f4a00;
+  --font-ui: Roboto, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif, "Noto Sans Devanagari", "Nirmala UI";
+  --w-strong: 500;
+  --w-display: 400;
+  --tracking-display: 0;
+  --r-control: 999px;
+  --r-panel: 16px;
+  --r-chip: 8px;
+  --r-sheet: 28px;
+  --panel-bg: #f3edf7;
+  --panel-border: transparent;
+  --input-bg: #e6e0e9;
+  --input-border: transparent;
+  --bar-bg: #f3edf7;
+  --bar-border: transparent;
+  --seg-track: transparent;
+  --seg-on: #e8def8;
+  --sidebar-bg: #f3edf7;
+  --toast-bg: #322f35;
+  --toast-ink: #f5eff7;
+  --btn-primary-shadow: none;
+  --e1: none;
+}
+[data-theme="material"][data-mode="dark"] {
+  color-scheme: dark;
+  --bg: #141218;
+  --page-bg: #141218;
+  --surface: #141218;
+  --surface-2: #2b2930;
+  --surface-3: #36343b;
+  --line: #49454f;
+  --line-strong: #938f99;
+  --ink: #e6e0e9;
+  --ink-2: #cac4d0;
+  --ink-3: #aea9b4;
+  --ink-placeholder: #a19ca8;
+  --accent: #d0bcff;
+  --accent-hover: #dccbff;
+  --accent-text: #d0bcff;
+  --accent-soft: #4a4458;
+  --on-accent: #381e72;
+  --mode-sale: #9cd67d;
+  --on-mode-sale: #0c3900;
+  --mode-sale-soft: rgba(156, 214, 125, 0.16);
+  --mode-wholesale: #efb8c8;
+  --mode-wholesale-soft: rgba(239, 184, 200, 0.16);
+  --mode-rentals: #4cdada;
+  --positive: #9cd67d;
+  --positive-soft: rgba(156, 214, 125, 0.14);
+  --negative: #f2b8b5;
+  --negative-soft: rgba(242, 184, 181, 0.14);
+  --warning: #f0c36a;
+  --warning-soft: rgba(240, 195, 106, 0.14);
+  --panel-bg: #211f26;
+  --input-bg: #36343b;
+  --bar-bg: #211f26;
+  --seg-on: #4a4458;
+  --sidebar-bg: #1d1b20;
+  --toast-bg: #e6e0e9;
+  --toast-ink: #322f35;
+}
+[data-theme="material"] .input { border-width: 0 0 1px; border-bottom-color: var(--line-strong); border-radius: 4px 4px 0 0; }
+[data-theme="material"] .input.focus { border-bottom: 2px solid var(--accent); box-shadow: none; }
+[data-theme="material"] .seg { gap: 0; padding: 0; border: 1px solid var(--line-strong); }
+[data-theme="material"] .seg button { border-radius: 0; }
+[data-theme="material"] .seg button + button { border-left: 1px solid var(--line-strong); }
+[data-theme="material"] .seg button:first-child { border-radius: 999px 0 0 999px; }
+[data-theme="material"] .seg button:last-child { border-radius: 0 999px 999px 0; }
+[data-theme="material"] .seg button.on { box-shadow: none; color: var(--ink); }
+[data-theme="material"] .actionbar .btn-primary { border-radius: 16px; height: 52px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 4px 8px 3px rgba(0, 0, 0, 0.1); }
