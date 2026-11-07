@@ -317,21 +317,25 @@ async function showTenants() {
     _test.render();
 }
 
-test('tenant form: "No unit" and the vacant units grouped by property (picker loaded on first use)', async () => {
+test('Add tenant: "No unit" and the vacant units grouped by property (picker loaded on first use)', async () => {
     await showTenants();
+    const p = RentalsModule.api.addTenant();
     const sel = await picker();
     expect(sel.options[0]).toMatchObject({ value: '', textContent: 'No unit' });
     const groups = [...sel.querySelectorAll('optgroup')].map(g => [g.label, [...g.querySelectorAll('option')].map(o => o.value)]);
     expect(groups).toEqual([['Arora Market', ['U3']], ['Gupta Bhawan', ['U2']]]);
+    RentalsModule.api.dialogClose(false);
+    await p;
 });
 
 test('add a tenant with a unit: the move-in fields, then tenant and lease saved together', async () => {
     await showTenants();
+    const p = RentalsModule.api.addTenant();
     await picker();
     set('rentTenantName', 'Gita');
     set('rentTenantPhone', '98765 00000');
     set('rentTenantUnit', 'U3');
-    const p = RentalsModule.api.addTenant();
+    RentalsModule.api.dialogClose(true);
     await waitFor('rentTRent');
     expect(document.getElementById('rentTRent').value).toBe('9000');
     RentalsModule.api.dialogClose(true);
@@ -341,15 +345,18 @@ test('add a tenant with a unit: the move-in fields, then tenant and lease saved 
     expect(leases().find(l => l.tenantId === tn[0])).toMatchObject({ unitId: 'U3', status: 'active', rent: 9000 });
 });
 
-test('edit a tenant: another unit asks first (with the dues) and changes the unit', async () => {
+test('Edit tenant has no unit field (owner decision); Change unit picks the unit, asks first (with the dues) and changes it', async () => {
     at(16);
     await showTenants();
-    const p = _test.editTenant('T1');
-    await waitFor('rentEditUnit');
-    expect(document.getElementById('rentEditUnit').value).toBe('U1');
-    set('rentEditUnit', 'U2');
-    RentalsModule.api.dialogClose(true);
-    await waitFor('rentTRent');
+    const e = _test.editTenant('T1');
+    await waitFor('rentEditName');
+    expect(document.getElementById('rentEditUnit')).toBeNull();
+    RentalsModule.api.dialogClose(false);
+    await e;
+    const p = RentalsModule.api.changeUnit('T1');
+    await waitFor('rentLeaseUnit');
+    set('rentLeaseUnit', 'U2');
+    RentalsModule.api.fillRent(document.getElementById('rentLeaseUnit'));
     expect(document.getElementById('rentTRent').value).toBe('7000');
     RentalsModule.api.dialogClose(true);
     await p;

@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import {
-    unitRows, summarize, propertySummaries, groupByType, filterRows, typedPlace, placeText, unitType, unitExtraError, UNIT_TYPES, moveTarget, tenantRows
+    unitRows, summarize, propertySummaries, groupByType, filterRows, typedPlace, placeText, unitType, unitExtraError, UNIT_TYPES, moveTarget, tenantRows, tenantDues
 } from '../rentals/rent-views.js';
 import { rentTotals } from '../rentals/rent-math.js';
 
@@ -187,6 +187,14 @@ describe('This month list (tenantRows): one row per tenancy that owes or is acti
         expect(rows[1].dues.total).toBe(8000);
         expect(rows[2].dues.total).toBe(0);
         expect(rows[2].current.adv).toBe(500);
+    });
+
+    test('a tenant dues over all their tenancies (an old unit after a change too), oldest first', () => {
+        const rows = tenantRows({ ...snap, charges: [...snap.charges, { id: 'L7_2026-07', leaseId: 'L7', unitId: 'U4', tenantId: 'T1', month: '2026-07', dueDay: 10, amount: 3000, paid: 500 }] }, MONTH, TODAY);
+        const ram = tenantDues(rows, 'T1');
+        expect(ram.charges.map(x => x.id)).toEqual(['L7_2026-07', 'L1_2026-10']);
+        expect(ram).toMatchObject({ total: 10500, late: true, partial: true });
+        expect(tenantDues(rows, 'T2')).toMatchObject({ total: 0, late: false, partial: false });
     });
 
     test('late first, then the oldest unpaid month, then the most due', () => {

@@ -23,13 +23,16 @@ jest.mock('../rentals/rent-store.js', () => ({
     snapshot: () => global.__rentData, truncatedKeys: () => [], isAttached: () => true, attach: jest.fn(), detach: jest.fn()
 }));
 jest.mock('../firebase/firestore-service.js', () => ({ FirebaseService: { loadUsers: jest.fn(async () => []) } }));
-jest.mock('../ui/business-switcher.js', () => ({ rentalsRole: () => 'owner' }));
+jest.mock('../ui/business-switcher.js', () => ({ rentalsRole: jest.fn(() => 'owner') }));
 jest.mock('../ui/ui-manager.js', () => ({ UIManager: { showToast: jest.fn(), showModal: jest.fn() } }));
+jest.mock('../utils/open-external.js', () => ({ openExternal: jest.fn() }));
 jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}) } }));
 
 import { _test, RentalsModule } from '../rentals/rentals.js';
 import { AppState } from '../utils/state.js';
 import { saveLeaseReminders } from '../utils/reminders.js';
+import { rentalsRole } from '../ui/business-switcher.js';
+import { openExternal } from '../utils/open-external.js';
 import { setLang, resetLangForTests } from '../i18n/index.js';
 import { monthKey } from '../rentals/rent-math.js';
 
@@ -182,3 +185,87 @@ describe('This month in Simple', () => {
         expect(localStorage.getItem('happa.rentMode.u1')).toBe('advanced');
     });
 });
+
+describe('Tenants and the tenant screen', () => {
+    async function tenants(mode = 'simple') {
+        await show(mode);
+        _test.state.page = 'tenants';
+        _test.state.detail = '';
+        await _test.render();
+        return document.getElementById('rentalsBody');
+    }
+    afterEach(() => { rentalsRole.mockReturnValue('owner'); _test.state.tenantList = { q: '', filter: 'all', sort: 'name' }; });
+
+    test('Simple: one row per tenant (no inline form, no buttons on rows), one filled Add tenant; search redraws only the list', async () => {
+        setLang('en');
+        const root = await tenants();
+        expect([...root.querySelectorAll('[data-tenant]')].map(e => e.getAttribute('data-tenant'))).toEqual(['T1', 'T2']);
+        expect(root.querySelector('.rent-form, #rentTenantName')).toBeNull();
+        expect(root.querySelectorAll('.rent-btn-primary').length).toBe(1);
+        expect(root.querySelector('[data-tenant="T2"]').textContent).toContain('Shop 3, Gupta Bhawan');
+        RentalsModule.api.tenantList('q', 'shop 3');
+        expect([...root.querySelectorAll('[data-tenant]')].map(e => e.getAttribute('data-tenant'))).toEqual(['T2']);
+    });
+
+    test('a row opens the tenant screen; the ⋯ menu follows the role; Back returns to the list', async () => {
+        setLang('en');
+        await tenants();
+        RentalsModule.api.openTenant('T2');
+        let root = document.getElementById('rentalsBody');
+        expect(root.querySelector('#rentDetailTitle').textContent).toBe('Shyam');
+        const menu = () => [...document.querySelectorAll('.rent-menu-list button')].map(b => b.getAttribute('data-onclick').match(/rentals\.(\w+)/)[1]);
+        expect(menu()).toEqual(['editTenant', 'agreement', 'shareLink', 'changeUnit']);
+        expect(root.querySelector('[data-onclick^="rentals.moveOut"]').className).toContain('rent-btn-danger');
+        expect(root.querySelectorAll('.rent-btn-primary').length).toBe(1);
+        rentalsRole.mockReturnValue('member');
+        _test.render();
+        expect(menu()).toEqual(['editTenant', 'changeUnit']);
+        RentalsModule.api.back();
+        await new Promise(r => setTimeout(r, 20));
+        root = document.getElementById('rentalsBody');
+        expect(root.querySelector('#rentDetailTitle')).toBeNull();
+        expect(root.querySelectorAll('[data-tenant]').length).toBe(2);
+    });
+
+    test('WhatsApp on the tenant screen asks for everything owed, the old unit after a change too', async () => {
+        setLang('en');
+        const saved = global.__rentData;
+        global.__rentData = { ...DATA, tenants: [{ id: 'T1', name: 'Ram', phone: '9876543210' }, DATA.tenants[1]], charges: [
+            { id: 'L0_2025-12', leaseId: 'L0', unitId: 'U4', tenantId: 'T1', unitLabel: 'G1', month: '2025-12', dueDay: 10, amount: 5000, paid: 0 },
+            { id: `L1_${M}`, leaseId: 'L1', unitId: 'U1', tenantId: 'T1', month: M, dueDay: 10, amount: 8000, paid: 0 }
+        ] };
+        try {
+            await tenants();
+            RentalsModule.api.openTenant('T1');
+            expect(document.getElementById('rentalsBody').textContent).toContain('Owes ₹13,000');
+            RentalsModule.api.remindTenant('T1');
+            const url = decodeURIComponent(openExternal.mock.calls.at(-1)[0]);
+            expect(url).toContain('Dec 2025');
+            expect(url).toContain('₹13,000');
+        } finally {
+            global.__rentData = saved;
+            _test.state.detail = '';
+        }
+    });
+
+    test('Back after opening the same tenant again returns to the list (each screen has its own history entry)', async () => {
+        await tenants();
+        RentalsModule.api.openTenant('T1');
+        await RentalsModule.api.page('tenants');
+        _test.state.page = 'tenants';
+        RentalsModule.api.openTenant('T1');
+        RentalsModule.api.back();
+        await new Promise(r => setTimeout(r, 20));
+        expect(document.getElementById('rentDetailTitle')).toBeNull();
+    });
+
+    test('Advanced: filters and the details on each row', async () => {
+        setLang('en');
+        const root = await tenants('advanced');
+        expect(root.querySelector('[data-tenant="T1"]').textContent).toContain('₹8,000/month, due on day 10');
+        RentalsModule.api.tenantList('filter', 'owes');
+        expect([...document.querySelectorAll('[data-tenant]')].map(e => e.getAttribute('data-tenant'))).toEqual(['T2']);
+        RentalsModule.api.tenantList('filter', 'all');
+    });
+});
+

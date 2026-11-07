@@ -4,7 +4,7 @@
  * with the old months.
  */
 const { test, expect, login } = require('./support/app');
-const { button, dialog, row, dialogButton, closeDialog, confirmModal, showPage, rentRow, setUpTenant, pay, firstOfMonth } = require('./support/rentals');
+const { button, dialog, row, dialogButton, closeDialog, confirmModal, showPage, openTenant, tenantMenu, rentRow, setUpTenant, pay, firstOfMonth } = require('./support/rentals');
 
 test('change of unit keeps the old dues and the tenant link follows the tenant', async ({ page, problems }) => {
     // On the 1st the old lease ends with last month (moveMonthSplit), so this month is not split between the units.
@@ -16,21 +16,21 @@ test('change of unit keeps the old dues and the tenant link follows the tenant',
     await pay(page, tenant, 5000);
     await closeDialog(page);
 
-    await showPage(page, 'tenants');
-    await button(row(page, tenant), 'Make tenant link').click();
+    const screen = await openTenant(page, tenant);
+    await tenantMenu(page, 'Make tenant link');
     await button(dialog(page), 'Make tenant link').click();
     const url = await page.locator('#rentLinkUrl').inputValue({ timeout: 15000 });
     await closeDialog(page);
 
-    await button(row(page, tenant), 'Edit').click();
-    await page.selectOption('#rentEditUnit', { label: `Shop ${unit('B')}` });
-    await dialogButton(page, true);
+    // Change unit is its own action (no longer a field in Edit).
+    await tenantMenu(page, 'Change unit');
     await expect(dialog(page)).toContainText('Change unit');
+    await page.selectOption('#rentLeaseUnit', { label: `Shop ${unit('B')}` });
     await expect(page.locator('#rentTRent')).toHaveValue('6000');
     await page.uncheck('#rentSplitOn');
     await dialogButton(page, true);
     await confirmModal(page, 'Both units are charged the full rent');
-    await expect(row(page, tenant)).toContainText(unit('B'));
+    await expect(screen).toContainText(unit('B'));
 
     const tenantCtx = await page.context().browser().newContext();
     const tenantPage = await tenantCtx.newPage();

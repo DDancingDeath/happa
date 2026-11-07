@@ -371,7 +371,6 @@ www/js/rentals/rent-pages.js: PROPERTY_KINDS (markup via map(k => `<option value
 www/js/rentals/rent-pages.js: UNIT_TYPES (markup via map(k => `<option value="${k}"${k === unitType(unit) ? ' selected' : ''}>${esc(c.typeLabel(k))}</option>`))
 www/js/rentals/rent-pages.js: args
 www/js/rentals/rent-pages.js: attrs
-www/js/rentals/rent-pages.js: c.receiptsBtn(tn.id)
 www/js/rentals/rent-pages.js: cls
 www/js/rentals/rent-pages.js: field
 www/js/rentals/rent-pages.js: fn
@@ -380,8 +379,6 @@ www/js/rentals/rent-pages.js: k
 www/js/rentals/rent-pages.js: k
 www/js/rentals/rent-pages.js: k
 www/js/rentals/rent-pages.js: m
-www/js/rentals/rent-pages.js: u ? u.unitPickHtml(c.unitCtx(), 'rentEditUnit', d, { current: lease?.unitId }) : '' ← u.unitPickHtml(c.unitCtx(), 'rentEditUnit', d, { current: lease?.unitId })
-www/js/rentals/rent-pages.js: where ← c.elecTag(lease)
 www/js/rentals/rent-receipt.js: a
 www/js/rentals/rent-receipt.js: cls
 www/js/rentals/rent-receipt.js: i
@@ -392,6 +389,25 @@ www/js/rentals/rent-report.js: new Set([base, base - 1, base - 2, base - 3, repo
 www/js/rentals/rent-report.js: y
 www/js/rentals/rent-settings.js: MAX_RECEIPT_ADDRESS
 www/js/rentals/rent-settings.js: MAX_RECEIPT_HEADER
+www/js/rentals/rent-tenants.js: args
+www/js/rentals/rent-tenants.js: attrs
+www/js/rentals/rent-tenants.js: c.badge(s.status === 'partial' ? 'partial' : 'due', s.status === 'partial' ? 'ui.rent.status_partial' : 'ui.rent.status_due')
+www/js/rentals/rent-tenants.js: c.elecFieldsHtml(elecMode(lease), lease.meterNo || '')
+www/js/rentals/rent-tenants.js: c.elecTag(l) (markup via map(x => `<span class="rent-sub">${x}</span>`))
+www/js/rentals/rent-tenants.js: c.elecTag(lease)
+www/js/rentals/rent-tenants.js: c.receiptsBtn(id)
+www/js/rentals/rent-tenants.js: cls
+www/js/rentals/rent-tenants.js: field
+www/js/rentals/rent-tenants.js: field
+www/js/rentals/rent-tenants.js: fn
+www/js/rentals/rent-tenants.js: icon
+www/js/rentals/rent-tenants.js: k
+www/js/rentals/rent-tenants.js: k (markup via chip)
+www/js/rentals/rent-tenants.js: k (markup via chip)
+www/js/rentals/rent-tenants.js: s.late ? ` ${c.badge('late', 'ui.rent.status_late')}` : '' ← c.badge('late', 'ui.rent.status_late')
+www/js/rentals/rent-tenants.js: statusOf(due) ← c.badge('late', 'ui.rent.status_late') | c.badge('partial', 'ui.rent.status_partial') | c.badge('due', 'ui.rent.status_due')
+www/js/rentals/rent-tenants.js: statusOf(due) ← c.badge('late', 'ui.rent.status_late') | c.badge('partial', 'ui.rent.status_partial') | c.badge('due', 'ui.rent.status_due')
+www/js/rentals/rent-tenants.js: x
 www/js/rentals/rent-unit.js: attrs
 www/js/rentals/rent-unit.js: c.tenantSectionHtml({ rent: shown.rent, meterRate: shown.meterRate, fixedTenant: tenant && { id: '', ...tenant }, ...(from ? keptTerms(from,
 www/js/rentals/rent-unit.js: id
@@ -409,6 +425,7 @@ www/js/rentals/rentals.js: html (sink)
 www/js/rentals/rentals.js: icon
 www/js/rentals/rentals.js: lazyMods.advanced.renderAdvanced(unitCtx(), d, rows) (sink)
 www/js/rentals/rentals.js: lazyMods.pages.renderProperties(unitCtx(), d) (sink)
+www/js/rentals/rentals.js: lazyMods.pages.renderTenant(unitCtx(), d, state.detail) (sink)
 www/js/rentals/rentals.js: lazyMods.pages.renderTenants(unitCtx(), d) (sink)
 www/js/rentals/rentals.js: m
 www/js/services/exporter.js: html

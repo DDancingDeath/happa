@@ -807,4 +807,10 @@ Advanced only change what is drawn. Advanced never grants a permission (role che
   property's detail). Owners and managers get links to Settings › Rentals and (owner) Roles & access, which
   replaced the Access tab (`page('access')` still opens Roles & access).
 - **Files:** `rent-pages.js` (Tenants, Properties and their forms) and `rent-advanced.js` are lazy (§4).
+- **Tenants** (PR4): a plain list (Simple) and the tenant's own screen (state `detail`, an in-page view with a
+  history entry so the phone's Back closes it): dues over all the tenant's tenancies (`rent-views.tenantDues`),
+  the tenancy, and the less used actions under ⋯. Edit no longer has a Unit field: Change unit (the same
+  `rent-unit.toUnit` change of unit, which confirms with the tenant, both units and the dues) and Move out ("Move
+  Ram out of Flat 1A") are their own actions (owner-adjustable default). Remove names the tenant. Code:
+  `rent-tenants.js` (lazy, loaded with `rent-pages.js`).
 
