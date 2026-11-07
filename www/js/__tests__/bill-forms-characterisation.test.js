@@ -575,7 +575,8 @@ describe('wholesale sale form', () => {
             WholesaleSalesManager.renderSalesOutstanding();
             const apply = jest.fn();
             const { OutstandingManager } = await import('../modules/outstanding.js');
-            jest.spyOn(OutstandingManager, 'applyPaymentTransaction').mockImplementation(async (kind, sale, amount) => { apply(amount); return {}; });
+            // The Due screen's payment path (D-1): the amount comes as { cash, online }
+            jest.spyOn(OutstandingManager, 'applyPaymentTransaction').mockImplementation(async (kind, sale, amount) => { apply(amount.cash); return {}; });
             setVal('payment_w1', 0);
             await WholesaleSalesManager.recordPayment('w1');
             expect(toast).toHaveBeenLastCalledWith('Please enter a valid payment amount');

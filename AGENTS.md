@@ -241,7 +241,9 @@ In order:
   answer within 3 s it is saved like offline (`saveBill`, `BILL_CREATE_WAIT_MS`), and later first saves
   skip the transaction until the server is heard again (at most 2 minutes).
   A write the app retries itself keeps a client-made id (bills: `pendingBill`,
-  due payments: the payment entry `id`).
+  due payments: the payment entry `id`, owned by `services/payment-intents.js` per bill, amounts
+  and action until the payment is known to be recorded, never by an input that a redraw replaces;
+  a payment whose answer is lost is looked up on the server, never reported as "try again", D-1).
 - **Saved / offline (#70, #153)**: never show "Saved" for a write this phone refused.
   Failure toasts use `saveFailedText()` and localStorage writes `safeSetItem()`
   (`utils/storage-full.js`: "Save failed — storage full"); a new bill stored while

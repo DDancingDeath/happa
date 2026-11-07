@@ -16,7 +16,9 @@ jest.mock('../firebase/firestore-service.js', () => ({
     }
 }));
 jest.mock('../services/printer.js', () => ({ PrinterService: {} }));
-jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}), ACTIONS: {} } }));
+jest.mock('../services/audit.js', () => ({
+    AuditService: { log: jest.fn(async () => {}), entry: jest.fn((action, details) => ({ action, details })), ACTIONS: { UPDATE_PAYMENT: 'UPDATE_PAYMENT' } }
+}));
 jest.mock('../ui/infinite-scroll.js', () => ({ attachOlderHistoryScroll: jest.fn() }));
 
 import { FirebaseService } from '../firebase/firestore-service.js';
@@ -41,7 +43,8 @@ describe('wholesale recordPayment uses the payment transaction', () => {
         const ref = { id: 's1' };
         const tx = {
             get: jest.fn(async () => ({ exists: true, data: () => serverDoc })),
-            update: jest.fn()
+            update: jest.fn(),
+            set: jest.fn()
         };
         return {
             tx,
@@ -83,6 +86,9 @@ describe('wholesale recordPayment uses the payment transaction', () => {
         expect(local.payment.due).toBe(30);
         expect(document.getElementById('toast').textContent).toBe('✓ Payment of ₹30 recorded');
         expect(window.app.outstanding.renderDue).toHaveBeenCalled();
+        // Its audit entry is written in the same transaction (D-3), id from the payment id
+        expect(tx.set).toHaveBeenCalledTimes(1);
+        expect(tx.set.mock.calls[0][1]).toMatchObject({ action: 'UPDATE_PAYMENT', details: { billNumber: 'W-1', paymentAmount: 30, transactionType: 'wholesale' } });
     });
 
     test('rejects an amount above the server-side due', async () => {
