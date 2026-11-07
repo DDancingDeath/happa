@@ -230,5 +230,17 @@ describe('the Record payment form (#157 UX redesign)', () => {
         await flush();
         expect(store.recordPayment).toHaveBeenCalledWith(CHARGE.id, expect.objectContaining({ amount: 2000, ref: 'UPI-1' }), expect.anything());
     });
-});
 
+    test('the Oldest month chip also chooses the oldest month when another month was picked under More', async () => {
+        store.snapshot.mockReturnValue({ ...SNAP, charges: [old, CHARGE] });
+        const done = _test.pay('L1');
+        await flush();
+        document.getElementById('rentPayCharge').value = CHARGE.id;
+        RentalsModule.api.fillAmount(chips()[0]);
+        expect(document.getElementById('rentPayCharge').value).toBe(old.id);
+        RentalsModule.api.dialogClose(true);
+        await done;
+        await flush();
+        expect(store.recordPayment.mock.calls.map(c => [c[0], c[1].amount])).toEqual([[old.id, 4000]]);
+    });
+});

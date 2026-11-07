@@ -367,7 +367,7 @@ async function pay(leaseId, typed = null) {
     const v = typed || { id: first.id, amount: chargeDue(first), mode: 'cash', ref: '', date: today, error: '' };
     const due = (id) => chargeDue(dues.charges.find(c => c.id === id) || first);
     const options = dues.charges.map(c => `<option value="${esc(c.id)}" data-due="${esc(chargeDue(c))}"${c.id === v.id ? ' selected' : ''}>${esc(monthLabel(c.month, lang))} · ${money(chargeDue(c))}</option>`).join('');
-    const chip = (key, n) => `<button type="button" class="rent-chip" data-amount="${esc(n)}" data-onclick="rentals.fillAmount(this)">${et(key, { amount: formatINR(n) })}</button>`;
+    const chip = (key, n) => `<button type="button" class="rent-chip" data-amount="${esc(n)}" data-charge="${esc(first.id)}" data-onclick="rentals.fillAmount(this)">${et(key, { amount: formatINR(n) })}</button>`;
     const modes = PAYMENT_MODES.map(m => `<button type="button" class="rent-seg-btn${m === v.mode ? ' active' : ''}" aria-pressed="${m === v.mode ? 'true' : 'false'}" data-mode="${m}" data-onclick="rentals.payMode(this)">${esc(modeLabel(m))}</button>`).join('');
     const name = snap.tenants.find(x => x.id === first.tenantId)?.name || first.tenantName || '';
     const html = `<h3>${et('ui.rent.record_payment')}${name ? ` · ${esc(name)}` : ''}</h3>
@@ -449,9 +449,11 @@ function fillDue(select) {
     payHint();
 }
 
-/** A chip's amount into the payment form. */
+/** A chip's amount into the payment form; both chips start from the oldest unpaid month. */
 function fillAmount(chip) {
     const input = byId('rentPayAmount');
+    const month = byId('rentPayCharge');
+    if (month && chip?.getAttribute('data-charge')) month.value = chip.getAttribute('data-charge');
     if (input && chip?.getAttribute('data-amount') != null) input.value = chip.getAttribute('data-amount');
     payHint();
 }
