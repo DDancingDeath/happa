@@ -25,6 +25,8 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { NotificationsManager, notificationErrorMessage } from '../modules/notifications.js';
 import { ItemsManager } from '../modules/items.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
+import { saveRentReminder, saveLeaseReminders } from '../utils/reminders.js';
+import { toLocalISODate } from '../utils/dates.js';
 import {
     describeNotification, notificationText, formatWhen, badgeText, idsToMarkRead,
     prepareList, newArrivals, planNotificationDocs, createRateEditTracker,
@@ -334,6 +336,43 @@ describe('Firestore paths (fake Firestore)', () => {
             expect([...fake.raw('notifications').values()].every(d => d.read === true)).toBe(true);
             expect(document.getElementById('notifBadge').hidden).toBe(true);
             expect(UIManager.showToast).not.toHaveBeenCalledWith(expect.stringContaining('Gehu'), expect.anything());
+        });
+
+        test('rent reminders (REM-2/REM-4) in the bell for rentals roles only; badge returns when rent turns late', async () => {
+            const month = toLocalISODate(new Date()).slice(0, 7);
+            localStorage.clear();
+            AppState.rentRole = null;
+            AppState.userRole = 'manager';
+            NotificationsManager.start('owner1');
+            await fake.settle();
+            saveRentReminder(localStorage, { uid: 'owner1', month, due: 12000, late: 0, dueUnits: 2 });
+            saveLeaseReminders(localStorage, { uid: 'owner1', month, items: [{ kind: 'increase', place: 'Shop 1', tenant: '<b>Ravi</b>', pct: 5, newRent: 10500 }] });
+            expect(document.getElementById('notifBadge').hidden).toBe(true);
+
+            AppState.rentRole = 'member';
+            saveRentReminder(localStorage, { uid: 'owner1', month, due: 12000, late: 0, dueUnits: 2 });
+            expect(document.getElementById('notifBadge').textContent).toBe('2');
+            await NotificationsManager.openInbox();
+            await fake.settle();
+            const rows = document.querySelectorAll('#notifList [data-reminder]');
+            expect([...rows].map(r => r.dataset.reminder)).toEqual(['rent', 'lease']);
+            expect(rows[0].textContent).toContain('Rent due ₹12,000');
+            expect(rows[1].innerHTML).toContain('&lt;b&gt;Ravi');
+            expect(rows[1].textContent).toContain('rent increase due: 5% → ₹10,500');
+            expect(document.getElementById('notifBadge').hidden).toBe(true);
+            NotificationsManager.close();
+
+            saveRentReminder(localStorage, { uid: 'owner1', month, due: 12000, late: 1, dueUnits: 2 });
+            expect(document.getElementById('notifBadge').textContent).toBe('1');
+            const open = jest.fn();
+            window.app = { rentals: { open } };
+            NotificationsManager.openReminder('tenants');
+            expect(open).toHaveBeenCalledWith('tenants');
+            NotificationsManager.markAllRead();
+            expect(document.getElementById('notifBadge').hidden).toBe(true);
+            delete window.app;
+            AppState.rentRole = null;
+            localStorage.clear();
         });
 
         test('listener errors: one bilingual toast + Diagnostics entry, no crash', async () => {

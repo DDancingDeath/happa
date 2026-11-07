@@ -943,6 +943,7 @@ window.app = {
         loadMore: () => NotificationsManager.loadMore(),
         markAllRead: () => NotificationsManager.markAllRead(),
         openNotification: (id) => NotificationsManager.openNotification(id),
+        openReminder: (page) => NotificationsManager.openReminder(page),
         toggleSystem: (checked) => NotificationsManager.toggleSystem(checked),
         refreshSettings: () => NotificationsManager.refreshSettings()
     },

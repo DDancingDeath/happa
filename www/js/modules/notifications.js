@@ -10,9 +10,15 @@ import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { TelemetryService } from '../services/telemetry.js';
 import { Helpers } from '../utils/helpers.js';
-import { t } from '../i18n/index.js';
+import { t, getLang } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
+import { AppState } from '../utils/state.js';
+import { rentRoleOf } from '../utils/settings-sections.js';
+import { toLocalISODate, formatDayTime } from '../utils/dates.js';
+import { formatINR } from '../utils/due-reminder.js';
+import { on, REMINDERS_CHANGED } from '../utils/events.js';
+import { rentBellItems, bellSeen, markBellSeen, leaseReminderText } from '../utils/reminders.js';
 import {
     UNREAD_LIMIT, PAGE_SIZE, describeNotification, notificationText, formatWhen,
     badgeText, idsToMarkRead, prepareList, newArrivals, notificationTime, retentionCutoff
@@ -45,6 +51,37 @@ const NotificationsManager = {
     loading: false,
     cleanupTimer: null,
     startedAt: 0,
+    rentNew: new Set(),
+    remindersBound: false,
+
+    /**
+     * Rent reminders (REM-2/REM-4) as the Rent page last saved them on this phone this
+     * month, for people with a rentals role. No reads and no Rentals code.
+     * @returns {{items: Array<Rec>, more: number}}
+     */
+    rentItems() {
+        if (!this.uid || !rentRoleOf(AppState.userRole, AppState.rentRole)) return { items: [], more: 0 };
+        try {
+            return rentBellItems(localStorage, this.uid, toLocalISODate(new Date()).slice(0, 7));
+        } catch (_) {
+            return { items: [], more: 0 };
+        }
+    },
+
+    /** @private Reminder items not yet seen in the inbox on this phone. */
+    unseenRentCount() {
+        const { items } = this.rentItems();
+        if (!items.length) return 0;
+        let seen;
+        try { seen = bellSeen(localStorage, this.uid); } catch (_) { seen = new Set(); }
+        return items.filter(x => !seen.has(x.key)).length;
+    },
+
+    /** @private */
+    markRentSeen(items) {
+        if (!items.length) return;
+        try { markBellSeen(localStorage, this.uid, items.map(x => x.key)); } catch (_) { /* badge shows them again */ }
+    },
 
     /**
      * Attaches the unread listener for the signed-in user. Safe to call again
@@ -59,6 +96,11 @@ const NotificationsManager = {
         this.startedAt = Date.now();
         this.errorShown = false;
         this.setBellVisible(true);
+        if (!this.remindersBound) {
+            this.remindersBound = true;
+            on(REMINDERS_CHANGED, () => this.renderBadge());
+        }
+        this.renderBadge();
         try {
             this.unsubscribe = FirebaseService.listenUnreadNotifications(
                 uid, UNREAD_LIMIT,
@@ -82,6 +124,7 @@ const NotificationsManager = {
         this.unread = [];
         this.seen = new Set();
         this.panelItems = [];
+        this.rentNew = new Set();
         this.cursor = null;
         this.hasMore = false;
         this.close();
@@ -150,7 +193,7 @@ const NotificationsManager = {
     renderBadge() {
         const badge = document.getElementById('notifBadge');
         const bell = document.getElementById('notifBell');
-        const text = badgeText(this.unread.length);
+        const text = badgeText(this.unread.length + this.unseenRentCount());
         if (badge) {
             badge.textContent = text;
             badge.hidden = !text;
@@ -176,6 +219,12 @@ const NotificationsManager = {
         this.panelItems = prepareList(this.unread.slice());
         this.cursor = null;
         this.hasMore = false;
+        const { items } = this.rentItems();
+        let seen;
+        try { seen = bellSeen(localStorage, this.uid); } catch (_) { seen = new Set(); }
+        this.rentNew = new Set(items.filter(x => !seen.has(x.key)).map(x => x.key));
+        this.markRentSeen(items);
+        this.renderBadge();
         this.renderPanel();
         await this.loadPage(true);
         if (!this.panelOpen) return;
@@ -244,6 +293,8 @@ const NotificationsManager = {
      */
     markAllRead() {
         if (!this.uid) return;
+        this.markRentSeen(this.rentItems().items);
+        this.rentNew = new Set();
         const ids = idsToMarkRead('all', [...this.unread, ...this.panelItems.filter(n => !n.readNow)]);
         this.applyLocalRead(ids);
         this.panelItems.forEach(n => { n.read = true; });
@@ -274,17 +325,47 @@ const NotificationsManager = {
         }
     },
 
+    /** Rent reminder tap: open Rentals on the Rent or Tenants page. */
+    openReminder(page) {
+        this.close();
+        window.app?.rentals?.open?.(page === 'tenants' ? 'tenants' : 'rent');
+    },
+
+    /** @private Rent reminder rows (REM-2/REM-4), above the notifications. */
+    rentRowsHtml() {
+        const { items, more } = this.rentItems();
+        if (!items.length) return '';
+        const e = Helpers.escapeHtml;
+        const asOf = (at) => t('ui.today.reminder_as_of', { time: formatDayTime(at, { lang: getLang() }) });
+        const rows = items.map(x => {
+            const rent = x.kind === 'rent';
+            const title = rent ? `${t('ui.today.reminder_rent')} ${formatINR(x.rent.due)}`
+                : `${[x.lease.place, x.lease.tenant].filter(Boolean).join(' · ')}: ${leaseReminderText(x.lease)}`;
+            const meta = rent ? `${t('ui.today.reminder_rent_units', { count: x.rent.dueUnits, late: x.rent.late })} · ${asOf(x.at)}` : asOf(x.at);
+            return `
+                <button type="button" class="notif-row${this.rentNew.has(x.key) ? ' unread' : ''}" data-reminder="${e(x.kind)}" data-onclick="notifications.openReminder('${rent ? 'rent' : 'tenants'}')">
+                    <span class="notif-icon">${rent ? '🏠' : '📄'}</span>
+                    <span class="notif-body">
+                        <span class="notif-en">${e(title)}</span>
+                        <span class="notif-meta">${e(meta)}</span>
+                    </span>
+                </button>`;
+        });
+        return rows.join('') + (more ? `<div class="notif-meta">${e(t('ui.today.reminder_more', { count: more }))}</div>` : '');
+    },
+
     /** @private */
     renderPanel() {
         const list = document.getElementById('notifList');
         if (!list) return;
         const now = Date.now();
+        const rent = this.rentRowsHtml();
         if (!this.panelItems.length) {
-            list.innerHTML = this.loading
+            list.innerHTML = rent + (this.loading
                 ? `<div class="notif-empty">${Helpers.escapeHtml(t('ui.notif.loading'))}</div>`
-                : `<div class="notif-empty">${Helpers.escapeHtml(t('ui.notif.none_yet'))}</div>`;
+                : rent ? '' : `<div class="notif-empty">${Helpers.escapeHtml(t('ui.notif.none_yet'))}</div>`);
         } else {
-            list.innerHTML = this.panelItems.map(n => {
+            list.innerHTML = rent + this.panelItems.map(n => {
                 const d = describeNotification(n);
                 const when = formatWhen(notificationTime(n), now);
                 const unread = n.read !== true;
