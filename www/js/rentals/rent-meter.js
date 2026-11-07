@@ -107,7 +107,7 @@ export async function showMeters(c) {
         try {
             // Entered on another phone meanwhile: keep it (this sheet only fills missing readings).
             if (store.snapshot().charges.find(x => x.id === r.charge.id)?.electricity) throw new Error('already');
-            await store.recordMeter(r.charge.id, r.unit.id, bill);
+            await store.recordMeter(r.charge.id, r.unit.id, bill, { onlyIfEmpty: true });
             AuditService.log('RENT_METER', { chargeId: r.charge.id, units: bill.units, rate: bill.rate, amount: bill.amount }).catch(c.auditWarn);
             results.push({ r, bill });
         } catch (err) {

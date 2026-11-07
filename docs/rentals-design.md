@@ -825,6 +825,7 @@ Advanced only change what is drawn. Advanced never grants a permission (role che
   is synchronous: deviation from the plan's lazy group, ~0.3 KB). It opens `rent-meter.js` (lazy, 8 KB budget):
   one row per pending tenancy with the same locks as one reading (a known previous reading is fixed; a member
   keeps the unit's rate). Save validates every filled row with `meterBill` (the sheet stays open at a bad row);
-  then each row goes through `store.recordMeter` in turn, skipping a charge that got a reading meanwhile. One
+  then each row goes through `store.recordMeter` in turn with `onlyIfEmpty` (inside the transaction: a charge
+  that got a reading meanwhile is refused, so a manager's sheet never replaces one). One
   success toast, or a toast plus a ✓/✗ list. `dialog({ check })` is the same change as PR6.
 

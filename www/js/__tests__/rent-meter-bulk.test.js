@@ -15,6 +15,7 @@ import { AppState } from '../utils/state.js';
 import * as store from '../rentals/rent-store.js';
 import { RentalsModule, _test } from '../rentals/rentals.js';
 import { UIManager } from '../ui/ui-manager.js';
+import { rentalsRole } from '../ui/business-switcher.js';
 import { AuditService } from '../services/audit.js';
 import { meterBill } from '../rentals/rent-math.js';
 import { meterPending } from '../rentals/rent-views.js';
@@ -139,6 +140,18 @@ test('a reading entered on another phone meanwhile is not replaced (a member can
     expect(fake.raw('rent_charges').get(`L1_${M}`).electricity.curr).toBe(1310);
     expect(fake.raw('rent_charges').get(`L3_${M}`)).toMatchObject({ amount: 5090 });
     expect(results).toContain('✗ Flat 1A, Gupta Bhawan: Entered on another phone meanwhile; not changed');
+});
+
+test('a manager whose phone has not seen a reading yet does not replace it (checked in the transaction)', async () => {
+    rentalsRole.mockReturnValue('manager');
+    const { p } = await openSheet();
+    set('rentMC0', '1300');
+    // Saved on another phone; this phone's listener has not caught up.
+    fake.raw('rent_charges').set(`L1_${M}`, { ...fake.raw('rent_charges').get(`L1_${M}`), amount: 5400, electricity: { prev: 1260, curr: 1310, rate: 8, units: 50, amount: 400 } });
+    const results = await save(p);
+    expect(fake.raw('rent_charges').get(`L1_${M}`)).toMatchObject({ amount: 5400, electricity: { curr: 1310 } });
+    expect(results).toContain('✗ Flat 1A, Gupta Bhawan: Entered on another phone meanwhile; not changed');
+    rentalsRole.mockReturnValue('member');
 });
 
 test('Needs attention (Simple) counts the readings to enter and opens the sheet', async () => {
