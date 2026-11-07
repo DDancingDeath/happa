@@ -10,7 +10,9 @@
   --primary-glow: 0 1px 2px rgba(79, 70, 229, 0.2), 0 8px 20px -6px rgba(99, 102, 241, 0.55);
   --sale-glow: 0 1px 2px rgba(4, 120, 87, 0.2), 0 8px 20px -6px rgba(16, 185, 129, 0.5);
   --focus-ring: 0 0 0 3px rgba(99, 102, 241, 0.22);
-  --hero-bg: radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 55%), var(--primary-gradient);
+  /* Deeper than the buttons' gradient: white text and the cards' translucent tiles keep AA on it */
+  --hero-gradient: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+  --hero-bg: radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 55%), var(--hero-gradient);
   --hero-shadow: 0 14px 32px -16px rgba(79, 70, 229, 0.7);
 
   --success-color: #047857;
@@ -425,7 +427,7 @@ body.dark-mode .nav-menu a.active {
 /* The old purple brand gradient still written inline by a few templates */
 [style*="linear-gradient(135deg, #5560d6"],
 [style*="linear-gradient(135deg, rgb(85, 96, 214)"] {
-  background: var(--hero-bg) !important;
+  background: var(--hero-gradient) !important;
   box-shadow: var(--hero-shadow) !important;
   border: 0 !important;
 }

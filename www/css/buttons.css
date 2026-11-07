@@ -54,8 +54,7 @@
 .total-row strong {
   font-size: 17px;
   font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--text-primary);
+  color: var(--primary-color);
 }
 
 .labor-input-row {

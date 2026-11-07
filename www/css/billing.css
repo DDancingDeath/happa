@@ -237,7 +237,8 @@ select:focus, input:focus {
 }
 
 /* -------------------- BILLING MODE ACCENTS -------------------- */
-#saleSection .add-to-bill-btn {
+#saleSection .add-to-bill-btn,
+#wholesale-sales .add-to-bill-btn {
   background: var(--sale-gradient);
   box-shadow: var(--sale-glow);
 }
