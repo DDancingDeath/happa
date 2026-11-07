@@ -417,10 +417,12 @@ www/js/rentals/rent-unit.js: id (markup via unitPickHtml)
 www/js/rentals/rentals.js: PAYMENT_MODES (markup via map(m => `<option value="${m}">${esc(modeLabel(m))}</option>`))
 www/js/rentals/rentals.js: TemplateLoader.loadTemplate('rentals') (sink)
 www/js/rentals/rentals.js: args
+www/js/rentals/rentals.js: args
 www/js/rentals/rentals.js: attrs
 www/js/rentals/rentals.js: cls
 www/js/rentals/rentals.js: cls
 www/js/rentals/rentals.js: field
+www/js/rentals/rentals.js: fn
 www/js/rentals/rentals.js: fn
 www/js/rentals/rentals.js: html (sink)
 www/js/rentals/rentals.js: icon
