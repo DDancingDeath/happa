@@ -14,6 +14,13 @@ While a bill is being typed:
 - **Wholesale profit** (WS-PROFIT) = total − cost (kg × the item's current
   average cost) − expenses. Shown as "—" when an item's cost is not known (never
   bought, no opening stock).
+- **A line typed but not added** (BF-PENDING): Save or Print never drops it. A
+  complete line (item, rate, weight) asks "Add this line and save" or "Discard
+  line and save"; a half-typed one is named and the bill waits.
+- **Share draft (not saved)**: sends the bill on the form to WhatsApp without
+  saving it; the message itself says "DRAFT, not saved". Save first to record it.
+- **Print** saves the bill, then prints it. With no printer connected the
+  receipt is only shown as a picture, and the message says "Not printed".
 - "Save draft" keeps an unfinished bill; an unsaved bill is offered back at the
   next start. If that bill was saved meanwhile, Restore (or loading the draft)
   offers to open the saved bill instead of saving it again; an unsaved edit goes

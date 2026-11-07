@@ -217,10 +217,9 @@ const NavigationManager = {
         this.showTab(tabId, undefined, opts);
         UIManager.hapticFeedback('light');
         
-        // Reset billing mode when Billing tab is shown
-        if (tabId === 'billing' && window.app?.billing) {
-            this.resetFilterButtons('billing');
-            setTimeout(() => window.app.billing.switchMode('purchase', { currentTarget: document.getElementById('purchaseModeBtn') }), 100);
+        // Opening Billing from the menu / bottom bar starts on Purchase at once (D-5)
+        if (tabId === 'billing' && typeof window.app?.billing?.startFromNav === 'function') {
+            window.app.billing.startFromNav();
         }
         
         // Rates page: render the items table
