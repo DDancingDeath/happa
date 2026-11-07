@@ -371,6 +371,35 @@ test('a non-owner back-dating a start more than 2 days: clear message, nothing s
     expect(leases()).toHaveLength(before);
 });
 
+test('change of unit: the visit charge pass waits, so the new lease first month is written once and the toast says its amount', async () => {
+    at(16);
+    await showTenants();
+    const orig = fake.db.runTransaction;
+    let during = null;
+    // Once the change itself is saved and the listeners show the new lease, the visit's charge pass runs (as onData would).
+    fake.db.runTransaction = (fn) => orig(fn).then(async (r) => {
+        if (during === null && leases().some(l => l.fromLeaseId === 'L1')) {
+            await fake.settle();
+            _test.state.charged.clear();
+            let calls = 0;
+            fake.db.runTransaction = (f) => { calls++; return orig(f); };
+            await _test.maybeCharge();
+            fake.db.runTransaction = orig;
+            during = calls;
+        }
+        return r;
+    });
+    const p = _test.toUnit({ id: 'T1', name: 'Ram' }, 'U2');
+    await waitFor('rentTRent');
+    RentalsModule.api.dialogClose(true);
+    await p;
+    fake.db.runTransaction = orig;
+    expect(during).toBe(0);
+    expect(UIManager.showToast).toHaveBeenCalledWith(expect.stringMatching(/First month.s rent in the new unit/), 'success');
+    const lease2 = leases().find(l => l.fromLeaseId === 'L1');
+    expect(fake.raw('rent_charges').has(`${lease2.id}_${M}`)).toBe(true);
+});
+
 test('change of unit when the first charge fails: no claim it was charged; the next charge pass adds it', async () => {
     at(16);
     await showTenants();
