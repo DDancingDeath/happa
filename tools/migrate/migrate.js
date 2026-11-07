@@ -18,6 +18,7 @@
  * `plan` leaves their users docs out, `auth:import` / `auth:filter` their logins, and `wipe` deletes them from Auth.
  *
  * `plan` and `convert` are offline. `apply`, `wipe` and `auth:import` are dry runs unless --yes is given.
+ * `wipe` never deletes the Rentals data (rent_*, RENT_* audit entries, profiles with their rentRole: lib/wipe.js).
  * `--emulator` uses the local Firebase emulators (FIRESTORE_EMULATOR_HOST / FIREBASE_AUTH_EMULATOR_HOST)
  * and needs a demo-* --project (a real project id is refused).
  */
@@ -138,7 +139,7 @@ async function wipe() {
     const { getAuth } = await import('firebase-admin/auth');
     await initAdmin({ key, project });
     const dryRun = !flag('--yes');
-    console.log(`Target project: ${project}${targetNote(emulator)}${dryRun ? ' — DRY RUN' : ' — DELETING EVERYTHING IN FIRESTORE + TEST AND SERVICE-ACCOUNT LOGINS'}`);
+    console.log(`Target project: ${project}${targetNote(emulator)}${dryRun ? ' — DRY RUN' : ' — DELETING FIRESTORE DATA (RENTALS DATA IS KEPT) + TEST AND SERVICE-ACCOUNT LOGINS'}`);
     await wipeProject({
         project, keyProject: key?.project_id, emulator: !!emulator, db: getFirestore(), auth: getAuth(), dryRun,
         testDomain: arg('--test-domain'), log: (line) => console.log(line)

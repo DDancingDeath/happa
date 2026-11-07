@@ -121,6 +121,40 @@ describe('apply: writes', () => {
         expect(resumeCursor(saved, other, PROJECT, { restart: true }).next).toBe(0);
     });
 
+    test('profiles merge into Happa\'s: its rentRole and own fields survive, the old profile\'s fields win otherwise', async () => {
+        const bundle = makeBundle();
+        bundle.writes.find(w => w.coll === 'users' && w.id === 'uid-member').data.rentRole = 'manager';
+        const fake = createFakeFirestore();
+        fake.seed('users', [
+            { id: 'uid-owner', role: 'staff', rentRole: 'member', lastSeenAt: 5 },
+            { id: 'uid-member', rentRole: null },
+            { id: 'rent-helper', role: 'none', rentRole: 'member', name: 'Rentals helper' }
+        ]);
+        await run(fake, bundle, newCursor(bundle, PROJECT));
+        const users = fake.raw('users');
+        expect(users.get('uid-owner')).toMatchObject({ role: 'owner', email: 'owner@example.test', rentRole: 'member', lastSeenAt: 5 });
+        expect(users.get('uid-member')).toMatchObject({ role: 'manager', rentRole: null });
+        expect(users.get('rent-helper')).toEqual({ role: 'none', rentRole: 'member', name: 'Rentals helper' });
+
+        const fresh = createFakeFirestore();
+        await run(fresh, bundle, newCursor(bundle, PROJECT));
+        expect(fresh.raw('users').get('uid-member').rentRole).toBe('manager');
+        expect(fresh.raw('users').has('uid-owner')).toBe(true);
+    });
+
+    test('settings merge into Happa\'s; the team directory is replaced as a whole', async () => {
+        const bundle = makeBundle();
+        const fake = createFakeFirestore();
+        fake.seed('settings', [
+            { id: 'app', happaOnly: 'kept' },
+            { id: 'team', people: { 'old-test-uid': { name: 'Test', role: 'staff' } } }
+        ]);
+        await run(fake, bundle, newCursor(bundle, PROJECT));
+        const app = bundle.writes.find(w => w.coll === 'settings' && w.id === 'app').data;
+        expect(fake.raw('settings').get('app')).toEqual({ ...app, happaOnly: 'kept' });
+        expect(fake.raw('settings').get('team')).toEqual(bundle.writes.find(w => w.group === 'team').data);
+    });
+
     test('a rerun keeps opening balances already paid in the new app and removes ones no longer due', async () => {
         const backup = load();
         const bundle = makeBundle(backup);

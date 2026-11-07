@@ -136,7 +136,7 @@ async function main() {
     }
     done();
 
-    done = step('2. Emulators: clean start + rehearsal leftovers for wipe');
+    done = step('2. Emulators: clean start + rehearsal leftovers for wipe + Rentals data it keeps');
     await resetEmulators();
     await setDoc('retailSales', 'rehearsal-bill', { billNumber: 'S-REHEARSAL-1', dueAmount: 123, customerName: 'Rehearsal' });
     await setDoc('dev_items', 'rehearsal-item', { name: 'Rehearsal item' });
@@ -145,6 +145,9 @@ async function main() {
     await signUp('keep@other.test', 'Keep#12345', 'kept-login');
     // a service-account login an earlier rehearsal imported (#101): wipe must delete it
     await signUp('staging-readonly@aadhat.local', 'Rehearsal#2', 'rehearsal-staging-ro');
+    // Rentals data is real: wipe must keep it and apply must not overwrite it (rentals-seed.js)
+    const { RENTALS_SEED } = await import('./rentals-seed.js');
+    for (const d of [...RENTALS_SEED.kept, ...RENTALS_SEED.wiped, ...(REAL ? [] : RENTALS_SEED.merged)]) await setDoc(d.coll, d.id, d.data);
     done();
 
     done = step('3. migrate.js plan');
@@ -154,7 +157,10 @@ async function main() {
     done();
 
     done = step('4. migrate.js wipe (dry run, then --yes)');
-    migrate('wipe', '--project', PROJECT, '--emulator');
+    const dry = migrate('wipe', '--project', PROJECT, '--emulator');
+    ['rent_properties: KEEP 1 docs', 'rent_units: KEEP 1 docs', 'dev_rent_units: KEEP 1 docs', 'auditLogs: delete 2 docs, KEEP 1 (RENT_* entries)']
+        .forEach(s => { if (!dry.includes(s)) throw new Error(`wipe dry run did not print "${s}"`); });
+    if (!/users: delete 3 docs, KEEP \d+ \(profiles/.test(dry)) throw new Error('wipe dry run did not print the profiles it deletes and keeps');
     migrate('wipe', '--project', PROJECT, '--emulator', '--yes');
     done();
 

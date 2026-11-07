@@ -33,14 +33,30 @@ Root collections only (as the export), `dev_*` left out, timestamps kept to the 
 
 ### After a rehearsal: `wipe`
 
-A rehearsal in the real project (not `--dev`) must be removed before the real migration, otherwise opening records with test payments are kept by `apply`:
+A rehearsal in the real project (not `--dev`) must be removed before the real migration, otherwise opening records with test payments are kept by `apply`.
+
+**Rentals data in `happa-bfc07` is real (owner, 7 Nov 2026) and `wipe` never deletes it.** First take a fresh backup that holds it, and keep it outside the repo with the other data files:
+
+- the *Firestore backup* workflow (`tools/backup`, see `tools/backup/README.md`) with `mode` = **`weekly`**, which is the full copy (every `rent_*` collection, `users` and also `auditLogs`): `gh workflow run firestore-backup.yml -R DDancingDeath/happa -f mode=weekly`, then download, check and decrypt it as that README says;
+- and/or the read-only Rentals export the owner keeps locally (`export-rentals.mjs`: every `rent_*` collection, `users` and the `RENT_*` audit entries, with a manifest and `SHA256SUMS`), run with the `happa-bfc07` key into `$D`.
+
+Check the counts it prints against the wipe's dry run below (the `KEEP` lines).
 
 ```powershell
-node tools/migrate/migrate.js wipe --project happa-bfc07 --key $D\key.json          # dry run: counts only
+node tools/migrate/migrate.js wipe --project happa-bfc07 --key $D\key.json          # dry run: what is deleted and what is kept, per collection
 node tools/migrate/migrate.js wipe --project happa-bfc07 --key $D\key.json --yes    # deletes
 ```
 
-It deletes **every document in every root collection** (subcollections included), the Auth users whose email ends with `--test-domain` (default `@happa.local`, the test logins) and the **service-account logins on the denylist** (below; the 26 Oct rehearsal imported them into `happa-bfc07`); other Auth users (the imported logins) are kept. Cost: one delete and one read per document (Spark: 20,000 deletes and 50,000 reads a day). It refuses `aadhat-management` and a key for another project. Then run `plan`/`apply` again (`--restart`).
+What it deletes and keeps (hard-coded; there is no flag to delete Rentals data; a `dev_` collection is treated like its prod twin):
+
+| Collection | `wipe` |
+|---|---|
+| `rent_*` and `dev_rent_*` (properties, units, tenants, leases, charges, receipts, deposits, expenses, counters, settings, tenant links `rent_public`) | **kept whole** |
+| `auditLogs` (and `dev_auditLogs`) | entries whose `action` starts with `RENT_` are **kept**; every other entry is deleted |
+| `users` (and `dev_users`) | profiles are **kept** (they hold `rentRole`; `apply` then merges the old profiles into them). Deleted: only the profiles of the logins `wipe` deletes, found by uid or email (test domain, denylisted service accounts), and only if they have no `rentRole`; their `preferences` go with them |
+| every other root collection | deleted, with its subcollections |
+
+The dry run prints, per collection, how many documents it will delete and how many it keeps, and the totals. In Auth it deletes the users whose email ends with `--test-domain` (default `@happa.local`, the test logins) and the **service-account logins on the denylist** (below; the 26 Oct rehearsal imported them into `happa-bfc07`); other Auth users (the imported logins, Rentals helpers) are kept. Cost: one delete and one read per deleted document, plus one read per `auditLogs` and `users` document kept (Spark: 20,000 deletes and 50,000 reads a day). It refuses `aadhat-management` and a key for another project. Then run `plan`/`apply` again (`--restart`).
 
 ### Service accounts (#101)
 
@@ -59,7 +75,7 @@ Disabling them in the old project is an owner action in the Firebase console (`a
 |---|---|---|
 | History | **Fresh start**: old bills are not copied; the old project and the encrypted backup are the archive | `--mode fresh` / `full` (copies every bill as is, no opening balances; personal expenses go to `personalExpenses` with their day totals in `personalExpenseDays`, #98) |
 | Rates page | `items` copied as is, same ids | `--copy items,users,rateHistory,itemFrequency` |
-| Users | `users` profile docs as is (roles, status), same uids; logins move with `auth:import` below. **Service and test accounts are never carried** (see "Service accounts" below). Also writes the team directory `settings/team` (names and roles of the approved people, no emails), which managers read instead of the profiles (#87) | (part of `--copy`) |
+| Users | `users` profile docs as is (roles, status), same uids, **merged** into a profile Happa already has: fields only Happa has survive, and Happa's `rentRole` (Rentals role, set by the owner in Happa) wins over the old profile's; logins move with `auth:import` below. **Service and test accounts are never carried** (see "Service accounts" below). Also writes the team directory `settings/team` (names and roles of the approved people, no emails), which managers read instead of the profiles (#87) | (part of `--copy`) |
 | Outstanding (retail) and Wholesale → Outstanding | one **opening record per old unpaid bill**, see below | always in `fresh` mode |
 | Wholesale dues that no page shows (bills not made on the Wholesale page) | **not carried**; the report lists their count and total under "Not carried (owner to decide)" | `--include-hidden-wholesale-dues` carries them to Wholesale → Outstanding |
 | Supplier payables | **checked only**: the report shows the total (should be ₹0) and warns otherwise | `--carry-payables` to carry them like receivables |
@@ -102,7 +118,7 @@ One bill-shaped document **per old unpaid bill**, in the collection the due live
 
 ### Write budget (Spark: 20,000 writes/day)
 
-The report gives the total writes and the order: settings, bill counters, users, opening records and items first, then rate history, item order and rate patterns. Spark allows 20,000 writes a day; `apply` keeps **8,000 for the shop's first day** and writes at most 12,000 per run (`--budget` to change), in batches of 400, and prints how many writes are left for the shop. Continue the next quota day with the same command: the cursor file (`bundle.json.<project>.cursor.json`, next to the bundle) remembers where it stopped. Every write is a `set()` at a fixed id, so a rerun is harmless. **The Spark quota resets at midnight Pacific time: 12:30 IST until 1 Nov, 13:30 IST from 1 Nov** (US daylight saving ends).
+The report gives the total writes and the order: settings, bill counters, users, opening records and items first, then rate history, item order and rate patterns. Spark allows 20,000 writes a day; `apply` keeps **8,000 for the shop's first day** and writes at most 12,000 per run (`--budget` to change), in batches of 400, and prints how many writes are left for the shop. Continue the next quota day with the same command: the cursor file (`bundle.json.<project>.cursor.json`, next to the bundle) remembers where it stopped. Every write is a `set()` at a fixed id, so a rerun is harmless. `users` and `settings` docs are written with `merge: true` (fields only Happa has, such as `rentRole`, are kept; the bundle's fields win otherwise, except Happa's `rentRole`); `settings/team` is derived from the profiles and is replaced as a whole. **The Spark quota resets at midnight Pacific time: 12:30 IST until 1 Nov, 13:30 IST from 1 Nov** (US daylight saving ends).
 
 A new `plan` makes a new bundle; continue with `--restart` (idempotent). Opening records that already have a payment or were cleared in Happa are **never overwritten**, and opening records whose bill is no longer due are removed.
 
@@ -135,7 +151,7 @@ node tools/migrate/migrate.js auth:import --users $D\users.json --hash-params $D
 
 `apply`, `wipe` and `auth:import` take `--emulator` instead of `--key`: they then write to the local Firebase emulators named by `FIRESTORE_EMULATOR_HOST` / `FIREBASE_AUTH_EMULATOR_HOST` (`firebase emulators:exec` sets both). The flag needs a `demo-*` `--project` (it refuses `happa-bfc07`, `aadhat-management` and any other real project id), refuses a key and any host that is not `127.0.0.1` / `localhost`, and a run without it refuses while those variables are set, so a rehearsal can never reach a real project. Its cursor file is separate (`….emulator.cursor.json`).
 
-`npm run test:migration-e2e` (`tests/migration-e2e/`, CI: `.github/workflows/migration-e2e.yml`, on PRs touching this tool, the app (`www/**`) or the rules, and nightly) runs the whole move against the emulators of the demo project `demo-happa-migration` (auth 9199, firestore 8281; not the project or ports `tests/e2e` uses; override with `MIGRATION_E2E_PROJECT`, `MIGRATION_E2E_AUTH_PORT`, `MIGRATION_E2E_FIRESTORE_PORT`): it makes an anonymised old-app backup and Auth export (SCRYPT hashes of known test passwords, plus a fake `staging-readonly@aadhat.local` profile, item-order doc and login) at test time, runs `plan` → `wipe` → `apply` → `auth:import`, checks the data against the old backup (dues and age groups as the old Outstanding pages computed them, items, users and roles, settings, counters, `rateStats` = the app's `billsToYearDocs`, nothing from `dev_`, the write budget, and that no service account reached Firestore or Auth: `plan` and `auth:import` must print "Skipped 1 service accounts", and `wipe` must remove a service-account login left by a rehearsal), then opens the app (Playwright) as a migrated owner and member with their original passwords. The Auth emulator does not check imported SCRYPT hashes, so the test checks the password against the imported hash with Firebase's scrypt itself, as production Auth does.
+`npm run test:migration-e2e` (`tests/migration-e2e/`, CI: `.github/workflows/migration-e2e.yml`, on PRs touching this tool, the app (`www/**`) or the rules, and nightly) runs the whole move against the emulators of the demo project `demo-happa-migration` (auth 9199, firestore 8281; not the project or ports `tests/e2e` uses; override with `MIGRATION_E2E_PROJECT`, `MIGRATION_E2E_AUTH_PORT`, `MIGRATION_E2E_FIRESTORE_PORT`): it makes an anonymised old-app backup and Auth export (SCRYPT hashes of known test passwords, plus a fake `staging-readonly@aadhat.local` profile, item-order doc and login) at test time, runs `plan` → `wipe` → `apply` → `auth:import`, checks the data against the old backup (dues and age groups as the old Outstanding pages computed them, items, users and roles, settings, counters, `rateStats` = the app's `billsToYearDocs`, nothing from `dev_`, the write budget, and that no service account reached Firestore or Auth: `plan` and `auth:import` must print "Skipped 1 service accounts", and `wipe` must remove a service-account login left by a rehearsal; Rentals data seeded before the wipe (`rent_*` and `dev_rent_*` docs, a `RENT_*` audit entry, a Rentals-only profile, and profiles with a `rentRole` the bundle also writes) must survive `wipe` and `apply` while the rehearsal's other data, audit entries and test profiles are wiped), then opens the app (Playwright) as a migrated owner and member with their original passwords. The Auth emulator does not check imported SCRYPT hashes, so the test checks the password against the imported hash with Firebase's scrypt itself, as production Auth does.
 
 On the real backup (local only; output outside the repo, nothing committed):
 
@@ -155,14 +171,14 @@ The go-live runbook is **`docs/happa-go-live.md`** in the Happa PR (#231). It co
 1. Rules and indexes are already deployed to `happa-bfc07` (go-live step 5). Get a key for a migration service account in `happa-bfc07` with **Cloud Datastore User** (`roles/datastore.user`). Save it as `$D\key.json` (outside the repo) and delete it after cutover.
 2. **Rehearse** (any time before): run `plan` and `apply --dev` with a recent backup, open Happa on localhost, check Rates, Outstanding, Wholesale → Outstanding, Reports › Trends and Settings, then delete the `dev_*` collections in `happa-bfc07`.
 3. At the cut-off: close the cash session in the old app. From then on **the shop stops billing in the old app**: a bill saved there does not appear in Happa. Take the final backup (go-live step 6.2), download, check and decrypt it (`tools/backup/README.md`) **into `$D` (`Q:\aadhat-data\`), not into the repo**.
-4. **Migrate**:
+4. **Migrate**. If `happa-bfc07` has rehearsal data (it has: 26 Oct), first take the fresh Rentals backup and run `wipe` ("After a rehearsal" above; it keeps the Rentals data), then:
    ```powershell
    node tools/migrate/migrate.js plan --in $D\backup.json --out-dir $D\out     # read $D\out\report.md: totals, "Not carried", "Skipped 2 service accounts", warnings, writes
    node tools/migrate/migrate.js apply --bundle $D\out\bundle.json --project happa-bfc07                           # dry run
    node tools/migrate/migrate.js apply --bundle $D\out\bundle.json --project happa-bfc07 --key $D\key.json --yes
    ```
    Write quota: the Spark day runs from 12:30 IST to 12:30 IST (13:30 IST from 1 Nov). A cutover after 12:30 shares that quota day with the shop's first hours in Happa, which is why `apply` keeps 8,000 writes free; if the report needs more than one run, the rate patterns (written last) finish after the next reset while the shop already works with users, items and dues.
-   Then move the logins (above). `plan`/`apply` can be **rerun just before go-live** (add `--restart` for a new bundle) to pick up the latest items, dues, settings and patterns. Rerun only before Happa is in use: a rerun rewrites items, users, settings and rate patterns.
+   Then move the logins (above). `plan`/`apply` can be **rerun just before go-live** (add `--restart` for a new bundle) to pick up the latest items, dues, settings and patterns. Rerun only before Happa is in use: a rerun rewrites items, users (merged, `rentRole` kept), settings and rate patterns. Rentals data (`rent_*`) is never written or deleted by `plan`, `apply` or `wipe`.
 5. **Set opening stock** per item in Happa: Stock → Stock Adjustment → type **Set**, the counted kg, and **Rate (₹/kg)** = the average cost. The stock replay uses that rate as the cost of the stock, so cost of goods sold and profit work from the first sale.
 6. **Re-enter shop name and UPI id in Happa Settings on each device.** They live on the phone, not in Firestore, so they are not carried. Printer, language, dark mode and the Hindi-names option are per phone too.
 7. **Check** in Happa: sign in as each role; Rates item count; Outstanding and Wholesale → Outstanding totals and age groups equal the report; a reminder and a statement for one party; Reports › Trends shows the history; a test bill gets the next number; Authentication → Users lists no `staging-*@aadhat.local` login.

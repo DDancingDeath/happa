@@ -232,6 +232,24 @@ rehearsal: the 26 Oct rehearsal imported both staging logins into
 `happa-bfc07` Auth, and `wipe` deletes them. After the import, Authentication →
 Users must list no `staging-*@aadhat.local` login.
 
+**Rentals data in `happa-bfc07` is real (owner, 7 Nov 2026) and must survive
+go-live.** `wipe` keeps it (hard-coded, no flag): every `rent_*` (and
+`dev_rent_*`) collection, the `auditLogs` entries whose action starts with
+`RENT_`, and the `users` profiles (with their `rentRole`; it deletes only the
+test and service-account profiles that have no `rentRole`). `apply` merges the
+old profiles into Happa's and keeps Happa's `rentRole`. Details: the #232 README,
+"After a rehearsal: `wipe`". Before `wipe`:
+
+1. Take a fresh Rentals backup and keep it outside the repo (`Q:\aadhat-data\`):
+   the *Firestore backup* workflow (`tools/backup`) with `mode` = `weekly` (the
+   full copy, including `auditLogs`), and the owner's local read-only export
+   `Q:\aadhat\rentals-real\tmp\export-rentals.mjs` (every `rent_*` collection,
+   `users` and the `RENT_*` audit entries, with `SHA256SUMS`).
+2. Run the `wipe` dry run and check its `KEEP` lines (per collection) against
+   the backup's counts. Only then run it with `--yes`.
+3. After `apply`, open Rentals as the owner: properties, units, tenants and
+   receipts are all still there, and the Rentals helpers still have their role.
+
 Owner action, outside this tool (it never changes `aadhat-management`): in the
 old project's console, disable or delete `staging-readonly@aadhat.local` (and
 `staging-owner@aadhat.local`), delete or reject their `users/{uid}` docs,

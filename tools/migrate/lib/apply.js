@@ -10,6 +10,10 @@
  *   a run stops at its write budget (Spark: 20,000 writes/day, 8,000 of them
  *   kept for the shop) and the next run continues from the cursor.
  * - dev_ collections are never written unless dev (then every write goes to dev_<name>).
+ * - users and settings docs are merged into what the target already has, so
+ *   fields only Happa has survive. A profile's `rentRole` that Happa already has
+ *   is kept over the bundle's (Rentals data is real: owner, 7 Nov 2026).
+ *   settings/team is the derived team directory and is replaced as a whole.
  */
 import { createHash } from 'crypto';
 import backupLib from '../../backup/backup-lib.js';
@@ -20,6 +24,11 @@ export const DEFAULT_BUDGET = MIGRATION_DAILY_WRITES;
 export const BATCH_SIZE = 400;
 export const CURSOR_VERSION = 1;
 const OPENING_COLLS = ['purchases', 'retailSales', 'wholesaleSales'];
+/** Rentals fields of a profile that Happa's value wins over the bundle's. */
+export const KEEP_USER_FIELDS = ['rentRole'];
+
+/** Whether a write merges into the target doc instead of replacing it. */
+export const mergesInto = (w) => w.coll === 'users' || (w.coll === 'settings' && w.id !== 'team');
 
 export function bundleHash(bundle) {
     return createHash('sha256').update(JSON.stringify(bundle.writes)).digest('hex').slice(0, 32);
@@ -162,6 +171,17 @@ export async function applyBundle({
     const startedAt = now();
     let written = 0;
     const stop = Math.min(run.end, cursor.next + left);
+    let profiles = new Map();
+    if (bundle.writes.slice(cursor.next, stop).some(w => w.coll === 'users')) {
+        const snap = await db.collection(targetColl('users', dev)).get();
+        profiles = new Map(snap.docs.map(d => [d.id, d.data() || {}]));
+    }
+    const docData = (w) => {
+        const data = deser(w.data);
+        const have = w.coll === 'users' && profiles.get(w.id);
+        if (have) KEEP_USER_FIELDS.forEach(f => { if (f in have) delete data[f]; });
+        return data;
+    };
     while (cursor.next < stop) {
         const slice = bundle.writes.slice(cursor.next, Math.min(stop, cursor.next + batchSize));
         const batch = db.batch();
@@ -171,7 +191,9 @@ export async function applyBundle({
                 cursor.skipped.push(`${w.coll}/${w.id}`);
                 return;
             }
-            batch.set(db.collection(targetColl(w.coll, dev)).doc(w.id), deser(w.data));
+            const ref = db.collection(targetColl(w.coll, dev)).doc(w.id);
+            if (mergesInto(w)) batch.set(ref, docData(w), { merge: true });
+            else batch.set(ref, docData(w));
             n++;
         });
         if (n) await batch.commit();

@@ -14,10 +14,12 @@ import { oldOutstanding, summarize, billTime, partyKey, ageDays } from './old-ou
 import { billsOf, expectedCounters } from './expected.js';
 import { billsToYearDocs, MIGRATION_META_BY } from '../../www/js/utils/rate-trends.js';
 import { MIGRATION_DAILY_WRITES, OLD_PROJECT_ID } from '../../tools/migrate/lib/plan.js';
+import { KEEP_USER_FIELDS } from '../../tools/migrate/lib/apply.js';
 import { parseHashParams } from '../../tools/migrate/lib/auth-import.js';
 import { checkEmulatorTarget } from '../../tools/migrate/lib/emulator.js';
 import { isServiceAccountEmail } from '../../tools/migrate/lib/service-accounts.js';
 import { SERVICE_LOGIN } from './make-old-backup.js';
+import { RENTALS_SEED } from './rentals-seed.js';
 
 process.env.TZ = 'Asia/Kolkata';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -63,6 +65,14 @@ function revive(v) {
     return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, revive(x)]));
 }
 const backupDocs = (coll) => backup.collections[coll] || [];
+const MERGED = SYNTHETIC ? RENTALS_SEED.merged : [];
+/** A carried profile as apply leaves it: merged into Happa's, Happa's rentRole kept. */
+function expectedProfile(id, old) {
+    const happa = MERGED.find(d => d.coll === 'users' && d.id === id)?.data;
+    if (!happa) return old;
+    const keep = Object.fromEntries(KEEP_USER_FIELDS.filter(f => f in happa).map(f => [f, happa[f]]));
+    return { ...happa, ...old, ...keep };
+}
 
 let app;
 let db;
@@ -82,12 +92,15 @@ before(async () => {
 after(async () => { if (app) await deleteApp(app); });
 
 const CARRIED = ['settings', 'counters', 'users', 'items', 'rateHistory', 'itemFrequency', 'rateStats'];
+/** Collections the Rentals data seeded before the wipe keeps (rentals-seed.js). */
+const KEPT_COLLS = [...new Set(RENTALS_SEED.kept.map(d => d.coll))];
 
 test('nothing from dev_ is carried, only what the README carries, and the wipe removed the rehearsal', async () => {
     const colls = Object.keys(data).sort();
-    assert.deepEqual(colls.filter(c => c.startsWith('dev_')), [], 'no dev_ collection in the new project');
+    assert.deepEqual(colls.filter(c => c.startsWith('dev_')), KEPT_COLLS.filter(c => c.startsWith('dev_')).sort(), 'no dev_ collection in the new project but the kept dev_rent_* one');
     const counters = expectedCounters(backup, cutoff);
     const expected = new Set(CARRIED.filter(c => (c === 'counters' ? Object.keys(counters).length : backupDocs(c === 'rateStats' ? 'items' : c).length)));
+    KEPT_COLLS.forEach(c => expected.add(c));
     const dues = oldOutstanding({ retailSales: billsOf(backup, 'retailSales'), wholesaleSales: billsOf(backup, 'wholesaleSales') }, cutoff);
     if (dues.retail.count) expected.add('retailSales');
     if (dues.wholesale.count) expected.add('wholesaleSales');
@@ -103,7 +116,7 @@ test('the write count is within budget and every write landed', () => {
     assert.ok(bundle.writes.length <= MIGRATION_DAILY_WRITES, `${bundle.writes.length} writes ≤ ${MIGRATION_DAILY_WRITES} (one run)`);
     assert.equal(ctx.writes, bundle.writes.length, 'apply wrote the whole bundle in one run');
     assert.equal(new Set(bundle.writes.map(w => `${w.coll}/${w.id}`)).size, bundle.writes.length, 'no write repeats a document');
-    assert.equal(docs, bundle.writes.length, 'documents in the new project = writes');
+    assert.equal(docs, bundle.writes.length + RENTALS_SEED.kept.length, 'documents in the new project = writes + the kept Rentals data');
     console.log(`  writes: ${bundle.writes.length} (budget ${MIGRATION_DAILY_WRITES}), documents: ${docs}`);
 });
 
@@ -170,11 +183,21 @@ test('items, users (with roles), rate history and item order are carried as is',
     const carriedDocs = (coll) => backupDocs(coll).filter(d => !(['users', 'itemFrequency'].includes(coll) && skipped.has(d.id)));
     for (const coll of ['items', 'users', 'rateHistory', 'itemFrequency']) {
         const docs = carriedDocs(coll);
-        assert.equal(data[coll]?.size || 0, docs.length, `${coll}: count`);
-        docs.forEach(({ id, data: d }) => assert.deepEqual(norm(data[coll].get(id)), norm(d), `${coll}/${id} as is`));
+        const happaOnly = coll === 'users' ? RENTALS_SEED.kept.filter(d => d.coll === 'users').length : 0;
+        assert.equal(data[coll]?.size || 0, docs.length + happaOnly, `${coll}: count`);
+        docs.forEach(({ id, data: d }) => assert.deepEqual(norm(data[coll].get(id)), norm(coll === 'users' ? expectedProfile(id, d) : d), `${coll}/${id} as is`));
     }
     const roles = (m) => Object.fromEntries([...m].map(([id, u]) => [id, `${u.role}/${u.status || ''}/${u.rentRole || ''}`]));
-    assert.deepEqual(roles(data.users), roles(new Map(carriedDocs('users').map(d => [d.id, d.data]))), 'roles and status');
+    const want = new Map([...carriedDocs('users').map(d => [d.id, expectedProfile(d.id, d.data)]), ...RENTALS_SEED.kept.filter(d => d.coll === 'users').map(d => [d.id, d.data])]);
+    assert.deepEqual(roles(data.users), roles(want), 'roles and status');
+});
+
+test('Rentals data survives wipe + apply: rent_* (and dev_rent_*), RENT_* audit entries, profiles and their rentRole', () => {
+    RENTALS_SEED.kept.forEach(({ coll, id, data: d }) => assert.deepEqual(norm(data[coll]?.get(id)), norm(d), `${coll}/${id} kept as is`));
+    RENTALS_SEED.wiped.forEach(({ coll, id }) => assert.equal(data[coll]?.has(id) ?? false, false, `${coll}/${id} wiped`));
+    assert.deepEqual([...(data.auditLogs?.keys() || [])], RENTALS_SEED.kept.filter(d => d.coll === 'auditLogs').map(d => d.id), 'only the RENT_* audit entries are left');
+    MERGED.forEach(({ id, data: d }) => assert.equal(data.users.get(id)?.rentRole, d.rentRole, `users/${id}: Happa's rentRole kept over the old profile's`));
+    console.log(`  Rentals data kept: ${RENTALS_SEED.kept.length} docs in ${KEPT_COLLS.join(', ')}; ${MERGED.length} profiles kept their rentRole; ${RENTALS_SEED.wiped.length} rehearsal docs wiped`);
 });
 
 test('service accounts (#101) are not carried: no users doc, no per-user doc, no login', async () => {
