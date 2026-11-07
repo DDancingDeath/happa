@@ -5,6 +5,7 @@
  * open bills already on the phone) and rent still due (the totals Rentals last
  * showed on this phone this month, kept in localStorage). No reads.
  * Lease reminders (agreement ending, rent increase due) are kept the same way (REM-4).
+ * The notifications bell lists REM-2/REM-4 from the same saved data.
  * Specs: docs/calculations.md REM-1, REM-2, REM-4.
  * @module utils/reminders
  */
@@ -12,12 +13,16 @@
 import { buildAging, chaseFirst } from './aging.js';
 import { AppState } from './state.js';
 import { round2 } from './money.js';
-import { toLocalISODate } from './dates.js';
+import { toLocalISODate, formatMonth } from './dates.js';
+import { emit, REMINDERS_CHANGED } from './events.js';
+import { t, getLang } from '../i18n/index.js';
+import { formatINR } from './due-reminder.js';
 
 /** Parties listed per reminder; the rest are counted. */
 export const REMINDER_LIMIT = 3;
 const RENT_KEY = 'happa.rentDueSummary';
 const LEASE_KEY = 'happa.rentLeaseNotes';
+const BELL_SEEN_KEY = 'happa.rentBellSeen';
 /** Lease reminders kept for Today (the rest are counted). */
 export const LEASE_REMINDER_LIMIT = 20;
 
@@ -48,6 +53,7 @@ export function saveRentReminder(store, { uid, month, due, late, dueUnits, at = 
     try {
         store.setItem(RENT_KEY, JSON.stringify({ uid, month, due: Number(due) || 0, late: Number(late) || 0, dueUnits: Number(dueUnits) || 0, at }));
     } catch (_) { /* storage full: Today just shows no rent line */ }
+    emit(REMINDERS_CHANGED);
 }
 
 /**
@@ -108,6 +114,7 @@ export function saveLeaseReminders(store, { uid, month, items, at = Date.now() }
     try {
         store.setItem(LEASE_KEY, JSON.stringify({ uid, month, items: list, more: Math.max(0, (items || []).length - list.length), at }));
     } catch (_) { /* storage full: Today just shows no lease lines */ }
+    emit(REMINDERS_CHANGED);
 }
 
 /**
@@ -126,4 +133,64 @@ export function leaseReminder(store, uid, month) {
     } catch (_) {
         return null;
     }
+}
+/**
+ * REM-4 line for one lease reminder ("agreement ends Jan 2027 · notice by Dec 2026",
+ * "rent increase due: 5% → ₹10,500"), shared by Today and the bell.
+ * @param {Rec} x a saved lease reminder
+ * @returns {string}
+ */
+export function leaseReminderText(x) {
+    const mon = (/** @type {string} */ m) => formatMonth(`${m}-01`, { lang: getLang() });
+    if (x.kind === 'increase') return t('ui.today.lease_increase', { pct: x.pct, amount: formatINR(x.newRent) });
+    return t(x.left < 0 ? 'ui.today.lease_ended' : x.left === 0 ? 'ui.today.lease_ends_now' : 'ui.today.lease_ends', { month: mon(x.end) })
+        + (x.notice ? ` · ${t('ui.today.lease_notice', { month: mon(x.notice) })}` : '');
+}
+
+/**
+ * REM-2 and REM-4 as bell items for this person and month (no reads). Each has a key
+ * for "seen": the rent item comes back each month and again once something is late.
+ * @param {Storage} store
+ * @param {string} uid
+ * @param {string} month
+ * @returns {{items: Array<Rec>, more: number}}
+ */
+export function rentBellItems(store, uid, month) {
+    const items = [];
+    const rent = rentReminder(store, uid, month);
+    if (rent) items.push({ key: `rent:${month}:${rent.late > 0 ? 'late' : 'due'}`, kind: 'rent', rent, at: rent.at });
+    const leases = leaseReminder(store, uid, month);
+    const at = leases?.at;
+    (leases?.items || []).forEach(x => items.push({
+        key: `lease:${month}:${x.kind}:${x.place}:${x.tenant}:${x.end}:${x.newRent}`, kind: 'lease', lease: x, at
+    }));
+    return { items, more: leases?.more || 0 };
+}
+
+/**
+ * Bell item keys this person has already seen on this phone.
+ * @param {Storage} store
+ * @param {string} uid
+ * @returns {Set<string>}
+ */
+export function bellSeen(store, uid) {
+    try {
+        const s = JSON.parse(store.getItem(`${BELL_SEEN_KEY}.${uid}`) || 'null');
+        return new Set(s && s.uid === uid && Array.isArray(s.keys) ? s.keys : []);
+    } catch (_) {
+        return new Set();
+    }
+}
+
+/**
+ * Remembers bell items as seen, newest first (the oldest keys are dropped).
+ * @param {Storage} store
+ * @param {string} uid
+ * @param {Array<string>} keys
+ */
+export function markBellSeen(store, uid, keys) {
+    try {
+        const all = [...new Set([...keys, ...bellSeen(store, uid)])].slice(0, 3 * LEASE_REMINDER_LIMIT);
+        store.setItem(`${BELL_SEEN_KEY}.${uid}`, JSON.stringify({ uid, keys: all }));
+    } catch (_) { /* storage full: the badge just shows them again */ }
 }
