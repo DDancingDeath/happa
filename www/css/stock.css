@@ -4,7 +4,7 @@
   border-radius: var(--radius-lg);
   margin-bottom: 12px;
   box-shadow: var(--shadow);
-  border-left: 4px solid var(--success-color);
+  border-left: 3px solid var(--success-color);
   transition: all var(--transition);
 }
 
@@ -17,7 +17,7 @@
   display: flex;
   justify-content: space-between;
   margin-bottom: 10px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 18px;
   color: var(--text-primary);
 }
@@ -53,7 +53,7 @@
 }
 
 .stock-low-card__title {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--on-warning-soft);
   margin-bottom: 6px;
 }
@@ -126,7 +126,7 @@
 
 .stock-row__name {
   grid-area: name;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 15px;
   overflow-wrap: anywhere;
 }
@@ -134,7 +134,7 @@
 .stock-row__qty {
   grid-area: qty;
   font-size: 17px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--on-success-soft);
   text-align: right;
   white-space: nowrap;
@@ -198,11 +198,11 @@ body.dark-mode .stock-row__qty {
 
 .stock-summary__value {
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
 }
 
 /* Stock search box (was its inline style) and its focus ring, which was inline onfocus / onblur (#89) */
-#stockSearchInput { width: 100%; padding: 14px; border: 2px solid var(--border-color); border-radius: 10px; font-size: 15px; transition: all 0.2s; }
+#stockSearchInput { width: 100%; padding: 14px; border: 1px solid var(--border-color); border-radius: 10px; font-size: 15px; transition: all 0.2s; }
 #stockSearchInput:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }

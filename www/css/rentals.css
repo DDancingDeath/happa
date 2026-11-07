@@ -7,13 +7,13 @@
 .rent-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
 .rent-card { background: var(--surface-muted); border-radius: 10px; padding: 12px; }
 .rent-card-label { font-size: 13px; color: var(--text-secondary); }
-.rent-card-value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+.rent-card-value { font-size: 20px; font-weight: 600; margin-top: 4px; }
 .rent-row { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
 .rent-row-head { display: flex; justify-content: space-between; gap: 10px; }
 .rent-row-right { text-align: right; }
-.rent-name { font-weight: 600; font-size: 16px; }
+.rent-name { font-weight: 500; font-size: 16px; }
 .rent-sub { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
-.rent-due { font-weight: 700; font-size: 17px; margin-top: 4px; }
+.rent-due { font-weight: 600; font-size: 17px; margin-top: 4px; }
 .rent-months, .rent-units { margin: 8px 0 0; padding-left: 18px; font-size: 14px; }
 .rent-unit { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; }
 .rent-kind { font-size: 12px; font-weight: 500; background: var(--surface-muted); color: var(--text-secondary); border-radius: 10px; padding: 2px 8px; margin-left: 6px; }
@@ -22,7 +22,7 @@
 .rent-btn-primary { background: #4f46e5; border-color: #4f46e5; color: #fff; }
 .rent-btn-wa { background: #25d366; border-color: #25d366; color: #fff; }
 .rent-btn-small { padding: 4px 8px; font-size: 12px; }
-.rent-badge { display: inline-block; border-radius: 10px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
+.rent-badge { display: inline-block; border-radius: 10px; padding: 2px 8px; font-size: 12px; font-weight: 500; }
 .rent-badge-paid { background: var(--success-soft); color: var(--on-success-soft); }
 .rent-badge-partial { background: var(--warning-soft); color: var(--on-warning-soft); }
 .rent-badge-due { background: var(--seg-bg); color: var(--text-primary); }
@@ -56,6 +56,6 @@ body.dark-mode .rent-row, body.dark-mode .rent-dialog-box { background: #1a202c;
 
 /* Tenant section in Add unit / Move in, electricity tag */
 .rent-check { display: flex; gap: 8px; align-items: center; font-size: 14px; margin-top: 10px; }
-.rent-occupied-toggle { font-weight: 600; margin-top: 14px; }
+.rent-occupied-toggle { font-weight: 500; margin-top: 14px; }
 .rent-tenant-section { border-top: 1px solid var(--border-color); margin-top: 10px; padding-top: 4px; }
 .rent-tag { display: inline-block; font-size: 12px; background: var(--warning-soft); color: var(--on-warning-soft); border-radius: 10px; padding: 1px 7px; }

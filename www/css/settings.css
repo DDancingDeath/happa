@@ -4,19 +4,14 @@
   padding: 20px;
   border-radius: var(--radius-lg);
   margin-bottom: 16px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-color);
-  transition: all var(--transition);
-}
-
-.settings-card:hover {
-  box-shadow: var(--shadow-md);
 }
 
 .settings-card h3 {
   margin: 0 0 16px 0;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 600;
   padding-bottom: 13px;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-primary);
@@ -26,26 +21,23 @@
   font-size: 13px;
   color: var(--text-secondary);
   margin: 8px 0 16px 0;
-  font-style: italic;
   line-height: 1.6;
 }
 
 .danger-btn {
-  background: var(--btn-danger);
-  color: white;
-  border: none;
+  background: var(--danger-soft);
+  color: var(--on-danger-soft);
+  border: 1px solid var(--danger-border);
   padding: 16px;
   border-radius: var(--radius-md);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   width: 100%;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition);
 }
 
 .danger-btn:hover {
-  box-shadow: var(--shadow);
+  background: var(--danger-light);
 }
 
 .danger-btn:active {
@@ -62,18 +54,20 @@
 .lang-switch-btn {
   flex: 1;
   padding: 10px 12px;
-  border: 2px solid var(--primary-color, #5560d6);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--primary-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--text-primary);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 
 .lang-switch-btn[aria-pressed="true"] {
-  background: var(--btn-primary);
-  color: white;
+  background: var(--primary-soft);
+  border-color: var(--primary-border);
+  color: var(--on-primary-soft);
+  font-weight: 600;
 }
 
 /* Roles & access (#84): sections switched off for this role */
@@ -116,7 +110,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 }
 
 .role-access-group td {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-secondary);
   background: var(--surface-muted);
 }
@@ -131,7 +125,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .settings-section-title {
   margin: 8px 0 12px;
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .settings-biz-bar {
@@ -193,7 +187,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
   border-radius: 8px;
   background: #c2410c;
   color: #fff;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 
