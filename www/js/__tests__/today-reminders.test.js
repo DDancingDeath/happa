@@ -2,7 +2,7 @@
  * Reminders on Today (#86): udhaar to collect / pay (REM-1) and rent due (REM-2).
  */
 import { jest } from '@jest/globals';
-import { overdueReminder, saveRentReminder, rentReminder, unitsWithDue, noteRent } from '../utils/reminders.js';
+import { overdueReminder, saveRentReminder, rentReminder, unitsWithDue, noteRent, saveLeaseReminders, rentBellItems, bellSeen, markBellSeen } from '../utils/reminders.js';
 import { DayManager } from '../modules/day.js';
 import { drillReminder, recordDrill } from '../utils/backup-verify.js';
 import { AppState } from '../utils/state.js';
@@ -34,6 +34,25 @@ describe('REM-1 who to collect from / pay', () => {
 });
 
 describe('REM-2 rent due', () => {
+    test('bell items: rent key comes back each month and once something is late; seen keys merge per person', () => {
+        const s = memStore();
+        expect(rentBellItems(s, 'u1', '2026-11')).toEqual({ items: [], more: 0 });
+        saveRentReminder(s, { uid: 'u1', month: '2026-11', due: 500, late: 0, dueUnits: 1, at: 5 });
+        saveLeaseReminders(s, { uid: 'u1', month: '2026-11', items: Array.from({ length: 22 }, (_, i) => ({ kind: 'ending', place: `U${i}`, end: '2026-12', left: 1 })) });
+        const first = rentBellItems(s, 'u1', '2026-11');
+        expect(first.items[0].key).toBe('rent:2026-11:due');
+        expect(first.items).toHaveLength(21);
+        expect(first.more).toBe(2);
+        markBellSeen(s, 'u1', first.items.map(x => x.key));
+        saveRentReminder(s, { uid: 'u1', month: '2026-11', due: 500, late: 1, dueUnits: 1 });
+        const seen = bellSeen(s, 'u1');
+        expect(rentBellItems(s, 'u1', '2026-11').items.filter(x => !seen.has(x.key)).map(x => x.key)).toEqual(['rent:2026-11:late']);
+        markBellSeen(s, 'u1', ['rent:2026-11:late']);
+        expect(bellSeen(s, 'u1').has('rent:2026-11:due')).toBe(true);
+        expect(bellSeen(s, 'u2').size).toBe(0);
+        expect(rentBellItems(s, 'u1', '2026-12').items).toHaveLength(0);
+    });
+
     test('only for the same person and month, and only when something is due', () => {
         const s = memStore();
         saveRentReminder(s, { uid: 'u1', month: '2026-11', due: 12000, late: 2, dueUnits: 3, at: 5 });
