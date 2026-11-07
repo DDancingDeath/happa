@@ -147,7 +147,7 @@ describe('apply: writes', () => {
         expect(freshLines.join('\n')).toMatch(/Left out the old app's rentRole on 1 profiles/);
     });
 
-    test('a removal in the old app carries over; a helper approved in Happa but pending in the old app stays approved', () => {
+    test('a removal in the old app carries over; a helper approved in Happa but pending in the old app keeps Rentals only', () => {
         expect(profileWrite({ name: 'X', status: 'disabled' }, { role: 'manager', status: 'approved', rentRole: 'member' }))
             .toMatchObject({ data: { name: 'X', status: 'disabled' }, kept: [], approval: false });
         expect(profileWrite({ status: 'rejected', rentRole: 'member' }, { rentRole: 'member' }).data).toEqual({ status: 'rejected' });
@@ -159,7 +159,10 @@ describe('apply: writes', () => {
         const pending = { name: 'P', role: 'staff', status: 'pending' };
         expect(profileWrite(pending, { role: 'none', status: 'active', rentRole: 'member', approvedAt: 7, approvedBy: 'o' }))
             .toEqual({ data: { name: 'P', role: 'none', status: 'active', rentRole: 'member', approvedAt: 7, approvedBy: 'o' }, kept: ['rentRole'], dropped: [], approval: true });
-        expect(profileWrite(pending, { status: 'approved', rentRole: 'member' }).data).toEqual({ name: 'P', status: 'approved', rentRole: 'member' });
+        // removed in the old app (profile deleted), then re-created as pending by a sign-in: no Aadhat role comes back
+        expect(profileWrite({ role: 'staff', status: 'pending', createdAt: 9 }, { role: 'manager', status: 'active', rentRole: 'member', approvedAt: 1 }).data)
+            .toEqual({ role: 'none', status: 'active', createdAt: 9, rentRole: 'member', approvedAt: 1 });
+        expect(profileWrite(pending, { status: 'approved', rentRole: 'member' }).data).toEqual({ name: 'P', role: 'none', status: 'approved', rentRole: 'member' });
         expect(profileWrite(pending, { role: 'staff', status: 'pending', rentRole: 'member' })).toMatchObject({ data: pending, approval: false });
         expect(profileWrite(pending, { role: 'staff', status: 'active', rentRole: null })).toMatchObject({ data: { ...pending, rentRole: null }, approval: false });
     });

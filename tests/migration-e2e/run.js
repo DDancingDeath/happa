@@ -163,6 +163,7 @@ async function main() {
     const seeded = (list) => list.filter(d => d.coll === 'users').length;
     const users = `users: delete ${seeded(RENTALS_SEED.wiped) + (REAL ? 0 : seeded(RENTALS_SEED.replaced))} docs, KEEP ${seeded(RENTALS_SEED.kept) + (REAL ? 0 : seeded(RENTALS_SEED.merged))} (profiles with a rentRole)`;
     if (!dry.includes(users)) throw new Error(`wipe dry run did not print "${users}"`);
+    if (!/Aadhat role cleared on kept profiles .*kept-login \(staff\)/.test(dry)) throw new Error('wipe dry run did not list the kept profiles whose Aadhat role it clears');
     migrate('wipe', '--project', PROJECT, '--emulator', '--yes');
     done();
 

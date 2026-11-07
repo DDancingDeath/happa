@@ -12,8 +12,9 @@ export const RENTALS_SEED = {
         { coll: 'rent_settings', id: 'default', data: { dueDay: 5 } },
         { coll: 'dev_rent_units', id: 'e2e-dev-unit', data: { label: 'dev' } },
         { coll: 'auditLogs', id: 'e2e-rent-audit', data: { action: 'RENT_PAYMENT', userId: 'kept-login' } },
-        // a rentals-only helper (no Aadhat role) whose login (kept-login) wipe keeps too
-        { coll: 'users', id: 'kept-login', data: { email: 'keep@other.test', name: 'Rentals helper', role: 'none', rentRole: 'member', status: 'approved' } }
+        // a Rentals helper only Happa has, with a stale Aadhat role: wipe keeps it (and its login, kept-login) for
+        // Rentals only; Aadhat roles come from the old app
+        { coll: 'users', id: 'kept-login', data: { email: 'keep@other.test', name: 'Rentals helper', role: 'staff', rentRole: 'member', status: 'approved' }, after: { role: 'none' } }
     ],
     /** wipe deletes these */
     wiped: [
@@ -35,3 +36,6 @@ export const RENTALS_SEED = {
         { coll: 'users', id: 'old-manager-02', data: { email: 'manager@old-shop.test', role: 'manager', status: 'approved', rentRole: null } }
     ]
 };
+
+/** A kept doc as it is after wipe + apply. */
+export const afterWipe = (d) => ({ ...d.data, ...(d.after || {}) });

@@ -19,7 +19,7 @@ import { parseHashParams } from '../../tools/migrate/lib/auth-import.js';
 import { checkEmulatorTarget } from '../../tools/migrate/lib/emulator.js';
 import { isServiceAccountEmail } from '../../tools/migrate/lib/service-accounts.js';
 import { SERVICE_LOGIN } from './make-old-backup.js';
-import { RENTALS_SEED } from './rentals-seed.js';
+import { RENTALS_SEED, afterWipe } from './rentals-seed.js';
 
 process.env.TZ = 'Asia/Kolkata';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -187,12 +187,12 @@ test('items, users (with roles), rate history and item order are carried as is',
         docs.forEach(({ id, data: d }) => assert.deepEqual(norm(data[coll].get(id)), norm(coll === 'users' ? expectedProfile(id, d) : d), `${coll}/${id} as is`));
     }
     const roles = (m) => Object.fromEntries([...m].map(([id, u]) => [id, `${u.role}/${u.status || ''}/${u.rentRole || ''}`]));
-    const want = new Map([...carriedDocs('users').map(d => [d.id, expectedProfile(d.id, d.data)]), ...RENTALS_SEED.kept.filter(d => d.coll === 'users').map(d => [d.id, d.data])]);
+    const want = new Map([...carriedDocs('users').map(d => [d.id, expectedProfile(d.id, d.data)]), ...RENTALS_SEED.kept.filter(d => d.coll === 'users').map(d => [d.id, afterWipe(d)])]);
     assert.deepEqual(roles(data.users), roles(want), 'roles and status');
 });
 
 test('Rentals data survives wipe + apply: rent_* (and dev_rent_*), RENT_* audit entries, profiles and their rentRole', () => {
-    RENTALS_SEED.kept.forEach(({ coll, id, data: d }) => assert.deepEqual(norm(data[coll]?.get(id)), norm(d), `${coll}/${id} kept as is`));
+    RENTALS_SEED.kept.forEach((d) => assert.deepEqual(norm(data[d.coll]?.get(d.id)), norm(afterWipe(d)), `${d.coll}/${d.id} kept (Aadhat role cleared on profiles)`));
     RENTALS_SEED.wiped.forEach(({ coll, id }) => assert.equal(data[coll]?.has(id) ?? false, false, `${coll}/${id} wiped`));
     assert.deepEqual([...(data.auditLogs?.keys() || [])], RENTALS_SEED.kept.filter(d => d.coll === 'auditLogs').map(d => d.id), 'only the RENT_* audit entries are left');
     MERGED.forEach(({ id, data: d }) => assert.equal(data.users.get(id)?.rentRole, d.rentRole, `users/${id}: Happa's rentRole kept over the old profile's`));

@@ -5,10 +5,11 @@
  * twins):
  * - `rent_*` (and `dev_rent_*`) collections are kept whole;
  * - `auditLogs`: only the entries whose action starts with `RENT_` are kept;
- * - `users`: profiles with a `rentRole` are kept (apply then writes the old
- *   profile over them and puts Happa's rentRole back); every other profile is
- *   deleted (apply re-creates the old app's people from the final backup, so a
- *   person removed there after a rehearsal keeps no access).
+ * - `users`: profiles with a `rentRole` are kept, with their Aadhat `role`
+ *   cleared (set to 'none'); every other profile is deleted. apply then
+ *   re-creates the old app's people from the final backup and puts Happa's
+ *   rentRole back, so Aadhat roles come from the old app only (it removes a
+ *   person by deleting the profile) and Rentals roles from Happa only.
  * Every other root collection is deleted with its subcollections. In Auth it
  * deletes the users whose email ends with `--test-domain` (default
  * `@happa.local`, the test logins) and the service-account logins on the
@@ -36,7 +37,7 @@ export function isTestLogin(user, domain = DEFAULT_TEST_DOMAIN) {
 
 /**
  * How wipe treats a root collection: 'keep' (Rentals), 'audit' (keeps the
- * RENT_* entries), 'users' (keeps the profiles with a rentRole) or 'delete'.
+ * RENT_* entries), 'users' (keeps the profiles with a rentRole, Aadhat role cleared) or 'delete'.
  */
 export function wipeMode(coll) {
     if (RENT_COLLECTION.test(coll)) return 'keep';
@@ -51,6 +52,7 @@ export const hasRentRole = (u) => u?.rentRole !== undefined && u?.rentRole !== n
 
 /** A profile wipe deletes: every one without a rentals role. */
 export const isWipedProfile = (data) => !hasRentRole(data);
+const hasAadhatRole = (u) => !!u?.role && u.role !== 'none';
 
 const countOf = async (query) => (await query.count().get()).data().count;
 
@@ -63,10 +65,9 @@ async function planCollections(db, colls) {
         if (mode === 'users') {
             const snap = await ref.select('role', 'rentRole').get();
             const ids = snap.docs.filter(d => isWipedProfile(d.data())).map(d => d.id);
-            const withRole = snap.docs.filter(d => !isWipedProfile(d.data()) && d.data().role && d.data().role !== 'none')
-                .map(d => `${d.id} (${d.data().role})`);
-            const owners = snap.docs.filter(d => isWipedProfile(d.data()) && d.data().role === 'owner').map(d => d.id);
-            plan.push({ coll, mode, delete: ids.length, keep: snap.size - ids.length, ids, withRole, owners });
+            const clear = snap.docs.filter(d => !isWipedProfile(d.data()) && hasAadhatRole(d.data()));
+            const owners = snap.docs.filter(d => d.data().role === 'owner').map(d => d.id);
+            plan.push({ coll, mode, delete: ids.length, keep: snap.size - ids.length, ids, clear: clear.map(d => d.id), withRole: clear.map(d => `${d.id} (${d.data().role})`), owners });
             continue;
         }
         const total = await countOf(ref);
@@ -112,9 +113,8 @@ export async function wipeProject({ project, keyProject, emulator = false, db, a
         if (p.mode === 'delete') log(`  ${p.coll}: delete ${p.delete} docs`);
         else if (p.mode === 'keep') log(`  ${p.coll}: KEEP ${p.keep} docs (${NOTE.keep})`);
         else log(`  ${p.coll}: delete ${p.delete} docs, KEEP ${p.keep} (${NOTE[p.mode]})`);
-        // A kept profile keeps its Aadhat role until apply writes the old profile over it.
-        if (p.withRole?.length) log(`    kept with an Aadhat role too (check each against the final backup): ${p.withRole.join(', ')}`);
-        if (p.owners?.length) log(`    owner profiles deleted (apply must re-create them: check each uid is in the final backup): ${p.owners.join(', ')}`);
+        if (p.withRole?.length) log(`    Aadhat role cleared on kept profiles (role 'none'; apply sets it again from the final backup): ${p.withRole.join(', ')}`);
+        if (p.owners?.length) log(`    owner profiles deleted or cleared (apply must re-create them: check each uid is in the final backup): ${p.owners.join(', ')}`);
     });
     const docs = plan.reduce((n, p) => n + p.delete, 0);
     const kept = plan.reduce((n, p) => n + p.keep, 0);
@@ -122,7 +122,7 @@ export async function wipeProject({ project, keyProject, emulator = false, db, a
     log(`Auth test logins (*${testDomain}): ${testUsers.length}: ${testUsers.map(u => u.email).join(', ') || 'none'}`);
     log(`Auth service accounts (denylist, never carried): ${serviceUsers.length}: ${serviceUsers.map(u => u.email).join(', ') || 'none'}`);
     log(`Cost: about ${docs} deletes (+ subcollection docs) and as many reads; Spark allows 20,000 deletes and 50,000 reads a day.`);
-    const summary = { docs, kept, collections: colls, plan: plan.map(({ ids, withRole, owners, ...p }) => p), testUsers: testUsers.length, serviceUsers: serviceUsers.length };
+    const summary = { docs, kept, collections: colls, plan: plan.map(({ ids, clear, withRole, owners, ...p }) => p), testUsers: testUsers.length, serviceUsers: serviceUsers.length };
     if (dryRun) {
         log('Dry run: nothing was deleted. Add --yes to delete.');
         return { ...summary, deleted: false };
@@ -135,7 +135,12 @@ export async function wipeProject({ project, keyProject, emulator = false, db, a
             log(`Deleted ${p.coll}`);
         } else if (p.mode === 'users') {
             for (const id of p.ids) await db.recursiveDelete(db.collection(p.coll).doc(id));
-            log(`${p.coll}: deleted ${p.ids.length} profiles, kept ${p.keep}`);
+            for (let i = 0; i < p.clear.length; i += DELETE_BATCH) {
+                const batch = db.batch();
+                p.clear.slice(i, i + DELETE_BATCH).forEach(id => batch.update(db.collection(p.coll).doc(id), { role: 'none' }));
+                await batch.commit();
+            }
+            log(`${p.coll}: deleted ${p.ids.length} profiles, kept ${p.keep} (Aadhat role cleared on ${p.clear.length})`);
         } else {
             const snap = await db.collection(p.coll).select('action').get();
             const gone = snap.docs.filter(d => !isRentAudit(d.data()));

@@ -119,7 +119,11 @@ describe('wipe', () => {
             },
             batch: () => {
                 const ops = [];
-                return { delete: (ref) => ops.push(ref), commit: async () => ops.forEach(drop) };
+                return {
+                    delete: (ref) => ops.push(() => drop(ref)),
+                    update: (ref, fields) => ops.push(() => Object.assign(store.get(ref.coll).get(ref.id), fields)),
+                    commit: async () => ops.forEach(op => op())
+                };
             }
         };
     };
@@ -185,8 +189,8 @@ describe('wipe', () => {
         expect(out).toMatch(/rent_units: KEEP 2 docs/);
         expect(out).toMatch(/auditLogs: delete 3 docs, KEEP 2 \(RENT_\* entries\)/);
         expect(out).toMatch(/users: delete 5 docs, KEEP 2 \(profiles with a rentRole\)/);
-        expect(out).toMatch(/kept with an Aadhat role too .*: both \(staff\)/);
-        expect(out).toMatch(/owner profiles deleted .*: owner$/m);
+        expect(out).toMatch(/Aadhat role cleared on kept profiles .*: both \(staff\)$/m);
+        expect(out).toMatch(/owner profiles deleted or cleared .*: owner$/m);
         expect(out).toMatch(/delete 13 docs .*keep 9 docs/);
         expect(db.deleted).toEqual([]);
         expect(auth.removed).toEqual([]);
@@ -208,6 +212,7 @@ describe('wipe', () => {
             users: ['both', 'helper']
         });
         expect(db.store.get('users').get('helper')).toEqual({ email: 'helper@gmail.com', role: 'none', rentRole: 'member' });
+        expect(db.store.get('users').get('both')).toEqual({ email: 'both@gmail.com', role: 'none', rentRole: 'manager' });
         expect(db.deleted.filter(p => /rent_/.test(p))).toEqual([]);
         expect(auth.removed).toEqual(['u0', 'u2']);
     });
