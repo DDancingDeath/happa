@@ -70,6 +70,8 @@ describe('apply: safety', () => {
         ['rent_settings', 'dev_rent_units'].forEach(coll => [false, true].forEach(dev => expect(() => targetColl(coll, dev)).toThrow(/Rentals/)));
         const rent = { ...bundle, writes: [...bundle.writes, { group: 'copy:rent', coll: 'rent_settings', id: 'default', data: {} }] };
         await expect(applyBundle({ bundle: rent, cursor: newCursor(rent, PROJECT), dryRun: true })).rejects.toThrow(/rent_settings/);
+        const audit = { ...bundle, writes: [...bundle.writes, { group: 'copy:auditLogs', coll: 'auditLogs', id: 'a1', data: { action: 'RENT_PAYMENT' } }] };
+        await expect(applyBundle({ bundle: audit, cursor: newCursor(audit, PROJECT), dryRun: true })).rejects.toThrow(/RENT_\* audit entry/);
     });
 
     test('a bundle is required', () => {

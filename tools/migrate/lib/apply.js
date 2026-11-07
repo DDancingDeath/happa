@@ -20,7 +20,7 @@
  */
 import { createHash } from 'crypto';
 import backupLib from '../../backup/backup-lib.js';
-import { BUNDLE_FORMAT, MIGRATION_DAILY_WRITES, OLD_PROJECT_ID, RENT_COLLECTION, SPARK_DAILY_WRITES } from './plan.js';
+import { BUNDLE_FORMAT, MIGRATION_DAILY_WRITES, OLD_PROJECT_ID, RENT_COLLECTION, SPARK_DAILY_WRITES, isRentAudit } from './plan.js';
 
 /** 20,000 Spark writes a day minus 8,000 kept for the shop's own first day. */
 export const DEFAULT_BUDGET = MIGRATION_DAILY_WRITES;
@@ -32,7 +32,13 @@ export const KEEP_USER_FIELDS = ['rentRole'];
 const APPROVAL_FIELDS = ['status', 'approvedAt', 'approvedBy'];
 const REMOVED_STATUSES = ['disabled', 'rejected'];
 const hasRentRole = (u) => !!u && u.rentRole !== undefined && u.rentRole !== null && u.rentRole !== '';
-const millis = (v) => (typeof v === 'number' ? v : typeof v?.toMillis === 'function' ? v.toMillis() : NaN);
+/** Milliseconds of a number, a Firestore Timestamp or a backup's tagged timestamp; NaN otherwise. */
+const millis = (v) => {
+    if (typeof v === 'number') return v;
+    if (typeof v?.toMillis === 'function') return v.toMillis();
+    if (v?.__type === 'timestamp') return typeof v.millis === 'number' ? v.millis : v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6);
+    return NaN;
+};
 
 /**
  * The profile apply writes: the bundle's without its KEEP_USER_FIELDS, plus
@@ -60,6 +66,12 @@ export function profileWrite(bundleData, happa) {
     return { data, kept, dropped, approval };
 }
 
+/** Whether the person has Rentals access after apply writes this old profile over Happa's (as rentRoleOf in the rules). */
+export function rentalsAccessAfter(bundleData, happa) {
+    const { data } = profileWrite(bundleData, happa);
+    return hasRentRole(data) && !['pending', ...REMOVED_STATUSES].includes(data.status);
+}
+
 export function bundleHash(bundle) {
     return createHash('sha256').update(JSON.stringify(bundle.writes)).digest('hex').slice(0, 32);
 }
@@ -83,6 +95,14 @@ export function targetColl(coll, dev) {
     if (dev) return coll.startsWith('dev_') ? coll : `dev_${coll}`;
     if (coll.startsWith('dev_')) throw new Error(`Refusing to write ${coll}: dev_ collections need --dev`);
     return coll;
+}
+
+/** Throws for a write a bundle must never hold: Rentals data, or dev_ without --dev. */
+export function checkWrite(w, dev) {
+    targetColl(w.coll, dev);
+    if (w.coll.replace(/^dev_/, '') === 'auditLogs' && isRentAudit(w.data)) {
+        throw new Error(`Refusing to write ${w.coll}/${w.id}: a RENT_* audit entry is Happa's Rentals data`);
+    }
 }
 
 export function validateBundle(bundle) {
@@ -162,7 +182,7 @@ export async function applyBundle({
     saveCursor = () => {}, log = () => {}, batchSize = BATCH_SIZE, now = () => Date.now()
 }) {
     validateBundle(bundle);
-    bundle.writes.forEach(w => targetColl(w.coll, dev));
+    bundle.writes.forEach(w => checkWrite(w, dev));
     const run = planRun(bundle, cursor, budget);
     if (dryRun) {
         log(`Dry run: ${run.total} writes in the bundle; ${run.start} already done.`);

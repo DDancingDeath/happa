@@ -201,7 +201,14 @@ describe('wipe', () => {
         const pendingOld = [];
         await wipeProject({ project: 'new-proj', keyProject: 'new-proj', db, auth, log: (l) => pendingOld.push(l),
             oldProfiles: new Map([['both', { status: 'pending' }], ['helper', { status: 'approved' }]]) });
-        expect(pendingOld.join('\n')).toMatch(/KEEP RENTALS ACCESS although .*: both \(pending\)$/m);
+        expect(pendingOld.join('\n')).toMatch(/LOSE RENTALS ACCESS at apply .*: both \(pending\)$/m);
+        expect(pendingOld.join('\n')).not.toMatch(/KEEP RENTALS ACCESS/);
+        // approved in Happa after the old app's pending profile was made: apply keeps Rentals access
+        const later = fakeDb({ users: { both: { role: 'staff', rentRole: 'manager', status: 'active', approvedAt: 5 } } });
+        const laterLines = [];
+        await wipeProject({ project: 'new-proj', keyProject: 'new-proj', db: later, auth, log: (l) => laterLines.push(l),
+            oldProfiles: new Map([['both', { status: 'pending', createdAt: { __type: 'timestamp', millis: 1 } }]]) });
+        expect(laterLines.join('\n')).toMatch(/KEEP RENTALS ACCESS although .*: both \(pending\)$/m);
         expect(db.deleted).toEqual([]);
         expect(auth.removed).toEqual([]);
         await expect(wipeProject({ project: 'aadhat-management', keyProject: 'aadhat-management', db, auth, dryRun: false })).rejects.toThrow(/OLD project/);

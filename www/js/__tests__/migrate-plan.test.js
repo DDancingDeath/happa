@@ -217,11 +217,13 @@ describe('plan: copies, settings, counters, dev_', () => {
         const backup = load();
         backup.collections.rent_properties = [{ id: 'p1', data: { name: 'Old app property' } }];
         backup.collections.rent_settings = [{ id: 'default', data: { dueDay: 1 } }];
-        for (const mode of ['full', 'fresh']) {
-            const { bundle, summary } = plan({ mode }, backup);
-            expect(bundle.writes.some(w => /rent_/.test(w.coll))).toBe(false);
-            expect(summary.rentalsExcluded).toEqual([{ name: 'rent_properties', docs: 1 }, { name: 'rent_settings', docs: 1 }]);
-            expect(formatReport(summary)).toMatch(/Excluded \(Rentals.*rent_properties \(1\), rent_settings \(1\)/);
+        backup.collections.auditLogs = [{ id: 'a1', data: { action: 'RENT_PAYMENT' } }, { id: 'a2', data: { action: 'login' } }];
+        for (const [mode, copy] of [['full'], ['fresh'], ['fresh', ['items', 'auditLogs']]]) {
+            const { bundle, summary } = plan({ mode, copy }, backup);
+            expect(bundle.writes.some(w => /rent_/.test(w.coll) || /^RENT_/.test(w.data?.action || ''))).toBe(false);
+            expect(summary.rentalsExcluded).toEqual([{ name: 'rent_properties', docs: 1 }, { name: 'rent_settings', docs: 1 }, { name: 'auditLogs (RENT_*)', docs: 1 }]);
+            expect(formatReport(summary)).toMatch(/Excluded \(Rentals.*rent_properties \(1\), rent_settings \(1\), auditLogs \(RENT_\*\) \(1\)/);
+            if (mode === 'full' || copy) expect(bundle.writes.filter(w => w.coll === 'auditLogs').map(w => w.id)).toEqual(['a2']);
         }
         expect(() => parseOptions({ copy: ['items', 'rent_units'] })).toThrow(/Rentals collections are never migrated.*: rent_units/);
     });

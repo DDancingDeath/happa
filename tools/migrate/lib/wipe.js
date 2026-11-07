@@ -19,13 +19,12 @@
  * Dry run unless the caller passes dryRun: false (CLI: --yes). Refuses the
  * old project and keys for another project (checkTarget).
  */
-import { checkTarget } from './apply.js';
-import { RENT_COLLECTION } from './plan.js';
+import { checkTarget, rentalsAccessAfter } from './apply.js';
+import { RENT_AUDIT_PREFIX, RENT_COLLECTION, isRentAudit } from './plan.js';
 import { isServiceAccountEmail } from './service-accounts.js';
 
-export { RENT_COLLECTION };
+export { RENT_AUDIT_PREFIX, RENT_COLLECTION, isRentAudit };
 export const DEFAULT_TEST_DOMAIN = '@happa.local';
-export const RENT_AUDIT_PREFIX = 'RENT_';
 const DELETE_BATCH = 400;
 
 /** Auth users that are test logins (email ends with the test domain). */
@@ -47,7 +46,6 @@ export function wipeMode(coll) {
     return 'delete';
 }
 
-export const isRentAudit = (d) => typeof d?.action === 'string' && d.action.startsWith(RENT_AUDIT_PREFIX);
 export const hasRentRole = (u) => u?.rentRole !== undefined && u?.rentRole !== null && u?.rentRole !== '';
 
 /** A profile wipe deletes: every one without a rentals role. */
@@ -63,16 +61,26 @@ async function planCollections(db, colls, oldProfiles) {
         const mode = wipeMode(coll);
         const ref = db.collection(coll);
         if (mode === 'users') {
-            const snap = await ref.select('role', 'rentRole').get();
+            const snap = await ref.select('role', 'rentRole', 'status', 'approvedAt').get();
             const ids = snap.docs.filter(d => isWipedProfile(d.data())).map(d => d.id);
             const clear = snap.docs.filter(d => !isWipedProfile(d.data()) && hasAadhatRole(d.data()));
             const owners = snap.docs.filter(d => d.data().role === 'owner').map(d => d.id);
-            // A kept rentRole may have come from the old app at the rehearsal: flag people the old app no longer approves.
-            const unconfirmed = oldProfiles ? snap.docs.filter(d => !isWipedProfile(d.data()))
-                .map(d => [d.id, oldProfiles.get(d.id)])
-                .filter(([, old]) => !old || ['pending', 'rejected', 'disabled'].includes(old.status))
-                .map(([id, old]) => `${id} (${old ? old.status : 'not in it'})`) : null;
-            plan.push({ coll, mode, delete: ids.length, keep: snap.size - ids.length, ids, clear: clear.map(d => d.id), withRole: clear.map(d => `${d.id} (${d.data().role})`), owners, unconfirmed });
+            // With the final bundle: what apply will do to each kept Rentals role the old app does not approve
+            // (a kept rentRole may be the rehearsal's copy of the old app's).
+            let unconfirmed = null;
+            let lose = null;
+            if (oldProfiles) {
+                unconfirmed = [];
+                lose = [];
+                snap.docs.filter(d => !isWipedProfile(d.data())).forEach(d => {
+                    const old = oldProfiles.get(d.id);
+                    if (!old) unconfirmed.push(`${d.id} (not in it)`);
+                    else if (['pending', 'rejected', 'disabled'].includes(old.status)) {
+                        (rentalsAccessAfter(old, d.data()) ? unconfirmed : lose).push(`${d.id} (${old.status})`);
+                    }
+                });
+            }
+            plan.push({ coll, mode, delete: ids.length, keep: snap.size - ids.length, ids, clear: clear.map(d => d.id), withRole: clear.map(d => `${d.id} (${d.data().role})`), owners, unconfirmed, lose });
             continue;
         }
         const total = await countOf(ref);
@@ -121,6 +129,7 @@ export async function wipeProject({ project, keyProject, emulator = false, db, a
         else log(`  ${p.coll}: delete ${p.delete} docs, KEEP ${p.keep} (${NOTE[p.mode]})`);
         if (p.withRole?.length) log(`    Aadhat role cleared on kept profiles (role 'none'; apply sets it again for the people in the final backup): ${p.withRole.join(', ')}`);
         if (p.unconfirmed?.length) log(`    KEEP RENTALS ACCESS although the old app's final backup does not approve them (confirm each with the owner; remove the rentRole in Happa if not): ${p.unconfirmed.join(', ')}`);
+        if (p.lose?.length) log(`    LOSE RENTALS ACCESS at apply (the old app's final backup has them pending since before their Happa approval, rejected or disabled; re-grant in Happa after apply if wanted): ${p.lose.join(', ')}`);
         if (p.mode === 'users' && !p.unconfirmed && p.keep) log('    (add --bundle <bundle.json> to check the kept profiles against the final backup)');
         if (p.owners?.length) log(`    owner profiles deleted or cleared (apply must re-create them: check each uid is in the final backup): ${p.owners.join(', ')}`);
     });
@@ -130,7 +139,7 @@ export async function wipeProject({ project, keyProject, emulator = false, db, a
     log(`Auth test logins (*${testDomain}): ${testUsers.length}: ${testUsers.map(u => u.email).join(', ') || 'none'}`);
     log(`Auth service accounts (denylist, never carried): ${serviceUsers.length}: ${serviceUsers.map(u => u.email).join(', ') || 'none'}`);
     log(`Cost: about ${docs} deletes (+ subcollection docs) and as many reads; Spark allows 20,000 deletes and 50,000 reads a day.`);
-    const summary = { docs, kept, collections: colls, plan: plan.map(({ ids, clear, withRole, owners, unconfirmed, ...p }) => ({ ...p, ...(unconfirmed ? { unconfirmed: unconfirmed.length } : {}) })), testUsers: testUsers.length, serviceUsers: serviceUsers.length };
+    const summary = { docs, kept, collections: colls, plan: plan.map(({ ids, clear, withRole, owners, unconfirmed, lose, ...p }) => ({ ...p, ...(unconfirmed ? { unconfirmed: unconfirmed.length, lose: lose.length } : {}) })), testUsers: testUsers.length, serviceUsers: serviceUsers.length };
     if (dryRun) {
         log('Dry run: nothing was deleted. Add --yes to delete.');
         return { ...summary, deleted: false };

@@ -254,7 +254,9 @@ person). Details: the #232 README,
    (each must be in the final backup). Go through the **KEEP RENTALS ACCESS
    although…** list with the owner: a `rentRole` there may be a copy of the old
    app's from the rehearsal for someone the old app has since removed; remove it
-   in Happa (Settings › Roles & access) if so. Only then run it
+   in Happa (Settings › Roles & access) if so. Note the **LOSE RENTALS ACCESS at
+   apply** list too, and re-grant those people in Happa after `apply` if the
+   owner wants them. Only then run it
    with `--yes`, and run `apply` straight after it. A rerun before Happa is in
    use is again `wipe --yes` then `apply --restart` (`apply` never removes a
    profile, so the `wipe` is what drops people the old app removed).
