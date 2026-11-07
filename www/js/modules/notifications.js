@@ -54,11 +54,6 @@ const NotificationsManager = {
     rentNew: new Set(),
     remindersBound: false,
 
-    /**
-     * Rent reminders (REM-2/REM-4) as the Rent page last saved them on this phone this
-     * month, for people with a rentals role. No reads and no Rentals code.
-     * @returns {{items: Array<Rec>, more: number}}
-     */
     rentItems() {
         if (!this.uid || !rentRoleOf(AppState.userRole, AppState.rentRole)) return { items: [], more: 0 };
         try {
@@ -68,7 +63,6 @@ const NotificationsManager = {
         }
     },
 
-    /** @private Reminder items not yet seen in the inbox on this phone. */
     unseenRentCount() {
         const { items } = this.rentItems();
         if (!items.length) return 0;
@@ -77,7 +71,6 @@ const NotificationsManager = {
         return items.filter(x => !seen.has(x.key)).length;
     },
 
-    /** @private */
     markRentSeen(items) {
         if (!items.length) return;
         try { markBellSeen(localStorage, this.uid, items.map(x => x.key)); } catch (_) { /* badge shows them again */ }
@@ -325,13 +318,11 @@ const NotificationsManager = {
         }
     },
 
-    /** Rent reminder tap: open Rentals on the Rent or Tenants page. */
     openReminder(page) {
         this.close();
         window.app?.rentals?.open?.(page === 'tenants' ? 'tenants' : 'rent');
     },
 
-    /** @private Rent reminder rows (REM-2/REM-4), above the notifications. */
     rentRowsHtml() {
         const { items, more } = this.rentItems();
         if (!items.length) return '';
