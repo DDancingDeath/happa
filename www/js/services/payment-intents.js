@@ -28,7 +28,7 @@ const MAX_INTENTS = 50;
 
 /** @type {Record<string, Intent>} used when localStorage can't be */
 let memory = {};
-/** localStorage holds every intent (the one source, shared by tabs) until a write to it fails. */
+/** localStorage holds every intent (the one source, shared by tabs) until reading or writing it fails. */
 let stored = true;
 
 /**
@@ -56,10 +56,11 @@ function readAll() {
     if (!s || !stored) return { ...memory };
     try {
         const parsed = JSON.parse(s.getItem(STORE_KEY) || '{}');
-        return parsed && typeof parsed === 'object' ? parsed : { ...memory };
-    } catch (_) {
-        return { ...memory };
-    }
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+    } catch (_) { /* unreadable: below */ }
+    // Never write this tab's copy over the shared one: this tab keeps its own from now on
+    stored = false;
+    return { ...memory };
 }
 
 /** @param {Record<string, Intent>} all */
