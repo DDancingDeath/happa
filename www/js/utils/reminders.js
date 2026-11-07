@@ -5,7 +5,6 @@
  * open bills already on the phone) and rent still due (the totals Rentals last
  * showed on this phone this month, kept in localStorage). No reads.
  * Lease reminders (agreement ending, rent increase due) are kept the same way (REM-4).
- * The notifications bell lists REM-2/REM-4 from the same saved data.
  * Specs: docs/calculations.md REM-1, REM-2, REM-4.
  * @module utils/reminders
  */
@@ -134,12 +133,7 @@ export function leaseReminder(store, uid, month) {
         return null;
     }
 }
-/**
- * REM-4 line for one lease reminder ("agreement ends Jan 2027 · notice by Dec 2026",
- * "rent increase due: 5% → ₹10,500"), shared by Today and the bell.
- * @param {Rec} x a saved lease reminder
- * @returns {string}
- */
+/** @param {Rec} x @returns {string} */
 export function leaseReminderText(x) {
     const mon = (/** @type {string} */ m) => formatMonth(`${m}-01`, { lang: getLang() });
     if (x.kind === 'increase') return t('ui.today.lease_increase', { pct: x.pct, amount: formatINR(x.newRent) });
@@ -148,11 +142,8 @@ export function leaseReminderText(x) {
 }
 
 /**
- * REM-2 and REM-4 as bell items for this person and month (no reads). Each has a key
- * for "seen": the rent item comes back each month and again once something is late.
- * @param {Storage} store
- * @param {string} uid
- * @param {string} month
+ * The rent key changes with due → late, so the badge returns once rent is late.
+ * @param {Storage} store @param {string} uid @param {string} month
  * @returns {{items: Array<Rec>, more: number}}
  */
 export function rentBellItems(store, uid, month) {
@@ -167,12 +158,7 @@ export function rentBellItems(store, uid, month) {
     return { items, more: leases?.more || 0 };
 }
 
-/**
- * Bell item keys this person has already seen on this phone.
- * @param {Storage} store
- * @param {string} uid
- * @returns {Set<string>}
- */
+/** @param {Storage} store @param {string} uid @returns {Set<string>} */
 export function bellSeen(store, uid) {
     try {
         const s = JSON.parse(store.getItem(`${BELL_SEEN_KEY}.${uid}`) || 'null');
@@ -182,12 +168,7 @@ export function bellSeen(store, uid) {
     }
 }
 
-/**
- * Remembers bell items as seen, newest first (the oldest keys are dropped).
- * @param {Storage} store
- * @param {string} uid
- * @param {Array<string>} keys
- */
+/** @param {Storage} store @param {string} uid @param {Array<string>} keys */
 export function markBellSeen(store, uid, keys) {
     try {
         const all = [...new Set([...keys, ...bellSeen(store, uid)])].slice(0, 3 * LEASE_REMINDER_LIMIT);
