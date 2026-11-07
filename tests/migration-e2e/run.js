@@ -32,6 +32,7 @@ import path from 'path';
 import { spawn, spawnSync } from 'child_process';
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
+import { RENTALS_SEED } from './rentals-seed.js';
 
 process.env.TZ = 'Asia/Kolkata';
 const require = createRequire(import.meta.url);
@@ -96,7 +97,7 @@ async function signUp(email, password, localId) {
     });
 }
 async function setDoc(coll, id, fields) {
-    const enc = (v) => (typeof v === 'number' ? { integerValue: String(v) } : typeof v === 'boolean' ? { booleanValue: v } : { stringValue: String(v) });
+    const enc = (v) => (v === null ? { nullValue: null } : typeof v === 'number' ? { integerValue: String(v) } : typeof v === 'boolean' ? { booleanValue: v } : { stringValue: String(v) });
     await http(`${DOCS()}/${coll}/${id}`, { method: 'PATCH', headers: ADMIN, body: JSON.stringify({ fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, enc(v)])) }) });
 }
 /** Emulator-only password for a migrated login (real backups: the real passwords are not known). */
@@ -136,7 +137,7 @@ async function main() {
     }
     done();
 
-    done = step('2. Emulators: clean start + rehearsal leftovers for wipe');
+    done = step('2. Emulators: clean start + rehearsal leftovers for wipe + Rentals data it keeps');
     await resetEmulators();
     await setDoc('retailSales', 'rehearsal-bill', { billNumber: 'S-REHEARSAL-1', dueAmount: 123, customerName: 'Rehearsal' });
     await setDoc('dev_items', 'rehearsal-item', { name: 'Rehearsal item' });
@@ -145,17 +146,27 @@ async function main() {
     await signUp('keep@other.test', 'Keep#12345', 'kept-login');
     // a service-account login an earlier rehearsal imported (#101): wipe must delete it
     await signUp('staging-readonly@aadhat.local', 'Rehearsal#2', 'rehearsal-staging-ro');
+    // Rentals data is real: wipe must keep it and apply must not overwrite it (rentals-seed.js)
+    for (const d of [...RENTALS_SEED.kept, ...RENTALS_SEED.wiped, ...(REAL ? [] : [...RENTALS_SEED.merged, ...RENTALS_SEED.replaced])]) await setDoc(d.coll, d.id, d.data);
     done();
 
     done = step('3. migrate.js plan');
     const planDir = path.join(outDir, 'plan');
     const planned = migrate('plan', '--in', files.backup, '--out-dir', planDir);
     if (!REAL && !/Skipped 1 service accounts/.test(planned)) throw new Error('plan did not report the skipped service account');
+    if (!REAL && !/Excluded \(Rentals[^\n]*rent_settings \(1\)/.test(planned)) throw new Error('plan did not leave out the old app\'s Rentals docs');
     done();
 
     done = step('4. migrate.js wipe (dry run, then --yes)');
-    migrate('wipe', '--project', PROJECT, '--emulator');
-    migrate('wipe', '--project', PROJECT, '--emulator', '--yes');
+    const dry = migrate('wipe', '--project', PROJECT, '--emulator', '--bundle', path.join(planDir, 'bundle.json'));
+    ['rent_properties: KEEP 1 docs', 'rent_units: KEEP 1 docs', 'dev_rent_units: KEEP 1 docs', 'auditLogs: delete 2 docs, KEEP 1 (RENT_* entries)']
+        .forEach(s => { if (!dry.includes(s)) throw new Error(`wipe dry run did not print "${s}"`); });
+    const seeded = (list) => list.filter(d => d.coll === 'users').length;
+    const users = `users: delete ${seeded(RENTALS_SEED.wiped) + (REAL ? 0 : seeded(RENTALS_SEED.replaced))} docs, KEEP ${seeded(RENTALS_SEED.kept) + (REAL ? 0 : seeded(RENTALS_SEED.merged))} (profiles with a rentRole)`;
+    if (!dry.includes(users)) throw new Error(`wipe dry run did not print "${users}"`);
+    if (!/Aadhat role cleared on kept profiles .*kept-login \(staff\)/.test(dry)) throw new Error('wipe dry run did not list the kept profiles whose Aadhat role it clears');
+    if (!/KEEP RENTALS ACCESS although .*kept-login \(not in it\)/.test(dry)) throw new Error('wipe --bundle did not flag the kept Rentals profile missing from the final backup');
+    migrate('wipe', '--project', PROJECT, '--emulator', '--bundle', path.join(planDir, 'bundle.json'), '--yes');
     done();
 
     done = step('5. migrate.js apply (dry run, then --yes)');
