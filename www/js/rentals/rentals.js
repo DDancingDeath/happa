@@ -56,6 +56,7 @@ const state = {
     view: savedView(),
     openProperty: '',
     detail: '',
+    detailKey: 0,
     tenantList: { q: '', filter: 'all', sort: 'name' },
     filters: { propertyId: '', type: '', status: '', q: '', sort: 'desc' }
 };
@@ -215,7 +216,10 @@ function render() {
         return loadMod(need).then(() => { if (isVisible()) render(); }, () => { state.lazyFailed = true; fail('msg.rent.could_not_load'); render(); });
     }
     const detail = state.page === 'tenants' && state.detail ? lazyMods.pages.renderTenant(unitCtx(), d, state.detail) : null;
-    if (state.detail && !detail) state.detail = '';
+    if (state.detail && !detail) {
+        state.detail = '';
+        if (history.state?.rentDetail === state.detailKey) history.back();
+    }
     root.innerHTML = detail || (state.page === 'tenants' ? lazyMods.pages.renderTenants(unitCtx(), d)
         : state.page === 'properties' ? lazyMods.pages.renderProperties(unitCtx(), d)
         : renderRent(d, adv));
@@ -351,24 +355,29 @@ function setView(view) {
 
 /** The tenant's own screen, on the Tenants page; Back (in the page or the phone's) returns to the list. */
 let popBound = false;
+let detailSeq = 0;
+let dialogClosedAt = 0;
 function openTenant(id) {
     // The phone's Back closes the screen: it adds a history entry (listener added on first use, not at start-up).
     if (!popBound) {
         popBound = true;
         window.addEventListener('popstate', (e) => {
-            if (state.detail && e.state?.rentDetail !== state.detail) { state.detail = ''; if (isVisible()) render(); }
+            // Back that only closed a form (NavigationManager closes it first) keeps the screen.
+            if (Date.now() - dialogClosedAt < 300) return;
+            if (state.detail && e.state?.rentDetail !== state.detailKey) { state.detail = ''; if (isVisible()) render(); }
         });
     }
     state.page = 'tenants';
     state.detail = String(id || '');
-    try { history.pushState({ ...(history.state || {}), rentDetail: state.detail }, ''); } catch (_) { /* no history */ }
+    state.detailKey = ++detailSeq;
+    try { history.pushState({ ...(history.state || {}), rentDetail: state.detailKey }, ''); } catch (_) { /* no history */ }
     render();
     byId('rentDetailTitle')?.focus?.();
 }
 
 function back() {
     if (!state.detail) return;
-    if (history.state?.rentDetail === state.detail) { history.back(); return; }
+    if (history.state?.rentDetail === state.detailKey) { history.back(); return; }
     state.detail = '';
     render();
 }
@@ -573,6 +582,7 @@ function dialog(html, { info = false } = {}) {
     body.querySelector('input, select')?.focus();
     return new Promise((resolve) => {
         dialogResolve = (v) => {
+            dialogClosedAt = Date.now();
             box.hidden = true;
             dialogResolve = null;
             resolve(v === true);
@@ -625,7 +635,7 @@ export const RentalsModule = {
         settings: (which) => NavigationManager.showTabFromNav(which === 'roles' ? 'settings-roles' : 'settings-rentals'),
         filterUnits: lazyCall('advanced', 'filterUnits'),
         ...Object.fromEntries(['meter', 'editLease', 'addTenant', 'editTenant', 'archiveTenant', 'moveIn', 'moveOut', 'fillRent', 'addProperty', 'editProperty',
-            'archiveProperty', 'addUnit', 'editUnit', 'archiveUnit', 'tenantToggle', 'tenantPick', 'tenantElec', 'changeUnit', 'tenantList'].map(n => [n, pg(n)])),
+            'archiveProperty', 'addUnit', 'editUnit', 'archiveUnit', 'tenantToggle', 'tenantPick', 'tenantElec', 'changeUnit', 'tenantList', 'remindTenant'].map(n => [n, pg(n)])),
         openTenant, back,
         shareLink: (id) => lazyUi('./rent-link.js', 'shareLink', id), linkAction: (a, id) => lazyUi('./rent-link.js', 'linkAction', a, id), setView, openProperty,
         addTenantToUnit: (unitId) => unitUi('toUnit', null, unitId),

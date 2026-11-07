@@ -7,14 +7,15 @@
 
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
-import { formatINR } from '../utils/due-reminder.js';
+import { formatINR, whatsAppReminderUrl } from '../utils/due-reminder.js';
+import { openExternal } from '../utils/open-external.js';
 import { t, getLang } from '../i18n/index.js';
 import { AuditService } from '../services/audit.js';
 import * as store from './rent-store.js';
 import { isShareToken } from './rent-public.js';
 import { tenantRows, tenantDues } from './rent-views.js';
 import {
-    monthLabel, chargeDue, chargeStatus, increaseDue, meterBill, tenantError, leaseError, isMonth, addMonths, ELEC_MODES, elecMode, mobile10
+    monthLabel, chargeDue, chargeStatus, buildRentReminderText, increaseDue, meterBill, tenantError, leaseError, isMonth, addMonths, ELEC_MODES, elecMode, mobile10
 } from './rent-math.js';
 
 const esc = (v) => Helpers.escapeHtml(v);
@@ -132,7 +133,7 @@ function renderTenant(d, id) {
     const first = owing[0];
     const payActs = first ? `${w ? btn(' rent-btn-primary', 'pay', `'${js(first.leaseId)}'`, 'ui.rent.record_payment', '', ' data-rent-pay') : ''}
         ${w ? owing.slice(1).map(r => `<button type="button" class="rent-btn" data-rent-pay data-onclick="rentals.pay('${js(r.leaseId)}')">${et('ui.rent.collect_at', { place: c.placeOf(ix, r.unitId, r.unitLabel || '') })}</button>`).join('') : ''}
-        ${btn(' rent-btn-wa', 'remind', `'${js(first.leaseId)}'`, 'ui.rent.whatsapp')}` : '';
+        ${btn(' rent-btn-wa', 'remindTenant', `'${tid}'`, 'ui.rent.whatsapp')}` : '';
     const current = lease ? d.charges.find(x => x.leaseId === lease.id && x.month === c.state.month) : null;
     const inc = lease ? increaseDue(lease, c.state.month) : { due: false };
     const meterBtn = lease && w && current && elecMode(lease) === 'meter' && (!current.electricity || c.isManager)
@@ -161,6 +162,23 @@ function renderTenant(d, id) {
         </section>
         ${leaseCard}
     </div>`;
+}
+
+/** WhatsApp reminder for everything the tenant owes, over all their tenancies (what the screen shows). */
+function remindTenant(id) {
+    const d = store.snapshot();
+    const tn = d.tenants.find(x => x.id === id);
+    const due = tenantDues(tenantRows(d, c.state.month), id);
+    if (!tn || due.total <= 0) return;
+    const lease = d.leases.find(l => l.tenantId === id) || null;
+    const last = due.rows[due.rows.length - 1];
+    const text = buildRentReminderText({
+        tenantName: tn.name, place: c.placeOf(c.index(d), lease ? lease.unitId : last.unitId, last.unitLabel || ''), charges: due.charges,
+        lastMonth: lease ? c.state.month : last.lease?.endMonth || c.state.month, lang: getLang(), since: lease?.startDate || '',
+        link: c.linkFor(lease || d.linked.find(l => l.tenantId === id))
+    });
+    if (!tn.phone) UIManager.showToast(t('msg.rent.no_phone'), 'info');
+    openExternal(whatsAppReminderUrl(text, tn.phone));
 }
 
 // ---------- Forms ----------
@@ -330,5 +348,5 @@ async function moveOut(leaseId) {
 }
 
 export const tenants = Object.fromEntries(Object.entries({
-    renderTenants, renderTenant, tenantList, addTenant, editTenant, archiveTenant, moveIn, changeUnit, moveOut, meter, editLease
+    renderTenants, renderTenant, tenantList, remindTenant, addTenant, editTenant, archiveTenant, moveIn, changeUnit, moveOut, meter, editLease
 }).map(([k, f]) => [k, (ctx, ...a) => { c = ctx; return f(...a); }]));

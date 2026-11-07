@@ -25,12 +25,14 @@ jest.mock('../rentals/rent-store.js', () => ({
 jest.mock('../firebase/firestore-service.js', () => ({ FirebaseService: { loadUsers: jest.fn(async () => []) } }));
 jest.mock('../ui/business-switcher.js', () => ({ rentalsRole: jest.fn(() => 'owner') }));
 jest.mock('../ui/ui-manager.js', () => ({ UIManager: { showToast: jest.fn(), showModal: jest.fn() } }));
+jest.mock('../utils/open-external.js', () => ({ openExternal: jest.fn() }));
 jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}) } }));
 
 import { _test, RentalsModule } from '../rentals/rentals.js';
 import { AppState } from '../utils/state.js';
 import { saveLeaseReminders } from '../utils/reminders.js';
 import { rentalsRole } from '../ui/business-switcher.js';
+import { openExternal } from '../utils/open-external.js';
 import { setLang, resetLangForTests } from '../i18n/index.js';
 import { monthKey } from '../rentals/rent-math.js';
 
@@ -223,6 +225,38 @@ describe('Tenants and the tenant screen', () => {
         root = document.getElementById('rentalsBody');
         expect(root.querySelector('#rentDetailTitle')).toBeNull();
         expect(root.querySelectorAll('[data-tenant]').length).toBe(2);
+    });
+
+    test('WhatsApp on the tenant screen asks for everything owed, the old unit after a change too', async () => {
+        setLang('en');
+        const saved = global.__rentData;
+        global.__rentData = { ...DATA, tenants: [{ id: 'T1', name: 'Ram', phone: '9876543210' }, DATA.tenants[1]], charges: [
+            { id: 'L0_2025-12', leaseId: 'L0', unitId: 'U4', tenantId: 'T1', unitLabel: 'G1', month: '2025-12', dueDay: 10, amount: 5000, paid: 0 },
+            { id: `L1_${M}`, leaseId: 'L1', unitId: 'U1', tenantId: 'T1', month: M, dueDay: 10, amount: 8000, paid: 0 }
+        ] };
+        try {
+            await tenants();
+            RentalsModule.api.openTenant('T1');
+            expect(document.getElementById('rentalsBody').textContent).toContain('Owes ₹13,000');
+            RentalsModule.api.remindTenant('T1');
+            const url = decodeURIComponent(openExternal.mock.calls.at(-1)[0]);
+            expect(url).toContain('Dec 2025');
+            expect(url).toContain('₹13,000');
+        } finally {
+            global.__rentData = saved;
+            _test.state.detail = '';
+        }
+    });
+
+    test('Back after opening the same tenant again returns to the list (each screen has its own history entry)', async () => {
+        await tenants();
+        RentalsModule.api.openTenant('T1');
+        await RentalsModule.api.page('tenants');
+        _test.state.page = 'tenants';
+        RentalsModule.api.openTenant('T1');
+        RentalsModule.api.back();
+        await new Promise(r => setTimeout(r, 20));
+        expect(document.getElementById('rentDetailTitle')).toBeNull();
     });
 
     test('Advanced: filters and the details on each row', async () => {
