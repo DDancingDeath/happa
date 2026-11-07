@@ -46,6 +46,7 @@ const state = {
     loaded: new Set(),
     errors: new Set(),
     charging: false,
+    pagesFailed: false,
     charged: new Set(),
     renderTimer: null,
     entry: 0,
@@ -192,8 +193,9 @@ function render() {
     }
     const d = store.snapshot();
     if (state.page !== 'rent' && !pagesMod) {
-        root.innerHTML = `<p class="rent-empty">${et('ui.rent.loading')}</p>`;
-        return loadPages().then(() => { if (isVisible()) render(); }, () => fail('msg.rent.could_not_load'));
+        root.innerHTML = `<p class="rent-empty">${et(state.pagesFailed ? 'msg.rent.could_not_load' : 'ui.rent.loading')}</p>`;
+        if (state.pagesFailed) return;
+        return loadPages().then(() => { if (isVisible()) render(); }, () => { state.pagesFailed = true; fail('msg.rent.could_not_load'); render(); });
     }
     root.innerHTML = state.page === 'tenants' ? pagesMod.renderTenants(unitCtx(), d)
         : state.page === 'properties' ? pagesMod.renderProperties(unitCtx(), d)
@@ -652,6 +654,7 @@ export const RentalsModule = {
             state.charged.clear();
             store.attach(state.month, onData);
         }
+        state.pagesFailed = false;
         render();
     },
 
