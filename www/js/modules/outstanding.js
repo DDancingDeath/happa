@@ -13,17 +13,17 @@ import { readBillFromServer, updateBillInTransaction, updateBillsInTransaction }
 import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
 import {
-    paymentEntryOf, paymentIntentIds, paymentIntentKey, paymentOutcomeUnknown, pendingPaymentIntent, settlePaymentIntent
+    isRetryOf, paymentEntryOf, paymentIntentIds, paymentIntentKey, paymentOutcomeUnknown, pendingPaymentIntent, settlePaymentIntent
 } from '../services/payment-intents.js';
 import { formatAmount, formatRupees, isActiveBill, isOpeningRecord, openingOldTotals, outstandingDue, readPayment, round2, sumMoney } from '../utils/money.js';
-import { parseAnyBillDate, startOfLocalDay, todayLocalISO } from '../utils/dates.js';
+import { formatDayTime, parseAnyBillDate, startOfLocalDay, todayLocalISO } from '../utils/dates.js';
 import { directionFor, duePaymentUpdate, partyDues, settleDueUpdate } from '../utils/due-payments.js';
 import { allocateOldestFirst, checkAllocation, hasPaise, validateDuePayment } from '../utils/calc/billing.js';
 import { CashManagementManager } from './cash-management.js';
 import { PrinterService } from '../services/printer.js';
 import { openExternal } from '../utils/open-external.js';
 import { billDateOf } from '../utils/history-filters.js';
-import { t } from '../i18n/index.js';
+import { getLang, t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
 import { track } from '../services/usage.js';
 import { paymentRecordProps, paymentErrorOutcome } from '../tip/scenarios/payment-record.js';
@@ -497,9 +497,46 @@ export class OutstandingManager {
      * @returns {Promise<boolean>} true when recorded
      */
     static async recordDuePayment(args) {
+        if (Helpers.isBusy('due-payment')) return false;
+        const landed = await this.landedBeforeSend(args);
+        if (landed !== null) return landed;
         // One payment at a time: a double tap on Record saves one payment (#70)
         const ok = await Helpers.runExclusive('due-payment', RECORD_PAYMENT_BUTTONS, () => this._recordDuePayment(args));
         return ok === true;
+    }
+
+    /** Intent key of a due payment (services/payment-intents.js): action, bill, cash and online. */
+    static dueIntentKey({ billType, cash, online = 0, clear = false }, bill) {
+        return paymentIntentKey({ kind: clear ? 'clear' : 'pay', billType, billId: bill.id, cash, online });
+    }
+
+    /**
+     * Before a payment is sent (outside the lock, it may ask): did an earlier try of the same
+     * payment, whose answer was lost, land on this phone's copy of the bill? Within
+     * PAYMENT_RETRY_WINDOW_MS of that try this is its retry: reported as already recorded, nothing
+     * sent (D-1). Later it may be a new payment of the same amount: the user is asked.
+     * @returns {Promise<?boolean>} null: send it; true / false: done (true = nothing left to record)
+     */
+    static async landedBeforeSend(args) {
+        const bill = this.findBill(args.billType, args.billId);
+        if (!bill) return null;
+        const key = this.dueIntentKey(args, bill);
+        const open = pendingPaymentIntent(key);
+        const entry = open ? paymentEntryOf(bill, open.ids[0]) : null;
+        if (!entry) return null;
+        const total = formatAmount(Number(entry.amount) || 0, { exact: true });
+        if (!isRetryOf(open)) {
+            const again = await UIManager.showModal(
+                t('msg.outstanding.payment_recorded_earlier', { total, time: formatDayTime(entry.at, { lang: getLang() }) }),
+                t('ui.outstanding.record_again_title'), true);
+            settlePaymentIntent(key);
+            if (again) return null;
+        } else {
+            settlePaymentIntent(key);
+        }
+        UIManager.showToast(t('msg.outstanding.payment_already_recorded', { total }));
+        this.refreshAfterPayment();
+        return true;
     }
 
     static async _recordDuePayment({ billType, billId, cash, online = 0, note = '', clear = false }) {
@@ -512,8 +549,7 @@ export class OutstandingManager {
                 return false;
             }
 
-            const key = paymentIntentKey({ kind: clear ? 'clear' : 'pay', billType, billId: transaction.id, cash, online });
-            if (this.landedPayment(key, transaction)) return true;
+            const key = this.dueIntentKey({ billType, cash, online, clear }, transaction);
 
             const outstanding = readPayment(transaction).due;
             const split = validateDuePayment(cash, online, outstanding, PAYMENT_TOLERANCE);
@@ -530,7 +566,7 @@ export class OutstandingManager {
             }
 
             const entry = {
-                id: paymentIntentIds(key)[0],
+                id: paymentIntentIds(key, [transaction.id])[0],
                 amount: split.total,
                 date: Helpers.getCurrentDateTime(),
                 recordedBy: AppState.userName || (AppState.currentUser ? AppState.currentUser.email : 'Unknown')
@@ -599,23 +635,6 @@ export class OutstandingManager {
                 customer: bill.customerName || bill.customer || bill.supplier || 'N/A'
             }
         };
-    }
-
-    /**
-     * Before a payment is sent: is this the retry of one whose answer was lost but which this
-     * phone now sees on the bill? Then it is reported as recorded, never sent again (D-1).
-     * @param {string} key - paymentIntentKey
-     * @param {Object} bill - this phone's copy
-     * @returns {boolean} true when it was already recorded (told to the user)
-     */
-    static landedPayment(key, bill) {
-        const open = pendingPaymentIntent(key);
-        const entry = open ? paymentEntryOf(bill, open.ids[0]) : null;
-        if (!entry) return false;
-        settlePaymentIntent(key);
-        UIManager.showToast(t('msg.outstanding.payment_already_recorded', { total: formatAmount(Number(entry.amount) || 0, { exact: true }) }));
-        this.refreshAfterPayment();
-        return true;
     }
 
     /** Copies a bill's payment fields as read on the server onto this phone's copy. */
@@ -1086,6 +1105,7 @@ export class OutstandingManager {
             return;
         }
         const picked = chosen.map((x, i) => ({ bill: x.bill, due: x.due, amount: check.amounts[i] })).filter(x => x.amount > 0);
+        if (await this.partyLandedBeforeSend(billType, name, picked, method)) return;
         await Helpers.runExclusive('due-payment', `${RECORD_PAYMENT_BUTTONS}, [data-complete-all], [data-party-pay]`,
             () => this._receiveFromParty(billType, name, picked, method));
     }
@@ -1132,14 +1152,55 @@ export class OutstandingManager {
     }
 
     /**
-     * Intent key of a party payment (#70, D-1): same list, party, method and each bill's part.
-     * Its entry ids are kept (services/payment-intents.js) until it is known to be recorded.
+     * Intent key of a party payment (#70, D-1): same list, party, method and total. Not the split:
+     * once a lost payment lands, the same amount fills the bills differently (DUE-FIFO).
      */
     static partyPayKey(billType, name, picked, method) {
-        return paymentIntentKey({
-            kind: 'party', billType, billId: normalizePartyName(name),
-            parts: [method, ...picked.map(x => `${FirebaseService.documentIdOf ? FirebaseService.documentIdOf(x.bill) : String(x.bill.id)}:${x.amount}`)]
-        });
+        return paymentIntentKey({ kind: 'party', billType, billId: normalizePartyName(name), cash: sumMoney(picked, x => x.amount), parts: [method] });
+    }
+
+    /** Document id of a bill (a legacy doc may carry another `id` field). */
+    static docIdOf(bill) {
+        return FirebaseService.documentIdOf ? FirebaseService.documentIdOf(bill) : String(bill.id);
+    }
+
+    /**
+     * Before a party payment is sent (outside the lock, it may ask): did an earlier try of the same
+     * payment (party, method, total), whose answer was lost, land? All its bills were written in one
+     * transaction, so one entry found means all landed. Looked up on this phone's bills, and on the
+     * server when this try would leave out a bill of that one. Within PAYMENT_RETRY_WINDOW_MS it is
+     * reported as already recorded; later the user is asked (D-1).
+     * @returns {Promise<boolean>} true when nothing is to be sent
+     */
+    static async partyLandedBeforeSend(billType, name, picked, method) {
+        const key = this.partyPayKey(billType, name, picked, method);
+        const open = pendingPaymentIntent(key);
+        if (!open) return false;
+        let entry = null;
+        this.partyPayList(billType).some(b => open.ids.some(id => (entry = paymentEntryOf(b, id))));
+        const docs = new Set(picked.map(x => this.docIdOf(x.bill)));
+        if (!entry && open.docs.some(d => !docs.has(d))) {
+            const server = await readBillFromServer(COLLECTION_BY_TYPE[billType] || 'wholesaleSales', open.docs[0]);
+            if (server === null) {
+                UIManager.showToast(t('msg.outstanding.payment_unconfirmed', { total: formatAmount(sumMoney(picked, x => x.amount), { exact: true }) }));
+                return true;
+            }
+            entry = server ? paymentEntryOf(server, open.ids[0]) : null;
+        }
+        if (!entry) return false;
+        const total = formatAmount(sumMoney(picked, x => x.amount), { exact: true });
+        if (!isRetryOf(open)) {
+            const again = await UIManager.showModal(
+                t('msg.outstanding.party_pay_recorded_earlier', { total, name: String(name || ''), time: formatDayTime(entry.at, { lang: getLang() }) }),
+                t('ui.outstanding.record_again_title'), true);
+            settlePaymentIntent(key);
+            if (again) return false;
+        } else {
+            settlePaymentIntent(key);
+        }
+        UIManager.showToast(t('msg.outstanding.payment_already_recorded', { total }));
+        this.refreshAfterPayment();
+        return true;
     }
 
     static async _receiveFromParty(billType, name, picked, method) {
@@ -1147,15 +1208,7 @@ export class OutstandingManager {
         const key = this.partyPayKey(billType, name, picked, method);
         const sum = sumMoney(picked, x => x.amount);
         const total = formatAmount(sum, { exact: true });
-        // The same payment again after a lost answer, and this phone now sees it on the bills
-        const open = pendingPaymentIntent(key);
-        if (open && picked.some((x, i) => paymentEntryOf(this.findBill(billType, x.bill.id) || x.bill, open.ids[i]))) {
-            settlePaymentIntent(key);
-            UIManager.showToast(t('msg.outstanding.payment_already_recorded', { total }));
-            this.refreshAfterPayment();
-            return;
-        }
-        const entryIds = paymentIntentIds(key, picked.length);
+        const entryIds = paymentIntentIds(key, picked.map(x => this.docIdOf(x.bill)));
         try {
             result = await this.receivePartyPayment(billType, picked.map(x => x.bill), picked.map(x => x.amount), method, entryIds, { name });
         } catch (error) {
@@ -1163,7 +1216,7 @@ export class OutstandingManager {
             if (paymentOutcomeUnknown(error)) {
                 UIManager.showToast(t('msg.outstanding.payment_checking'));
                 const first = picked[0].bill;
-                const docId = FirebaseService.documentIdOf ? FirebaseService.documentIdOf(first) : String(first.id);
+                const docId = this.docIdOf(first);
                 // One transaction for all the bills: the first bill's entry says whether it landed
                 const server = paymentEntryOf(this.findBill(billType, first.id), entryIds[0])
                     ? true : await readBillFromServer(COLLECTION_BY_TYPE[billType] || 'wholesaleSales', docId);
@@ -1222,12 +1275,14 @@ export class OutstandingManager {
         const result = await updateBillsInTransaction(collKey, docIds, (freshList) => {
             const updates = [];
             const settled = [];
+            // One transaction wrote all of an earlier try's entries: one found = that try landed, write nothing
+            const landed = freshList.some((fresh, i) => paymentEntryOf(fresh, ids[i]));
             freshList.forEach((fresh, i) => {
                 if (!isActiveBill(fresh)) throw Object.assign(new Error('This bill was voided'), { code: 'voided' });
-                const mine = (Array.isArray(fresh.payments) ? fresh.payments : []).find(p => p && p.id === ids[i]);
-                if (mine) {
+                const mine = paymentEntryOf(fresh, ids[i]);
+                if (mine || landed) {
                     updates.push(null);
-                    settled.push({ index: i, amount: Number(mine.amount) || 0, fields: { ...fresh } });
+                    if (mine) settled.push({ index: i, amount: Number(mine.amount) || 0, fields: { ...fresh } });
                     return;
                 }
                 const amount = round2(amounts[i]);

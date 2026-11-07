@@ -650,21 +650,16 @@ export class WholesaleSalesManager {
     }
 
     static async recordPayment(saleId) {
-        return Helpers.runExclusive('due-payment', '[data-record-payment], [data-mark-cleared]', () => this._recordPayment(saleId));
-    }
-
-    static async _recordPayment(saleId) {
-        const salesHistory = AppState.salesHistory;
-        const sale = salesHistory.find(s => s.id == saleId);
+        const sale = (AppState.salesHistory || []).find(s => s.id == saleId);
         if (!sale) {
             UIManager.showToast(t('msg.wholesale.error_sale_not_found'));
             return;
         }
 
-        // The Due screen's one payment path (#98): same transaction, retry id kept until the
-        // payment is known to be recorded (D-1), audit entry in the same commit (D-3)
+        // The Due screen's one payment path (#98), with its lock: same transaction, retry id kept
+        // until the payment is known to be recorded (D-1), audit entry in the same commit (D-3)
         const value = document.getElementById(`payment_${saleId}`)?.value;
-        const ok = await OutstandingManager._recordDuePayment({ billType: 'wholesale', billId: sale.id, cash: Number(value) || 0, online: 0 });
+        const ok = await OutstandingManager.recordDuePayment({ billType: 'wholesale', billId: sale.id, cash: Number(value) || 0, online: 0 });
         if (!ok) return;
         this.renderSalesOutstanding();
         this.renderSalesHistory();

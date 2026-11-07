@@ -325,6 +325,62 @@ describe('Receive payment dialog', () => {
         expect(UIManager.showToast).toHaveBeenLastCalledWith('✓ This payment of ₹500 was already recorded. It was not recorded again.');
     });
 
+    test('D-1: after the lost payment lands, the same amount fills the bills differently: still recorded once', async () => {
+        // Bill r1 (oldest) owes ₹400, r2 ₹1000; ₹300 goes all to r1, then r1 owes ₹100 and ₹300 would be r1 100 + r2 200
+        const server = { r1: bill('r1', 'Ravi', 400, 1), r2: bill('r2', 'Ravi', 1000, 2) };
+        serverTx(server);
+        readBillFromServer.mockResolvedValue(null);
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        updateBillsInTransaction.mockImplementationOnce(async (collKey, ids, change) => {
+            const fresh = ids.map(id => JSON.parse(JSON.stringify(server[id])));
+            const out = change(fresh);
+            out.bills.forEach((fields, i) => { if (fields) server[ids[i]] = { ...server[ids[i]], ...withCanonicalDue(fields, fresh[i]) }; });
+            throw Object.assign(new Error('unavailable'), { code: 'unavailable' });
+        });
+        AppState.retailSalesHistory = [server.r1, server.r2];
+        answer(300, 'cash');
+        await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
+        expect(UIManager.showToast).toHaveBeenLastCalledWith(expect.stringContaining('Could not confirm the payment of ₹300'));
+        // Not on this phone yet, the same ₹300 split by hand as r2 only: the server is asked about r1 first
+        readBillFromServer.mockImplementation(async (collKey, id) => JSON.parse(JSON.stringify(server[id])));
+        answer(300, 'cash', () => {
+            document.getElementById('ppPart-0').value = '';
+            document.getElementById('ppPart-1').value = '300';
+        });
+        await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
+        expect(updateBillsInTransaction).toHaveBeenCalledTimes(1);
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('✓ This payment of ₹300 was already recorded. It was not recorded again.');
+        expect(server.r1.payments).toHaveLength(1);
+        expect(server.r2.payments).toEqual([]);
+    });
+
+    test('D-1: the lost payment shows on this phone, the same total split differently is not sent; a transaction that meets one of its entries writes nothing', async () => {
+        const server = { r1: bill('r1', 'Ravi', 400, 1), r2: bill('r2', 'Ravi', 1000, 2) };
+        serverTx(server);
+        readBillFromServer.mockResolvedValue(null);
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        updateBillsInTransaction.mockImplementationOnce(async (collKey, ids, change) => {
+            const fresh = ids.map(id => JSON.parse(JSON.stringify(server[id])));
+            const out = change(fresh);
+            out.bills.forEach((fields, i) => { if (fields) server[ids[i]] = { ...server[ids[i]], ...withCanonicalDue(fields, fresh[i]) }; });
+            throw Object.assign(new Error('unavailable'), { code: 'unavailable' });
+        });
+        AppState.retailSalesHistory = [server.r1, server.r2];
+        answer(300, 'cash');
+        await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
+        AppState.retailSalesHistory = [server.r1, server.r2];
+        answer(300, 'cash');
+        await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
+        expect(updateBillsInTransaction).toHaveBeenCalledTimes(1);
+        expect(server.r1.payments).toHaveLength(1);
+        expect(server.r2.payments).toEqual([]);
+        // The transaction itself: r1 carries this payment's entry, so r2's new part is not written either
+        const id = server.r1.payments[0].id;
+        const again = await OutstandingManager.receivePartyPayment('retail', [server.r1, server.r2], [100, 200], 'cash', [id, 'new-id']);
+        expect(again.total).toBe(300);
+        expect(server.r2.payments).toEqual([]);
+    });
+
     test('more than 100 open bills: says only the oldest 100 are listed', async () => {
         AppState.retailSalesHistory = Array.from({ length: 105 }, (_, i) => bill(`b${i}`, 'Ravi', 10, i));
         jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async (html) => { document.body.innerHTML = html; return false; });

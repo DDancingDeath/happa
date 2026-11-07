@@ -8,6 +8,8 @@
  * The same bill, amounts and action ("key") get the same entry id(s) until the outcome is
  * known: recorded (the transaction finds its own id and writes nothing again) or expired.
  * Kept in localStorage, so a reload or a second tab keeps it too. No Firestore here.
+ * Once the payment shows on the bill, the same amount again within PAYMENT_RETRY_WINDOW_MS of
+ * the last try is that retry; later it may be a new payment, so the user is asked.
  * @module services/payment-intents
  */
 
@@ -18,15 +20,19 @@ import { safeSetItem } from '../utils/storage-full.js';
 const STORE_KEY = 'aadhat.paymentIntents';
 /** A payment not confirmed within a day is a new payment when typed again. */
 export const PAYMENT_INTENT_TTL_MS = 24 * 60 * 60 * 1000;
+/** The same payment typed again this soon after its last try is a retry, not a new payment. */
+export const PAYMENT_RETRY_WINDOW_MS = 10 * 60 * 1000;
 const MAX_INTENTS = 50;
 
-/** @type {Record<string, {ids: string[], at: number}>} used when localStorage can't be */
+/** @typedef {{ids: string[], docs: string[], at: number}} Intent ids[i] is the entry id on bill docs[i]; at = last try */
+
+/** @type {Record<string, Intent>} used when localStorage can't be */
 let memory = {};
 
 /**
  * Key of one payment intent: same kind of action, same bill(s) and the same amounts.
  * @param {{kind?: string, billType: string, billId: string|number, cash?: number, online?: number, parts?: string[]}} p
- *   `parts`: extra fixed parts (party payments: party, method and each bill's share)
+ *   `parts`: extra fixed parts (party payments: method)
  * @returns {string}
  */
 export function paymentIntentKey({ kind = 'pay', billType, billId, cash = 0, online = 0, parts = [] }) {
@@ -42,7 +48,7 @@ function store() {
     }
 }
 
-/** @returns {Record<string, {ids: string[], at: number}>} */
+/** @returns {Record<string, Intent>} */
 function readAll() {
     const s = store();
     if (!s) return memory;
@@ -54,7 +60,7 @@ function readAll() {
     }
 }
 
-/** @param {Record<string, {ids: string[], at: number}>} all */
+/** @param {Record<string, Intent>} all */
 function writeAll(all) {
     memory = all;
     const s = store();
@@ -62,12 +68,13 @@ function writeAll(all) {
 }
 
 /**
- * @param {Record<string, {ids: string[], at: number}>} all
+ * @param {Record<string, Intent>} all
  * @param {number} now
  */
 function fresh(all, now) {
     const kept = Object.entries(all)
-        .filter(([, v]) => v && Array.isArray(v.ids) && v.ids.length && Number.isFinite(v.at) && now - v.at < PAYMENT_INTENT_TTL_MS)
+        .filter(([, v]) => v && Array.isArray(v.ids) && v.ids.length && Array.isArray(v.docs) && v.docs.length === v.ids.length
+            && Number.isFinite(v.at) && now - v.at < PAYMENT_INTENT_TTL_MS)
         .sort((a, b) => b[1].at - a[1].at)
         .slice(0, MAX_INTENTS);
     return Object.fromEntries(kept);
@@ -77,28 +84,42 @@ function fresh(all, now) {
  * The open intent of `key`, if any (not expired).
  * @param {string} key
  * @param {number} [now]
- * @returns {?{ids: string[], at: number}}
+ * @returns {?Intent}
  */
 export function pendingPaymentIntent(key, now = Date.now()) {
     return fresh(readAll(), now)[key] || null;
 }
 
 /**
- * Entry ids of `key`: the open intent's when there is one with as many ids, else new ones
- * (stored before they are used, so a retry after anything finds them).
+ * Whether the open intent's last try is recent enough for the same payment typed again to be
+ * its retry (PAYMENT_RETRY_WINDOW_MS).
+ * @param {?Intent} intent
+ * @param {number} [now]
+ * @returns {boolean}
+ */
+export function isRetryOf(intent, now = Date.now()) {
+    return !!intent && now - intent.at < PAYMENT_RETRY_WINDOW_MS;
+}
+
+/**
+ * Entry ids of `key` for the bills `docs` (document ids): a bill this intent already tried keeps
+ * its id, others get new ones; stored (with the time of this try) before they are used, so a
+ * retry after anything finds them.
  * @param {string} key
- * @param {number} [count]
+ * @param {Array<string|number>} docs
  * @param {number} [now]
  * @returns {string[]}
  */
-export function paymentIntentIds(key, count = 1, now = Date.now()) {
+export function paymentIntentIds(key, docs, now = Date.now()) {
     const all = fresh(readAll(), now);
     const open = all[key];
-    if (open && open.ids.length === count) return open.ids.slice();
-    const ids = Array.from({ length: count }, () => Helpers.generateId());
-    all[key] = { ids, at: now };
+    /** @type {Record<string, string>} */
+    const byDoc = open ? Object.fromEntries(open.docs.map((d, i) => [d, open.ids[i]])) : {};
+    const ids = docs.map(d => byDoc[String(d)] || (byDoc[String(d)] = Helpers.generateId()));
+    const known = Object.keys(byDoc);
+    all[key] = { ids: known.map(d => byDoc[d]), docs: known, at: now };
     writeAll(fresh(all, now));
-    return ids.slice();
+    return ids;
 }
 
 /**

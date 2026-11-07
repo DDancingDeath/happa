@@ -554,6 +554,38 @@ describe('recording a due payment (Outstanding)', () => {
         expect(toast).toHaveBeenLastCalledWith('✓ This payment of ₹100 was already recorded. It was not recorded again.');
     });
 
+    test('D-1: hours later, the same amount on that bill may be a new payment: asked, never dropped silently', async () => {
+        fake.seed('retailSales', [RETAIL]);
+        AppState.retailSalesHistory = [{ ...RETAIL }];
+        jest.spyOn(billPayments, 'readBillFromServer').mockResolvedValue(null);
+        loseNextAnswer();
+        setVal('payment_r1', 100);
+        await OutstandingManager.recordPayment('r1', 'retail');
+        AppState.retailSalesHistory = [{ ...fake.raw('retailSales').get('r1'), id: 'r1' }];
+        const later = Date.now() + 11 * 60 * 1000;
+        const now = jest.spyOn(Date, 'now').mockReturnValue(later);
+        const ask = jest.spyOn(UIManager, 'showModal').mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+        // "Record another ₹100?" → yes: a new payment
+        setVal('payment_r1', 100);
+        await OutstandingManager.recordPayment('r1', 'retail');
+        expect(ask).toHaveBeenCalledWith(expect.stringContaining('₹100 on this bill was already recorded at'), 'Record it again?', true);
+        expect(fake.raw('retailSales').get('r1').payments).toHaveLength(2);
+        expect(toast).toHaveBeenLastCalledWith('✓ Payment of ₹100 recorded');
+        // Another lost answer, the user answers no: nothing more is recorded
+        now.mockRestore();
+        loseNextAnswer();
+        setVal('payment_r1', 100);
+        AppState.retailSalesHistory = [{ ...fake.raw('retailSales').get('r1'), id: 'r1' }];
+        await OutstandingManager.recordPayment('r1', 'retail');
+        AppState.retailSalesHistory = [{ ...fake.raw('retailSales').get('r1'), id: 'r1' }];
+        jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 11 * 60 * 1000);
+        setVal('payment_r1', 100);
+        await OutstandingManager.recordPayment('r1', 'retail');
+        expect(ask).toHaveBeenCalledTimes(2);
+        expect(fake.raw('retailSales').get('r1').payments).toHaveLength(3);
+        expect(toast).toHaveBeenLastCalledWith('✓ This payment of ₹100 was already recorded. It was not recorded again.');
+    });
+
     test('D-1: the server says it is not there: "not recorded, try again"; the retry keeps the same id', async () => {
         fake.seed('retailSales', [RETAIL]);
         AppState.retailSalesHistory = [{ ...RETAIL }];

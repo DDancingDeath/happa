@@ -4,8 +4,8 @@
  * to be recorded.
  */
 import {
-    PAYMENT_INTENT_TTL_MS, forgetPaymentIntents, paymentEntryOf, paymentIntentIds, paymentIntentKey,
-    paymentOutcomeUnknown, pendingPaymentIntent, settlePaymentIntent
+    PAYMENT_INTENT_TTL_MS, PAYMENT_RETRY_WINDOW_MS, forgetPaymentIntents, isRetryOf, paymentEntryOf, paymentIntentIds,
+    paymentIntentKey, paymentOutcomeUnknown, pendingPaymentIntent, settlePaymentIntent
 } from '../services/payment-intents.js';
 
 beforeEach(() => forgetPaymentIntents());
@@ -14,21 +14,31 @@ describe('payment intents', () => {
     const key = paymentIntentKey({ billType: 'retail', billId: 'r1', cash: 100, online: 0 });
 
     test('the same bill and amounts keep the same id until the payment is known to be recorded', () => {
-        const [id] = paymentIntentIds(key, 1, 1000);
-        expect(paymentIntentIds(key, 1, 2000)).toEqual([id]);
-        expect(paymentIntentIds(paymentIntentKey({ billType: 'retail', billId: 'r1', cash: '100.001', online: 0 }), 1, 3000)).toEqual([id]);
-        expect(paymentIntentIds(paymentIntentKey({ billType: 'retail', billId: 'r1', cash: 101 }), 1, 3000)).not.toEqual([id]);
-        expect(paymentIntentIds(paymentIntentKey({ billType: 'retail', billId: 'r1', cash: 100, kind: 'clear' }), 1, 3000)).not.toEqual([id]);
+        const [id] = paymentIntentIds(key, ['r1'], 1000);
+        expect(paymentIntentIds(key, ['r1'], 2000)).toEqual([id]);
+        expect(paymentIntentIds(paymentIntentKey({ billType: 'retail', billId: 'r1', cash: '100.001', online: 0 }), ['r1'], 3000)).toEqual([id]);
+        expect(paymentIntentIds(paymentIntentKey({ billType: 'retail', billId: 'r1', cash: 101 }), ['r1'], 3000)).not.toEqual([id]);
+        expect(paymentIntentIds(paymentIntentKey({ billType: 'retail', billId: 'r1', cash: 100, kind: 'clear' }), ['r1'], 3000)).not.toEqual([id]);
         settlePaymentIntent(key);
         expect(pendingPaymentIntent(key, 4000)).toBeNull();
-        expect(paymentIntentIds(key, 1, 5000)).not.toEqual([id]);
+        expect(paymentIntentIds(key, ['r1'], 5000)).not.toEqual([id]);
     });
 
-    test('kept across a reload (localStorage) and forgotten after a day', () => {
-        const ids = paymentIntentIds(key, 2, 1000);
+    test('kept across a reload (localStorage) and forgotten after a day; a retry soon after the last try', () => {
+        const ids = paymentIntentIds(key, ['a', 'b'], 1000);
         expect(JSON.parse(localStorage.getItem('aadhat.paymentIntents'))[key].ids).toEqual(ids);
-        expect(pendingPaymentIntent(key, 1000 + PAYMENT_INTENT_TTL_MS - 1)).toEqual({ ids, at: 1000 });
+        expect(pendingPaymentIntent(key, 1000 + PAYMENT_INTENT_TTL_MS - 1)).toEqual({ ids, docs: ['a', 'b'], at: 1000 });
         expect(pendingPaymentIntent(key, 1000 + PAYMENT_INTENT_TTL_MS)).toBeNull();
+        expect(isRetryOf(pendingPaymentIntent(key, 2000), 1000 + PAYMENT_RETRY_WINDOW_MS - 1)).toBe(true);
+        expect(isRetryOf(pendingPaymentIntent(key, 2000), 1000 + PAYMENT_RETRY_WINDOW_MS)).toBe(false);
+    });
+
+    test('a bill tried before keeps its id when the same payment is spread differently', () => {
+        const [a, b] = paymentIntentIds(key, ['A', 'B'], 1000);
+        const [c, a2] = paymentIntentIds(key, ['C', 'A'], 2000);
+        expect(a2).toBe(a);
+        expect([a, b]).not.toContain(c);
+        expect(pendingPaymentIntent(key, 2000)).toEqual({ ids: [a, b, c], docs: ['A', 'B', 'C'], at: 2000 });
     });
 
     test('only refusals are a known outcome; no answer may hide a commit', () => {
