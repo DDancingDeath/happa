@@ -204,7 +204,6 @@ const menuHtml = (items, label) => (items.length ? `<details class="rent-menu"><
 function renderProperties(d) {
     const adv = c.state.mode === 'advanced';
     const add = c.canWrite ? btn(' rent-btn-primary', 'addProperty', '', 'ui.rent.add_property', '+ ') : '';
-    const report = c.isManager ? btn('', 'yearReport', '', 'ui.rent.yr_btn', '📊 ') : '';
     const rows = propertyRows(d, tenantRows(d, c.state.month)).map(({ property: p, units, let: n, owed, late }) => `
         <button type="button" class="rent-row rent-prop-card" data-property="${esc(p.id)}" data-onclick="rentals.showProperty('${js(p.id)}')">
             <span class="rent-row-head"><span><span class="rent-name">${esc(p.name)}</span>
@@ -212,7 +211,7 @@ function renderProperties(d) {
                 ${adv ? `<span class="rent-sub">${esc([p.address, kindLabel(p.kind)].filter(Boolean).join(' · '))}</span>` : ''}</span>
             <span class="rent-row-right">${owed > 0 ? `<span class="rent-due">${et('ui.rent.owed', { amount: formatINR(owed) })}</span>` : ''}${late ? c.badge('late', 'ui.rent.status_late') : ''}</span></span>
         </button>`).join('');
-    return `<div class="rent-toolbar">${report}${add}</div>
+    return `<div class="rent-toolbar">${add}</div>
         ${rows || `<p class="rent-empty">${et(c.canWrite ? 'ui.rent.start_hint' : 'ui.rent.no_properties')}</p>`}`;
 }
 

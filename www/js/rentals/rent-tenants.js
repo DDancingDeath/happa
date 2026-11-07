@@ -74,7 +74,6 @@ function renderTenants(d) {
     const chip = (k, cur, field, key) => `<button type="button" class="filter-btn${k === cur ? ' active" aria-pressed="true"' : '" aria-pressed="false"'} data-onclick="rentals.tenantList('${field}', '${k}')">${et(key)}</button>`;
     const tools = adv ? `<div class="rent-chips" role="group">${FILTERS.map(k => chip(k, v.filter, 'filter', `ui.rent.tfilter_${k}`)).join('')}</div>
         <div class="rent-chips" role="group">${SORTS.map(k => chip(k, v.sort, 'sort', `ui.rent.tsort_${k}`)).join('')}</div>` : '';
-    const held = adv && c.canWrite ? `<div class="rent-actions">${btn('', 'deposits', '', 'ui.rent.dep_held_list', '💰 ')}</div>` : '';
     // Moved-out tenants whose link is still on (it stays readable until turned off).
     const ix = c.index(d);
     const endedLinks = adv && c.isManager ? d.linked.filter(l => l.status === 'ended').map(l => `<div class="rent-list-row">
@@ -83,7 +82,7 @@ function renderTenants(d) {
             <div class="rent-actions">${btn(' rent-btn-small', 'shareLink', `'${js(l.id)}'`, 'ui.rent.link_on', '🔗 ')}</div>
         </div>`).join('') : '';
     return `<div class="rent-toolbar">${search}${add}</div>${tools}
-        <div class="rent-list" id="rentTenantList">${listRows(d, adv)}</div>${held}
+        <div class="rent-list" id="rentTenantList">${listRows(d, adv)}</div>
         ${endedLinks ? `<h3 class="rent-section-title">${et('ui.rent.links_moved_out')}</h3><div class="rent-list">${endedLinks}</div>` : ''}`;
 }
 
