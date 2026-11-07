@@ -16,7 +16,7 @@
 .reports-title-row h2 {
     margin: 0;
     font-size: 24px;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .reports-export-btns {
@@ -45,7 +45,7 @@
     padding: 10px 16px;
     border-radius: var(--radius-md);
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     border: none;
     cursor: pointer;
     transition: all var(--transition);
@@ -87,7 +87,7 @@
     gap: 4px;
     padding: 12px 20px;
     background: var(--card-bg);
-    border: 2px solid var(--border-color);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     cursor: pointer;
     transition: all var(--transition);
@@ -101,7 +101,7 @@
 
 .reports-tab-btn .tab-label {
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--text-secondary);
 }
 
@@ -150,7 +150,7 @@
 .date-input-group label {
     display: block;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--text-secondary);
     margin-bottom: 4px;
 }
@@ -169,7 +169,7 @@
     color: white;
     border: none;
     border-radius: var(--radius-md);
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
     transition: all var(--transition);
 }
@@ -230,7 +230,7 @@
 
 .hero-value {
     font-size: 36px;
-    font-weight: 700;
+    font-weight: 600;
     margin-top: 4px;
 }
 
@@ -254,19 +254,19 @@
 }
 
 .quick-stat.purchase {
-    border-left: 4px solid var(--purchase-color);
+    border-left: 3px solid var(--purchase-color);
 }
 
 .quick-stat.sale {
-    border-left: 4px solid var(--sale-color);
+    border-left: 3px solid var(--sale-color);
 }
 
 .quick-stat.profit {
-    border-left: 4px solid var(--primary-color);
+    border-left: 3px solid var(--primary-color);
 }
 
 .quick-stat.labor {
-    border-left: 4px solid var(--warning-color);
+    border-left: 3px solid var(--warning-color);
 }
 
 .quick-stat .stat-icon {
@@ -286,7 +286,7 @@
 
 .quick-stat .stat-value {
     font-size: 18px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-primary);
 }
 
@@ -325,7 +325,7 @@
 .stat-box .stat-label {
     font-size: 11px;
     color: var(--text-muted);
-    font-weight: 600;
+    font-weight: 500;
     text-transform: uppercase;
     display: block;
     margin-bottom: 4px;
@@ -333,7 +333,7 @@
 
 .stat-box .stat-value {
     font-size: 16px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-primary);
 }
 
@@ -357,7 +357,7 @@
 .reports-card .card-header h3 {
     margin: 0;
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .chart-period {
@@ -414,7 +414,7 @@
 
 .payment-value {
     font-size: 18px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-primary);
 }
 
@@ -464,7 +464,7 @@
     color: white;
     border-radius: 50%;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .top-item-info {
@@ -472,7 +472,7 @@
 }
 
 .top-item-name {
-    font-weight: 600;
+    font-weight: 500;
     font-size: 14px;
     color: var(--text-primary);
 }
@@ -483,7 +483,7 @@
 }
 
 .top-item-value {
-    font-weight: 700;
+    font-weight: 600;
     font-size: 16px;
     color: var(--primary-color);
 }
@@ -502,7 +502,7 @@
 
 .filter-group label {
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--text-secondary);
     margin-bottom: 4px;
 }
@@ -536,7 +536,7 @@
 }
 
 .item-breakdown-name {
-    font-weight: 600;
+    font-weight: 500;
     font-size: 14px;
     color: var(--text-primary);
     margin-bottom: 2px;
@@ -552,7 +552,7 @@
 }
 
 .item-breakdown-amount {
-    font-weight: 700;
+    font-weight: 600;
     font-size: 16px;
     color: var(--text-primary);
 }
@@ -593,7 +593,7 @@
 }
 
 .payment-row .value {
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-primary);
 }
 
@@ -625,7 +625,7 @@
 }
 
 .transaction-customer {
-    font-weight: 600;
+    font-weight: 500;
     font-size: 14px;
     color: var(--text-primary);
 }
@@ -641,7 +641,7 @@
 }
 
 .transaction-amount {
-    font-weight: 700;
+    font-weight: 600;
     font-size: 16px;
     color: var(--text-primary);
 }
@@ -687,13 +687,13 @@
 
 .compare-value {
     font-size: 22px;
-    font-weight: 700;
+    font-weight: 600;
     margin-top: 4px;
 }
 
 .compare-vs {
     font-size: 16px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-muted);
     padding: 10px;
     background: var(--light-bg);
@@ -714,7 +714,7 @@
     border-radius: var(--radius-lg);
     margin-bottom: 16px;
     box-shadow: var(--shadow-sm);
-    border: 2px solid var(--border-color);
+    border: 1px solid var(--border-color);
 }
 
 .compare-net-result .net-label {
@@ -725,7 +725,7 @@
 
 .compare-net-result .net-value {
     font-size: 32px;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .compare-net-result .net-value.positive {
@@ -738,7 +738,7 @@
 
 .compare-net-result .net-status {
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     padding: 4px 12px;
     border-radius: 12px;
     margin-top: 8px;
@@ -775,7 +775,7 @@
 .comparison-row.header {
     background: var(--light-bg);
     border-radius: var(--radius-md);
-    font-weight: 600;
+    font-weight: 500;
     font-size: 13px;
     color: var(--text-secondary);
 }
@@ -788,7 +788,7 @@
 .comparison-row .purchase-col,
 .comparison-row .sales-col {
     text-align: center;
-    font-weight: 600;
+    font-weight: 500;
     font-size: 14px;
 }
 
@@ -822,7 +822,7 @@
 }
 
 .item-comparison-name {
-    font-weight: 600;
+    font-weight: 500;
     font-size: 14px;
     color: var(--text-primary);
     margin-bottom: 10px;
@@ -871,7 +871,7 @@
 .bar-value {
     width: 70px;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 500;
     text-align: right;
 }
 

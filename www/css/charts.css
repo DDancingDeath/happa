@@ -30,7 +30,7 @@
 }
 
 .item-report-header {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 16px;
   margin-bottom: 8px;
   color: var(--text-primary);
@@ -92,12 +92,12 @@ html {
 .mode-btn {
   flex: 1;
   background: transparent;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
   color: var(--text-secondary);
   padding: 12px 16px;
   border-radius: var(--radius);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: all var(--transition);
 }
@@ -107,10 +107,9 @@ html {
 }
 
 .mode-btn.active {
-  background: var(--card-bg);
-  color: var(--primary-color);
-  border-color: var(--primary-color);
-  box-shadow: var(--shadow);
+  background: var(--seg-active);
+  color: var(--text-primary);
+  box-shadow: var(--seg-shadow);
 }
 
 .mode-btn:active {
@@ -125,7 +124,7 @@ html {
   padding: 10px 20px;
   border-radius: var(--radius-full);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition: all var(--transition);
@@ -193,23 +192,12 @@ html {
   padding: 14px 20px;
   text-align: center;
   border-bottom: 1px solid var(--border-color);
-  border-top: 4px solid var(--primary-color);
-}
-
-body:has(.tab.purchase-theme.active) .modal-overlay .modal-header {
-  background: var(--card-bg);
-  border-top-color: var(--btn-primary);
-}
-
-body:has(.tab.sale-theme.active) .modal-overlay .modal-header {
-  background: var(--card-bg);
-  border-top-color: var(--btn-success);
 }
 
 .modal-header h3 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .modal-body {
@@ -240,61 +228,36 @@ body:has(.tab.sale-theme.active) .modal-overlay .modal-header {
 }
 
 .modal-btn {
-  padding: 12px 24px;
+  padding: 11px 22px;
   border: none;
   border-radius: var(--radius);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: all var(--transition);
   min-width: 80px;
-}
-
-.modal-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow);
-}
-
-.modal-btn:active {
-  transform: scale(0.95);
 }
 
 .modal-btn-cancel {
   background: var(--card-bg);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-xs);
 }
 
 .modal-btn-cancel:hover {
-  background: var(--light-bg);
+  background: var(--surface-muted);
 }
 
 .modal-btn-confirm {
-  background: var(--btn-primary);
+  background: var(--primary-gradient);
   color: white;
-  box-shadow: var(--shadow-sm);
+  font-weight: 600;
+  box-shadow: var(--primary-glow);
 }
 
 .modal-btn-confirm:hover {
-  box-shadow: var(--shadow);
+  filter: brightness(1.05);
 }
-
-body:has(.tab.purchase-theme.active) .modal-btn-confirm {
-  background: var(--btn-primary);
-}
-
-body:has(.tab.purchase-theme.active) .modal-btn-confirm:hover {
-  box-shadow: var(--shadow);
-}
-
-body:has(.tab.sale-theme.active) .modal-btn-confirm {
-  background: var(--btn-success);
-}
-
-body:has(.tab.sale-theme.active) .modal-btn-confirm:hover {
-  box-shadow: var(--shadow);
-}
-
 /* -------------------- ENHANCED TOUCH INTERACTIONS -------------------- */
 button, .btn, input[type="submit"], input[type="button"] {
   -webkit-tap-highlight-color: transparent;
@@ -339,7 +302,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   flex-shrink: 0;
   cursor: pointer;
   border-radius: 6px;
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   margin: 0;
   accent-color: var(--primary-color);
 }
@@ -459,7 +422,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   flex: 1;
   padding: 12px 16px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   border: none;
   border-radius: 10px;
   cursor: pointer;
@@ -507,7 +470,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border: 1px solid var(--danger-border);
   border-radius: 10px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -547,7 +510,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .bill-info-label {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-muted);
   min-width: 140px;
 }
@@ -574,7 +537,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .bill-items-table th {
   padding: 12px;
   text-align: left;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -617,7 +580,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .bill-totals-row.total {
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--primary-color);
   border-top: 2px solid var(--border-color);
   padding-top: 10px;

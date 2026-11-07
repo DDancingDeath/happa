@@ -23,7 +23,7 @@
 
 .finance-hero-label {
     font-size: 18px;
-    font-weight: 600;
+    font-weight: 500;
     display: block;
 }
 
@@ -38,7 +38,7 @@
 
 .finance-hero-value {
     font-size: 42px;
-    font-weight: 700;
+    font-weight: 600;
     margin-top: 8px;
 }
 
@@ -81,19 +81,19 @@
 }
 
 .finance-stat-card.revenue {
-    border-left: 4px solid var(--success-color);
+    border-left: 3px solid var(--success-color);
 }
 
 .finance-stat-card.investment {
-    border-left: 4px solid var(--primary-color);
+    border-left: 3px solid var(--primary-color);
 }
 
 .finance-stat-card.business {
-    border-left: 4px solid var(--warning-color);
+    border-left: 3px solid var(--warning-color);
 }
 
 .finance-stat-card.personal {
-    border-left: 4px solid var(--danger-color);
+    border-left: 3px solid var(--danger-color);
 }
 
 .finance-stat-icon {
@@ -110,7 +110,7 @@
 
 .finance-stat-value {
     font-size: 22px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-primary);
 }
 
@@ -142,13 +142,13 @@
 
 .amount-positive {
     color: var(--success-color);
-    font-weight: 700;
+    font-weight: 600;
     font-size: 18px;
 }
 
 .amount-negative {
     color: var(--danger-color);
-    font-weight: 700;
+    font-weight: 600;
     font-size: 18px;
 }
 
@@ -163,7 +163,7 @@
 .card-header h3 {
     margin: 0;
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 /* ==================== BREAKDOWN TABLE ==================== */
@@ -179,7 +179,7 @@
 
 .breakdown-table td:last-child {
     text-align: right;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .breakdown-table .breakdown-subtotal {
@@ -250,7 +250,7 @@
 }
 
 .asset-name {
-    font-weight: 600;
+    font-weight: 500;
     color: var(--text-primary);
     font-size: 15px;
 }
@@ -262,7 +262,7 @@
 }
 
 .asset-amount {
-    font-weight: 700;
+    font-weight: 600;
     font-size: 18px;
 }
 
@@ -296,7 +296,7 @@
 .quick-add-btn {
     padding: 10px 16px;
     background: var(--light-bg);
-    border: 2px solid var(--border-color);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius);
     font-size: 14px;
     font-weight: 500;
@@ -343,7 +343,7 @@
     width: 48px;
     height: 48px;
     border-radius: var(--radius);
-    border: 2px solid var(--border-color);
+    border: 1px solid var(--border-color);
     background: var(--light-bg);
     font-size: 24px;
     cursor: pointer;
@@ -378,7 +378,7 @@
     padding: 14px 16px;
     background: var(--light-bg);
     border-radius: var(--radius);
-    border-left: 4px solid var(--danger-color);
+    border-left: 3px solid var(--danger-color);
 }
 
 .withdrawal-info {
@@ -388,7 +388,7 @@
 }
 
 .withdrawal-person {
-    font-weight: 600;
+    font-weight: 500;
     color: var(--text-primary);
     font-size: 15px;
 }
@@ -404,7 +404,7 @@
 }
 
 .withdrawal-amount {
-    font-weight: 700;
+    font-weight: 600;
     font-size: 18px;
     color: var(--danger-color);
 }
@@ -510,30 +510,30 @@
 
 /* ==================== BUTTON STYLES ==================== */
 .btn {
-    padding: 12px 24px;
+    padding: 10px 18px;
     border-radius: var(--radius);
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
-    transition: all var(--transition);
     border: none;
 }
 
 .btn-primary {
-    background: var(--btn-primary);
+    background: var(--primary-gradient);
     color: white;
+    font-weight: 600;
+    box-shadow: var(--primary-glow);
 }
 
 .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
+    filter: brightness(1.05);
 }
 
 .btn-secondary {
     background: var(--card-bg);
     color: var(--text-primary);
     border: none;
-    box-shadow: inset 0 0 0 1px var(--border-strong);
+    box-shadow: inset 0 0 0 1px var(--border-color), var(--shadow-xs);
 }
 
 .btn-secondary:hover {
@@ -547,14 +547,14 @@
 }
 
 .btn-danger {
-    background: var(--btn-danger);
-    color: white;
+    background: var(--danger-soft);
+    color: var(--on-danger-soft);
+    box-shadow: inset 0 0 0 1px var(--danger-border);
 }
 
 .btn-danger:hover {
-    opacity: 0.9;
+    background: var(--danger-light);
 }
-
 .btn-block {
     width: 100%;
     display: block;
@@ -641,7 +641,7 @@ tr.finance-tappable td:first-child::after {
 
 .fin-sheet-value {
     font-size: 26px;
-    font-weight: 700;
+    font-weight: 600;
     padding: 0 16px;
 }
 
@@ -700,7 +700,7 @@ tr.finance-tappable td:first-child::after {
 
 .fin-row-title {
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
     overflow-wrap: anywhere;
 }
 
@@ -711,7 +711,7 @@ tr.finance-tappable td:first-child::after {
 }
 
 .fin-row-amt {
-    font-weight: 600;
+    font-weight: 500;
     white-space: nowrap;
 }
 

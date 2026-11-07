@@ -3,13 +3,13 @@
 
 .bill-checks-block,
 .bill-checks-warn {
-    outline: 3px solid var(--danger-dark);
+    outline: 2px solid var(--danger-border);
     outline-offset: 4px;
     border-radius: 12px;
 }
 
 .bill-checks-warn {
-    outline-color: var(--warning-dark);
+    outline-color: var(--warning-border);
 }
 
 .bill-check-banner {
@@ -18,8 +18,9 @@
     z-index: 5;
     margin: 0 0 12px;
     padding: 10px 12px;
-    border-radius: 10px;
-    border: 2px solid var(--danger-dark);
+    border-radius: 12px;
+    border: 1px solid var(--danger-border);
+    border-left: 3px solid var(--danger-color);
     background: var(--danger-soft);
     color: var(--on-danger-soft);
     box-shadow: var(--shadow-sm);
@@ -30,7 +31,8 @@
 }
 
 .bill-check-banner.bill-check-warn {
-    border-color: var(--warning-dark);
+    border-color: var(--warning-border);
+    border-left-color: var(--warning-color);
     background: var(--warning-soft);
     color: var(--on-warning-soft);
 }
@@ -43,7 +45,7 @@
     background: none;
     color: inherit;
     font: inherit;
-    font-weight: 700;
+    font-weight: 600;
     text-align: left;
     cursor: pointer;
 }
@@ -86,7 +88,7 @@ tr.bill-check-warn > td:first-child {
 .bill-check-msg {
     margin: 2px 0 8px;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 1.35;
     color: var(--on-danger-soft);
 }
@@ -129,12 +131,12 @@ tr.bill-check-row .bill-check-msg {
 }
 
 body.dark-mode .bill-check-banner {
-    background: #3b0d0d;
+    background: #33273a;
     color: #fecaca;
 }
 
 body.dark-mode .bill-check-banner.bill-check-warn {
-    background: #3a2a06;
+    background: #33322d;
     color: #fde68a;
 }
 
@@ -165,7 +167,7 @@ body.dark-mode .bill-check-msg.bill-check-warn {
     background: var(--info-soft);
     color: var(--on-info-soft);
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 1.35;
     text-align: left;
     cursor: pointer;

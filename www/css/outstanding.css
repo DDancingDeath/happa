@@ -13,7 +13,7 @@
 }
 
 .aging-title {
-    font-weight: 600;
+    font-weight: 500;
     color: var(--text-secondary);
 }
 
@@ -34,10 +34,11 @@
     align-items: flex-start;
     gap: 2px;
     padding: 8px 6px;
-    border: 2px solid transparent;
-    border-left-width: 5px;
-    border-radius: 8px;
-    background: var(--surface-muted);
+    border: 1px solid var(--border-color);
+    border-left-width: 3px;
+    border-radius: 10px;
+    background: var(--card-bg);
+    box-shadow: var(--shadow-xs);
     cursor: pointer;
     text-align: left;
     min-width: 0;
@@ -47,7 +48,7 @@
 
 .aging-bucket.active {
     border-color: currentColor;
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-sm);
 }
 
 .aging-bucket-label,
@@ -76,7 +77,7 @@
     padding: 1px 6px;
     border-radius: 10px;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     white-space: nowrap;
 }
 
@@ -92,7 +93,7 @@
 }
 
 .aging-subtitle {
-    font-weight: 600;
+    font-weight: 500;
     color: var(--text-secondary);
     margin: 12px 0 6px;
 }
@@ -116,7 +117,7 @@
 }
 
 .aging-parties > summary {
-    font-weight: 600;
+    font-weight: 500;
     color: var(--text-secondary);
     cursor: pointer;
     padding: 4px 0;
@@ -133,17 +134,19 @@
 
 .aging-sort-btn {
     padding: 4px 10px;
-    border: 1px solid var(--border-strong);
+    border: 1px solid var(--border-color);
     border-radius: 14px;
     background: var(--card-bg);
+    color: var(--text-primary);
     cursor: pointer;
     font-size: 14px;
 }
 
 .aging-sort-btn.active {
-    background: var(--btn-primary);
-    border-color: var(--btn-primary);
-    color: #fff;
+    background: var(--primary-soft);
+    border-color: var(--primary-border);
+    color: var(--on-primary-soft);
+    font-weight: 600;
 }
 
 .aging-party {
@@ -155,8 +158,9 @@
     margin-bottom: 6px;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-left: 5px solid #15803d;
-    border-radius: 8px;
+    border-left: 3px solid #15803d;
+    border-radius: 12px;
+    box-shadow: var(--shadow-xs);
 }
 
 .aging-party.aging-b1 { border-left-color: #ca8a04; }
@@ -164,7 +168,7 @@
 .aging-party.aging-b3 { border-left-color: #b91c1c; }
 
 .aging-party-name {
-    font-weight: 600;
+    font-weight: 500;
     overflow-wrap: anywhere;
 }
 
@@ -188,18 +192,21 @@
 
 .aging-btn {
     padding: 6px 12px;
-    border: 1px solid var(--border-strong);
-    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
     background: var(--card-bg);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-xs);
     cursor: pointer;
-    font-weight: 600;
+    font-weight: 500;
     font-size: 14px;
 }
 
 .aging-btn.aging-remind {
-    background: var(--btn-success);
-    border-color: var(--btn-success);
-    color: #fff;
+    background: var(--success-soft);
+    border-color: var(--success-border);
+    color: var(--on-success-soft);
+    box-shadow: none;
 }
 
 .aging-badge {
@@ -210,7 +217,7 @@
     background: var(--btn-danger);
     color: #fff;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     vertical-align: middle;
 }
 
@@ -244,7 +251,7 @@ body.dark-mode .party-filter-note {
     padding: 1px 8px;
     border-radius: 10px;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 500;
     background: var(--success-soft);
     color: var(--on-success-soft);
     vertical-align: middle;
@@ -257,5 +264,5 @@ body.dark-mode .due-kind-chip {
 
 /* Outstanding search box (its inline style; the id keeps it over the generic input rules) and
    its focus ring, which was inline onfocus / onblur (#89) */
-#outstandingSearchInput { width: 100%; padding: 14px; border: 2px solid var(--border-color); border-radius: 10px; font-size: 15px; transition: all 0.2s; }
-#outstandingSearchInput:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+#outstandingSearchInput { width: 100%; padding: 14px; border: 1px solid var(--border-strong); border-radius: 12px; font-size: 15px; }
+#outstandingSearchInput:focus { border-color: var(--primary-color); box-shadow: var(--focus-ring); }

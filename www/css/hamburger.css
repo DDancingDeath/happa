@@ -1,23 +1,26 @@
 .hamburger {
   position: fixed;
-  top: 12px;
+  top: 13px;
   left: 12px;
   z-index: 1000;
+  width: 44px;
+  height: 44px;
   background: var(--card-bg);
   border: 1px solid var(--border-color);
-  padding: 11px;
+  padding: 0;
   border-radius: var(--radius-md);
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition);
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-shadow: var(--shadow-xs);
   -webkit-tap-highlight-color: transparent;
 }
 
 .hamburger:hover {
-  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
 }
 
 @media (min-width: 481px) {
@@ -26,20 +29,15 @@
   }
 }
 
-.hamburger:active {
-  transform: scale(0.95);
-}
-
 .hamburger span {
-  width: 24px;
-  height: 3px;
+  width: 18px;
+  height: 2px;
   background: var(--text-primary);
   border-radius: var(--radius-full);
-  transition: all var(--transition);
 }
 
-/* Solid band behind the floating menu and bell buttons so scrolled content
-   never shows under them (F10). Desktop has no floating buttons. */
+/* Band behind the floating menu and bell buttons so scrolled content
+   never shows through them (F10): frosted where supported. Desktop has no floating buttons. */
 @media (max-width: 1023px) {
   .tab::before {
     content: '';
@@ -49,6 +47,15 @@
     height: 70px;
     margin: -70px -16px 0;
     background: var(--light-bg);
+    border-bottom: 1px solid var(--border-light);
     z-index: 900;
+  }
+
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .tab::before {
+      background: var(--glass);
+      -webkit-backdrop-filter: saturate(180%) blur(14px);
+      backdrop-filter: saturate(180%) blur(14px);
+    }
   }
 }

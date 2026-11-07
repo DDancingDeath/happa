@@ -8,9 +8,9 @@
 .form-row label {
   width: 140px;
   flex-shrink: 0;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   margin: 0;
 }
 
@@ -23,9 +23,10 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   font-size: 15px;
-  background: var(--card-bg);
+  background: var(--input-bg);
   color: var(--text-primary);
-  transition: all var(--transition);
+  box-shadow: var(--shadow-xs);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   margin: 0;
 }
 
@@ -48,42 +49,30 @@ input[type="number"] {
 }
 
 .quick-add-btn-inline {
-  background: var(--btn-primary);
-  color: white;
-  border: none;
+  background: var(--primary-soft);
+  color: var(--on-primary-soft);
+  border: 1px solid var(--primary-border);
   padding: 12px 18px;
   border-radius: var(--radius);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition);
 }
 
-.tab.purchase-theme .quick-add-btn-inline {
-  background: var(--btn-primary);
-}
-
-.tab.sale-theme .quick-add-btn-inline {
-  background: var(--btn-success);
-}
-
-.quick-add-btn-inline:hover {
-  box-shadow: var(--shadow);
-}
-
-.quick-add-btn-inline:active {
-  transform: scale(0.98);
+#saleSection .quick-add-btn-inline {
+  background: var(--success-soft);
+  color: var(--on-success-soft);
+  border-color: var(--success-border);
 }
 
 label {
   display: block;
   margin-top: 12px;
   margin-bottom: 8px;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
 select, input[type="number"], input[type="text"] {
@@ -92,9 +81,9 @@ select, input[type="number"], input[type="text"] {
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   font-size: 15px;
-  background: var(--card-bg);
+  background: var(--input-bg);
   color: var(--text-primary);
-  transition: all var(--transition);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 /* Remove spinner arrows from all number inputs */
@@ -132,7 +121,7 @@ select:focus, input:focus {
   padding: 14px 20px;
   border-radius: var(--radius-md);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
   box-shadow: var(--shadow-sm);
@@ -170,16 +159,16 @@ select:focus, input:focus {
   background: var(--primary-soft);
   padding: 8px 12px;
   border-radius: var(--radius-full);
-  border: 2px solid var(--primary-border);
+  border: 1px solid var(--primary-border);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--on-primary-soft);
   box-shadow: none;
 }
 
 .weight-chip-remove {
-  background: var(--btn-danger);
-  color: white;
+  background: var(--danger-soft);
+  color: var(--on-danger-soft);
   border: none;
   width: 22px;
   height: 22px;
@@ -189,7 +178,7 @@ select:focus, input:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
+  font-weight: 600;
   transition: all var(--transition);
 }
 
@@ -198,11 +187,10 @@ select:focus, input:focus {
 }
 
 .bill-summary {
-  background: var(--card-bg);
+  background: var(--surface-muted);
   padding: 12px 16px;
   border-radius: var(--radius-md);
   margin: 12px 0;
-  box-shadow: var(--shadow);
   display: flex;
   flex-wrap: nowrap;
   justify-content: space-around;
@@ -219,62 +207,55 @@ select:focus, input:focus {
 .summary-item span {
   font-size: 14px;
   color: var(--text-secondary);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .summary-item strong {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   margin-left: 4px;
 }
 
 .add-to-bill-btn {
   width: 100%;
-  background: var(--btn-primary);
+  background: var(--primary-gradient);
   color: white;
   border: none;
-  padding: 16px;
+  padding: 14px;
   border-radius: var(--radius-md);
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  margin: 16px 0;
-  box-shadow: var(--shadow);
-  transition: all var(--transition);
+  margin: 16px 0 4px;
+  box-shadow: var(--primary-glow);
 }
 
 .add-to-bill-btn:hover {
-  box-shadow: var(--shadow-lg);
+  filter: brightness(1.05);
 }
 
-.add-to-bill-btn:active {
-  transform: scale(0.98);
+/* -------------------- BILLING MODE ACCENTS -------------------- */
+#saleSection .add-to-bill-btn,
+#wholesale-sales .add-to-bill-btn {
+  background: var(--sale-gradient);
+  box-shadow: var(--sale-glow);
 }
 
-/* -------------------- BILLING THEME -------------------- */
-.tab.purchase-theme {
-  background: var(--light-bg);
+#purchaseSection .bill-totals {
+  border-left: 3px solid var(--purchase-color);
 }
 
-.tab.sale-theme {
-  background: linear-gradient(to bottom, var(--success-soft) 0%, var(--light-bg) 240px);
+#saleSection .bill-totals {
+  border-left: 3px solid var(--sale-color);
 }
 
-.tab.purchase-theme .add-to-bill-btn {
-  background: var(--btn-primary);
-}
-
-.tab.sale-theme .add-to-bill-btn {
-  background: var(--btn-success);
-}
-
-.tab.purchase-theme .bill-totals {
-  border-left: 4px solid var(--purchase-color);
-}
-
-.tab.sale-theme .bill-totals {
-  border-left: 4px solid var(--sale-color);
+/* Share on WhatsApp under the bill: a soft green, not a second solid button */
+.bill-col-summary button[style*="background: #15803d"] {
+  background: var(--success-soft) !important;
+  color: var(--on-success-soft) !important;
+  box-shadow: inset 0 0 0 1px var(--success-border);
 }
 
 .rates-container {
@@ -288,7 +269,7 @@ select:focus, input:focus {
   width: 70px;
   padding: 10px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 500;
   border: 2px solid;
   border-radius: var(--radius);
   text-align: center;
@@ -323,7 +304,7 @@ select:focus, input:focus {
   align-items: center;
   justify-content: center;
   line-height: 1;
-  font-weight: bold;
+  font-weight: 600;
   margin-right: 4px;
   transition: all var(--transition);
 }
@@ -338,7 +319,7 @@ select:focus, input:focus {
   border: none;
   border-radius: var(--radius);
   font-size: 20px;
-  font-weight: bold;
+  font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -380,7 +361,7 @@ select:focus, input:focus {
   margin-bottom: 16px;
   padding: 10px 12px;
   border: 1px solid var(--warning-border);
-  border-left-width: 4px;
+  border-left-width: 3px;
   border-radius: var(--radius);
   background: var(--warning-soft);
   color: var(--on-warning-soft);
@@ -398,15 +379,15 @@ select:focus, input:focus {
 
 .autosave-banner-actions button {
   padding: 8px 14px;
-  border-radius: 6px;
-  font-weight: 600;
+  border-radius: 8px;
+  font-weight: 500;
   cursor: pointer;
 }
 
 .autosave-restore {
-  background: var(--btn-primary);
-  border: 1px solid var(--btn-primary);
-  color: #fff;
+  background: var(--primary-soft);
+  border: 1px solid var(--primary-border);
+  color: var(--on-primary-soft);
 }
 
 .autosave-discard {
