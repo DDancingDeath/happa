@@ -8,6 +8,7 @@
 import { UIManager } from '../ui/ui-manager.js';
 import { t, getLang } from '../i18n/index.js';
 import { formatINR } from '../utils/due-reminder.js';
+import { sumMoney } from '../utils/money.js';
 import { AuditService } from '../services/audit.js';
 import * as store from './rent-store.js';
 import { meterBill, monthLabel } from './rent-math.js';
@@ -116,7 +117,7 @@ export async function showMeters(c) {
         }
     }
     const saved = results.filter(x => !x.error);
-    const total = saved.reduce((s, x) => s + x.bill.amount, 0);
+    const total = sumMoney(saved, x => x.bill.amount);
     if (saved.length === results.length) {
         UIManager.showToast(t('msg.rent.meters_saved', { n: saved.length, amount: formatINR(total) }), 'success');
         return;

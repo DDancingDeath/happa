@@ -610,7 +610,7 @@ let dialogResolve = null;
  * Rentals form dialog (template #rentDialog); resolves true on Save. Inputs stay readable after it closes.
  * `info`: no Save button; `check`: on Save, false keeps it open (it shows the error at the field).
  */
-function dialog(html, { info = false, check = null } = {}) {
+function dialog(html, { info = false, check: canSave = null } = {}) {
     dialogResolve?.(false);
     const box = byId('rentDialog');
     const body = byId('rentDialogBody');
@@ -622,7 +622,7 @@ function dialog(html, { info = false, check = null } = {}) {
     body.querySelector('input, select')?.focus();
     return new Promise((resolve) => {
         dialogResolve = (v) => {
-            if (v === true && check && !check()) return;
+            if (v === true && canSave && !canSave()) return;
             dialogClosedAt = Date.now();
             box.hidden = true;
             dialogResolve = null;
