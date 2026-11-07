@@ -310,6 +310,24 @@ describe('Properties and the property screen', () => {
         expect(root.querySelector('[data-property="P1"]')).not.toBeNull();
     });
 
+    test('Back that closed a form at a property keeps the chain: tenant → Back → the property', async () => {
+        setLang('en');
+        await properties();
+        document.getElementById('rentals').insertAdjacentHTML('beforeend', '<div id="rentDialog" hidden><div id="rentDialogBody"></div></div>');
+        RentalsModule.api.showProperty('P1');
+        const p = RentalsModule.api.editProperty('P1');
+        // NavigationManager on Back: closes the form, and the screen's entry becomes a copy of the one below.
+        RentalsModule.api.dialogClose(false);
+        await p;
+        history.replaceState({ happaTab: 'rentals' }, '');
+        window.dispatchEvent(new PopStateEvent('popstate', { state: history.state }));
+        await new Promise(r => setTimeout(r, 320));
+        RentalsModule.api.openTenant('T1');
+        RentalsModule.api.back();
+        await new Promise(r => setTimeout(r, 20));
+        expect(document.getElementById('rentDetailTitle').textContent).toBe('Gupta Bhawan');
+    });
+
     test('a member keeps the actions they have today (Q1) but has no Yearly report; Advanced adds Expenses and This month', async () => {
         rentalsRole.mockReturnValue('member');
         const root = await properties('advanced');

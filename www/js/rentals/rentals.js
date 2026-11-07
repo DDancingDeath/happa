@@ -364,8 +364,12 @@ function openDetail(page, id) {
     if (!popBound) {
         popBound = true;
         window.addEventListener('popstate', (e) => {
-            // Back that only closed a form (NavigationManager closes it first) keeps the screen.
-            if (!state.detail || Date.now() - dialogClosedAt < 300) return;
+            if (!state.detail) return;
+            // Back that only closed a form keeps the screen; NavigationManager has re-pushed the entry below, so tag it.
+            if (Date.now() - dialogClosedAt < 300) {
+                try { history.replaceState({ ...(history.state || {}), rentDetail: state.detailKey, rentPage: state.page, rentId: state.detail }, ''); } catch (_) { /* no history */ }
+                return;
+            }
             const s = e.state || {};
             if (s.rentDetail === state.detailKey) return;
             if (s.rentDetail > staleKeys && s.rentDetail < state.detailKey && s.rentId) {
