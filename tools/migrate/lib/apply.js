@@ -11,9 +11,11 @@
  *   kept for the shop) and the next run continues from the cursor.
  * - dev_ collections are never written unless dev (then every write goes to dev_<name>).
  * - A users doc still replaces the target profile (so a removal in the old app,
- *   which deletes fields, carries over), but Happa's own Rentals fields
- *   (`rentRole`) are copied into it: Rentals data is real (owner, 7 Nov 2026).
- *   Not for a profile the old app disabled or rejected: that removes access.
+ *   which deletes fields, carries over). Rentals roles come from Happa only
+ *   (Rentals data is real: owner, 7 Nov 2026): the old profile's `rentRole` is
+ *   never written and Happa's is put back, except for a person the old app
+ *   disabled or rejected. A Rentals helper approved in Happa but still pending
+ *   in the old app keeps Happa's approval (status, role, approvedAt/By).
  */
 import { createHash } from 'crypto';
 import backupLib from '../../backup/backup-lib.js';
@@ -24,21 +26,28 @@ export const DEFAULT_BUDGET = MIGRATION_DAILY_WRITES;
 export const BATCH_SIZE = 400;
 export const CURSOR_VERSION = 1;
 const OPENING_COLLS = ['purchases', 'retailSales', 'wholesaleSales'];
-/** Profile fields only Happa sets (Rentals): its value survives the bundle's profile. */
+/** Profile fields only Happa sets (Rentals): the bundle's are dropped, Happa's put back. */
 export const KEEP_USER_FIELDS = ['rentRole'];
+const APPROVAL_FIELDS = ['status', 'role', 'approvedAt', 'approvedBy'];
 const REMOVED_STATUSES = ['disabled', 'rejected'];
+const hasRentRole = (u) => !!u && u.rentRole !== undefined && u.rentRole !== null && u.rentRole !== '';
 
 /**
- * The profile apply writes: the bundle's, plus Happa's KEEP_USER_FIELDS
- * (they win), unless the old app removed the person.
- * @returns {{data: Object, kept: string[]}}
+ * The profile apply writes: the bundle's without its KEEP_USER_FIELDS, plus
+ * Happa's (unless the old app removed the person). A Rentals helper Happa
+ * approved but the old app still has pending keeps Happa's approval.
+ * @returns {{data: Object, kept: string[], dropped: string[], approval: boolean}}
  */
 export function profileWrite(bundleData, happa) {
     const data = { ...bundleData };
-    if (!happa || REMOVED_STATUSES.includes(bundleData?.status)) return { data, kept: [] };
+    const dropped = KEEP_USER_FIELDS.filter(f => f in data);
+    dropped.forEach(f => { delete data[f]; });
+    if (!happa || REMOVED_STATUSES.includes(bundleData?.status)) return { data, kept: [], dropped, approval: false };
     const kept = KEEP_USER_FIELDS.filter(f => f in happa);
     kept.forEach(f => { data[f] = happa[f]; });
-    return { data, kept };
+    const approval = hasRentRole(happa) && bundleData?.status === 'pending' && ![...REMOVED_STATUSES, 'pending'].includes(happa.status);
+    if (approval) APPROVAL_FIELDS.forEach(f => { if (f in happa) data[f] = happa[f]; else delete data[f]; });
+    return { data, kept, dropped, approval };
 }
 
 export function bundleHash(bundle) {
@@ -188,12 +197,16 @@ export async function applyBundle({
         profiles = new Map(snap.docs.map(d => [d.id, d.data() || {}]));
     }
     let keptProfiles = 0;
+    let droppedProfiles = 0;
     const docData = (w) => {
         const data = deser(w.data);
         if (w.coll !== 'users') return data;
-        const r = profileWrite(data, profiles.get(w.id));
+        const happa = profiles.get(w.id);
+        const r = profileWrite(data, happa);
         if (r.kept.length) keptProfiles++;
-        else if (profiles.get(w.id)?.rentRole && !r.data.rentRole) log(`users/${w.id}: removed in the old app (status ${r.data.status}), so its Happa rentRole was not kept`);
+        if (r.dropped.length && !r.kept.length) droppedProfiles++;
+        if (hasRentRole(happa) && !r.kept.length) log(`users/${w.id}: removed in the old app (status ${r.data.status}), so its Happa rentRole was not kept`);
+        if (r.approval) log(`users/${w.id}: pending in the old app but approved in Happa with a rentRole: Happa's status and role kept`);
         return r.data;
     };
     while (cursor.next < stop) {
@@ -217,6 +230,7 @@ export async function applyBundle({
     }
     if (keep.size) log(`Kept ${keep.size} opening balances that already have payments in the new app.`);
     if (keptProfiles) log(`Kept Happa's ${KEEP_USER_FIELDS.join(', ')} on ${keptProfiles} profiles.`);
+    if (droppedProfiles) log(`Left out the old app's ${KEEP_USER_FIELDS.join(', ')} on ${droppedProfiles} profiles (Rentals roles come from Happa only).`);
     cursor.runs.push({ at: startedAt, writes: written, upTo: cursor.next });
     saveCursor(cursor);
     const status = cursor.next >= run.total ? 'done' : 'budget';

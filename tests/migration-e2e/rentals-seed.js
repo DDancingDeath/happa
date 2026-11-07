@@ -1,8 +1,8 @@
 /**
  * Rentals data already in Happa before the migration (it is real: owner,
  * 7 Nov 2026). run.js seeds it with the rehearsal leftovers; data.test.js
- * checks that wipe + apply keep it while the rest is wiped. Strings, numbers
- * and booleans only (run.js writes them over the emulator's REST API).
+ * checks that wipe + apply keep it while the rest is wiped. Strings, numbers,
+ * booleans and null only (run.js writes them over the emulator's REST API).
  */
 export const RENTALS_SEED = {
     /** wipe keeps these and apply never writes them */
@@ -25,12 +25,13 @@ export const RENTALS_SEED = {
     ],
     /** synthetic backup only: profiles the bundle also writes; apply writes the old profile and puts Happa's rentRole back */
     merged: [
-        { coll: 'users', id: 'old-member-04', data: { rentRole: 'member', name: 'Helper in Happa', role: 'manager' } },
-        // the old profile says rentRole 'manager': Happa's wins
-        { coll: 'users', id: 'old-manager-02', data: { rentRole: 'member' } }
+        { coll: 'users', id: 'old-member-04', data: { rentRole: 'member', name: 'Helper in Happa', role: 'manager' } }
     ],
-    /** synthetic backup only: a stale rehearsal copy (no rentRole) with more access than the final backup gives; wipe deletes it, apply re-creates the old one */
+    /** synthetic backup only: profiles without a rentRole that wipe deletes and apply re-creates from the old profile */
     replaced: [
-        { coll: 'users', id: 'old-pending-05', data: { email: 'new@old-shop.test', role: 'manager', status: 'approved' } }
+        // a stale rehearsal copy with more access than the final backup gives
+        { coll: 'users', id: 'old-pending-05', data: { email: 'new@old-shop.test', role: 'manager', status: 'approved' } },
+        // Rentals role removed in Happa; the old profile still says rentRole 'manager': not carried
+        { coll: 'users', id: 'old-manager-02', data: { email: 'manager@old-shop.test', role: 'manager', status: 'approved', rentRole: null } }
     ]
 };

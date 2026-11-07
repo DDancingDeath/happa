@@ -66,11 +66,11 @@ function revive(v) {
 }
 const backupDocs = (coll) => backup.collections[coll] || [];
 const MERGED = SYNTHETIC ? RENTALS_SEED.merged : [];
-/** A carried profile as apply leaves it: the old profile, with Happa's rentRole put back. */
+/** A carried profile as apply leaves it: the old profile without its rentRole, with Happa's put back (Rentals roles come from Happa only). */
 function expectedProfile(id, old) {
+    const out = Object.fromEntries(Object.entries(old).filter(([k]) => !KEEP_USER_FIELDS.includes(k)));
     const happa = MERGED.find(d => d.coll === 'users' && d.id === id)?.data;
-    if (!happa) return old;
-    return { ...old, ...Object.fromEntries(KEEP_USER_FIELDS.filter(f => f in happa).map(f => [f, happa[f]])) };
+    return happa ? { ...out, ...Object.fromEntries(KEEP_USER_FIELDS.filter(f => f in happa).map(f => [f, happa[f]])) } : out;
 }
 
 let app;
@@ -198,7 +198,8 @@ test('Rentals data survives wipe + apply: rent_* (and dev_rent_*), RENT_* audit 
     MERGED.forEach(({ id, data: d }) => assert.equal(data.users.get(id)?.rentRole, d.rentRole, `users/${id}: Happa's rentRole kept over the old profile's`));
     const old = (id) => backupDocs('users').find(u => u.id === id)?.data || {};
     MERGED.forEach(({ id }) => assert.equal(data.users.get(id)?.role, old(id).role, `users/${id}: the old profile's role, not Happa's`));
-    (SYNTHETIC ? RENTALS_SEED.replaced : []).forEach(({ id }) => assert.deepEqual(norm(data.users.get(id)), norm(old(id)), `users/${id}: the stale Happa copy is replaced by the old profile`));
+    (SYNTHETIC ? RENTALS_SEED.replaced : []).forEach(({ id }) => assert.deepEqual(norm(data.users.get(id)), norm(expectedProfile(id, old(id))), `users/${id}: the Happa copy without a rentRole is replaced by the old profile`));
+    if (SYNTHETIC) assert.equal('rentRole' in data.users.get('old-manager-02'), false, 'the old app\'s rentRole is not carried when Happa removed it');
     console.log(`  Rentals data kept: ${RENTALS_SEED.kept.length} docs in ${KEPT_COLLS.join(', ')}; ${MERGED.length} profiles kept their rentRole; ${RENTALS_SEED.wiped.length} rehearsal docs wiped`);
 });
 

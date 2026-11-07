@@ -97,7 +97,7 @@ async function signUp(email, password, localId) {
     });
 }
 async function setDoc(coll, id, fields) {
-    const enc = (v) => (typeof v === 'number' ? { integerValue: String(v) } : typeof v === 'boolean' ? { booleanValue: v } : { stringValue: String(v) });
+    const enc = (v) => (v === null ? { nullValue: null } : typeof v === 'number' ? { integerValue: String(v) } : typeof v === 'boolean' ? { booleanValue: v } : { stringValue: String(v) });
     await http(`${DOCS()}/${coll}/${id}`, { method: 'PATCH', headers: ADMIN, body: JSON.stringify({ fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, enc(v)])) }) });
 }
 /** Emulator-only password for a migrated login (real backups: the real passwords are not known). */

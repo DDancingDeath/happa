@@ -121,7 +121,7 @@ describe('apply: writes', () => {
         expect(resumeCursor(saved, other, PROJECT, { restart: true }).next).toBe(0);
     });
 
-    test('a profile replaces Happa\'s but keeps Happa\'s rentRole (not for a person the old app removed)', async () => {
+    test('a profile replaces Happa\'s; rentRole comes from Happa only', async () => {
         const bundle = makeBundle();
         bundle.writes.find(w => w.coll === 'users' && w.id === 'uid-member').data.rentRole = 'manager';
         const fake = createFakeFirestore();
@@ -139,20 +139,29 @@ describe('apply: writes', () => {
         expect(users.get('rent-helper')).toEqual({ role: 'none', rentRole: 'member', name: 'Rentals helper' });
         expect(lines.join('\n')).toMatch(/Kept Happa's rentRole on 2 profiles/);
 
+        // After a wipe (no Happa profile): the old app's rentRole is never carried.
         const fresh = createFakeFirestore();
-        await run(fresh, bundle, newCursor(bundle, PROJECT));
-        expect(fresh.raw('users').get('uid-member').rentRole).toBe('manager');
-        expect('rentRole' in fresh.raw('users').get('uid-owner')).toBe(false);
+        const freshLines = [];
+        await run(fresh, bundle, newCursor(bundle, PROJECT), { log: (l) => freshLines.push(l) });
+        expect('rentRole' in fresh.raw('users').get('uid-member')).toBe(false);
+        expect(freshLines.join('\n')).toMatch(/Left out the old app's rentRole on 1 profiles/);
     });
 
-    test('a removal in the old app carries over: no stale role, no kept rentRole', () => {
+    test('a removal in the old app carries over; a helper approved in Happa but pending in the old app stays approved', () => {
         expect(profileWrite({ name: 'X', status: 'disabled' }, { role: 'manager', status: 'approved', rentRole: 'member' }))
-            .toEqual({ data: { name: 'X', status: 'disabled' }, kept: [] });
-        expect(profileWrite({ status: 'rejected' }, { rentRole: 'member' }).data).toEqual({ status: 'rejected' });
+            .toMatchObject({ data: { name: 'X', status: 'disabled' }, kept: [], approval: false });
+        expect(profileWrite({ status: 'rejected', rentRole: 'member' }, { rentRole: 'member' }).data).toEqual({ status: 'rejected' });
         expect(profileWrite({ role: 'staff', status: 'approved' }, { role: 'owner', rentRole: 'member' }))
-            .toEqual({ data: { role: 'staff', status: 'approved', rentRole: 'member' }, kept: ['rentRole'] });
-        expect(profileWrite({ role: 'staff', rentRole: 'manager' }, { role: 'staff' }).data).toEqual({ role: 'staff', rentRole: 'manager' });
-        expect(profileWrite({ role: 'staff' }, undefined).data).toEqual({ role: 'staff' });
+            .toMatchObject({ data: { role: 'staff', status: 'approved', rentRole: 'member' }, kept: ['rentRole'] });
+        expect(profileWrite({ role: 'staff', rentRole: 'manager' }, { role: 'staff' })).toMatchObject({ data: { role: 'staff' }, dropped: ['rentRole'] });
+        expect(profileWrite({ role: 'staff', rentRole: 'manager' }, undefined).data).toEqual({ role: 'staff' });
+
+        const pending = { name: 'P', role: 'staff', status: 'pending' };
+        expect(profileWrite(pending, { role: 'none', status: 'active', rentRole: 'member', approvedAt: 7, approvedBy: 'o' }))
+            .toEqual({ data: { name: 'P', role: 'none', status: 'active', rentRole: 'member', approvedAt: 7, approvedBy: 'o' }, kept: ['rentRole'], dropped: [], approval: true });
+        expect(profileWrite(pending, { status: 'approved', rentRole: 'member' }).data).toEqual({ name: 'P', status: 'approved', rentRole: 'member' });
+        expect(profileWrite(pending, { role: 'staff', status: 'pending', rentRole: 'member' })).toMatchObject({ data: pending, approval: false });
+        expect(profileWrite(pending, { role: 'staff', status: 'active', rentRole: null })).toMatchObject({ data: { ...pending, rentRole: null }, approval: false });
     });
     test('a rerun keeps opening balances already paid in the new app and removes ones no longer due', async () => {
         const backup = load();

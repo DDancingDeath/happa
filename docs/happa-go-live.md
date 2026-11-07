@@ -236,9 +236,10 @@ Users must list no `staging-*@aadhat.local` login.
 go-live.** `wipe` keeps it (hard-coded, no flag): every `rent_*` (and
 `dev_rent_*`) collection, the `auditLogs` entries whose action starts with
 `RENT_`, and the `users` profiles that have a `rentRole` (every other profile is
-deleted and `apply` re-creates it from the final backup). `apply` puts Happa's
-`rentRole` back on a profile it rewrites, unless the old app disabled or
-rejected that person. Details: the #232 README,
+deleted and `apply` re-creates it from the final backup). Rentals roles come
+from Happa only: `apply` never writes the old profile's `rentRole` and puts
+Happa's back on a profile it rewrites, unless the old app disabled or rejected
+that person. Details: the #232 README,
 "After a rehearsal: `wipe`". Before `wipe`:
 
 1. Take a fresh Rentals backup and keep it outside the repo (`Q:\aadhat-data\`):
