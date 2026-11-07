@@ -55,6 +55,9 @@ const state = {
     entry: 0,
     view: savedView(),
     openProperty: '',
+    detail: '',
+    detailKey: 0,
+    tenantList: { q: '', filter: 'all', sort: 'name' },
     filters: { propertyId: '', type: '', status: '', q: '', sort: 'desc' }
 };
 
@@ -212,10 +215,15 @@ function render() {
         if (state.lazyFailed) return;
         return loadMod(need).then(() => { if (isVisible()) render(); }, () => { state.lazyFailed = true; fail('msg.rent.could_not_load'); render(); });
     }
-    root.innerHTML = state.page === 'tenants' ? lazyMods.pages.renderTenants(unitCtx(), d)
+    const detail = !state.detail ? null : state.page === 'tenants' ? lazyMods.pages.renderTenant(unitCtx(), d, state.detail)
+        : state.page === 'properties' ? lazyMods.pages.renderProperty(unitCtx(), d, state.detail) : null;
+    if (state.detail && !detail) {
+        state.detail = '';
+        if (history.state?.rentDetail === state.detailKey) history.back();
+    }
+    root.innerHTML = detail || (state.page === 'tenants' ? lazyMods.pages.renderTenants(unitCtx(), d)
         : state.page === 'properties' ? lazyMods.pages.renderProperties(unitCtx(), d)
-        : renderRent(d, adv);
-    if (state.page === 'tenants' && canWrite()) void unitUi('fillPicker', 'rentTenantUnitBox', 'rentTenantUnit');
+        : renderRent(d, adv));
 }
 
 /** Settings › Rentals defaults; built-in defaults when they can't be read. */
@@ -343,6 +351,54 @@ function setView(view) {
     state.view = view === 'units' ? 'units' : 'properties';
     try { localStorage.setItem(VIEW_KEY, state.view); } catch (_) { /* private mode */ }
     if (state.mode !== 'advanced') return setMode('advanced');
+    render();
+}
+
+/** A tenant's or property's screen; Back (page or phone) returns to the screen before it. */
+let popBound = false;
+let detailSeq = 0;
+let dialogClosedAt = 0;
+// Entries up to this key belong to screens left through the menu; Back does not reopen them.
+let staleKeys = 0;
+function openDetail(page, id) {
+    if (!popBound) {
+        popBound = true;
+        window.addEventListener('popstate', (e) => {
+            if (!state.detail) return;
+            // Back that only closed a form keeps the screen; NavigationManager has re-pushed the entry below, so tag it.
+            if (Date.now() - dialogClosedAt < 300) {
+                try { history.replaceState({ ...(history.state || {}), rentDetail: state.detailKey, rentPage: state.page, rentId: state.detail }, ''); } catch (_) { /* no history */ }
+                return;
+            }
+            const s = e.state || {};
+            if (s.rentDetail === state.detailKey) return;
+            if (s.rentDetail > staleKeys && s.rentDetail < state.detailKey && s.rentId) {
+                Object.assign(state, { page: s.rentPage, detail: s.rentId, detailKey: s.rentDetail });
+            } else state.detail = '';
+            if (isVisible()) render();
+        });
+    }
+    state.page = page;
+    state.detail = String(id || '');
+    state.detailKey = ++detailSeq;
+    try { history.pushState({ ...(history.state || {}), rentDetail: state.detailKey, rentPage: page, rentId: state.detail }, ''); } catch (_) { /* no history */ }
+    render();
+    byId('rentDetailTitle')?.focus?.();
+}
+const openTenant = (id) => openDetail('tenants', id);
+const showProperty = (id) => openDetail('properties', id);
+
+/** Advanced's This month, opened at property `pid`. */
+function propertyMonth(pid) {
+    state.view = 'properties';
+    state.openProperty = pid || '';
+    return RentalsModule.enter('rent');
+}
+
+function back() {
+    if (!state.detail) return;
+    if (history.state?.rentDetail === state.detailKey) { history.back(); return; }
+    state.detail = '';
     render();
 }
 
@@ -548,7 +604,9 @@ function findLease(leaseId) {
 const unitMod = () => import('./rent-unit.js');
 /** Tenants / Properties pages and their forms (rent-pages.js), and Advanced's This month (rent-advanced.js), loaded on first use. */
 const lazyMods = {};
-const loadMod = (name) => (name === 'pages' ? import('./rent-pages.js') : import('./rent-advanced.js')).then(m => (lazyMods[name] = m[name]));
+const loadMod = (name) => (name === 'pages'
+    ? Promise.all([import('./rent-pages.js'), import('./rent-tenants.js')]).then(([a, b]) => ({ ...a.pages, ...b.tenants }))
+    : import('./rent-advanced.js').then(m => m.advanced)).then(m => (lazyMods[name] = m));
 const loadPages = () => loadMod('pages');
 const lazyCall = (name, fn) => (...args) => (lazyMods[name] ? lazyMods[name][fn](unitCtx(), ...args) : loadMod(name).then(p => p[fn](unitCtx(), ...args), (e) => {
     console.error('Rentals file not loaded:', e);
@@ -559,6 +617,7 @@ const fromPages = (fn) => (...args) => lazyMods.pages[fn](unitCtx(), ...args);
 const unitCtx = () => ({
     esc, js, val, dialog, closeDialog: () => dialogResolve?.(false), index, placeOf, linkPlace, linkFor, findLease, knownType, typeWord,
     defaults, headerName, tenantSectionHtml: fromPages('tenantSectionHtml'), readTenantSection: fromPages('readTenantSection'),
+    elecFieldsHtml: fromPages('elecFieldsHtml'), saveRent: fromPages('saveRent'), refreshLinkNames: fromPages('refreshLinkNames'), back,
     saveMoveIn: fromPages('saveMoveIn'), isManager: isManager(), isOwner: isOwner(), canWrite: canWrite(), month: state.month,
     state, typeLabel, elecTag, sinceText, receiptsBtn, payBtns, badge, render, unitUi, depUi, linkUi: (fn, ...a) => lazyUi('./rent-link.js', fn, ...a), unitMod, unitCtx, auditWarn
 });
@@ -598,6 +657,7 @@ function dialog(html, { info = false } = {}) {
     body.querySelector('input, select')?.focus();
     return new Promise((resolve) => {
         dialogResolve = (v) => {
+            dialogClosedAt = Date.now();
             box.hidden = true;
             dialogResolve = null;
             resolve(v === true);
@@ -620,6 +680,8 @@ export const RentalsModule = {
         await ensureDom();
         if (token !== state.entry) return;
         state.page = PAGES.includes(page) ? page : 'rent';
+        state.detail = '';
+        staleKeys = detailSeq;
         NavigationManager.showTab('rentals');
         if (!store.isAttached()) {
             state.month = monthKey();
@@ -649,7 +711,8 @@ export const RentalsModule = {
         settings: (which) => NavigationManager.showTabFromNav(which === 'roles' ? 'settings-roles' : 'settings-rentals'),
         filterUnits: lazyCall('advanced', 'filterUnits'),
         ...Object.fromEntries(['meter', 'editLease', 'addTenant', 'editTenant', 'archiveTenant', 'moveIn', 'moveOut', 'fillRent', 'addProperty', 'editProperty',
-            'archiveProperty', 'addUnit', 'editUnit', 'archiveUnit', 'tenantToggle', 'tenantPick', 'tenantElec'].map(n => [n, pg(n)])),
+            'archiveProperty', 'addUnit', 'editUnit', 'archiveUnit', 'tenantToggle', 'tenantPick', 'tenantElec', 'changeUnit', 'tenantList', 'remindTenant'].map(n => [n, pg(n)])),
+        openTenant, showProperty, propertyMonth, back,
         shareLink: (id) => lazyUi('./rent-link.js', 'shareLink', id), linkAction: (a, id) => lazyUi('./rent-link.js', 'linkAction', a, id), setView, openProperty,
         addTenantToUnit: (unitId) => unitUi('toUnit', null, unitId),
         receipts: (tenantId) => receiptUi('showHistory', tenantId),

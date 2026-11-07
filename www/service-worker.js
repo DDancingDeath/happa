@@ -283,6 +283,7 @@ const LAZY_ASSETS = [
     '/js/rentals/rent-report-store.js',
     '/js/rentals/rent-math-report.js',
     '/js/rentals/rent-pages.js',
+    '/js/rentals/rent-tenants.js',
     '/js/rentals/rent-advanced.js',
     '/js/rentals/rent-unit.js'
 ];

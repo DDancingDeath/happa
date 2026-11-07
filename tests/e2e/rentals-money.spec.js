@@ -4,7 +4,7 @@
  * a property expense (RENT-17) in the yearly report and its CSV (RENT-19).
  */
 const { test, expect, login } = require('./support/app');
-const { button, dialog, row, dialogButton, closeDialog, toastHas, showPage, rentRow, setUpTenant, pay } = require('./support/rentals');
+const { button, dialog, dialogButton, closeDialog, toastHas, showPage, openTenant, rentRow, setUpTenant, pay, openProperty, receiptMore } = require('./support/rentals');
 
 test('a payment over the due carries an advance; its receipt is cancelled with a reason', async ({ page, problems }) => {
     await login(page, 'owner');
@@ -19,11 +19,12 @@ test('a payment over the due carries an advance; its receipt is cancelled with a
     await closeDialog(page);
     await expect(await rentRow(page, tenant)).toContainText('Paid');
 
-    await showPage(page, 'tenants');
-    await button(row(page, tenant), 'Receipts').click();
+    const screen = await openTenant(page, tenant);
+    await button(screen, 'Receipts').click();
     await expect(box).toContainText(`Receipts: ${tenant}`);
     await expect(box).toContainText(no);
     await button(box, 'View').click();
+    await receiptMore(page);
     await button(box, 'Cancel receipt').click();
     await expect(box).toContainText(`Cancel receipt ${no}?`);
     const save = page.locator('#rentDialog [data-onclick="rentals.dialogClose(true)"]');
@@ -32,7 +33,7 @@ test('a payment over the due carries an advance; its receipt is cancelled with a
     await save.click();
     await toastHas(page, `Receipt ${no} cancelled`);
 
-    await button(row(page, tenant), 'Receipts').click();
+    await button(screen, 'Receipts').click();
     await expect(box).toContainText('CANCELLED');
     await closeDialog(page);
     expect(problems.pageErrors).toEqual([]);
@@ -44,7 +45,7 @@ test('the deposit ledger: received, refunded, and the deposits-held list', async
     const { tenant } = await setUpTenant(page, { units: [['A', 4000]], deposit: 10000 });
     const box = dialog(page);
 
-    await button(row(page, tenant), 'Deposit').click();
+    await button(await openTenant(page, tenant), 'Deposit').click();
     await expect(box).toContainText(`Security deposit: ${tenant}`);
     await expect(box).toContainText(/Agreed deposit\s*₹10,000/);
     await expect(box).toContainText(/Deposit held\s*₹0/);
@@ -62,6 +63,8 @@ test('the deposit ledger: received, refunded, and the deposits-held list', async
     await expect(box).toContainText('Refunded');
     await closeDialog(page);
 
+    await page.evaluate(() => window.app.rentals.setMode('advanced'));
+    await showPage(page, 'tenants');
     await button(page.locator('#rentalsBody'), 'Deposits held').click();
     await expect(box.getByRole('listitem').filter({ hasText: tenant })).toContainText('₹7,000');
     await closeDialog(page);
@@ -76,8 +79,9 @@ test('a property expense shows in the month, the yearly report and its CSV', asy
     await pay(page, tenant, 4000);
     await closeDialog(page);
 
-    await showPage(page, 'properties');
-    await button(row(page, prop), 'Expenses').click();
+    // Expenses are on the property's screen in Advanced.
+    await page.evaluate(() => window.app.rentals.setMode('advanced'));
+    await button(await openProperty(page, prop), 'Expenses').click();
     await expect(box).toContainText(`Expenses: ${prop}`);
     await expect(box).toContainText('No expenses recorded yet.');
     await button(box, 'Add expense').click();
@@ -89,6 +93,7 @@ test('a property expense shows in the month, the yearly report and its CSV', asy
     await expect(box).toContainText(/Expenses this month.*₹1,500/s);
     await closeDialog(page);
 
+    await showPage(page, 'properties');
     await button(page.locator('#rentalsBody'), 'Yearly report').click();
     const report = page.locator('#rentReport');
     await expect(report).toContainText('Yearly report');

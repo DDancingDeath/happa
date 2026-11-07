@@ -807,4 +807,17 @@ Advanced only change what is drawn. Advanced never grants a permission (role che
   property's detail). Owners and managers get links to Settings › Rentals and (owner) Roles & access, which
   replaced the Access tab (`page('access')` still opens Roles & access).
 - **Files:** `rent-pages.js` (Tenants, Properties and their forms) and `rent-advanced.js` are lazy (§4).
+- **Tenants** (PR4): a plain list (Simple) and the tenant's own screen (state `detail`, an in-page view with a
+  history entry so the phone's Back closes it): dues over all the tenant's tenancies (`rent-views.tenantDues`),
+  the tenancy, and the less used actions under ⋯. Edit no longer has a Unit field: Change unit (the same
+  `rent-unit.toUnit` change of unit, which confirms with the tenant, both units and the dues) and Move out ("Move
+  Ram out of Flat 1A") are their own actions (owner-adjustable default). Remove names the tenant. Code:
+  `rent-tenants.js` (lazy, loaded with `rent-pages.js`).
+- **Properties** (PR5): rows with units, let and owed there (`rent-pages.propertyRows`: RENT-4 over the
+  `tenantRows` whose unit is in the property, so a moved-out tenant's months count where they were). The property's
+  screen uses the same `detail` state as a tenant's; each screen pushes `{ rentDetail: n, rentPage, rentId }`, so
+  Back from a tenant opened at a property returns to the property. Occupancy is the active lease on the unit (as
+  This month); Remove stays hidden while `unit.leaseId` is set (unchanged rule). Add property is a form; size and
+  floor are under More in the unit form. Expenses and This month for the property are in Advanced (Expenses opens
+  the existing sheet, not a tab: deviation from the plan, no extra reads).
 

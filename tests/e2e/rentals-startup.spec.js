@@ -5,6 +5,7 @@
  * (so the probe really sees them) and only after the app-shown timing mark.
  */
 const { test, expect, login } = require('./support/app');
+const { addProperty, openProperty } = require('./support/rentals');
 
 const RENT_RE = /(?<![a-z])rent_(properties|units|tenants|leases|charges)/;
 const RENTALS_FILE = /\/js\/rentals\/|\/templates\/rentals\.html|\/css\/rentals\.css/;
@@ -47,10 +48,8 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await login(page, 'owner');
     const stamp = String(Date.now()).slice(-6);
     await page.evaluate(() => window.app.rentals.open('properties'));
-    await page.waitForSelector('#rentPropName');
-    await page.fill('#rentPropName', `Gali ${stamp}`);
-    await page.click('#rentalsBody .rent-form button');
-    const card = page.locator('.rent-row', { hasText: `Gali ${stamp}` });
+    await addProperty(page, `Gali ${stamp}`);
+    const card = await openProperty(page, `Gali ${stamp}`);
     await card.locator('button', { hasText: 'Add unit' }).click();
     await page.fill('#rentUnitLabel', `G${stamp}`);
     await page.selectOption('#rentUnitType', 'commercial');
@@ -59,11 +58,22 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await expect(card).toContainText(`G${stamp}`);
 
     await page.evaluate(() => window.app.rentals.page('tenants'));
+    await page.locator('#rentalsBody button', { hasText: 'Add tenant' }).click();
     await page.fill('#rentTenantName', `Ram ${stamp}`);
     await page.fill('#rentTenantPhone', '9876543210');
-    await page.click('#rentalsBody .rent-form button');
-    const row = page.locator('.rent-row', { hasText: `Ram ${stamp}` }).first();
-    await row.locator('button', { hasText: 'Move in' }).click();
+    await page.click('#rentDialog .rent-btn-primary');
+    // Tenants › the tenant's own screen holds the tenancy and its actions.
+    const openRam = async () => {
+        await page.locator('#rentalsBody .rent-tenant-row', { hasText: `Ram ${stamp}` }).click();
+        await expect(page.locator('#rentDetailTitle')).toHaveText(`Ram ${stamp}`);
+    };
+    const row = page.locator('#rentalsBody');
+    const menu = async (name) => {
+        if (!(await row.locator('.rent-menu').evaluate(e => e.open))) await row.locator('.rent-menu summary').click();
+        await row.locator('.rent-menu-list button', { hasText: name }).click();
+    };
+    await openRam();
+    await row.locator('button', { hasText: 'Let out a unit' }).click();
     // Units are grouped by property (optgroup), so the option is just the unit.
     await page.selectOption('#rentLeaseUnit', { label: `Shop G${stamp}` });
     await expect(page.locator('#rentTDate')).toHaveValue(/\d{4}-\d{2}-\d{2}/);
@@ -105,7 +115,8 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
 
     // Tenant rent-history link: read-only page for this tenant only, no login.
     await page.evaluate(() => window.app.rentals.page('tenants'));
-    await row.locator('button', { hasText: 'Make tenant link' }).click();
+    await openRam();
+    await menu('Make tenant link');
     await page.locator('#rentDialog button', { hasText: 'Make tenant link' }).click();
     const url = await page.locator('#rentLinkUrl').inputValue({ timeout: 15000 });
     expect(url).toMatch(/\/r\/[A-Za-z0-9_-]{24}\?d=1&emulator=1$/);
@@ -126,8 +137,7 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await expect(tenantPage.locator('#rh')).toContainText('Moved out');
 
     // The moved-out tenant's link stays until turned off.
-    const linked = page.locator('.rent-row', { hasText: `Ram ${stamp}` }).filter({ hasText: 'Moved out' });
-    await linked.locator('button', { hasText: 'Tenant link' }).click();
+    await menu('Tenant link');
     await page.locator('#rentDialog button', { hasText: 'Turn off link' }).click();
     // The link actions load with import() (rent-link.js): wait for the confirm instead of checking once.
     await expect(page.locator('#modalOverlay')).toHaveClass(/active/);
