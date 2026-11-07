@@ -87,6 +87,7 @@ Disabling them in the old project is an owner action in the Firebase console (`a
 | Opening stock | **not carried**: set it by hand in Happa (runbook below) | – |
 | Opening cash, party list | **not carried** (fresh start) | – |
 | `dev_*` collections | never | `apply --dev` writes everything into `dev_<name>` for a rehearsal |
+| Rentals (`rent_*`) | **never**: Happa's own Rentals data is the real one (owner, 7 Nov 2026). `plan` leaves any `rent_*` collection of the backup out (the report lists it under "Excluded (Rentals …)", `--copy rent_*` is refused) and `apply` refuses to write one | – |
 
 Bill numbers are per day (`S20261025-001`), so numbers made in Happa never clash with the old numbers that opening records keep.
 

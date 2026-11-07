@@ -154,6 +154,7 @@ async function main() {
     const planDir = path.join(outDir, 'plan');
     const planned = migrate('plan', '--in', files.backup, '--out-dir', planDir);
     if (!REAL && !/Skipped 1 service accounts/.test(planned)) throw new Error('plan did not report the skipped service account');
+    if (!REAL && !/Excluded \(Rentals[^\n]*rent_settings \(1\)/.test(planned)) throw new Error('plan did not leave out the old app\'s Rentals docs');
     done();
 
     done = step('4. migrate.js wipe (dry run, then --yes)');

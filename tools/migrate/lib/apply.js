@@ -20,7 +20,7 @@
  */
 import { createHash } from 'crypto';
 import backupLib from '../../backup/backup-lib.js';
-import { BUNDLE_FORMAT, MIGRATION_DAILY_WRITES, OLD_PROJECT_ID, SPARK_DAILY_WRITES } from './plan.js';
+import { BUNDLE_FORMAT, MIGRATION_DAILY_WRITES, OLD_PROJECT_ID, RENT_COLLECTION, SPARK_DAILY_WRITES } from './plan.js';
 
 /** 20,000 Spark writes a day minus 8,000 kept for the shop's own first day. */
 export const DEFAULT_BUDGET = MIGRATION_DAILY_WRITES;
@@ -79,6 +79,7 @@ export function checkTarget({ project, keyProject }) {
 }
 
 export function targetColl(coll, dev) {
+    if (RENT_COLLECTION.test(coll)) throw new Error(`Refusing to write ${coll}: Happa's Rentals data is the real one and is never migrated`);
     if (dev) return coll.startsWith('dev_') ? coll : `dev_${coll}`;
     if (coll.startsWith('dev_')) throw new Error(`Refusing to write ${coll}: dev_ collections need --dev`);
     return coll;

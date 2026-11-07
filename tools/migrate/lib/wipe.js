@@ -20,11 +20,11 @@
  * old project and keys for another project (checkTarget).
  */
 import { checkTarget } from './apply.js';
+import { RENT_COLLECTION } from './plan.js';
 import { isServiceAccountEmail } from './service-accounts.js';
 
+export { RENT_COLLECTION };
 export const DEFAULT_TEST_DOMAIN = '@happa.local';
-/** Rentals collections: never deleted. */
-export const RENT_COLLECTION = /^(dev_)?rent_/;
 export const RENT_AUDIT_PREFIX = 'RENT_';
 const DELETE_BATCH = 400;
 

@@ -232,6 +232,8 @@ export function makeOldBackup({ now = Date.now(), seed = 7 } = {}) {
         auditLogs: [{ id: 'a-1', data: { action: 'login', userId: 'old-owner-01', at: ts(now - DAY) } }],
         telemetry: [{ id: 't-1', data: { day: isoDay(today), saves: 3 } }],
         // never carried
+        // the old app's Rentals docs: Happa's (rentals-seed.js) are the real ones and must not be overwritten
+        rent_settings: [{ id: 'default', data: { dueDay: 1, receiptHeader: 'Old app' } }],
         dev_retailSales: [{ id: 'dev-1', data: { billNumber: 'S-DEV-1', customerName: 'Dev', dueAmount: 999, total: 999, items: [] } }],
         dev_users: [{ id: 'dev-user', data: { name: 'Dev', role: 'owner', status: 'approved' } }],
         dev_items: [{ id: 'dev-item', data: { name: 'Dev Item', rates: [1] } }]

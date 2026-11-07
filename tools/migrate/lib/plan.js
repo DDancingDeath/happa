@@ -25,6 +25,8 @@ export const SPARK_DAILY_WRITES = 20000;
 /** Writes kept free for the shop's own first day in the new project. */
 export const SHOP_RESERVE_WRITES = 8000;
 export const MIGRATION_DAILY_WRITES = SPARK_DAILY_WRITES - SHOP_RESERVE_WRITES;
+/** Rentals collections: Happa's are the real data (owner, 7 Nov 2026), so they are never migrated, written or wiped. */
+export const RENT_COLLECTION = /^(dev_)?rent_/;
 /** Write order: what the shop needs to start first, bulk history last. */
 const GROUP_ORDER = ['settings', 'counters', 'copy:users', 'team', 'opening', 'copy:items'];
 const BULK_LAST = ['copy:rateHistory', 'copy:itemFrequency', 'rateStats', 'rateStatsMeta'];
@@ -110,6 +112,8 @@ export function parseOptions(raw = {}) {
     o.copy = [...new Set((o.copy || []).map(s => String(s).trim()).filter(Boolean))];
     const dev = o.copy.filter(c => c.startsWith('dev_'));
     if (dev.length) throw new Error(`dev_ collections are never migrated: ${dev.join(', ')}`);
+    const rent = o.copy.filter(c => RENT_COLLECTION.test(c));
+    if (rent.length) throw new Error(`Rentals collections are never migrated (Happa's Rentals data is the real one): ${rent.join(', ')}`);
     return o;
 }
 
@@ -281,8 +285,9 @@ export function buildPlan(backup, rawOptions = {}, { now = Date.now() } = {}) {
     const fromProject = backup.project || OLD_PROJECT_ID;
     const allNames = Object.keys(backup.collections || {});
     const devExcluded = allNames.filter(n => n.startsWith('dev_'));
+    const rentalsExcluded = allNames.filter(n => !n.startsWith('dev_') && RENT_COLLECTION.test(n));
     const collections = {};
-    allNames.filter(n => !n.startsWith('dev_')).forEach(n => { collections[n] = backup.collections[n] || []; });
+    allNames.filter(n => !n.startsWith('dev_') && !RENT_COLLECTION.test(n)).forEach(n => { collections[n] = backup.collections[n] || []; });
 
     const toRecords = (name) => (collections[name] || []).map(d => {
         const rec = { id: d.id, ...revive(d.data) };
@@ -405,6 +410,7 @@ export function buildPlan(backup, rawOptions = {}, { now = Date.now() } = {}) {
 
     const bad = writes.filter(w => w.coll.startsWith('dev_'));
     if (bad.length) throw new Error('internal: a dev_ collection reached the bundle');
+    if (writes.some(w => RENT_COLLECTION.test(w.coll))) throw new Error('internal: a Rentals collection reached the bundle');
 
     const rank = (g) => {
         const first = GROUP_ORDER.indexOf(g);
@@ -425,6 +431,7 @@ export function buildPlan(backup, rawOptions = {}, { now = Date.now() } = {}) {
     const summary = {
         source: { exportedAt: backup.exportedAt, cutoff, project: fromProject, collections: Object.fromEntries(Object.entries(collections).map(([n, d]) => [n, d.length])) },
         devExcluded: devExcluded.map(n => ({ name: n, docs: (backup.collections[n] || []).length })),
+        rentalsExcluded: rentalsExcluded.map(n => ({ name: n, docs: (backup.collections[n] || []).length })),
         options,
         copied,
         serviceAccounts: { skipped: skippedUids.size, docs: skippedDocs },

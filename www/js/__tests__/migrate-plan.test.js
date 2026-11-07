@@ -213,6 +213,19 @@ describe('plan: copies, settings, counters, dev_', () => {
         expect(full.writes.some(w => w.coll === 'stockCheckpoints' || w.coll === 'telemetry')).toBe(false);
     });
 
+    test('Rentals collections are never carried, in any mode: Happa\'s Rentals data is the real one', () => {
+        const backup = load();
+        backup.collections.rent_properties = [{ id: 'p1', data: { name: 'Old app property' } }];
+        backup.collections.rent_settings = [{ id: 'default', data: { dueDay: 1 } }];
+        for (const mode of ['full', 'fresh']) {
+            const { bundle, summary } = plan({ mode }, backup);
+            expect(bundle.writes.some(w => /rent_/.test(w.coll))).toBe(false);
+            expect(summary.rentalsExcluded).toEqual([{ name: 'rent_properties', docs: 1 }, { name: 'rent_settings', docs: 1 }]);
+            expect(formatReport(summary)).toMatch(/Excluded \(Rentals.*rent_properties \(1\), rent_settings \(1\)/);
+        }
+        expect(() => parseOptions({ copy: ['items', 'rent_units'] })).toThrow(/Rentals collections are never migrated.*: rent_units/);
+    });
+
     test('full mode puts personal expenses in personalExpenses with their day totals (#98)', () => {
         const backup = load();
         backup.collections.expenses = [
