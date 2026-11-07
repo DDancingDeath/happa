@@ -8,7 +8,7 @@
  */
 import { convertRestDocs, fromRestValue, toTimestamp } from '../../../tools/migrate/lib/convert.js';
 import { buildPlan } from '../../../tools/migrate/lib/plan.js';
-import { isTestLogin, wipeProject } from '../../../tools/migrate/lib/wipe.js';
+import { isRentAudit, isTestLogin, isWipedProfile, wipeMode, wipeProject } from '../../../tools/migrate/lib/wipe.js';
 import backupLib from '../../../tools/backup/backup-lib.js';
 
 const ROOT = 'projects/old-proj/databases/(default)/documents';
@@ -85,13 +85,46 @@ describe('convert', () => {
 });
 
 describe('wipe', () => {
-    const fakeDb = (colls) => {
+    /** Firestore admin subset wipe uses; `seed` is {coll: n docs | {id: data}}. */
+    const fakeDb = (seed) => {
+        const store = new Map(Object.entries(seed).map(([c, v]) => [c, new Map(typeof v === 'number'
+            ? Array.from({ length: v }, (_, i) => [`d${i}`, {}]) : Object.entries(v))]));
         const deleted = [];
+        const docRef = (coll, id) => ({ coll, id, path: `${coll}/${id}` });
+        const drop = (ref) => { store.get(ref.coll)?.delete(ref.id); deleted.push(ref.path); };
+        const query = (c, filters = [], fields = null) => {
+            const rows = () => [...(store.get(c) || new Map())].filter(([, d]) => filters.every(({ f, op, v }) =>
+                typeof d[f] === 'string' && (op === '>=' ? d[f] >= v : d[f] < v)));
+            return {
+                id: c,
+                where: (f, op, v) => query(c, [...filters, { f, op, v }], fields),
+                select: (...fs) => query(c, filters, fs),
+                count: () => ({ get: async () => ({ data: () => ({ count: rows().length }) }) }),
+                get: async () => {
+                    const docs = rows().map(([id, d]) => ({ id, ref: docRef(c, id), data: () => (fields ? Object.fromEntries(fields.filter(k => k in d).map(k => [k, d[k]])) : d) }));
+                    return { docs, size: docs.length };
+                },
+                doc: (id) => docRef(c, id)
+            };
+        };
         return {
+            store,
             deleted,
-            listCollections: async () => Object.keys(colls).map(id => ({ id })),
-            collection: (id) => ({ id, count: () => ({ get: async () => ({ data: () => ({ count: colls[id] }) }) }) }),
-            recursiveDelete: async (ref) => { deleted.push(ref.id); }
+            listCollections: async () => [...store.keys()].map(id => ({ id })),
+            collection: (c) => query(c),
+            recursiveDelete: async (ref) => {
+                if (ref.coll) return drop(ref);
+                store.delete(ref.id);
+                deleted.push(ref.id);
+            },
+            batch: () => {
+                const ops = [];
+                return {
+                    delete: (ref) => ops.push(() => drop(ref)),
+                    update: (ref, fields) => ops.push(() => Object.assign(store.get(ref.coll).get(ref.id), fields)),
+                    commit: async () => ops.forEach(op => op())
+                };
+            }
         };
     };
     const fakeAuth = (emails) => {
@@ -102,6 +135,25 @@ describe('wipe', () => {
             deleteUsers: async (uids) => { removed.push(...uids); return { successCount: uids.length, failureCount: 0 }; }
         };
     };
+    /** Happa after a rehearsal: Aadhat test data, real Rentals data, test and real profiles. */
+    const rehearsal = () => ({
+        items: 3,
+        dev_items: 1,
+        rent_units: 2,
+        rent_public: 1,
+        dev_rent_units: 1,
+        auditLogs: { a1: { action: 'ADD_ITEM' }, a2: { action: 'RENT_PAYMENT' }, a3: {}, a4: { action: 'rent_x' }, a5: { action: 'RENT_RECEIPT_ISSUE' } },
+        dev_auditLogs: { d1: { action: 'RENT_MOVE_IN' }, d2: { action: 'LOGIN' } },
+        users: {
+            u0: { email: 'a.test@happa.local', role: 'staff' },
+            u2: { email: 'staging-readonly@aadhat.local', role: 'staff' },
+            owner: { email: 'owner@gmail.com', role: 'owner' },
+            removed: { email: 'removed@gmail.com', role: 'manager', status: 'approved' },
+            helper: { email: 'helper@gmail.com', role: 'none', rentRole: 'member' },
+            both: { email: 'both@gmail.com', role: 'staff', rentRole: 'manager' },
+            gone: { email: 'gone@gmail.com', rentRole: null }
+        }
+    });
 
     test('only test-domain logins are test logins', () => {
         expect(isTestLogin({ email: 'Owner.Test@happa.local' })).toBe(true);
@@ -110,26 +162,75 @@ describe('wipe', () => {
         expect(isTestLogin({ email: 'a@b.c' }, '')).toBe(false);
     });
 
-    test('dry run deletes nothing; refuses the old project', async () => {
-        const db = fakeDb({ items: 3, users: 2 });
-        const auth = fakeAuth(['a.test@happa.local', 'real@gmail.com']);
-        const r = await wipeProject({ project: 'new-proj', keyProject: 'new-proj', db, auth });
-        expect(r).toMatchObject({ docs: 5, testUsers: 1, deleted: false });
+    test('Rentals collections are kept, audit logs and profiles filtered, the rest deleted (prod and dev_ alike)', () => {
+        ['rent_units', 'rent_public', 'rent_charges', 'dev_rent_units', 'rent_anything_new'].forEach(c => expect(wipeMode(c)).toBe('keep'));
+        expect(wipeMode('auditLogs')).toBe('audit');
+        expect(wipeMode('dev_auditLogs')).toBe('audit');
+        expect(wipeMode('users')).toBe('users');
+        expect(wipeMode('dev_users')).toBe('users');
+        ['items', 'dev_items', 'settings', 'rentals', 'rent', 'my_rent_x', 'Rent_units', 'dev_dev_rent_x'].forEach(c => expect(wipeMode(c)).toBe('delete'));
+        expect(isRentAudit({ action: 'RENT_PAYMENT' })).toBe(true);
+        [{ action: 'ADD_ITEM' }, { action: 'rent_payment' }, { action: 'XRENT_' }, {}, null].forEach(d => expect(isRentAudit(d)).toBe(false));
+        [{ role: 'owner' }, { role: 'manager', status: 'approved' }, { rentRole: null }, { rentRole: '' }, {}].forEach(u => expect(isWipedProfile(u)).toBe(true));
+        [{ rentRole: 'member' }, { role: 'none', rentRole: 'manager' }, { role: 'staff', rentRole: 'member' }].forEach(u => expect(isWipedProfile(u)).toBe(false));
+    });
+
+    test('dry run counts what is deleted and kept per collection, deletes nothing; refuses the old project', async () => {
+        const db = fakeDb(rehearsal());
+        const auth = fakeAuth(['a.test@happa.local', 'real@gmail.com', 'staging-readonly@aadhat.local']);
+        const lines = [];
+        const r = await wipeProject({ project: 'new-proj', keyProject: 'new-proj', db, auth, log: (l) => lines.push(l) });
+        expect(r).toMatchObject({ docs: 13, kept: 9, testUsers: 1, serviceUsers: 1, deleted: false });
+        expect(Object.fromEntries(r.plan.map(p => [p.coll, [p.delete, p.keep]]))).toEqual({
+            auditLogs: [3, 2], dev_auditLogs: [1, 1], dev_items: [1, 0], dev_rent_units: [0, 1], items: [3, 0],
+            rent_public: [0, 1], rent_units: [0, 2], users: [5, 2]
+        });
+        const out = lines.join('\n');
+        expect(out).toMatch(/rent_units: KEEP 2 docs/);
+        expect(out).toMatch(/auditLogs: delete 3 docs, KEEP 2 \(RENT_\* entries\)/);
+        expect(out).toMatch(/users: delete 5 docs, KEEP 2 \(profiles with a rentRole\)/);
+        expect(out).toMatch(/Aadhat role cleared on kept profiles .*: both \(staff\)$/m);
+        expect(out).toMatch(/owner profiles deleted or cleared .*: owner$/m);
+        expect(out).toMatch(/delete 13 docs .*keep 9 docs/);
+        expect(out).toMatch(/add --bundle/);
+        const checked = [];
+        const withBundle = await wipeProject({ project: 'new-proj', keyProject: 'new-proj', db, auth, log: (l) => checked.push(l),
+            oldProfiles: new Map([['both', { status: 'approved', role: 'staff' }], ['owner', { status: 'active' }]]) });
+        expect(withBundle.plan.find(p => p.coll === 'users').unconfirmed).toBe(1);
+        expect(checked.join('\n')).toMatch(/KEEP RENTALS ACCESS although .*: helper \(not in it\)$/m);
+        const pendingOld = [];
+        await wipeProject({ project: 'new-proj', keyProject: 'new-proj', db, auth, log: (l) => pendingOld.push(l),
+            oldProfiles: new Map([['both', { status: 'pending' }], ['helper', { status: 'approved' }]]) });
+        expect(pendingOld.join('\n')).toMatch(/LOSE RENTALS ACCESS at apply .*: both \(pending\)$/m);
+        expect(pendingOld.join('\n')).not.toMatch(/KEEP RENTALS ACCESS/);
+        // approved in Happa after the old app's pending profile was made: apply keeps Rentals access
+        const later = fakeDb({ users: { both: { role: 'staff', rentRole: 'manager', status: 'active', approvedAt: 5 } } });
+        const laterLines = [];
+        await wipeProject({ project: 'new-proj', keyProject: 'new-proj', db: later, auth, log: (l) => laterLines.push(l),
+            oldProfiles: new Map([['both', { status: 'pending', createdAt: { __type: 'timestamp', millis: 1 } }]]) });
+        expect(laterLines.join('\n')).toMatch(/KEEP RENTALS ACCESS although .*: both \(pending\)$/m);
         expect(db.deleted).toEqual([]);
         expect(auth.removed).toEqual([]);
         await expect(wipeProject({ project: 'aadhat-management', keyProject: 'aadhat-management', db, auth, dryRun: false })).rejects.toThrow(/OLD project/);
+        await expect(wipeProject({ project: 'aadhat-management', emulator: true, db, auth, dryRun: false })).rejects.toThrow(/OLD project/);
         await expect(wipeProject({ project: 'new-proj', keyProject: 'other', db, auth, dryRun: false })).rejects.toThrow(/not new-proj/);
         expect(db.deleted).toEqual([]);
     });
 
-    test('--yes deletes every collection, the test logins and denylisted service accounts only', async () => {
-        const db = fakeDb({ items: 3, users: 2 });
+    test('--yes keeps Rentals data, RENT_* audit entries and profiles with a rentRole; deletes the rest, the test logins and denylisted service accounts', async () => {
+        const db = fakeDb(rehearsal());
         const auth = fakeAuth(['a.test@happa.local', 'real@gmail.com', 'staging-readonly@aadhat.local']);
-        const dry = await wipeProject({ project: 'new-proj', keyProject: 'new-proj', db, auth });
-        expect(dry).toMatchObject({ testUsers: 1, serviceUsers: 1, deleted: false });
-        expect(auth.removed).toEqual([]);
-        await wipeProject({ project: 'new-proj', keyProject: 'new-proj', db, auth, dryRun: false });
-        expect(db.deleted).toEqual(['items', 'users']);
+        const r = await wipeProject({ project: 'new-proj', keyProject: 'new-proj', db, auth, dryRun: false });
+        expect(r.deleted).toBe(true);
+        const left = Object.fromEntries([...db.store].map(([c, m]) => [c, [...m.keys()].sort()]));
+        expect(left).toEqual({
+            rent_units: ['d0', 'd1'], rent_public: ['d0'], dev_rent_units: ['d0'],
+            auditLogs: ['a2', 'a5'], dev_auditLogs: ['d1'],
+            users: ['both', 'helper']
+        });
+        expect(db.store.get('users').get('helper')).toEqual({ email: 'helper@gmail.com', role: 'none', rentRole: 'member' });
+        expect(db.store.get('users').get('both')).toEqual({ email: 'both@gmail.com', role: 'none', rentRole: 'manager' });
+        expect(db.deleted.filter(p => /rent_/.test(p))).toEqual([]);
         expect(auth.removed).toEqual(['u0', 'u2']);
     });
 });

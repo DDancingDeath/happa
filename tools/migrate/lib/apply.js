@@ -10,16 +10,67 @@
  *   a run stops at its write budget (Spark: 20,000 writes/day, 8,000 of them
  *   kept for the shop) and the next run continues from the cursor.
  * - dev_ collections are never written unless dev (then every write goes to dev_<name>).
+ * - A users doc still replaces the target profile (so a removal in the old app,
+ *   which deletes fields, carries over). Rentals roles come from Happa only
+ *   (Rentals data is real: owner, 7 Nov 2026): the old profile's `rentRole` is
+ *   never written and Happa's is put back, except for a person the old app
+ *   disabled or rejected. Aadhat roles come from the old app only: a Rentals
+ *   helper approved in Happa after the old app's pending profile was made keeps
+ *   Happa's approval (status, approvedAt/By) for Rentals only, with role 'none'.
  */
 import { createHash } from 'crypto';
 import backupLib from '../../backup/backup-lib.js';
-import { BUNDLE_FORMAT, MIGRATION_DAILY_WRITES, OLD_PROJECT_ID, SPARK_DAILY_WRITES } from './plan.js';
+import { BUNDLE_FORMAT, MIGRATION_DAILY_WRITES, OLD_PROJECT_ID, RENT_COLLECTION, SPARK_DAILY_WRITES, isRentAudit } from './plan.js';
 
 /** 20,000 Spark writes a day minus 8,000 kept for the shop's own first day. */
 export const DEFAULT_BUDGET = MIGRATION_DAILY_WRITES;
 export const BATCH_SIZE = 400;
 export const CURSOR_VERSION = 1;
 const OPENING_COLLS = ['purchases', 'retailSales', 'wholesaleSales'];
+/** Profile fields only Happa sets (Rentals): the bundle's are dropped, Happa's put back. */
+export const KEEP_USER_FIELDS = ['rentRole'];
+const APPROVAL_FIELDS = ['status', 'approvedAt', 'approvedBy'];
+const REMOVED_STATUSES = ['disabled', 'rejected'];
+const hasRentRole = (u) => !!u && u.rentRole !== undefined && u.rentRole !== null && u.rentRole !== '';
+/** Milliseconds of a number, a Firestore Timestamp or a backup's tagged timestamp; NaN otherwise. */
+const millis = (v) => {
+    if (typeof v === 'number') return v;
+    if (typeof v?.toMillis === 'function') return v.toMillis();
+    if (v?.__type === 'timestamp') return typeof v.millis === 'number' ? v.millis : v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6);
+    return NaN;
+};
+
+/**
+ * The profile apply writes: the bundle's without its KEEP_USER_FIELDS, plus
+ * Happa's (unless the old app removed the person). A Rentals helper Happa
+ * approved after the old app's pending profile was made keeps Happa's
+ * approval, for Rentals only (role 'none': the old app gave no Aadhat role).
+ * An older approval is the rehearsal's copy of one the old app has since
+ * withdrawn (it deletes a removed person's profile; a sign-in re-creates it
+ * as pending), so it is not kept.
+ * @returns {{data: Object, kept: string[], dropped: string[], approval: boolean}}
+ */
+export function profileWrite(bundleData, happa) {
+    const data = { ...bundleData };
+    const dropped = KEEP_USER_FIELDS.filter(f => f in data);
+    dropped.forEach(f => { delete data[f]; });
+    if (!happa || REMOVED_STATUSES.includes(bundleData?.status)) return { data, kept: [], dropped, approval: false };
+    const kept = KEEP_USER_FIELDS.filter(f => f in happa);
+    kept.forEach(f => { data[f] = happa[f]; });
+    const approval = hasRentRole(happa) && bundleData?.status === 'pending' && ![...REMOVED_STATUSES, 'pending'].includes(happa.status)
+        && millis(happa.approvedAt) > millis(bundleData.createdAt);
+    if (approval) {
+        APPROVAL_FIELDS.forEach(f => { if (f in happa) data[f] = happa[f]; else delete data[f]; });
+        data.role = 'none';
+    }
+    return { data, kept, dropped, approval };
+}
+
+/** Whether the person has Rentals access after apply writes this old profile over Happa's (as rentRoleOf in the rules). */
+export function rentalsAccessAfter(bundleData, happa) {
+    const { data } = profileWrite(bundleData, happa);
+    return hasRentRole(data) && !['pending', ...REMOVED_STATUSES].includes(data.status);
+}
 
 export function bundleHash(bundle) {
     return createHash('sha256').update(JSON.stringify(bundle.writes)).digest('hex').slice(0, 32);
@@ -40,9 +91,18 @@ export function checkTarget({ project, keyProject }) {
 }
 
 export function targetColl(coll, dev) {
+    if (RENT_COLLECTION.test(coll)) throw new Error(`Refusing to write ${coll}: Happa's Rentals data is the real one and is never migrated`);
     if (dev) return coll.startsWith('dev_') ? coll : `dev_${coll}`;
     if (coll.startsWith('dev_')) throw new Error(`Refusing to write ${coll}: dev_ collections need --dev`);
     return coll;
+}
+
+/** Throws for a write a bundle must never hold: Rentals data, or dev_ without --dev. */
+export function checkWrite(w, dev) {
+    targetColl(w.coll, dev);
+    if (w.coll.replace(/^dev_/, '') === 'auditLogs' && isRentAudit(w.data)) {
+        throw new Error(`Refusing to write ${w.coll}/${w.id}: a RENT_* audit entry is Happa's Rentals data`);
+    }
 }
 
 export function validateBundle(bundle) {
@@ -122,7 +182,7 @@ export async function applyBundle({
     saveCursor = () => {}, log = () => {}, batchSize = BATCH_SIZE, now = () => Date.now()
 }) {
     validateBundle(bundle);
-    bundle.writes.forEach(w => targetColl(w.coll, dev));
+    bundle.writes.forEach(w => checkWrite(w, dev));
     const run = planRun(bundle, cursor, budget);
     if (dryRun) {
         log(`Dry run: ${run.total} writes in the bundle; ${run.start} already done.`);
@@ -162,6 +222,25 @@ export async function applyBundle({
     const startedAt = now();
     let written = 0;
     const stop = Math.min(run.end, cursor.next + left);
+    let profiles = new Map();
+    if (bundle.writes.slice(cursor.next, stop).some(w => w.coll === 'users')) {
+        const snap = await db.collection(targetColl('users', dev)).get();
+        profiles = new Map(snap.docs.map(d => [d.id, d.data() || {}]));
+    }
+    let keptProfiles = 0;
+    let droppedProfiles = 0;
+    const docData = (w) => {
+        const data = deser(w.data);
+        if (w.coll !== 'users') return data;
+        const happa = profiles.get(w.id);
+        const r = profileWrite(data, happa);
+        if (r.kept.length) keptProfiles++;
+        if (r.dropped.length && !r.kept.length) droppedProfiles++;
+        if (hasRentRole(happa) && !r.kept.length) log(`users/${w.id}: removed in the old app (status ${r.data.status}), so its Happa rentRole was not kept`);
+        if (r.approval) log(`users/${w.id}: pending in the old app but approved in Happa with a rentRole: kept for Rentals only (role 'none')`);
+        else if (hasRentRole(happa) && r.data.status === 'pending' && happa.status !== 'pending') log(`users/${w.id}: pending in the old app, and its Happa approval is older than that profile: left pending (re-approve in Happa if wanted)`);
+        return r.data;
+    };
     while (cursor.next < stop) {
         const slice = bundle.writes.slice(cursor.next, Math.min(stop, cursor.next + batchSize));
         const batch = db.batch();
@@ -171,7 +250,7 @@ export async function applyBundle({
                 cursor.skipped.push(`${w.coll}/${w.id}`);
                 return;
             }
-            batch.set(db.collection(targetColl(w.coll, dev)).doc(w.id), deser(w.data));
+            batch.set(db.collection(targetColl(w.coll, dev)).doc(w.id), docData(w));
             n++;
         });
         if (n) await batch.commit();
@@ -182,6 +261,8 @@ export async function applyBundle({
         log(`Wrote ${cursor.next}/${run.total}`);
     }
     if (keep.size) log(`Kept ${keep.size} opening balances that already have payments in the new app.`);
+    if (keptProfiles) log(`Kept Happa's ${KEEP_USER_FIELDS.join(', ')} on ${keptProfiles} profiles.`);
+    if (droppedProfiles) log(`Left out the old app's ${KEEP_USER_FIELDS.join(', ')} on ${droppedProfiles} profiles (Rentals roles come from Happa only).`);
     cursor.runs.push({ at: startedAt, writes: written, upTo: cursor.next });
     saveCursor(cursor);
     const status = cursor.next >= run.total ? 'done' : 'budget';

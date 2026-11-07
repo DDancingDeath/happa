@@ -232,6 +232,37 @@ rehearsal: the 26 Oct rehearsal imported both staging logins into
 `happa-bfc07` Auth, and `wipe` deletes them. After the import, Authentication →
 Users must list no `staging-*@aadhat.local` login.
 
+**Rentals data in `happa-bfc07` is real (owner, 7 Nov 2026) and must survive
+go-live.** `wipe` keeps it (hard-coded, no flag): every `rent_*` (and
+`dev_rent_*`) collection, the `auditLogs` entries whose action starts with
+`RENT_`, and the `users` profiles that have a `rentRole` (with their Aadhat
+role cleared; every other profile is deleted). `apply` then re-creates the old
+app's people from the final backup: Aadhat roles come from the old app only,
+Rentals roles from Happa only (`apply` never writes the old profile's
+`rentRole` and puts Happa's back, unless the old app disabled or rejected that
+person). Details: the #232 README,
+"After a rehearsal: `wipe`". Before `wipe`:
+
+1. Take a fresh Rentals backup and keep it outside the repo (`Q:\aadhat-data\`):
+   the *Firestore backup* workflow (`tools/backup`) with `mode` = `weekly` (the
+   full copy, including `auditLogs`), and the owner's local read-only export
+   `Q:\aadhat\rentals-real\tmp\export-rentals.mjs` (every `rent_*` collection,
+   `users` and the `RENT_*` audit entries, with `SHA256SUMS`).
+2. Run the `wipe` dry run with `--bundle` (the final bundle from `plan`) and
+   check its `KEEP` lines (per collection) against
+   the backup's counts, and the owner profiles it lists as deleted or cleared
+   (each must be in the final backup). Go through the **KEEP RENTALS ACCESS
+   although…** list with the owner: a `rentRole` there may be a copy of the old
+   app's from the rehearsal for someone the old app has since removed; remove it
+   in Happa (Settings › Roles & access) if so. Note the **LOSE RENTALS ACCESS at
+   apply** list too, and re-grant those people in Happa after `apply` if the
+   owner wants them. Only then run it
+   with `--yes`, and run `apply` straight after it. A rerun before Happa is in
+   use is again `wipe --yes` then `apply --restart` (`apply` never removes a
+   profile, so the `wipe` is what drops people the old app removed).
+3. After `apply`, open Rentals as the owner: properties, units, tenants and
+   receipts are all still there, and the Rentals helpers still have their role.
+
 Owner action, outside this tool (it never changes `aadhat-management`): in the
 old project's console, disable or delete `staging-readonly@aadhat.local` (and
 `staging-owner@aadhat.local`), delete or reject their `users/{uid}` docs,
