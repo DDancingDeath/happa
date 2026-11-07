@@ -112,9 +112,18 @@ async function show(page, { view = 'properties', openProperty = '', mode = 'adva
     _test.state.mode = mode;
     _test.state.view = view;
     _test.state.openProperty = openProperty;
+    _test.state.detail = '';
     await _test.render();
-    if (page === 'tenants') await waitFor(() => document.querySelector('#rentTenantUnit'));
     return lines(body());
+}
+/** A tenant's own screen (Simple). */
+async function tenant(id) {
+    _test.state.mode = 'simple';
+    RentalsModule.api.openTenant(id);
+    await flush();
+    const out = lines(body());
+    _test.state.detail = '';
+    return out;
 }
 async function attach() {
     store.detach();
@@ -191,7 +200,10 @@ describe.each(['en', 'hi'])('pages (%s)', (lang) => {
             unitList: await show('rent', { view: 'units' }),
             tenants: await show('tenants'),
             properties: await show('properties'),
-            thisMonthSimple: await show('rent', { mode: 'simple' })
+            thisMonthSimple: await show('rent', { mode: 'simple' }),
+            tenantsSimple: await show('tenants', { mode: 'simple' }),
+            tenantGita: await tenant('T4'),
+            tenantHari: await tenant('T5')
         };
         expect(out).toMatchSnapshot();
     });

@@ -39,6 +39,21 @@ const toastHas = (page, text) => expectToast(page, new RegExp(text.replace(/[.*+
 
 const showPage = (page, name) => page.evaluate((p) => window.app.rentals.page(p), name);
 
+/** The tenant's own screen (Tenants › tap the tenant); its buttons are on `#rentalsBody`. */
+async function openTenant(page, tenant) {
+    await showPage(page, 'tenants');
+    await page.locator('#rentalsBody .rent-tenant-row', { hasText: tenant }).first().click();
+    await expect(page.locator('#rentDetailTitle')).toHaveText(tenant);
+    return page.locator('#rentalsBody');
+}
+
+/** An action under the tenant screen's ⋯ menu (Edit, Agreement, Tenant link, Change unit, Remove). */
+async function tenantMenu(page, name) {
+    const menu = page.locator('#rentalsBody .rent-menu');
+    if (!(await menu.evaluate(e => e.open))) await menu.locator('summary').click();
+    await button(page.locator('#rentalsBody .rent-menu-list'), name).click();
+}
+
 /** The tenant's row on the Rent page (unit-wise view). */
 async function rentRow(page, tenant) {
     await showPage(page, 'rent');
@@ -71,11 +86,12 @@ async function setUpTenant(page, { units = [['A', 5000]], deposit = 0, start = '
     }
 
     await showPage(page, 'tenants');
+    await button(page.locator('#rentalsBody'), '+ Add tenant').click();
     await page.fill('#rentTenantName', tenant);
     await page.fill('#rentTenantPhone', '9876543210');
-    await page.locator('#rentalsBody').getByRole('button', { name: 'Add', exact: true }).click();
-    const tenantRow = row(page, tenant);
-    await button(tenantRow, 'Move in').click();
+    await dialogButton(page, true);
+    const tenantRow = await openTenant(page, tenant);
+    await button(tenantRow, 'Let out a unit').click();
     await page.selectOption('#rentLeaseUnit', { label: `Shop ${unit(units[0][0])}` });
     if (start) await page.fill('#rentTDate', start);
     if (deposit) await page.fill('#rentTDeposit', String(deposit));
@@ -97,4 +113,4 @@ async function pay(page, tenant, amount, { confirm = '' } = {}) {
     return (await title.innerText()).match(/R-\d{4}-\d{4}/)[0];
 }
 
-module.exports = { firstOfMonth, button, dialog, row, dialogButton, closeDialog, confirmModal, toastHas, showPage, rentRow, setUpTenant, pay };
+module.exports = { firstOfMonth, button, dialog, row, dialogButton, closeDialog, confirmModal, toastHas, showPage, openTenant, tenantMenu, rentRow, setUpTenant, pay };

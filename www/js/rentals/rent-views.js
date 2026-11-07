@@ -119,6 +119,13 @@ export function tenantRows({ leases = [], tenants = [], charges = [] }, month, t
         || (b.dues.total - a.dues.total) || a.name.localeCompare(b.name));
 }
 
+/** One tenant's unpaid months over all their tenancies (an old unit after a change too), oldest first; total as RENT-4. */
+export function tenantDues(rows, tenantId) {
+    const mine = rows.filter(r => r.tenantId === tenantId);
+    const charges = mine.flatMap(r => r.dues.charges).sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0));
+    return { rows: mine, charges, total: rentTotals(charges).due, late: mine.some(r => r.late), partial: mine.some(r => r.partial && r.dues.total > 0) };
+}
+
 /** Property cards: one summary per property (properties without units too), in name order. */
 export function propertySummaries(properties, rows) {
     return [...properties].sort((a, b) => String(a.name).localeCompare(String(b.name)))
