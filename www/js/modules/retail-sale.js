@@ -12,10 +12,11 @@ import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
 import { KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, formatRate, formatRupees, formatKg } from '../utils/money.js';
 import {
-    buildPaymentSplit, computeLine, computeRetailTotals, editSplitFor, paidOnScreen, paymentSplit, prefillPayment, restInDue,
+    buildPaymentSplit, computeLine, computeRetailTotals, editSplitFor, paidOnScreen, paymentSplit, pendingLine, prefillPayment, restInDue,
     shownAmount, sumWeights, validatePaymentSplit, weightsForEdit
 } from '../utils/calc/billing.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
+import { settlePendingLine } from '../ui/pending-line.js';
 import { t, tn } from '../i18n/index.js';
 import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
@@ -481,6 +482,7 @@ const RetailSaleManager = {
      * @private
      */
     async _completeSale(options = {}) {
+        if (!(await this.settleEntryLine())) return undefined;
         // Check if in edit mode
         if (this.billingManager?.editingBillIndex !== undefined) {
             return this.billingManager.saveEditedBill(options);
@@ -612,9 +614,7 @@ const RetailSaleManager = {
             this.resetForm();
             
             UIManager.hideLoading();
-            if (FirebaseService.keptServerPayment(sale)) UIManager.showToast(t(KEPT_SERVER_PAYMENT_KEY));
-            else if (FirebaseService.savedOnPhoneOnly(sale)) UIManager.showToast(t(SAVED_ON_PHONE_KEY));
-            else UIManager.showToast(t('msg.retail.sale_completed_successfully'));
+            UIManager.showToast(this.savedText(sale));
             UIManager.hapticFeedback('success');
             
             return sale;
@@ -638,6 +638,61 @@ const RetailSaleManager = {
             console.error('Complete sale error:', error);
             throw error;
         }
+    },
+
+    /** What the save toast says for a saved sale (also the first half of the print status). */
+    savedText(sale) {
+        if (FirebaseService.keptServerPayment(sale)) return t(KEPT_SERVER_PAYMENT_KEY);
+        if (FirebaseService.savedOnPhoneOnly(sale)) return t(SAVED_ON_PHONE_KEY);
+        return t('msg.retail.sale_completed_successfully');
+    },
+
+    /** The entry boxes as BF-PENDING reads them. */
+    entryLine() {
+        const item = AppState.items[parseInt(document.getElementById('saleItem')?.value)];
+        return {
+            item,
+            entry: {
+                itemChosen: !!item,
+                rateText: document.getElementById('saleRate')?.value,
+                qtyText: document.getElementById('saleWeight')?.value,
+                chips: saleWeights
+            }
+        };
+    },
+
+    entryLineEmpty() {
+        return pendingLine(this.entryLine().entry).state === 'empty';
+    },
+
+    /**
+     * A line typed but not added to the sale is never dropped silently (BF-PENDING):
+     * the user adds or discards it, or goes back to it.
+     * @returns {Promise<boolean>} true when the save may go on
+     */
+    async settleEntryLine() {
+        const { item, entry } = this.entryLine();
+        return settlePendingLine({
+            entry,
+            label: item ? lineLabel(item) : '',
+            inputs: { item: 'saleItem', rate: 'saleRate', qty: 'saleWeight' },
+            add: async () => {
+                const before = saleItems.length;
+                await this.addToSalesBill();
+                return saleItems.length > before;
+            },
+            discard: () => {
+                saleWeights = [];
+                const itemSelect = document.getElementById('saleItem');
+                if (itemSelect) itemSelect.selectedIndex = 0;
+                ['saleRate', 'saleWeight'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = '';
+                });
+                this.renderSaleWeights();
+                if (this.billingManager) this.billingManager.triggerAutoSave();
+            }
+        });
     },
 
     /**
@@ -701,15 +756,16 @@ const RetailSaleManager = {
      */
     async printSale() {
         if (Helpers.isBusy('retail')) return;
-        if (saleItems.length === 0) {
+        if (saleItems.length === 0 && this.entryLineEmpty()) {
             UIManager.showToast(t('msg.retail.no_items_in_sale'));
             return;
         }
         
         let printPromise = null;
+        const report = {};
         try {
             const savedSale = await Helpers.runExclusive('retail', RETAIL_BUTTONS, () => this._completeSale({
-                onWriteIssued: (sale) => { printPromise = PrinterService.printBill(sale); }
+                onWriteIssued: (sale) => { printPromise = PrinterService.printBill(sale, report); }
             }));
             
             if (!printPromise) {
@@ -717,10 +773,11 @@ const RetailSaleManager = {
             }
             
             const printed = await printPromise;
-            
-            if (savedSale && printed === true) {
-                UIManager.showToast(FirebaseService.savedOnPhoneOnly(savedSale) ? t(SAVED_ON_PHONE_KEY) : t('msg.common.sale_saved_printed'));
-            }
+            if (!savedSale) return;
+            PrinterService.showSavePrintStatus({
+                printed, report, savedText: this.savedText(savedSale),
+                printedText: FirebaseService.savedOnPhoneOnly(savedSale) ? t(SAVED_ON_PHONE_KEY) : t('msg.common.sale_saved_printed')
+            });
         } catch (error) {
             console.error('Print sale error:', error);
             UIManager.showToast(saveFailedText(error, t('msg.common.error_2', { value: error?.message || error })), 'error');

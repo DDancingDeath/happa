@@ -250,6 +250,7 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
         await WholesaleSalesManager.addToWholesaleBill();
         expect(WholesaleSalesManager.getItems()).toHaveLength(2);
         expect(toast()).toBe('Insufficient stock! Available: 103kg');
+        setVal('sellQuantity', ''); // the refused line is cleared (else Save asks about it, BF-PENDING)
 
         setVal('wholesaleCashPayment', 4267);
         const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);

@@ -13,9 +13,10 @@ import { Helpers } from '../utils/helpers.js';
 import { KEPT_SERVER_PAYMENT_KEY, normalizeLabourSettings, paymentSplitMessage, formatRate, formatRupees, formatKg } from '../utils/money.js';
 import {
     autoLabour, buildPaymentSplit, computeLine, computePurchaseTotals, draftLineSum, editSplitFor, paidOnScreen, payableOnScreen,
-    paymentSplit, prefillPayment, restInDue, shownAmount, sumWeights, validatePaymentSplit
+    paymentSplit, pendingLine, prefillPayment, restInDue, shownAmount, sumWeights, validatePaymentSplit
 } from '../utils/calc/billing.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
+import { settlePendingLine } from '../ui/pending-line.js';
 import { t, tn } from '../i18n/index.js';
 import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
@@ -528,22 +529,25 @@ const PurchaseManager = {
      */
     async printBill() {
         if (Helpers.isBusy('purchase')) return;
-        if (billItems.length === 0) {
+        if (billItems.length === 0 && this.entryLineEmpty()) {
             UIManager.showToast(t('msg.common.no_items_in_bill'));
             return;
         }
         
         let printPromise = null;
+        const report = {};
         try {
             const savedBill = await Helpers.runExclusive('purchase', PURCHASE_BUTTONS, () => this._saveBill({
-                onWriteIssued: (bill) => { printPromise = PrinterService.printBill(bill); }
+                onWriteIssued: (bill) => { printPromise = PrinterService.printBill(bill, report); }
             }));
             
             if (!printPromise) return;
             const printed = await printPromise;
-            if (savedBill && printed === true) {
-                UIManager.showToast(FirebaseService.savedOnPhoneOnly(savedBill) ? t(SAVED_ON_PHONE_KEY) : t('msg.purchase.bill_saved_printed'));
-            }
+            if (!savedBill) return;
+            PrinterService.showSavePrintStatus({
+                printed, report, savedText: this.savedText(savedBill),
+                printedText: FirebaseService.savedOnPhoneOnly(savedBill) ? t(SAVED_ON_PHONE_KEY) : t('msg.purchase.bill_saved_printed')
+            });
         } catch (error) {
             console.error('Print error:', error);
             UIManager.showToast(saveFailedText(error, t('msg.common.error_2', { value: error?.message || error })), 'error');
@@ -559,6 +563,7 @@ const PurchaseManager = {
      * @private
      */
     async _saveBill(options = {}) {
+        if (!(await this.settleEntryLine())) return undefined;
         // Check if in edit mode
         if (this.billingManager?.editingBillIndex !== undefined) {
             return this.billingManager.saveEditedBill(options);
@@ -702,9 +707,7 @@ const PurchaseManager = {
             this.resetForm();
             
             UIManager.hideLoading();
-            if (FirebaseService.keptServerPayment(bill)) UIManager.showToast(t(KEPT_SERVER_PAYMENT_KEY));
-            else if (FirebaseService.savedOnPhoneOnly(bill)) UIManager.showToast(t(SAVED_ON_PHONE_KEY));
-            else UIManager.showToast(t('msg.purchase.bill_saved_successfully'));
+            UIManager.showToast(this.savedText(bill));
             UIManager.hapticFeedback('success');
             
             return bill;
@@ -728,6 +731,57 @@ const PurchaseManager = {
             console.error('Save bill error:', error);
             throw error;
         }
+    },
+
+    /** What the save toast says for a saved bill (also the first half of the print status). */
+    savedText(bill) {
+        if (FirebaseService.keptServerPayment(bill)) return t(KEPT_SERVER_PAYMENT_KEY);
+        if (FirebaseService.savedOnPhoneOnly(bill)) return t(SAVED_ON_PHONE_KEY);
+        return t('msg.purchase.bill_saved_successfully');
+    },
+
+    /** The entry boxes as BF-PENDING reads them. */
+    entryLine() {
+        const item = AppState.items[parseInt(document.getElementById('billItem')?.value)];
+        return {
+            item,
+            entry: {
+                itemChosen: !!item,
+                rateText: document.getElementById('billRate')?.value,
+                qtyText: document.getElementById('newWeight')?.value,
+                chips: weights
+            }
+        };
+    },
+
+    entryLineEmpty() {
+        return pendingLine(this.entryLine().entry).state === 'empty';
+    },
+
+    /**
+     * A line typed but not added to the bill is never dropped silently (BF-PENDING):
+     * the user adds or discards it, or goes back to it.
+     * @returns {Promise<boolean>} true when the save may go on
+     */
+    async settleEntryLine() {
+        const { item, entry } = this.entryLine();
+        return settlePendingLine({
+            entry,
+            label: item ? lineLabel(item) : '',
+            inputs: { item: 'billItem', rate: 'billRate', qty: 'newWeight' },
+            add: async () => {
+                const before = billItems.length;
+                await this.addToBill();
+                return billItems.length > before;
+            },
+            discard: () => {
+                weights = [];
+                const weightInput = document.getElementById('newWeight');
+                if (weightInput) weightInput.value = '';
+                this.renderWeights();
+                if (this.billingManager) this.billingManager.triggerAutoSave();
+            }
+        });
     },
 
     /**

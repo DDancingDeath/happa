@@ -1,6 +1,6 @@
 /**
  * @fileoverview Oracle tests for the bill forms (docs/calculations.md BF-KG,
- * BF-LINE, BF-TOTAL, BF-LAB, BF-PAYABLE, WS-PROFIT, WS-MARGIN): the purchase,
+ * BF-LINE, BF-TOTAL, BF-LAB, BF-PAYABLE, BF-PENDING, WS-PROFIT, WS-MARGIN): the purchase,
  * retail and wholesale forms show what the independent oracle computes, and
  * utils/calc/billing.js agrees with the oracle on generated bills.
  */
@@ -8,7 +8,7 @@ import fc from 'fast-check';
 import * as O from './oracle.js';
 import {
     autoLabour, autoSaveSummary, computeLine, computePurchaseTotals, computeRetailTotals, nextBillNumberHint,
-    payableOnScreen, restoreFigures, wholesaleLiveProfit
+    payableOnScreen, pendingLine, restoreFigures, wholesaleLiveProfit
 } from '../../www/js/utils/calc/billing.js';
 import { PurchaseManager } from '../../www/js/modules/purchase.js';
 import { RetailSaleManager } from '../../www/js/modules/retail-sale.js';
@@ -214,6 +214,37 @@ describe('WS-COST lookup by name (#102)', () => {
             const got = wholesaleLiveProfit(lines, st, 0, catalogue);
             expect({ profit: got.profit, margin: got.profitPercent }).toEqual({ profit: want.WS_PROFIT, margin: want.WS_MARGIN });
         }), { seed: 102, numRuns: RUNS });
+    });
+});
+
+describe('BF-PENDING: the line typed but not added', () => {
+    const kg = fc.integer({ min: 1, max: 100000 }).map(x => x / 100);
+    const rate = fc.integer({ min: 1, max: 100000 }).map(x => x / 100);
+
+    test('a complete line shows the kg of its chips plus the weight typed (BF-KG) and its amount (BF-LINE)', () => {
+        fc.assert(fc.property(fc.array(kg, { maxLength: 5 }), fc.option(kg, { nil: null }), rate,
+            (chips, typed, r) => {
+                fc.pre(chips.length > 0 || typed !== null);
+                const weights = typed === null ? chips : [...chips, typed];
+                const want = O.billForm('retail', [{ rate: r, weights }]);
+                const got = pendingLine({ itemChosen: true, rateText: String(r), qtyText: typed === null ? '' : String(typed), chips });
+                expect(got).toMatchObject({ state: 'complete', missing: null, rate: r, total: want.BF_LINE[0] });
+                expect(got.qty).toBeCloseTo(want.BF_KG[0], 9);
+            }), { seed: 1108, numRuns: RUNS });
+    });
+
+    test.each([
+        ['the item and rate the form fills, no weight', { itemChosen: true, rateText: '30', qtyText: '' }, 'empty', null],
+        ['nothing at all', { itemChosen: false, rateText: '', qtyText: '' }, 'empty', null],
+        ['a weight typed, no item', { itemChosen: false, rateText: '30', qtyText: '4' }, 'incomplete', 'item'],
+        ['a weight typed, no rate', { itemChosen: true, rateText: '', qtyText: '4' }, 'incomplete', 'rate'],
+        ['a rate of 0', { itemChosen: true, rateText: '0', qtyText: '4' }, 'incomplete', 'rate'],
+        ['a weight of 0', { itemChosen: true, rateText: '30', qtyText: '0' }, 'incomplete', 'qty'],
+        ['chips and a negative weight', { itemChosen: true, rateText: '30', qtyText: '-2', chips: [5] }, 'incomplete', 'qty'],
+        ['chips, no rate', { itemChosen: true, rateText: '', qtyText: '', chips: [5] }, 'incomplete', 'rate'],
+        ['chips only', { itemChosen: true, rateText: '30', qtyText: '', chips: [5, 7] }, 'complete', null]
+    ])('%s', (_name, entry, state, missing) => {
+        expect(pendingLine(entry)).toMatchObject({ state, missing });
     });
 });
 

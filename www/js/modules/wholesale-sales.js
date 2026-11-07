@@ -9,6 +9,7 @@ import { Helpers } from '../utils/helpers.js';
 import { computeShortfallsFrom, approxStockNote } from '../utils/stock-check.js';
 import { normalizeThresholds, stockCreditFor } from '../utils/bill-checks.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
+import { settlePendingLine } from '../ui/pending-line.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import {
     isFullHistoryLoaded, historyLoadedFrom, formatWindowDate, rangeStatus, retryRange, applyRangeState, renderStaleHistoryHint
@@ -35,7 +36,7 @@ import {
     formatAmount, formatKg, formatRate, formatRupees
 } from '../utils/money.js';
 import {
-    buildPaymentSplit, computeLine, computeWholesaleTotals, draftLineSum, paidOnScreen, paymentSplit, prefillPayment,
+    buildPaymentSplit, computeLine, computeWholesaleTotals, draftLineSum, paidOnScreen, paymentSplit, pendingLine, prefillPayment,
     restInDue, shownAmount, typedAmount, validateDuePayment, validatePaymentSplit, wholesaleLiveProfit
 } from '../utils/calc/billing.js';
 
@@ -424,6 +425,7 @@ export class WholesaleSalesManager {
     // Unguarded save; callers must hold the 'wholesale' lock.
     // options.onWriteIssued(saleData) is called as soon as the write is issued.
     static async _completeSale(options = {}) {
+        if (!(await this.settleEntryLine())) return undefined;
         if (wholesaleSaleItems.length === 0) {
             UIManager.showToast(t('msg.wholesale.add_items_bill'));
             return;
@@ -551,9 +553,7 @@ export class WholesaleSalesManager {
             // this dropdown. The item detail fields were cleared above so no stale
             // per-item stock is shown in the meantime.
             
-            if (FirebaseService.keptServerPayment(saleData)) UIManager.showToast(t(KEPT_SERVER_PAYMENT_KEY));
-            else if (FirebaseService.savedOnPhoneOnly(saleData)) UIManager.showToast(t(SAVED_ON_PHONE_KEY));
-            else UIManager.showToast(t('msg.wholesale.sale_completed_successfully'));
+            UIManager.showToast(this.savedText(saleData));
             UIManager.hapticFeedback();
             return saleData;
         } catch (error) {
@@ -564,28 +564,78 @@ export class WholesaleSalesManager {
 
     static async printWholesaleSale() {
         if (Helpers.isBusy('wholesale')) return;
-        if (wholesaleSaleItems.length === 0) {
+        if (wholesaleSaleItems.length === 0 && this.entryLineEmpty()) {
             UIManager.showToast(t('msg.wholesale.no_items_print'));
             return;
         }
         
         let printPromise = null;
+        const report = {};
         try {
             // Print the exact sale being saved, as soon as its write is issued
             const savedSale = await Helpers.runExclusive('wholesale', WHOLESALE_BUTTONS, () => this._completeSale({
-                onWriteIssued: (sale) => { printPromise = PrinterService.printWholesaleSale(sale); }
+                onWriteIssued: (sale) => { printPromise = PrinterService.printWholesaleSale(sale, report); }
             }));
             
             if (!printPromise) return;
             const printed = await printPromise;
-            
-            if (savedSale && printed === true) {
-                UIManager.showToast(FirebaseService.savedOnPhoneOnly(savedSale) ? t(SAVED_ON_PHONE_KEY) : t('msg.common.sale_saved_printed'));
-            }
+            if (!savedSale) return;
+            PrinterService.showSavePrintStatus({
+                printed, report, savedText: this.savedText(savedSale),
+                printedText: FirebaseService.savedOnPhoneOnly(savedSale) ? t(SAVED_ON_PHONE_KEY) : t('msg.common.sale_saved_printed')
+            });
         } catch (error) {
             console.error('Print error:', error);
             UIManager.showToast(t('msg.common.error_2', { value: error?.message || error }));
         }
+    }
+
+    /** What the save toast says for a saved sale (also the first half of the print status). */
+    static savedText(sale) {
+        if (FirebaseService.keptServerPayment(sale)) return t(KEPT_SERVER_PAYMENT_KEY);
+        if (FirebaseService.savedOnPhoneOnly(sale)) return t(SAVED_ON_PHONE_KEY);
+        return t('msg.wholesale.sale_completed_successfully');
+    }
+
+    /** The entry boxes as BF-PENDING reads them. */
+    static entryLine() {
+        const itemName = Helpers.getInputText('sellItem');
+        const item = itemName ? AppState.items.find(i => i.name === itemName) : null;
+        return {
+            item,
+            entry: {
+                itemChosen: !!item,
+                rateText: document.getElementById('sellRate')?.value,
+                qtyText: document.getElementById('sellQuantity')?.value
+            }
+        };
+    }
+
+    static entryLineEmpty() {
+        return pendingLine(this.entryLine().entry).state === 'empty';
+    }
+
+    /**
+     * A line typed but not added to the sale is never dropped silently (BF-PENDING):
+     * the user adds or discards it, or goes back to it.
+     * @returns {Promise<boolean>} true when the save may go on
+     */
+    static async settleEntryLine() {
+        const { item, entry } = this.entryLine();
+        return settlePendingLine({
+            entry,
+            label: item ? lineItemIdentity({ itemId: item.id, name: item.name }, AppState.items, AppState.settings.showHindi).label : '',
+            inputs: { item: 'sellItem', rate: 'sellRate', qty: 'sellQuantity' },
+            add: async () => {
+                const before = wholesaleSaleItems.length;
+                await this.addToWholesaleBill();
+                return wholesaleSaleItems.length > before;
+            },
+            discard: () => {
+                const qty = document.getElementById('sellQuantity');
+                if (qty) qty.value = '';
+            }
+        });
     }
 
     static shareViaWhatsApp() {
