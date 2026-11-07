@@ -1,11 +1,20 @@
 <!-- Rentals (#170). Loaded on demand by js/rentals/rentals.js, not by TemplateLoader.loadAllTemplates(). -->
 <div id="rentals" class="tab rentals-tab">
-    <h2 class="rent-title">🏠 <span data-i18n="ui.rent.title">Rentals</span></h2>
+    <div class="rent-head">
+        <h2 class="rent-title">🏠 <span data-i18n="ui.rent.title">Rentals</span></h2>
+        <div class="rent-seg" role="group" data-i18n-aria-label="ui.rent.view_mode" aria-label="View">
+            <button type="button" class="rent-seg-btn" data-rent-mode="simple" aria-pressed="true" data-onclick="rentals.setMode('simple')" data-i18n="ui.rent.view_simple">Simple</button>
+            <button type="button" class="rent-seg-btn" data-rent-mode="advanced" aria-pressed="false" data-onclick="rentals.setMode('advanced')" data-i18n="ui.rent.view_advanced">Advanced</button>
+        </div>
+    </div>
     <div class="rent-subnav">
-        <button type="button" class="filter-btn" data-rent-page="rent" data-onclick="rentals.page('rent')" data-i18n="ui.nav.rent">Rent</button>
+        <button type="button" class="filter-btn" data-rent-page="rent" data-onclick="rentals.page('rent')" data-i18n="ui.nav.rent">This month</button>
         <button type="button" class="filter-btn" data-rent-page="tenants" data-onclick="rentals.page('tenants')" data-i18n="ui.nav.tenants">Tenants</button>
         <button type="button" class="filter-btn" data-rent-page="properties" data-onclick="rentals.page('properties')" data-i18n="ui.nav.properties">Properties</button>
-        <button type="button" class="filter-btn" data-rent-page="access" data-onclick="rentals.page('access')" data-i18n="ui.rent.access" hidden>Access</button>
+        <span id="rentSettingsLinks" class="rent-settings-links" hidden>
+            <button type="button" class="rent-link" data-onclick="rentals.settings('rentals')" data-i18n="ui.settings.section_rentals">Rentals settings</button>
+            <button type="button" id="rentRolesLink" class="rent-link" data-onclick="rentals.settings('roles')" data-i18n="ui.roles.title" hidden>Roles &amp; access</button>
+        </span>
     </div>
     <div id="rentalsNotice" class="rent-notice" role="status" hidden></div>
     <div id="rentalsBody" class="rent-body"></div>

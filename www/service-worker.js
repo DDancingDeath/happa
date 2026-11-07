@@ -263,7 +263,7 @@ const STATIC_ASSETS = [
     '/vendor/firebase/10.7.1/firebase-auth-compat.js',
     '/vendor/firebase/10.7.1/firebase-firestore-compat.js'
 ];
-// Loaded with import() only when used (Ask, rent receipts, Tenants/Properties pages, unit picker, tenant link actions, deposits,
+// Loaded with import() only when used (Ask, rent receipts, Tenants/Properties pages, This month in Advanced, unit picker, tenant link actions, deposits,
 // expenses, reports), so not in
 // the precache budget; install also caches them, best effort, so this version's copies (matching
 // the precached files) are there offline right after a deploy.
@@ -283,6 +283,8 @@ const LAZY_ASSETS = [
     '/js/rentals/rent-report-store.js',
     '/js/rentals/rent-math-report.js',
     '/js/rentals/rent-pages.js',
+    '/js/rentals/rent-tenants.js',
+    '/js/rentals/rent-advanced.js',
     '/js/rentals/rent-unit.js'
 ];
 

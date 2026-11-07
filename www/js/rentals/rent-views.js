@@ -7,7 +7,7 @@
  */
 
 import { round2 } from '../utils/money.js';
-import { chargeDue, chargeStatus, rentTotals } from './rent-math.js';
+import { chargeDue, chargeStatus, rentTotals, leaseDues } from './rent-math.js';
 
 export const UNIT_TYPES = ['flat', 'commercial', 'office', 'godown', 'other'];
 export const MAX_UNIT_AREA = 1000000;
@@ -88,6 +88,42 @@ export function summarize(rows) {
         due: round2(due),
         late
     };
+}
+
+/**
+ * This month's list: one row per active lease, plus each ended lease that still owes (moved out).
+ * dues = RENT-5 (unpaid months oldest first); late when any of them is past its due day. Sorted: late
+ * first, then the oldest unpaid month, then the most due, then the name.
+ */
+export function tenantRows({ leases = [], tenants = [], charges = [] }, month, today = new Date()) {
+    const names = new Map(tenants.map(x => [x.id, x]));
+    const list = leases.map(l => ({ leaseId: l.id, lease: l, tenantId: l.tenantId, unitId: l.unitId, ended: false }));
+    const seen = new Set(list.map(a => a.leaseId));
+    for (const c of charges) {
+        if (seen.has(c.leaseId) || chargeDue(c) <= 0) continue;
+        seen.add(c.leaseId);
+        list.push({ leaseId: c.leaseId, lease: null, tenantId: c.tenantId, unitId: c.unitId, ended: true, unitLabel: c.unitLabel || '', tenantName: c.tenantName || '' });
+    }
+    return list.map((a) => {
+        const dues = leaseDues(charges, a.leaseId);
+        return {
+            ...a,
+            name: names.get(a.tenantId)?.name || a.tenantName || '',
+            phone: names.get(a.tenantId)?.phone || '',
+            dues,
+            late: dues.charges.some(c => chargeStatus(c, today).late),
+            partial: dues.charges.some(c => (Number(c.paid) || 0) > 0),
+            current: charges.find(c => c.leaseId === a.leaseId && c.month === month) || null
+        };
+    }).sort((a, b) => (b.late - a.late) || String(a.dues.charges[0]?.month || '9').localeCompare(String(b.dues.charges[0]?.month || '9'))
+        || (b.dues.total - a.dues.total) || a.name.localeCompare(b.name));
+}
+
+/** One tenant's unpaid months over all their tenancies (an old unit after a change too), oldest first; total as RENT-4. */
+export function tenantDues(rows, tenantId) {
+    const mine = rows.filter(r => r.tenantId === tenantId);
+    const charges = mine.flatMap(r => r.dues.charges).sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0));
+    return { rows: mine, charges, total: rentTotals(charges).due, late: mine.some(r => r.late), partial: mine.some(r => r.partial && r.dues.total > 0) };
 }
 
 /** Property cards: one summary per property (properties without units too), in name order. */

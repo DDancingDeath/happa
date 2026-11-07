@@ -1,8 +1,9 @@
 import fc from 'fast-check';
 import {
-    unitRows, summarize, propertySummaries, groupByType, filterRows, typedPlace, placeText, unitType, unitExtraError, UNIT_TYPES, moveTarget
+    unitRows, summarize, propertySummaries, groupByType, filterRows, typedPlace, placeText, unitType, unitExtraError, UNIT_TYPES, moveTarget, tenantRows, tenantDues
 } from '../rentals/rent-views.js';
 import { rentTotals } from '../rentals/rent-math.js';
+import { propertyRows } from '../rentals/rent-pages.js';
 
 const MONTH = '2026-10';
 const TODAY = new Date(2026, 9, 20);
@@ -160,3 +161,65 @@ test('the unit to move into: the one asked for, else the first vacant (propertie
     expect(moveTarget(props, units, 'zz')).toEqual({ error: 'msg.rent.unit_taken' });
     expect(moveTarget(props, units.slice(0, 1))).toEqual({ error: 'msg.rent.no_vacant_unit' });
 });
+
+describe('This month list (tenantRows): one row per tenancy that owes or is active', () => {
+    const snap = {
+        tenants: [{ id: 'T1', name: 'Ram', phone: '9876543210' }, { id: 'T2', name: 'Sita' }, { id: 'T3', name: 'Hari' }],
+        leases: [
+            { id: 'L1', unitId: 'U1', tenantId: 'T1', status: 'active' },
+            { id: 'L2', unitId: 'U2', tenantId: 'T2', status: 'active' }
+        ],
+        charges: [
+            { id: 'L1_2026-10', leaseId: 'L1', unitId: 'U1', month: '2026-10', dueDay: 25, amount: 8000, paid: 0 },
+            { id: 'L2_2026-09', leaseId: 'L2', unitId: 'U2', month: '2026-09', dueDay: 10, amount: 7000, paid: 7000 },
+            { id: 'L2_2026-10', leaseId: 'L2', unitId: 'U2', month: '2026-10', dueDay: 10, amount: 7000, paid: 7000, adv: 500 },
+            { id: 'L9_2026-08', leaseId: 'L9', unitId: 'U2', tenantId: 'T3', tenantName: 'Hari (old)', unitLabel: '3A', month: '2026-08', dueDay: 10, amount: 6000, paid: 1000 },
+            { id: 'L8_2026-08', leaseId: 'L8', unitId: 'U4', tenantId: 'T9', month: '2026-08', dueDay: 10, amount: 4000, paid: 4000 }
+        ]
+    };
+
+    test('a moved-out tenant who owes is listed once, late and part paid; a moved-out tenant who paid is not', () => {
+        const rows = tenantRows(snap, MONTH, TODAY);
+        expect(rows.map(r => r.leaseId)).toEqual(['L9', 'L1', 'L2']);
+        const hari = rows[0];
+        expect(hari).toMatchObject({ ended: true, name: 'Hari', unitId: 'U2', unitLabel: '3A', late: true, partial: true, current: null });
+        expect(hari.dues.total).toBe(5000);
+        expect(rows[1]).toMatchObject({ ended: false, name: 'Ram', phone: '9876543210', late: false, partial: false });
+        expect(rows[1].dues.total).toBe(8000);
+        expect(rows[2].dues.total).toBe(0);
+        expect(rows[2].current.adv).toBe(500);
+    });
+
+    test('a tenant dues over all their tenancies (an old unit after a change too), oldest first', () => {
+        const rows = tenantRows({ ...snap, charges: [...snap.charges, { id: 'L7_2026-07', leaseId: 'L7', unitId: 'U4', tenantId: 'T1', month: '2026-07', dueDay: 10, amount: 3000, paid: 500 }] }, MONTH, TODAY);
+        const ram = tenantDues(rows, 'T1');
+        expect(ram.charges.map(x => x.id)).toEqual(['L7_2026-07', 'L1_2026-10']);
+        expect(ram).toMatchObject({ total: 10500, late: true, partial: true });
+        expect(tenantDues(rows, 'T2')).toMatchObject({ total: 0, late: false, partial: false });
+    });
+
+    test('late first, then the oldest unpaid month, then the most due', () => {
+        const late = new Date(2026, 9, 28);
+        const rows = tenantRows({ ...snap, charges: [...snap.charges, { id: 'L2_2026-11', leaseId: 'L2', unitId: 'U2', month: '2026-11', dueDay: 10, amount: 9000, paid: 0 }] }, MONTH, late);
+        expect(rows.map(r => [r.leaseId, r.late, r.dues.total])).toEqual([['L9', true, 5000], ['L1', true, 8000], ['L2', false, 9000]]);
+    });
+});
+
+test('propertyRows: A–Z, units let (active lease or the unit\'s leaseId), and owed there by a moved-out tenant too', () => {
+    const d = {
+        properties: [{ id: 'P1', name: 'Zed' }, { id: 'P2', name: 'Arora' }],
+        units: [{ id: 'U1', propertyId: 'P1', label: 'B' }, { id: 'U2', propertyId: 'P1', label: 'A', leaseId: 'L9' }, { id: 'U3', propertyId: 'P2', label: 'G' }],
+        leases: [{ id: 'L1', unitId: 'U1', tenantId: 'T1', status: 'active' }],
+        tenants: [{ id: 'T1', name: 'Ram' }, { id: 'T2', name: 'Om' }],
+        charges: [
+            { id: 'c1', leaseId: 'L1', unitId: 'U1', tenantId: 'T1', month: '2026-01', dueDay: 5, amount: 5000, paid: 1000 },
+            { id: 'c2', leaseId: 'L0', unitId: 'U3', tenantId: 'T2', month: '2025-12', dueDay: 5, amount: 3000, paid: 0 }
+        ]
+    };
+    const out = propertyRows(d, tenantRows(d, '2026-02', new Date(2026, 1, 20)));
+    expect(out.map(r => [r.property.id, r.units.map(u => u.id), r.let, r.owed, r.late])).toEqual([
+        ['P2', ['U3'], 0, 3000, true],
+        ['P1', ['U2', 'U1'], 2, 4000, true]
+    ]);
+});
+
