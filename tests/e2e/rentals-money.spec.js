@@ -62,8 +62,9 @@ test('the deposit ledger: received, refunded, and the deposits-held list', async
     await expect(box).toContainText('Refunded');
     await closeDialog(page);
 
+    // Deposits held is under Reports (Advanced).
     await page.evaluate(() => window.app.rentals.setMode('advanced'));
-    await showPage(page, 'tenants');
+    await showPage(page, 'reports');
     await button(page.locator('#rentalsBody'), 'Deposits held').click();
     await expect(box.getByRole('listitem').filter({ hasText: tenant })).toContainText('₹7,000');
     await closeDialog(page);
@@ -92,7 +93,7 @@ test('a property expense shows in the month, the yearly report and its CSV', asy
     await expect(box).toContainText(/Expenses this month.*₹1,500/s);
     await closeDialog(page);
 
-    await showPage(page, 'properties');
+    await showPage(page, 'reports');
     await button(page.locator('#rentalsBody'), 'Yearly report').click();
     const report = page.locator('#rentReport');
     await expect(report).toContainText('Yearly report');

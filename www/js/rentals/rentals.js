@@ -26,10 +26,10 @@ import {
 } from './rent-views.js';
 import {
     PAYMENT_MODES, normalizeRentSettings, monthKey, monthLabel, monthsToCharge, chargeDue, leaseDues,
-    buildRentReminderText, elecMode, dateLabel, payOldestFirst, payAmount
+    buildRentReminderText, elecMode, dateLabel, payOldestFirst, payAmount, expenseTotals
 } from './rent-math.js';
 
-const PAGES = ['rent', 'tenants', 'properties'];
+const PAGES = ['rent', 'tenants', 'properties', 'reports'];
 const esc = (v) => Helpers.escapeHtml(v);
 const js = (v) => Helpers.escapeJsAttr(v);
 const money = (n) => esc(formatINR(n));
@@ -185,6 +185,9 @@ function render() {
     const root = byId('rentalsBody');
     if (!root) return;
     const adv = state.mode === 'advanced';
+    if (state.page === 'reports' && (!adv || !canWrite())) state.page = 'rent';
+    const reports = byId('rentReportsTab');
+    if (reports) reports.hidden = !adv || !canWrite();
     document.querySelectorAll('#rentals [data-rent-page]').forEach(b => b.classList.toggle('active', b.getAttribute('data-rent-page') === state.page));
     document.querySelectorAll('#rentals [data-rent-mode]').forEach((b) => {
         const on = b.getAttribute('data-rent-mode') === state.mode;
@@ -209,7 +212,7 @@ function render() {
         return;
     }
     const d = store.snapshot();
-    const need = state.page !== 'rent' ? 'pages' : adv ? 'advanced' : '';
+    const need = state.page === 'reports' ? '' : state.page !== 'rent' ? 'pages' : adv ? 'advanced' : '';
     if (need && !lazyMods[need]) {
         root.innerHTML = `<p class="rent-empty">${et(state.lazyFailed ? 'msg.rent.could_not_load' : 'ui.rent.loading')}</p>`;
         if (state.lazyFailed) return;
@@ -223,7 +226,19 @@ function render() {
     }
     root.innerHTML = detail || (state.page === 'tenants' ? lazyMods.pages.renderTenants(unitCtx(), d)
         : state.page === 'properties' ? lazyMods.pages.renderProperties(unitCtx(), d)
+        : state.page === 'reports' ? renderReports(d)
         : renderRent(d, adv));
+}
+
+/** Advanced › Reports: the yearly report (owner, managers), deposits held and this month's expenses per property (as before). */
+function renderReports(d) {
+    const tile = (fn, args, title, sub) => `<button type="button" class="rent-row rent-prop-card" data-onclick="rentals.${fn}(${args})"><span class="rent-name">${esc(title)}</span><span class="rent-sub">${esc(sub)}</span></button>`;
+    const ex = expenseTotals(d.expenses, state.month).byProperty;
+    const props = [...d.properties].sort((a, b) => a.name.localeCompare(b.name));
+    return `${isManager() ? tile('yearReport', '', `📊 ${t('ui.rent.yr_btn')}`, t('ui.rent.rep_yearly_sub')) : ''}
+        ${tile('deposits', '', `💰 ${t('ui.rent.dep_held_list')}`, t('ui.rent.rep_deposits_sub'))}
+        <h3 class="rent-section-title">${et('ui.rent.exp_month')} · ${esc(monthLabel(state.month, getLang()))}</h3>
+        ${props.map(p => tile('expenses', `'${js(p.id)}'`, p.name, formatINR(ex[p.id] || 0))).join('') || `<p class="rent-empty">${et('ui.rent.no_properties')}</p>`}`;
 }
 
 /** Settings › Rentals defaults; built-in defaults when they can't be read. */

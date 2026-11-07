@@ -207,6 +207,7 @@ describe.each(['en', 'hi'])('pages (%s)', (lang) => {
             unitList: await show('rent', { view: 'units' }),
             tenants: await show('tenants'),
             properties: await show('properties'),
+            reports: await show('reports'),
             thisMonthSimple: await show('rent', { mode: 'simple' }),
             tenantsSimple: await show('tenants', { mode: 'simple' }),
             tenantGita: await tenant('T4'),

@@ -597,7 +597,6 @@ exports[`pages (en) Rent: property cards, each property, unit list; Tenants; Pro
     "Add tenant",
   ],
   "properties": [
-    "📊 Yearly report",
     "+ Add property",
     "Arora Market",
     "3 units · 2 let",
@@ -687,6 +686,13 @@ exports[`pages (en) Rent: property cards, each property, unit list; Tenants; Pro
     "⋯Edit",
     "Remove",
   ],
+  "reports": [
+    "📊 Yearly reportRent, collected, due, expenses and net for each property and month",
+    "💰 Deposits heldEvery deposit held and advance left, with the total",
+    "Expenses this month · Feb 2028",
+    "Arora Market₹0",
+    "Gupta Bhawan₹0",
+  ],
   "tenantGita": [
     "← Tenants",
     "⋯Edit",
@@ -759,7 +765,6 @@ exports[`pages (en) Rent: property cards, each property, unit list; Tenants; Pro
     "SitaFlat 2B, Gupta Bhawan",
     "📞 9876543211, 9876500002₹7,000/month, due on day 5 ⚡ includedSince 12/12/2027",
     "₹4,500Late",
-    "💰 Deposits held",
   ],
   "tenantsSimple": [
     "+ Add tenant",
@@ -1025,7 +1030,6 @@ exports[`pages (hi) Rent: property cards, each property, unit list; Tenants; Pro
     "किरायेदार जोड़ें",
   ],
   "properties": [
-    "📊 सालाना रिपोर्ट",
     "+ संपत्ति जोड़ें",
     "Arora Market",
     "3 यूनिट · 2 किराये पर",
@@ -1115,6 +1119,13 @@ exports[`pages (hi) Rent: property cards, each property, unit list; Tenants; Pro
     "⋯बदलें",
     "हटाएँ",
   ],
+  "reports": [
+    "📊 सालाना रिपोर्टहर संपत्ति और महीने का किराया, मिला, बाकी, खर्च और बचत",
+    "💰 जमा जमानतेंहर जमा जमानत और बचा एडवांस, कुल के साथ",
+    "इस महीने का खर्च · फ़रवरी 2028",
+    "Arora Market₹0",
+    "Gupta Bhawan₹0",
+  ],
   "tenantGita": [
     "← किरायेदार",
     "⋯बदलें",
@@ -1187,7 +1198,6 @@ exports[`pages (hi) Rent: property cards, each property, unit list; Tenants; Pro
     "Sitaफ़्लैट 2B, Gupta Bhawan",
     "📞 9876543211, 9876500002₹7,000/महीना, हर 5 तारीख को ⚡ शामिल12/12/2027 से",
     "₹4,500देर",
-    "💰 जमा जमानतें",
   ],
   "tenantsSimple": [
     "+ किरायेदार जोड़ें",

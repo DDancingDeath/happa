@@ -820,6 +820,11 @@ Advanced only change what is drawn. Advanced never grants a permission (role che
   This month); Remove stays hidden while `unit.leaseId` is set (unchanged rule). Add property is a form; size and
   floor are under More in the unit form. Expenses and This month for the property are in Advanced (Expenses opens
   the existing sheet, not a tab: deviation from the plan, no extra reads).
+- **Reports** (PR8): an Advanced tab (`page('reports')`, rendered in `rentals.js`, no lazy file and no reads) with
+  the Yearly report (owner, managers), Deposits held and this month's expenses per property (`expenseTotals`, the
+  loaded month), each opening the existing sheet. Deposits held moved here from Tenants and the Yearly report from
+  Properties. Deviation (owner-adjustable): the tab is for every rentals role, not only owner/managers, because
+  members already saw Deposits held and Expenses and no access is taken away.
 - **Start a tenancy** (PR6, MONEY): the tenant section shows who, rent, start date and deposit; phone 2, pro-rate,
   due day, yearly %, electricity and the opening reading / rate sit in a closed "More" (`#rentTMore`), with the same
   ids and defaults, so the saved lease and charges are unchanged (characterisation figures identical). `dialog()`
