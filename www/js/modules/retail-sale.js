@@ -763,6 +763,7 @@ const RetailSaleManager = {
         
         let printPromise = null;
         const report = {};
+        const editing = this.billingManager?.editingBillIndex !== undefined;
         try {
             const savedSale = await Helpers.runExclusive('retail', RETAIL_BUTTONS, () => this._completeSale({
                 onWriteIssued: (sale) => { printPromise = PrinterService.printBill(sale, report); }
@@ -775,7 +776,7 @@ const RetailSaleManager = {
             const printed = await printPromise;
             if (!savedSale) return;
             PrinterService.showSavePrintStatus({
-                printed, report, savedText: this.savedText(savedSale),
+                printed, report, savedText: editing ? t('msg.billing.sale_updated_successfully') : this.savedText(savedSale),
                 printedText: FirebaseService.savedOnPhoneOnly(savedSale) ? t(SAVED_ON_PHONE_KEY) : t('msg.common.sale_saved_printed')
             });
         } catch (error) {

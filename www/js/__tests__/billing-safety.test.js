@@ -274,6 +274,22 @@ describe('Print with no printer (S-12)', () => {
         expect(report.outcome).toBe('preview');
     });
 
+    test('an edited bill printed with no printer says "updated", not "saved"', async () => {
+        document.body.innerHTML = PURCHASE_DOM;
+        const bill = { id: 'b1', billNumber: 'P-1', items: [{ name: 'Rice', qty: 1, rate: 10, total: 10 }] };
+        const manager = PurchaseManager.billingManager;
+        PurchaseManager.billingManager = { editingBillIndex: 0, saveEditedBill: async (o) => { o.onWriteIssued(bill); return bill; } };
+        PurchaseManager.setBillItems(bill.items);
+        jest.spyOn(PrinterService, 'canPrint').mockReturnValue(false);
+        jest.spyOn(PrinterService, 'showBillPreview').mockResolvedValue(true);
+        try {
+            await PurchaseManager.printBill();
+        } finally {
+            PurchaseManager.billingManager = manager;
+        }
+        expect(toasts()).toContain('✓ Bill updated successfully! · Not printed: no printer connected.');
+    });
+
     test.each([
         ['purchase', () => { document.body.innerHTML = PURCHASE_DOM; PurchaseManager.setBillItems([{ name: 'Rice', qty: 1, rate: 10, total: 10 }]); return PurchaseManager.printBill(); },
             'Bill saved successfully! · Not printed: no printer connected.', 'Bill saved and printed!'],

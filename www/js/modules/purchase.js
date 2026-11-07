@@ -536,6 +536,7 @@ const PurchaseManager = {
         
         let printPromise = null;
         const report = {};
+        const editing = this.billingManager?.editingBillIndex !== undefined;
         try {
             const savedBill = await Helpers.runExclusive('purchase', PURCHASE_BUTTONS, () => this._saveBill({
                 onWriteIssued: (bill) => { printPromise = PrinterService.printBill(bill, report); }
@@ -545,7 +546,7 @@ const PurchaseManager = {
             const printed = await printPromise;
             if (!savedBill) return;
             PrinterService.showSavePrintStatus({
-                printed, report, savedText: this.savedText(savedBill),
+                printed, report, savedText: editing ? t('msg.billing.bill_updated_successfully') : this.savedText(savedBill),
                 printedText: FirebaseService.savedOnPhoneOnly(savedBill) ? t(SAVED_ON_PHONE_KEY) : t('msg.purchase.bill_saved_printed')
             });
         } catch (error) {
