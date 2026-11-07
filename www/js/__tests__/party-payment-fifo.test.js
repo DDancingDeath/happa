@@ -16,13 +16,17 @@ jest.mock('../firebase/firestore-service.js', () => ({
 }));
 jest.mock('../firebase/repos/bill-payments.js', () => ({
     updateBillInTransaction: jest.fn(),
-    updateBillsInTransaction: jest.fn()
+    updateBillsInTransaction: jest.fn(),
+    readBillFromServer: jest.fn(async () => null)
 }));
 jest.mock('../services/printer.js', () => ({ PrinterService: {} }));
-jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}), ACTIONS: { UPDATE_PAYMENT: 'UPDATE_PAYMENT' } } }));
+jest.mock('../services/audit.js', () => ({
+    AuditService: { log: jest.fn(async () => {}), entry: jest.fn((action, details) => ({ action, details })), ACTIONS: { UPDATE_PAYMENT: 'UPDATE_PAYMENT' } }
+}));
 jest.mock('../ui/infinite-scroll.js', () => ({ attachOlderHistoryScroll: jest.fn() }));
 
-import { updateBillsInTransaction } from '../firebase/repos/bill-payments.js';
+import { readBillFromServer, updateBillsInTransaction } from '../firebase/repos/bill-payments.js';
+import { forgetPaymentIntents } from '../services/payment-intents.js';
 import { AuditService } from '../services/audit.js';
 import { OutstandingManager } from '../modules/outstanding.js';
 import { UIManager } from '../ui/ui-manager.js';
@@ -38,13 +42,18 @@ const bill = (id, customerName, due, ts, extra = {}) => ({
     payment: { cash: 100, online: 0, due, total: 100 }, dueAmount: due, payments: [], ...extra
 });
 
+/** Audit entries written by the payment transactions (D-3), by id. */
+let audits = {};
+
 function serverTx(server) {
     updateBillsInTransaction.mockImplementation(async (collKey, ids, change) => {
         const fresh = ids.map(id => JSON.parse(JSON.stringify(server[id])));
         const out = change(fresh);
         out.bills.forEach((fields, i) => { if (fields) server[ids[i]] = { ...server[ids[i]], ...withCanonicalDue(fields, fresh[i]) }; });
+        if (out.audit) audits[out.audit.id] = out.audit.data;
         return out.result;
     });
+    readBillFromServer.mockImplementation(async (collKey, id) => (server[id] ? JSON.parse(JSON.stringify(server[id])) : false));
 }
 
 beforeEach(() => {
@@ -58,8 +67,11 @@ beforeEach(() => {
     AppState.settings = {};
     AppState.currentDueFilter = 'sale';
     updateBillsInTransaction.mockReset();
+    readBillFromServer.mockReset();
+    readBillFromServer.mockResolvedValue(null);
     AuditService.log.mockClear();
-    OutstandingManager.pendingPartyPay = null;
+    audits = {};
+    forgetPaymentIntents();
 });
 afterEach(() => jest.restoreAllMocks());
 
@@ -195,7 +207,9 @@ describe('Receive payment dialog', () => {
         expect(document.getElementById('ppSum').textContent).toBe('Total: ₹300');
         expect(updateBillsInTransaction.mock.calls[0][1]).toEqual(['r1', 'r2']);
         expect(server.r2.payment).toMatchObject({ due: 50, online: 200 });
-        expect(AuditService.log).toHaveBeenCalledWith('UPDATE_PAYMENT', expect.objectContaining({ bulk: true, oldestFirst: true, paymentAmount: 300, method: 'online' }));
+        // The audit entry is written by the payment's own transaction (D-3), not afterwards
+        expect(AuditService.log).not.toHaveBeenCalled();
+        expect(Object.values(audits)).toEqual([{ action: 'UPDATE_PAYMENT', details: expect.objectContaining({ bulk: true, oldestFirst: true, paymentAmount: 300, method: 'online', billNumbers: 'R-r1, R-r2' }) }]);
         expect(UIManager.showToast).toHaveBeenLastCalledWith('✓ ₹300 recorded on 2 bills');
     });
 
@@ -239,7 +253,7 @@ describe('Receive payment dialog', () => {
         expect(server.r1.payments).toEqual([]);
     });
 
-    test('kept retry ids are forgotten once that payment is on the bills, so a new equal payment is saved', async () => {
+    test('a lost answer is checked on the server: told it was recorded, so a new equal payment is saved', async () => {
         const server = { r1: bill('r1', 'Ravi', 2000, 1), r2: bill('r2', 'Ravi', 250, 2) };
         serverTx(server);
         jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -254,12 +268,61 @@ describe('Receive payment dialog', () => {
         answer(500, 'cash');
         await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
         expect(server.r1.payment.due).toBe(1500);
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('✓ ₹500 recorded on 1 bills');
         // The listener brings the landed payment; the customer pays ₹500 again
         AppState.retailSalesHistory = [server.r1, server.r2];
         answer(500, 'cash');
         await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
         expect(server.r1.payments).toHaveLength(2);
         expect(server.r1.payment.due).toBe(1000);
+    });
+
+    test('D-1: no answer and no server: never "try again"; the retry of the same payment is never recorded twice', async () => {
+        const server = { r1: bill('r1', 'Ravi', 2000, 1), r2: bill('r2', 'Ravi', 250, 2) };
+        serverTx(server);
+        readBillFromServer.mockResolvedValue(null);
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const lost = async (collKey, ids, change) => {
+            const fresh = ids.map(id => JSON.parse(JSON.stringify(server[id])));
+            const out = change(fresh);
+            out.bills.forEach((fields, i) => { if (fields) server[ids[i]] = { ...server[ids[i]], ...withCanonicalDue(fields, fresh[i]) }; });
+            if (out.audit) audits[out.audit.id] = out.audit.data;
+            throw Object.assign(new Error('unavailable'), { code: 'unavailable' });
+        };
+        updateBillsInTransaction.mockImplementationOnce(lost);
+        AppState.retailSalesHistory = [server.r1, server.r2];
+        answer(500, 'cash');
+        await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
+        expect(UIManager.showToast).toHaveBeenLastCalledWith(expect.stringContaining('Could not confirm the payment of ₹500'));
+        // The same split again, before this phone sees it: the same ids, the transaction finds them, nothing new
+        answer(500, 'cash');
+        await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
+        expect(server.r1.payments).toHaveLength(1);
+        expect(Object.keys(audits)).toHaveLength(1);
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('✓ ₹500 recorded on 1 bills');
+    });
+
+    test('D-1: the lost payment reaches this phone first; the same payment again is reported, not sent', async () => {
+        const server = { r1: bill('r1', 'Ravi', 2000, 1), r2: bill('r2', 'Ravi', 250, 2) };
+        serverTx(server);
+        readBillFromServer.mockResolvedValue(null);
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        updateBillsInTransaction.mockImplementationOnce(async (collKey, ids, change) => {
+            const fresh = ids.map(id => JSON.parse(JSON.stringify(server[id])));
+            const out = change(fresh);
+            out.bills.forEach((fields, i) => { if (fields) server[ids[i]] = { ...server[ids[i]], ...withCanonicalDue(fields, fresh[i]) }; });
+            throw Object.assign(new Error('deadline'), { code: 'deadline-exceeded' });
+        });
+        AppState.retailSalesHistory = [server.r1, server.r2];
+        answer(500, 'cash');
+        await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
+        // The listener brings the bill with the payment (due 1500); the user types ₹500 again on that bill
+        AppState.retailSalesHistory = [server.r1, server.r2];
+        answer(500, 'cash');
+        await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
+        expect(updateBillsInTransaction).toHaveBeenCalledTimes(1);
+        expect(server.r1.payments).toHaveLength(1);
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('✓ This payment of ₹500 was already recorded. It was not recorded again.');
     });
 
     test('more than 100 open bills: says only the oldest 100 are listed', async () => {

@@ -9,10 +9,13 @@ import { AppState } from '../utils/state.js';
 import { on, REFRESH } from '../utils/events.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
-import { updateBillInTransaction, updateBillsInTransaction } from '../firebase/repos/bill-payments.js';
+import { readBillFromServer, updateBillInTransaction, updateBillsInTransaction } from '../firebase/repos/bill-payments.js';
 import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
-import { formatAmount, formatRupees, isActiveBill, isOpeningRecord, openingOldTotals, readPayment, round2, sumMoney } from '../utils/money.js';
+import {
+    paymentEntryOf, paymentIntentIds, paymentIntentKey, paymentOutcomeUnknown, pendingPaymentIntent, settlePaymentIntent
+} from '../services/payment-intents.js';
+import { formatAmount, formatRupees, isActiveBill, isOpeningRecord, openingOldTotals, outstandingDue, readPayment, round2, sumMoney } from '../utils/money.js';
 import { parseAnyBillDate, startOfLocalDay, todayLocalISO } from '../utils/dates.js';
 import { directionFor, duePaymentUpdate, partyDues, settleDueUpdate } from '../utils/due-payments.js';
 import { allocateOldestFirst, checkAllocation, hasPaise, validateDuePayment } from '../utils/calc/billing.js';
@@ -45,8 +48,6 @@ const PAYMENT_TOLERANCE = 0.01;
 const PARTY_PAY_MAX = 100;
 /** ₹ with paise only when there are any (party payment dialog: old dues may carry paise). */
 const paiseText = (v) => formatRupees(v, { decimals: hasPaise(v) ? 2 : 0 });
-/** How long the ids of an unclear party payment are kept for its retry (the rules' ±10 min for `at`). */
-const PARTY_PAY_RETRY_MS = 10 * 60 * 1000;
 const COLLECTION_BY_TYPE = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' };
 /** Aging panel title of each receivables list (#125). */
 const RECEIVABLE_TITLE = { retail: 'ui.outstanding.retail_by_age', wholesale: 'ui.outstanding.wholesale_by_age' };
@@ -459,40 +460,16 @@ export class OutstandingManager {
     static async recordPayment(transactionId, transactionType) {
         // Cash and online parts (#107): only the cash part reaches the drawer
         const ids = this.paymentInputIds(transactionId, transactionType);
-        const paymentInput = document.getElementById(ids.cash);
-        const onlineInput = document.getElementById(ids.online);
-        const cash = Number(paymentInput?.value) || 0;
-        const online = Number(onlineInput?.value) || 0;
-        const entryId = this.paymentEntryId(paymentInput, `${round2(cash)}|${round2(online)}`);
-        const ok = await this.recordDuePayment({ billType: transactionType, billId: transactionId, cash, online, entryId });
+        const cash = Number(document.getElementById(ids.cash)?.value) || 0;
+        const online = Number(document.getElementById(ids.online)?.value) || 0;
+        const ok = await this.recordDuePayment({ billType: transactionType, billId: transactionId, cash, online });
         if (ok) {
-            this.clearPaymentEntryId(paymentInput);
+            // The row may have been redrawn meanwhile: clear the inputs shown now
+            const paymentInput = document.getElementById(ids.cash);
+            const onlineInput = document.getElementById(ids.online);
             if (paymentInput) paymentInput.value = '';
             if (onlineInput) onlineInput.value = '';
         }
-    }
-
-    /**
-     * Id for the payment typed in `input`: kept while the same amount is retried,
-     * so a retry after a timeout cannot record the payment twice (#70).
-     * @param {HTMLInputElement|null} input
-     * @param {number|string} amountKey
-     * @returns {string}
-     */
-    static paymentEntryId(input, amountKey) {
-        if (!input) return Helpers.generateId();
-        if (!input.dataset.paymentId || input.dataset.paymentAmount !== String(amountKey)) {
-            input.dataset.paymentId = Helpers.generateId();
-            input.dataset.paymentAmount = String(amountKey);
-        }
-        return input.dataset.paymentId;
-    }
-
-    /** Forget the retry id once the payment is recorded. */
-    static clearPaymentEntryId(input) {
-        if (!input) return;
-        delete input.dataset.paymentId;
-        delete input.dataset.paymentAmount;
     }
 
     /** Bill of a type ('purchase' | 'retail' | 'wholesale') from AppState. */
@@ -508,14 +485,15 @@ export class OutstandingManager {
      * Cash tab: reduces the bill's due (payment.due + payments[]; the dueAmount mirror
      * follows, repos/bill-due.js)
      * and, when a cash session is open today, adds the payment to it as a
-     * drawer leg — all in one transaction.
+     * drawer leg — all in one transaction, with its audit entry (D-3). The payment's id
+     * belongs to services/payment-intents.js (same bill, amounts and action = same id until
+     * it is known to be recorded), so a retry after a lost answer is never recorded twice (D-1).
      * @param {Object} args
      * @param {'purchase'|'retail'|'wholesale'} args.billType
      * @param {string} args.billId
      * @param {number} args.cash Cash part
      * @param {number} [args.online=0] Online part
      * @param {string} [args.note]
-     * @param {string} [args.entryId] Payment id reused when the same payment is retried (#70)
      * @returns {Promise<boolean>} true when recorded
      */
     static async recordDuePayment(args) {
@@ -524,14 +502,18 @@ export class OutstandingManager {
         return ok === true;
     }
 
-    static async _recordDuePayment({ billType, billId, cash, online = 0, note = '', clear = false, entryId = null }) {
+    static async _recordDuePayment({ billType, billId, cash, online = 0, note = '', clear = false }) {
         let run = null;
+        let sent = null;
         try {
             const transaction = this.findBill(billType, billId);
             if (!transaction) {
                 UIManager.showToast(t('msg.outstanding.error_transaction_not_found'));
                 return false;
             }
+
+            const key = paymentIntentKey({ kind: clear ? 'clear' : 'pay', billType, billId: transaction.id, cash, online });
+            if (this.landedPayment(key, transaction)) return true;
 
             const outstanding = readPayment(transaction).due;
             const split = validateDuePayment(cash, online, outstanding, PAYMENT_TOLERANCE);
@@ -548,18 +530,21 @@ export class OutstandingManager {
             }
 
             const entry = {
+                id: paymentIntentIds(key)[0],
                 amount: split.total,
                 date: Helpers.getCurrentDateTime(),
                 recordedBy: AppState.userName || (AppState.currentUser ? AppState.currentUser.email : 'Unknown')
             };
             if (note) entry.note = note;
-            if (entryId) entry.id = entryId;
 
             // Server-side read-modify-write so concurrent payments from two devices can't overwrite each other
             if (clear) entry.settlesDue = true;
             run = tip.start('PaymentRecord', { flags: { billType, clear: !!clear, split: split.cash > 0 && split.online > 0 } });
             this.lastPaymentTip = null;
-            const written = await this.applyPaymentTransaction(billType, transaction, { cash: split.cash, online: split.online }, entry, { clear });
+            sent = { key, billType, billId: transaction.id, entryId: entry.id, total: split.total, dueBefore: outstanding, clear, online: split.online };
+            const audit = this.paymentAudit(transaction, billType, split);
+            const written = await this.applyPaymentTransaction(billType, transaction, { cash: split.cash, online: split.online }, entry, { clear, audit });
+            settlePaymentIntent(key);
             Object.assign(transaction, written);
             track('payment.record');
             try {
@@ -568,18 +553,7 @@ export class OutstandingManager {
             } catch (_) { /* TIP never breaks a payment */ }
 
             this.refreshAfterPayment();
-
-            // Log audit entry
-            await AuditService.log(AuditService.ACTIONS.UPDATE_PAYMENT, {
-                billNumber: transaction.billNumber || 'N/A',
-                paymentAmount: split.total,
-                cash: split.cash,
-                online: split.online,
-                transactionType: billType,
-                customer: transaction.customerName || transaction.customer || transaction.supplier || 'N/A'
-            });
-
-            UIManager.showToast(clear ? t(split.online > 0 ? 'msg.outstanding.due_cleared_online' : 'msg.outstanding.due_cleared_cash', { total: formatAmount(split.total, { exact: true }) }) : t('msg.outstanding.payment_recorded', { total: formatAmount(split.total, { exact: true }) }));
+            UIManager.showToast(this.recordedText(sent));
             UIManager.hapticFeedback('light');
             return true;
         } catch (error) {
@@ -592,26 +566,139 @@ export class OutstandingManager {
             if (error && error.code === 'exceeds-due') {
                 UIManager.showToast(t('msg.common.payment_amount_exceeds_outstanding_amount_2', { due: formatAmount(error.due, { exact: true }) }));
                 this.renderDue();
-            } else if (OutstandingManager.isOfflineError(error)) {
-                UIManager.showToast(t('msg.common.internet_required_record_payment'));
-            } else {
-                UIManager.showToast(await this.paymentRefusedText(error));
+                return false;
             }
+            if (!sent) {
+                UIManager.showToast(OutstandingManager.isOfflineError(error) ? t('msg.common.internet_required_record_payment') : await this.paymentRefusedText(error));
+                return false;
+            }
+            return this.afterPaymentFailure(error, sent);
+        }
+    }
+
+    /** "Payment recorded" / "due cleared" text of a recorded payment. */
+    static recordedText(sent) {
+        const total = formatAmount(sent.total, { exact: true });
+        if (!sent.clear) return t('msg.outstanding.payment_recorded', { total });
+        return t(sent.online > 0 ? 'msg.outstanding.due_cleared_online' : 'msg.outstanding.due_cleared_cash', { total });
+    }
+
+    /**
+     * The audit entry written in the payment's own transaction (D-3): id from the payment id.
+     * @returns {{action: string, details: Object}}
+     */
+    static paymentAudit(bill, billType, split) {
+        return {
+            action: AuditService.ACTIONS.UPDATE_PAYMENT,
+            details: {
+                billNumber: bill.billNumber || 'N/A',
+                paymentAmount: split.total,
+                cash: split.cash,
+                online: split.online,
+                transactionType: billType,
+                customer: bill.customerName || bill.customer || bill.supplier || 'N/A'
+            }
+        };
+    }
+
+    /**
+     * Before a payment is sent: is this the retry of one whose answer was lost but which this
+     * phone now sees on the bill? Then it is reported as recorded, never sent again (D-1).
+     * @param {string} key - paymentIntentKey
+     * @param {Object} bill - this phone's copy
+     * @returns {boolean} true when it was already recorded (told to the user)
+     */
+    static landedPayment(key, bill) {
+        const open = pendingPaymentIntent(key);
+        const entry = open ? paymentEntryOf(bill, open.ids[0]) : null;
+        if (!entry) return false;
+        settlePaymentIntent(key);
+        UIManager.showToast(t('msg.outstanding.payment_already_recorded', { total: formatAmount(Number(entry.amount) || 0, { exact: true }) }));
+        this.refreshAfterPayment();
+        return true;
+    }
+
+    /** Copies a bill's payment fields as read on the server onto this phone's copy. */
+    static takeServerPayment(billType, billId, server) {
+        const local = this.findBill(billType, billId);
+        if (!local || !server) return;
+        ['payment', 'payments', 'dueAmount', 'openDue', 'paidAt', 'cleared', 'clearedAt', 'clearedBy', 'clearedByName']
+            .forEach(k => { if (Object.prototype.hasOwnProperty.call(server, k)) local[k] = server[k]; });
+    }
+
+    /**
+     * A sent payment failed. A refusal is told in plain words (D-2: another phone's payment came
+     * first, so the due is shown again from the server); any other error may hide a commit whose
+     * answer was lost, so the bill is checked (this phone's copy, then the server) and the user
+     * is told whether it was recorded, never just "try again" (D-1).
+     * @param {*} error
+     * @param {{key: string, billType: string, billId: string, entryId: string, total: number, dueBefore: number}} sent
+     * @returns {Promise<boolean>} true when the payment turned out to be recorded
+     */
+    static async afterPaymentFailure(error, sent) {
+        const collKey = COLLECTION_BY_TYPE[sent.billType] || 'wholesaleSales';
+        const total = formatAmount(sent.total, { exact: true });
+        if (error?.code === 'voided' || error?.code === 'not-found' || error?.code === 'invalid-argument') {
+            UIManager.showToast(error.code === 'not-found' ? t('msg.outstanding.error_transaction_not_found') : await this.paymentRefusedText(error));
             return false;
         }
+        if (error?.code === 'permission-denied') {
+            if (await refusedForClock(error)) {
+                UIManager.showToast(t('msg.common.phone_clock_wrong_payment'));
+                return false;
+            }
+            const server = await readBillFromServer(collKey, sent.billId);
+            if (server && paymentEntryOf(server, sent.entryId)) return this.paymentFoundRecorded(sent, server);
+            if (server) {
+                this.takeServerPayment(sent.billType, sent.billId, server);
+                this.refreshAfterPayment();
+            }
+            UIManager.showToast(server && round2(readPayment(server).due) !== round2(sent.dueBefore)
+                ? t('msg.outstanding.payment_changed_elsewhere', { total, due: formatAmount(outstandingDue(server), { exact: true }) })
+                : t('msg.outstanding.payment_refused'));
+            return false;
+        }
+        if (!paymentOutcomeUnknown(error)) {
+            UIManager.showToast(await this.paymentRefusedText(error));
+            return false;
+        }
+        UIManager.showToast(t('msg.outstanding.payment_checking'));
+        if (paymentEntryOf(this.findBill(sent.billType, sent.billId), sent.entryId)) return this.paymentFoundRecorded(sent, null);
+        const server = await readBillFromServer(collKey, sent.billId);
+        if (server && paymentEntryOf(server, sent.entryId)) return this.paymentFoundRecorded(sent, server);
+        if (server === null) {
+            UIManager.showToast(t('msg.outstanding.payment_unconfirmed', { total }));
+            return false;
+        }
+        if (server) {
+            this.takeServerPayment(sent.billType, sent.billId, server);
+            this.refreshAfterPayment();
+        }
+        UIManager.showToast(t('msg.outstanding.payment_not_saved', { total }));
+        return false;
+    }
+
+    /** The payment whose answer was lost is on the bill: recorded once (with its audit entry). */
+    static paymentFoundRecorded(sent, server) {
+        settlePaymentIntent(sent.key);
+        if (server) this.takeServerPayment(sent.billType, sent.billId, server);
+        this.refreshAfterPayment();
+        UIManager.showToast(this.recordedText(sent));
+        UIManager.hapticFeedback('light');
+        return true;
     }
 
     /**
      * Toast text for a payment or write-off the server refused. The rules refuse an
      * entry whose time is 10 minutes or more off the server's (#184): a phone with a
-     * wrong clock is told so instead of a bare permission error.
+     * wrong clock is told so instead of a bare permission error. Never the raw error text (D-2).
      * @param {*} error
      * @returns {Promise<string>}
      */
     static async paymentRefusedText(error) {
         if (error?.code === 'voided') return t('msg.void.bill_was_voided');
         if (await refusedForClock(error)) return t('msg.common.phone_clock_wrong_payment');
-        return t('msg.common.error', { message: error?.message });
+        return t('msg.outstanding.payment_refused');
     }
 
     /** Re-render every screen that shows dues or today's money. */
@@ -667,9 +754,11 @@ export class OutstandingManager {
      * @param {Object} bill
      * @param {number|{cash: number, online: number}} amount A number = all cash
      * @param {Object} entry payments[] entry (amount/date/recordedBy…)
+     * @param {{clear?: boolean, audit?: ?{action: string, details: Object}}} [opts] `audit`: an
+     *   audit entry created in the same transaction as the payment (id `pay_<entry id>`, D-3)
      * @returns {Promise<Object>} The bill fields written (for patching local state)
      */
-    static async applyPaymentTransaction(transactionType, bill, amount, entry, { clear = false } = {}) {
+    static async applyPaymentTransaction(transactionType, bill, amount, entry, { clear = false, audit = null } = {}) {
         const parts = typeof amount === 'number' ? { cash: amount, online: 0 } : amount;
         const cash = round2(parts.cash || 0);
         const online = round2(parts.online || 0);
@@ -724,6 +813,7 @@ export class OutstandingManager {
             if (clear && newDue === 0) Object.assign(update, this.clearedFields());
             update.openDue = FirebaseService.billHasOpenDue(collKey, { ...fresh, ...update });
             update.clientVersion = FirebaseService.CLIENT_VERSION;
+            const auditDoc = audit ? { id: `pay_${fullEntry.id}`, data: AuditService.entry(audit.action, audit.details) } : null;
 
             if (openSession && !openSession.signedOut && openSession.date === today) {
                 const leg = {
@@ -744,9 +834,9 @@ export class OutstandingManager {
                 };
                 legWritten = leg;
                 const duePayments = [...(Array.isArray(openSession.duePayments) ? openSession.duePayments : []), leg];
-                return { bill: update, session: { duePayments }, result: update };
+                return { bill: update, session: { duePayments }, result: update, audit: auditDoc };
             }
-            return { bill: update, result: update };
+            return { bill: update, result: update, audit: auditDoc };
         });
 
         const local = CashManagementManager.todaySession;
@@ -949,7 +1039,6 @@ export class OutstandingManager {
             return;
         }
         const { chosen, all } = this.partyOpenBills(billType, String(partyKey ?? ''));
-        this.forgetLandedPartyPay(billType);
         if (!chosen.length) {
             UIManager.showToast(t('msg.outstanding.nothing_due_party'));
             return;
@@ -1043,40 +1132,48 @@ export class OutstandingManager {
     }
 
     /**
-     * Payment entry ids kept for the same party, method and split until a definite result (#70),
-     * at most PARTY_PAY_RETRY_MS: a retry after an unclear error finds its own entries and writes nothing twice.
+     * Intent key of a party payment (#70, D-1): same list, party, method and each bill's part.
+     * Its entry ids are kept (services/payment-intents.js) until it is known to be recorded.
      */
-    static partyPayEntryIds(billType, name, picked, method) {
-        const key = [billType, normalizePartyName(name), method,
-            ...picked.map(x => `${FirebaseService.documentIdOf ? FirebaseService.documentIdOf(x.bill) : String(x.bill.id)}:${x.amount}`)].join('|');
-        const p = this.pendingPartyPay;
-        if (p?.key !== key || Date.now() - p.at > PARTY_PAY_RETRY_MS) this.pendingPartyPay = { key, at: Date.now(), ids: picked.map(() => Helpers.generateId()) };
-        return this.pendingPartyPay.ids;
-    }
-
-    /**
-     * Kept ids whose payment has reached this phone's bills (the earlier attempt went through)
-     * or that are too old are forgotten, so a new payment of the same split is never taken for it.
-     */
-    static forgetLandedPartyPay(billType) {
-        const p = this.pendingPartyPay;
-        if (!p) return;
-        const ids = new Set(p.ids);
-        const landed = this.partyPayList(billType).some(b => (Array.isArray(b?.payments) ? b.payments : []).some(e => e && ids.has(e.id)));
-        if (landed || Date.now() - p.at > PARTY_PAY_RETRY_MS) this.pendingPartyPay = null;
+    static partyPayKey(billType, name, picked, method) {
+        return paymentIntentKey({
+            kind: 'party', billType, billId: normalizePartyName(name),
+            parts: [method, ...picked.map(x => `${FirebaseService.documentIdOf ? FirebaseService.documentIdOf(x.bill) : String(x.bill.id)}:${x.amount}`)]
+        });
     }
 
     static async _receiveFromParty(billType, name, picked, method) {
         let result;
-        const entryIds = this.partyPayEntryIds(billType, name, picked, method);
+        const key = this.partyPayKey(billType, name, picked, method);
+        const sum = sumMoney(picked, x => x.amount);
+        const total = formatAmount(sum, { exact: true });
+        // The same payment again after a lost answer, and this phone now sees it on the bills
+        const open = pendingPaymentIntent(key);
+        if (open && picked.some((x, i) => paymentEntryOf(this.findBill(billType, x.bill.id) || x.bill, open.ids[i]))) {
+            settlePaymentIntent(key);
+            UIManager.showToast(t('msg.outstanding.payment_already_recorded', { total }));
+            this.refreshAfterPayment();
+            return;
+        }
+        const entryIds = paymentIntentIds(key, picked.length);
         try {
-            result = await this.receivePartyPayment(billType, picked.map(x => x.bill), picked.map(x => x.amount), method, entryIds);
+            result = await this.receivePartyPayment(billType, picked.map(x => x.bill), picked.map(x => x.amount), method, entryIds, { name });
         } catch (error) {
             console.error('Party payment failed:', error);
-            // A definite refusal forgets the ids; any other error may have reached the server: a retry reuses them
-            if (['due-changed', 'voided', 'not-found', 'permission-denied', 'invalid-argument'].includes(error?.code)) this.pendingPartyPay = null;
-            if (this.isOfflineError(error)) {
-                UIManager.showToast(t('msg.common.internet_required_record_payment'));
+            if (paymentOutcomeUnknown(error)) {
+                UIManager.showToast(t('msg.outstanding.payment_checking'));
+                const first = picked[0].bill;
+                const docId = FirebaseService.documentIdOf ? FirebaseService.documentIdOf(first) : String(first.id);
+                // One transaction for all the bills: the first bill's entry says whether it landed
+                const server = paymentEntryOf(this.findBill(billType, first.id), entryIds[0])
+                    ? true : await readBillFromServer(COLLECTION_BY_TYPE[billType] || 'wholesaleSales', docId);
+                if (server === true || (server && paymentEntryOf(server, entryIds[0]))) {
+                    settlePaymentIntent(key);
+                    UIManager.showToast(t('msg.outstanding.party_pay_done', { count: picked.length, total: paiseText(sum) }));
+                    UIManager.hapticFeedback('light');
+                } else {
+                    UIManager.showToast(t(server === null ? 'msg.outstanding.payment_unconfirmed' : 'msg.outstanding.payment_not_saved', { total }));
+                }
             } else if (error?.code === 'due-changed') {
                 UIManager.showToast(t('msg.outstanding.party_pay_changed'));
             } else if (error?.code === 'not-found') {
@@ -1087,19 +1184,10 @@ export class OutstandingManager {
             this.refreshAfterPayment();
             return;
         }
-        this.pendingPartyPay = null;
-        const { settled, total } = result;
+        settlePaymentIntent(key);
+        const { settled } = result;
         settled.forEach(s => Object.assign(s.bill, s.fields));
-        AuditService.log(AuditService.ACTIONS.UPDATE_PAYMENT, {
-            bulk: true,
-            oldestFirst: true,
-            transactionType: billType,
-            customer: name,
-            method,
-            paymentAmount: total,
-            billNumbers: settled.map(s => s.bill.billNumber || String(s.bill.id)).join(', ').slice(0, 900)
-        }).catch(e => console.warn('Audit log failed:', e));
-        UIManager.showToast(t('msg.outstanding.party_pay_done', { count: settled.length, total: paiseText(total) }));
+        UIManager.showToast(t('msg.outstanding.party_pay_done', { count: settled.length, total: paiseText(result.total) }));
         UIManager.hapticFeedback('light');
         try {
             this.refreshAfterPayment();
@@ -1120,9 +1208,11 @@ export class OutstandingManager {
      * @param {number[]} amounts - > 0, same order
      * @param {'cash'|'online'} method
      * @param {string[]} [entryIds] - reused when the same payment is retried (#70)
+     * @param {{name?: string}} [opts] - `name`: the party, for the audit entry written in the same
+     *   transaction (id `pay_<first entry id>`, D-3); none without it
      * @returns {Promise<{settled: Array<{bill: Object, amount: number, fields: Object}>, total: number}>}
      */
-    static async receivePartyPayment(billType, bills, amounts, method, entryIds = null) {
+    static async receivePartyPayment(billType, bills, amounts, method, entryIds = null, { name = null } = {}) {
         const collKey = COLLECTION_BY_TYPE[billType] || 'wholesaleSales';
         const at = Date.now();
         const recordedBy = AppState.userName || (AppState.currentUser ? AppState.currentUser.email : 'Unknown');
@@ -1151,7 +1241,19 @@ export class OutstandingManager {
                 updates.push(update);
                 settled.push({ index: i, amount, fields: update });
             });
-            return { bills: updates, result: settled };
+            const audit = name !== null && updates.some(Boolean) ? {
+                id: `pay_${ids[0]}`,
+                data: AuditService.entry(AuditService.ACTIONS.UPDATE_PAYMENT, {
+                    bulk: true,
+                    oldestFirst: true,
+                    transactionType: billType,
+                    customer: name,
+                    method,
+                    paymentAmount: sumMoney(settled, s => s.amount),
+                    billNumbers: settled.map(s => freshList[s.index].billNumber || String(bills[s.index].id)).join(', ').slice(0, 900)
+                })
+            } : null;
+            return { bills: updates, result: settled, audit };
         });
         const settled = result.map(s => ({ bill: bills[s.index], amount: s.amount, fields: s.fields }));
         return { settled, total: sumMoney(settled, s => s.amount) };

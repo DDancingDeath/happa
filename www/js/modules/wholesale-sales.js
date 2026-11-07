@@ -36,13 +36,11 @@ import {
 } from '../utils/money.js';
 import {
     buildPaymentSplit, computeLine, computeWholesaleTotals, draftLineSum, paidOnScreen, paymentSplit, prefillPayment,
-    restInDue, shownAmount, typedAmount, validateDuePayment, validatePaymentSplit, wholesaleLiveProfit
+    restInDue, shownAmount, typedAmount, validatePaymentSplit, wholesaleLiveProfit
 } from '../utils/calc/billing.js';
 
 /** Wholesale bills shown under the entry form (the rest are in Wholesale › History). */
 const RECENT_SALES = 5;
-
-const PAYMENT_TOLERANCE = 0.01;
 
 /** Buttons disabled while a wholesale save/print is in flight */
 const WHOLESALE_BUTTONS = '[data-onclick*="wholesaleSales.completeSale"], [data-onclick*="wholesaleSales.printWholesaleSale"]';
@@ -662,50 +660,15 @@ export class WholesaleSalesManager {
             UIManager.showToast(t('msg.wholesale.error_sale_not_found'));
             return;
         }
-        
-        const paymentInput = document.getElementById(`payment_${saleId}`);
-        const check = validateDuePayment(paymentInput?.value, 0, readPayment(sale).due, PAYMENT_TOLERANCE);
-        if (!check.ok) {
-            UIManager.showToast(t(check.error === 'exceeds-due' ? 'msg.common.payment_amount_exceeds_outstanding_amount' : 'msg.common.enter_valid_payment_amount'));
-            return;
-        }
-        const paymentAmount = check.total;
-        
-        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-            UIManager.showToast(t('msg.common.internet_required_record_payment'));
-            return;
-        }
-        
-        const payment = {
-            id: OutstandingManager.paymentEntryId(paymentInput, paymentAmount),
-            amount: paymentAmount,
-            date: Helpers.getCurrentDateTime(),
-            recordedBy: AppState.userName || (AppState.currentUser ? AppState.currentUser.email : 'Unknown')
-        };
-        
-        try {
-            // Same server-side transaction as the Due screen, so a payment recorded
-            // concurrently on another device is never overwritten by a full-document write
-            const written = await OutstandingManager.applyPaymentTransaction('wholesale', sale, paymentAmount, payment);
-            Object.assign(sale, written);
-            
-            OutstandingManager.clearPaymentEntryId(paymentInput);
-            if (paymentInput) paymentInput.value = '';
-            this.renderSalesOutstanding();
-            this.renderSalesHistory();
-            window.app?.outstanding?.renderDue?.();
-            UIManager.showToast(t('msg.wholesale.payment_recorded', { paymentAmount: formatAmount(paymentAmount, { exact: true }) }));
-        } catch (error) {
-            console.error('Error recording payment:', error);
-            if (error && error.code === 'exceeds-due') {
-                UIManager.showToast(t('msg.common.payment_amount_exceeds_outstanding_amount_2', { due: formatAmount(error.due, { exact: true }) }));
-                this.renderSalesOutstanding();
-            } else if (OutstandingManager.isOfflineError(error)) {
-                UIManager.showToast(t('msg.common.internet_required_record_payment'));
-            } else {
-                UIManager.showToast(await OutstandingManager.paymentRefusedText(error));
-            }
-        }
+
+        // The Due screen's one payment path (#98): same transaction, retry id kept until the
+        // payment is known to be recorded (D-1), audit entry in the same commit (D-3)
+        const value = document.getElementById(`payment_${saleId}`)?.value;
+        const ok = await OutstandingManager._recordDuePayment({ billType: 'wholesale', billId: sale.id, cash: Number(value) || 0, online: 0 });
+        if (!ok) return;
+        this.renderSalesOutstanding();
+        this.renderSalesHistory();
+        window.app?.outstanding?.renderDue?.();
     }
 
     static async markSaleAsCleared(saleId) {

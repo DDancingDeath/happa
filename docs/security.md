@@ -251,7 +251,10 @@ so rules stay the priority.
   adjustments (before → after), withdrawals, cash day open / close (counted vs expected),
   Settings › Aadhat changes (labour, bill checks, business name: before → after), Roles &
   access, accounts (approve, reject, role change, remove, restore), rentals actions,
-  Clear Data and hiding error reports. Print / export of the log is #103. An entry's stored
+  Clear Data and hiding error reports. A due payment's entry (Outstanding, Wholesale ›
+  Outstanding, the Cash tab, a party's "Receive payment") is created in the payment's own
+  transaction (id `pay_<payment id>`): no payment without its entry, and a retry writes neither
+  again (D-3). Print / export of the log is #103. An entry's stored
   `userName` / `userRole` are whatever the phone sent (kept for history): Settings, Diagnostics
   and the anomaly flags name the **profile** behind `userId` (the owner's phone reads the
   profiles; the audit cards add the profile email, which unlike the name the person can't change; the role

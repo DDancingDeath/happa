@@ -10,3 +10,8 @@ Part of the [owner guide](../owner-guide.md) (one file per page). Hindi: [outsta
 
 Recording a payment (DUE-CHECK): cash and online in whole rupees, never more than
 the due. Names match with case and extra spaces ignored (PARTY).
+
+A payment is recorded once (DUE-PAY). If the phone gets no answer, it checks the bill and says
+whether the payment was recorded; it does not ask to enter it again while it may be saved. The
+same amount entered again on that bill is never recorded twice. If another phone recorded a
+payment on the bill at the same moment, this one is not recorded: the message shows the due now.

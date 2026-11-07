@@ -22,6 +22,8 @@ import { t } from '../i18n/index.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 import { sampleItems } from '../../../tests/fixtures/sample-items.js';
 import { withCanonicalDue } from '../firebase/repos/bill-due.js';
+import * as billPayments from '../firebase/repos/bill-payments.js';
+import { forgetPaymentIntents } from '../services/payment-intents.js';
 
 /** The repository's part of a new bill's save: the dueAmount mirror of payment.due (repos/bill-due.js). */
 const asSaved = (b) => withCanonicalDue(b, null, { full: true });
@@ -430,6 +432,7 @@ describe('recording a due payment (Outstanding)', () => {
         jest.spyOn(OutstandingManager, 'renderDue').mockImplementation(() => {});
         jest.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(true);
         document.body.innerHTML = '<input id="payment_r1"><input id="payment_p1"><div id="toast"></div>';
+        forgetPaymentIntents();
     });
     afterEach(() => {
         delete window.getCollection;
@@ -478,6 +481,105 @@ describe('recording a due payment (Outstanding)', () => {
         expect(doc.payments).toHaveLength(1);
         expect(doc.payment.due).toBe(395);
         expect(doc.dueAmount).toBe(395);
+    });
+
+    /** The next transaction reaches the server and commits, but its answer never comes back (D-1, S4). */
+    const loseNextAnswer = () => {
+        const run = fake.db.runTransaction;
+        jest.spyOn(fake.db, 'runTransaction').mockImplementationOnce(async (fn) => {
+            await run(fn);
+            throw Object.assign(new Error('Failed to get document because the client is offline.'), { code: 'unavailable' });
+        });
+    };
+    /** Outstanding redraws its rows when the bill changes: new, empty inputs. */
+    const redraw = () => { document.body.innerHTML = '<input id="payment_r1"><input id="payment_p1"><div id="toast"></div>'; };
+
+    test('D-1: a committed payment whose answer is lost is checked on the server and reported as recorded, with its audit entry', async () => {
+        fake.seed('retailSales', [RETAIL]);
+        AppState.retailSalesHistory = [{ ...RETAIL }];
+        loseNextAnswer();
+        setVal('payment_r1', 100);
+        await OutstandingManager.recordPayment('r1', 'retail');
+        const doc = fake.raw('retailSales').get('r1');
+        expect(doc.payments).toHaveLength(1);
+        expect(toast).not.toHaveBeenCalledWith('Internet required to record payment');
+        expect(toast).toHaveBeenLastCalledWith('✓ Payment of ₹100 recorded');
+        expect(AppState.retailSalesHistory[0].payment.due).toBe(395);
+        expect(document.getElementById('payment_r1').value).toBe('');
+        // D-3: the audit entry came with the payment's own commit (id from the payment id), not afterwards
+        const audits = [...fake.raw('auditLogs').entries()];
+        expect(audits).toEqual([[`pay_${doc.payments[0].id}`, expect.objectContaining({ action: 'UPDATE_PAYMENT', userId: 'u1', details: expect.objectContaining({ billNumber: 'S1', paymentAmount: 100 }) })]]);
+        expect(AuditService.log).not.toHaveBeenCalled();
+    });
+
+    test('D-1: the server can\'t be reached either: never "try again"; the same payment typed again after the row redraws is not recorded twice', async () => {
+        fake.seed('retailSales', [RETAIL]);
+        AppState.retailSalesHistory = [{ ...RETAIL }];
+        const check = jest.spyOn(billPayments, 'readBillFromServer').mockResolvedValueOnce(null);
+        loseNextAnswer();
+        setVal('payment_r1', 100);
+        await OutstandingManager.recordPayment('r1', 'retail');
+        expect(check).toHaveBeenCalledTimes(1);
+        expect(toast).toHaveBeenLastCalledWith(expect.stringContaining('Could not confirm the payment of ₹100'));
+        expect(toast).not.toHaveBeenCalledWith('Internet required to record payment');
+        redraw();
+        setVal('payment_r1', 100);
+        await OutstandingManager.recordPayment('r1', 'retail');
+        const doc = fake.raw('retailSales').get('r1');
+        expect(doc.payments).toHaveLength(1);
+        expect(doc.payment.due).toBe(395);
+        expect(fake.raw('auditLogs').size).toBe(1);
+        expect(toast).toHaveBeenLastCalledWith('✓ Payment of ₹100 recorded');
+        // Known now: the next ₹100 is a new payment
+        setVal('payment_r1', 100);
+        await OutstandingManager.recordPayment('r1', 'retail');
+        expect(fake.raw('retailSales').get('r1').payments).toHaveLength(2);
+    });
+
+    test('D-1: the lost payment already shows on this phone: the same amount again is reported, not sent', async () => {
+        fake.seed('retailSales', [RETAIL]);
+        AppState.retailSalesHistory = [{ ...RETAIL }];
+        jest.spyOn(billPayments, 'readBillFromServer').mockResolvedValueOnce(null);
+        loseNextAnswer();
+        setVal('payment_r1', 100);
+        await OutstandingManager.recordPayment('r1', 'retail');
+        // The listener brings the bill with the payment (due ₹395) and the row redraws
+        AppState.retailSalesHistory = [{ ...fake.raw('retailSales').get('r1'), id: 'r1' }];
+        redraw();
+        const writes = fake.stats.writes;
+        setVal('payment_r1', 100);
+        await OutstandingManager.recordPayment('r1', 'retail');
+        expect(fake.stats.writes).toBe(writes);
+        expect(fake.raw('retailSales').get('r1').payments).toHaveLength(1);
+        expect(toast).toHaveBeenLastCalledWith('✓ This payment of ₹100 was already recorded. It was not recorded again.');
+    });
+
+    test('D-1: the server says it is not there: "not recorded, try again"; the retry keeps the same id', async () => {
+        fake.seed('retailSales', [RETAIL]);
+        AppState.retailSalesHistory = [{ ...RETAIL }];
+        jest.spyOn(fake.db, 'runTransaction').mockRejectedValueOnce(Object.assign(new Error('deadline'), { code: 'deadline-exceeded' }));
+        setVal('payment_r1', 100);
+        await OutstandingManager.recordPayment('r1', 'retail');
+        expect(toast).toHaveBeenLastCalledWith('The payment of ₹100 was not recorded. Please try again.');
+        expect(document.getElementById('payment_r1').value).toBe('100');
+        await OutstandingManager.recordPayment('r1', 'retail');
+        expect(fake.raw('retailSales').get('r1').payments).toHaveLength(1);
+    });
+
+    test('D-2: another phone\'s payment landed first and the rules refused this one: plain words, the due read again', async () => {
+        fake.seed('retailSales', [RETAIL]);
+        AppState.retailSalesHistory = [{ ...RETAIL }];
+        jest.spyOn(fake.db, 'runTransaction').mockImplementationOnce(async () => {
+            fake.raw('retailSales').set('r1', { ...fake.raw('retailSales').get('r1'), dueAmount: 295, payment: { cash: 500, online: 0, due: 295, total: 500 }, payments: [{ id: 'other', amount: 200 }] });
+            throw Object.assign(new Error("evaluation error at L1665:24 for 'update' @ L1665, false for 'update'"), { code: 'permission-denied' });
+        });
+        setVal('payment_r1', 200);
+        await OutstandingManager.recordPayment('r1', 'retail');
+        const shown = toast.mock.calls.map(c => c[0]).join(' | ');
+        expect(shown).not.toMatch(/evaluation error|L1665|permission/i);
+        expect(toast).toHaveBeenLastCalledWith('Not recorded: another payment on this bill was recorded at the same moment. Due now ₹295. Check before entering ₹200 again.');
+        expect(AppState.retailSalesHistory[0].payment.due).toBe(295);
+        expect(OutstandingManager.renderDue).toHaveBeenCalled();
     });
 
     test('a full payment clears the due on both fields and closes openDue', async () => {
