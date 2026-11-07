@@ -175,7 +175,7 @@ export function rentBellItems(store, uid, month) {
  */
 export function bellSeen(store, uid) {
     try {
-        const s = JSON.parse(store.getItem(BELL_SEEN_KEY) || 'null');
+        const s = JSON.parse(store.getItem(`${BELL_SEEN_KEY}.${uid}`) || 'null');
         return new Set(s && s.uid === uid && Array.isArray(s.keys) ? s.keys : []);
     } catch (_) {
         return new Set();
@@ -191,6 +191,6 @@ export function bellSeen(store, uid) {
 export function markBellSeen(store, uid, keys) {
     try {
         const all = [...new Set([...keys, ...bellSeen(store, uid)])].slice(0, 3 * LEASE_REMINDER_LIMIT);
-        store.setItem(BELL_SEEN_KEY, JSON.stringify({ uid, keys: all }));
+        store.setItem(`${BELL_SEEN_KEY}.${uid}`, JSON.stringify({ uid, keys: all }));
     } catch (_) { /* storage full: the badge just shows them again */ }
 }

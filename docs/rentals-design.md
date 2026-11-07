@@ -777,7 +777,7 @@ cash drawer: rent money never goes into it."*
   and month (`utils/reminders.js`, like REM-2). Today shows them to rentals roles. No reads.
 - **Bell (REM-2, REM-4):** the notifications bell lists the same saved items for rentals roles, above the
   notifications (`modules/notifications.js`, no Rentals code, no reads, no writes). The badge counts the ones not
-  yet seen on this phone (`happa.rentBellSeen`); the rent item's key is `rent:<month>:<due|late>`, so it comes back
+  yet seen on this phone (`happa.rentBellSeen.<uid>`); the rent item's key is `rent:<month>:<due|late>`, so it comes back
   each month and again once something is late (owner-adjustable default).
 - **Yearly report (RENT-19):** Properties › 📊 **Yearly report** (owner and rentals managers): per property
   and month of a financial year (default) or calendar year: rent, collected, due, expenses (of which

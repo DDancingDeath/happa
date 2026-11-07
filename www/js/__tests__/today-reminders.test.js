@@ -50,6 +50,8 @@ describe('REM-2 rent due', () => {
         markBellSeen(s, 'u1', ['rent:2026-11:late']);
         expect(bellSeen(s, 'u1').has('rent:2026-11:due')).toBe(true);
         expect(bellSeen(s, 'u2').size).toBe(0);
+        markBellSeen(s, 'u2', ['rent:2026-11:due']);
+        expect(bellSeen(s, 'u1').has('rent:2026-11:late')).toBe(true);
         expect(rentBellItems(s, 'u1', '2026-12').items).toHaveLength(0);
     });
 
