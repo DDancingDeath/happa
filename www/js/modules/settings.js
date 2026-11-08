@@ -24,6 +24,8 @@ import { APP_IDENTITY } from '../config/app-identity.js';
 import { forgetPrinter, normalizePrinterSettings, normalizeReceiptOptions, PAPER_WIDTHS, setPaperWidth, usePrinter } from '../utils/printer-settings.js';
 import { AuthManager, authErrorMessage } from '../auth/authentication.js';
 import { UsageView } from '../ui/usage-view.js';
+import { ThemeManager } from '../ui/theme.js';
+import { APPEARANCES } from '../ui/themes.js';
 
 const LABOUR_OWNER_ONLY_KEY = 'msg.settings.labour_owner_only';
 const LABOUR_INPUTS = ['settingHeavyWeight', 'settingLaborRate', 'settingLabourPackageKg'];
@@ -108,14 +110,7 @@ export class SettingsManager {
         const nameInput = document.getElementById('settingUserName');
         if (nameInput && document.activeElement !== nameInput) nameInput.value = AppState.userName || '';
         
-        const darkModeCheckbox = document.getElementById('settingDarkMode');
-        if (darkModeCheckbox) {
-            const darkModeEnabled = localStorage.getItem('darkMode') === 'true';
-            darkModeCheckbox.checked = darkModeEnabled;
-            if (darkModeEnabled) {
-                document.body.classList.add('dark-mode');
-            }
-        }
+        this.syncAppearance();
         
         const bluetoothCheckbox = document.getElementById('settingBluetoothEnabled');
         if (bluetoothCheckbox) {
@@ -150,21 +145,24 @@ export class SettingsManager {
     }
 
     /**
-     * Toggle dark mode on/off
-     * Persists preference to localStorage
+     * Appearance: Light, Dark or System (follows the device). Saved on this device.
+     * @param {'light'|'dark'|'system'} appearance
      */
-    static toggleDarkMode() {
-        const enabled = document.getElementById('settingDarkMode').checked;
-        localStorage.setItem('darkMode', enabled);
-        
-        if (enabled) {
-            document.body.classList.add('dark-mode');
-        } else {
-            document.body.classList.remove('dark-mode');
-        }
-        
+    static setAppearance(appearance) {
+        if (!APPEARANCES.includes(appearance)) return;
+        ThemeManager.apply({ appearance });
+        this.syncAppearance();
         UIManager.hapticFeedback('light');
-        UIManager.showToast(enabled ? t('msg.settings.dark_mode_enabled') : t('msg.settings.dark_mode_disabled'));
+        const names = { light: 'ui.settings.appearance_light', dark: 'ui.settings.appearance_dark', system: 'ui.settings.appearance_system' };
+        UIManager.showToast(t('msg.settings.appearance_set', { name: t(names[appearance]) }));
+    }
+
+    /** Marks the saved appearance in Settings › Appearance. */
+    static syncAppearance() {
+        const current = ThemeManager.current.appearance;
+        document.querySelectorAll('[data-appearance-choice]').forEach((btn) => {
+            btn.setAttribute('aria-pressed', String(btn.dataset.appearanceChoice === current));
+        });
     }
 
     /**
