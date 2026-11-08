@@ -115,7 +115,9 @@ test('extreme rate and heavy bag: Fix first, confirmed cases saved with who, the
         const card = owner.locator('#dayReportCard');
         await expect(card.locator('.anomaly-row', { hasText: 'Wheat: 15 kg × ₹260.00 = ₹3,900; today\'s rate ₹26.00 would give ₹390' }).first()).toContainText('Extreme rate confirmed', { timeout: 30000 });
         await expect(card.locator('.anomaly-row', { hasText: 'Wheat: bag of 485 kg (usually under 100 kg)' }).first()).toContainText('Staff One');
-        await card.locator('.anomaly-row', { hasText: 'Extreme rate confirmed' }).first().scrollIntoViewIfNeeded();
+        // The card redraws when its stored records arrive: scroll in the page, not on a held element
+        await owner.evaluate(() => [...document.querySelectorAll('#dayReportCard .anomaly-row')]
+            .find(r => r.textContent.includes('Extreme rate confirmed'))?.scrollIntoView({ block: 'center' }));
         await shot(owner, testInfo, 'owner-day-report-en');
     } finally {
         await ctx.close();
