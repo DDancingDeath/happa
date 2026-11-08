@@ -671,6 +671,9 @@ async function initializeUserData() {
 // data-on* attributes (delegated handlers, #89) work from the first template on
 installActions();
 
+// Before the templates go in, so their text never changes weight (variables.css: --w-strong)
+if (window.Capacitor?.getPlatform?.() === 'android') document.documentElement.classList.add('platform-android');
+
 document.addEventListener('DOMContentLoaded', async function() {
     // STEP 1: Login screen and app shell now, pages in the background
     markStartup('dom-ready');

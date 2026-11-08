@@ -20,7 +20,7 @@
 }
 
 .stats-grid-3 .stat-value-sm {
-  font-size: 15px;
+  font-size: var(--fs-body);
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
@@ -47,20 +47,20 @@
 .stat-label {
   font-size: 14px;
   margin-bottom: 4px;
-  font-weight: 500;
+  font-weight: var(--w-regular);
   word-wrap: break-word;
 }
 
 .stat-value {
   font-size: 22px;
-  font-weight: 700;
+  font-weight: var(--w-strong);
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
 
 .stat-value-sm {
   font-size: 18px;
-  font-weight: 700;
+  font-weight: var(--w-strong);
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
@@ -144,7 +144,7 @@
 .section-title {
   margin: 0 0 14px 0;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   color: var(--text-primary);
   display: flex;
   align-items: center;
@@ -169,12 +169,12 @@
 
 .summary-item span {
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: var(--w-regular);
   font-size: 14px;
 }
 
 .summary-item strong {
-  font-weight: 700;
+  font-weight: var(--w-strong);
   font-size: 16px;
   margin-top: 4px;
 }
@@ -220,13 +220,13 @@
 
 .summary-total span {
   color: white;
-  font-weight: 600;
+  font-weight: var(--w-strong);
 }
 
 .summary-total strong {
   color: white;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: var(--w-strong);
 }
 
 /* Items Grid */
@@ -259,20 +259,20 @@
 }
 
 .item-detail-name {
-  font-weight: 600;
+  font-weight: var(--w-strong);
   color: var(--text-primary);
   flex: 1;
 }
 
 .item-detail-qty {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin-right: 12px;
 }
 
 .item-detail-amount {
-  font-weight: 700;
-  font-size: 15px;
+  font-weight: var(--w-strong);
+  font-size: var(--fs-body);
 }
 
 .item-detail-amount.purchase {
@@ -371,7 +371,7 @@ body.dark-mode .item-detail-row:hover {
 
 .today-labour-title {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   margin-bottom: 6px;
 }
 
@@ -385,7 +385,7 @@ body.dark-mode .item-detail-row:hover {
 }
 
 .today-labour-row strong {
-  font-size: 17px;
+  font-size: var(--fs-lead);
 }
 
 .today-labour-sub,
@@ -408,7 +408,7 @@ body.dark-mode .item-detail-row:hover {
 .labour-breakdown-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 
 .labour-breakdown-table th,
@@ -424,7 +424,7 @@ body.dark-mode .item-detail-row:hover {
 }
 
 .labour-breakdown-note {
-  font-size: 12px;
+  font-size: var(--fs-caption);
   color: var(--text-secondary);
   margin: 8px 0 0;
 }
@@ -457,7 +457,7 @@ body.dark-mode .today-labour-diff {
   padding: 12px 16px;
   margin-bottom: 16px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
 }
 
 .today-cash-prompt[hidden] {
@@ -471,8 +471,8 @@ body.dark-mode .today-labour-diff {
   border-radius: 10px;
   background: var(--btn-success);
   color: #fff;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: var(--fs-body);
+  font-weight: var(--w-strong);
   cursor: pointer;
 }
 
@@ -496,11 +496,11 @@ body.dark-mode .today-labour-diff {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 
 .today-channel-name {
-  font-weight: 700;
+  font-weight: var(--w-strong);
   color: var(--text-primary);
 }
 
@@ -577,8 +577,8 @@ body.dark-mode .today-labour-diff {
 }
 
 .today-bill-party {
-  font-weight: 600;
-  font-size: 15px;
+  font-weight: var(--w-strong);
+  font-size: var(--fs-body);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -594,7 +594,7 @@ body.dark-mode .today-labour-diff {
 
 .today-bill-total {
   flex: 0 0 auto;
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 
 .today-bills-more {
@@ -605,8 +605,8 @@ body.dark-mode .today-labour-diff {
   border-radius: 10px;
   background: none;
   color: var(--primary-color);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--fs-body);
+  font-weight: var(--w-strong);
   cursor: pointer;
 }
 
@@ -634,19 +634,19 @@ body.dark-mode .today-cash-prompt {
 .today-reminder ul { list-style: none; margin: 6px 0; padding: 0; }
 .today-reminder-party { display: flex; gap: 8px; justify-content: space-between; font-size: 14px; padding: 2px 0; }
 .today-reminder-party span:first-child { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.today-reminder-days, .today-reminder-more { color: var(--text-secondary); font-size: 12px; }
+.today-reminder-days, .today-reminder-more { color: var(--text-secondary); font-size: var(--fs-caption); }
 /* Cash open 14 h or more (C10, Q25 of #111) */
-.cash-long-open { background: var(--warning-soft); border: 1px solid var(--warning-border); color: var(--on-warning-soft); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-weight: 600; }
+.cash-long-open { background: var(--warning-soft); border: 1px solid var(--warning-border); color: var(--on-warning-soft); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-weight: var(--w-strong); }
 
 /* Manual reminders (#86) */
 .today-reminder-item { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 14px; padding: 4px 0; }
-.today-reminder-title { font-weight: 600; }
-.today-reminder-days.late { color: var(--on-danger-soft); font-weight: 600; }
+.today-reminder-title { font-weight: var(--w-strong); }
+.today-reminder-days.late { color: var(--on-danger-soft); font-weight: var(--w-strong); }
 .today-reminder-actions { display: flex; gap: 6px; margin-left: auto; }
 .today-reminder-actions .filter-btn, .today-reminder > .filter-btn { min-height: 44px; }
 .today-reminder-form { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .today-reminder-form input, .today-reminder-form select { min-height: 44px; font-size: 16px; padding: 6px 10px; }
-.today-reminder-repeat { color: var(--text-secondary); font-size: 12px; }
+.today-reminder-repeat { color: var(--text-secondary); font-size: var(--fs-caption); }
 .today-reminder-form-buttons { display: flex; gap: 8px; }
 
 /* Ask (#88) */
@@ -657,7 +657,7 @@ body.dark-mode .today-cash-prompt {
 .ask-examples { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
 .ask-answers { display: flex; flex-direction: column; gap: 10px; }
 .ask-answer { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; }
-.ask-question { font-weight: 600; margin-bottom: 4px; }
+.ask-question { font-weight: var(--w-strong); margin-bottom: 4px; }
 .ask-line { margin: 2px 0; }
 .ask-answer .ask-open { margin-top: 6px; }
 

@@ -168,6 +168,10 @@ In order:
   `happa.theme` / `happa.appearance`); `<html>` carries `data-theme`, `data-appearance` and `data-mode`, and CSS keys on
   `[data-mode="dark"]` (`body.dark-mode` mirrors it). The pre-paint `#themeBoot` reads the same keys; it is data-only, so a new
   theme never changes it or its CSP hash.
+- **Type comes from tokens too**: font sizes `--fs-caption|sm|body|lead|title|display|hero` and weights
+  `--w-regular|label|strong` (400/600 only; labels go regular in Hindi, `--w-strong` is 500 on the Android app).
+  A new raw `font-size` / `font-weight` fails `tests/ci/type-guard.test.js` (baseline `tests/type-baseline.json`,
+  `TYPE_BASELINE=lower`). Off-scale sizes still raw are counted there; print CSS is exempt.
 - **Date strings**: bills mix ISO-8601 and `DD/MM/YYYY`. Use
   `www/js/utils/dates.js` (`parseAnyBillDate`, `todayLocalISO`,
   `parseLocalDate`) or `Helpers.parseDate()` — never raw

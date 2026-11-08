@@ -30,7 +30,7 @@
 }
 
 .item-report-header {
-  font-weight: 700;
+  font-weight: var(--w-strong);
   font-size: 16px;
   margin-bottom: 8px;
   color: var(--text-primary);
@@ -97,7 +97,7 @@ html {
   padding: 12px 16px;
   border-radius: var(--radius);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   cursor: pointer;
   transition: all var(--transition);
 }
@@ -125,7 +125,7 @@ html {
   padding: 10px 20px;
   border-radius: var(--radius-full);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition: all var(--transition);
@@ -208,8 +208,8 @@ body:has(.tab.sale-theme.active) .modal-overlay .modal-header {
 
 .modal-header h3 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 700;
+  font-size: var(--fs-title);
+  font-weight: var(--w-strong);
 }
 
 .modal-body {
@@ -243,8 +243,8 @@ body:has(.tab.sale-theme.active) .modal-overlay .modal-header {
   padding: 12px 24px;
   border: none;
   border-radius: var(--radius);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--fs-body);
+  font-weight: var(--w-strong);
   cursor: pointer;
   transition: all var(--transition);
   min-width: 80px;
@@ -414,14 +414,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .bill-details-header h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--fs-title);
   color: var(--dark-color);
 }
 
 .bill-details-close {
   background: none;
   border: none;
-  font-size: 28px;
+  font-size: var(--fs-display);
   color: var(--text-muted);
   cursor: pointer;
   padding: 0;
@@ -458,8 +458,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .bill-action-btn {
   flex: 1;
   padding: 12px 16px;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--fs-body);
+  font-weight: var(--w-strong);
   border: none;
   border-radius: 10px;
   cursor: pointer;
@@ -507,7 +507,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border: 1px solid var(--danger-border);
   border-radius: 10px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   cursor: pointer;
 }
 
@@ -547,7 +547,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .bill-info-label {
-  font-weight: 600;
+  font-weight: var(--w-label);
   color: var(--text-muted);
   min-width: 140px;
 }
@@ -574,8 +574,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .bill-items-table th {
   padding: 12px;
   text-align: left;
-  font-weight: 600;
-  font-size: 12px;
+  font-weight: var(--w-label);
+  font-size: var(--fs-caption);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -612,12 +612,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   display: flex;
   justify-content: space-between;
   padding: 6px 0;
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 
 .bill-totals-row.total {
   font-size: 18px;
-  font-weight: 700;
+  font-weight: var(--w-strong);
   color: var(--primary-color);
   border-top: 2px solid var(--border-color);
   padding-top: 10px;

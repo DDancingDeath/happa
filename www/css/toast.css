@@ -8,7 +8,7 @@
   padding: 14px 28px;
   border-radius: var(--radius-full);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   box-shadow: var(--shadow-xl);
   z-index: 100000;
   opacity: 0;
@@ -50,8 +50,8 @@
   border-radius: var(--radius-full);
   background: #374151;
   color: #fff;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-caption);
+  font-weight: var(--w-strong);
   line-height: 18px;
   white-space: nowrap;
   overflow: hidden;
@@ -78,8 +78,8 @@
   display: inline-block;
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-caption);
+  font-weight: var(--w-label);
   background: var(--warning-soft);
   color: var(--on-warning-soft);
 }
