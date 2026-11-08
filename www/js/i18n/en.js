@@ -2678,6 +2678,8 @@ export default {
     'ui.insights.todo_for': "To do: {period}",
     'ui.insights.act_overdue': "{n} parties owe you {amount} overdue (bills more than {days} days old).",
     'ui.insights.act_you_owe': "You owe {n} parties {amount} overdue (bills more than {days} days old).",
+    'ui.insights.act_overdue_one': "1 party owes you {amount} overdue (bills more than {days} days old).",
+    'ui.insights.act_you_owe_one': "You owe 1 party {amount} overdue (bills more than {days} days old).",
     'ui.insights.act_below_cost': "{item} was sold below its cost {times} times ({kg} kg), ₹ lost: {amount}.",
     'ui.insights.act_low_profit': "{item} earns only ₹{value} per ₹100 sold (sales {sales}).",
     'ui.insights.act_loss_item': "{item} is sold at a loss: ₹{value} per ₹100 (sales {sales}).",

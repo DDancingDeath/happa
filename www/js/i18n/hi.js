@@ -2678,6 +2678,8 @@ export default {
     'ui.insights.todo_for': "करना है: {period}",
     'ui.insights.act_overdue': "{n} पार्टियों पर {amount} पुराना उधार है ({days} दिन से पुराने बिल)।",
     'ui.insights.act_you_owe': "आपको {n} पार्टियों के {amount} देने हैं, जो {days} दिन से पुराने बिलों के हैं।",
+    'ui.insights.act_overdue_one': "1 पार्टी पर {amount} पुराना उधार है ({days} दिन से पुराने बिल)।",
+    'ui.insights.act_you_owe_one': "आपको 1 पार्टी के {amount} देने हैं, जो {days} दिन से पुराने बिलों के हैं।",
     'ui.insights.act_below_cost': "{item} {times} बार लागत से कम में बिका ({kg} kg), घाटा: {amount}।",
     'ui.insights.act_low_profit': "{item} पर ₹100 की बिक्री में सिर्फ़ ₹{value} मुनाफ़ा (बिक्री {sales})।",
     'ui.insights.act_loss_item': "{item} घाटे में बिक रहा है: ₹100 पर ₹{value} (बिक्री {sales})।",

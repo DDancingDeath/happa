@@ -106,8 +106,18 @@ describe('to-do list (I7, I8, overdue)', () => {
         const dues = document.getElementById('insightsActionsDues');
         const owed = [...(AppState.retailSalesHistory), ...(AppState.salesHistory)];
         const expected = owed.some(b => O.openDue(b) > 0 && (NOW - O.timeOf(b.date)) / 86400000 > 31);
-        expect(/owe you/.test(dues.textContent)).toBe(expected);
+        expect(/owes? you/.test(dues.textContent)).toBe(expected);
         expect(document.getElementById('insightsActionsLinks').textContent).toMatch(/anomalies/);
+    });
+
+    test('one party: "1 party owes you", "You owe 1 party"', () => {
+        AppState.retailSalesHistory = [{ id: 'o1', customerName: 'Asha', date: '2026-08-01', timestamp: new Date(2026, 7, 1).getTime(), total: 300, payment: { cash: 0, online: 0, due: 300 }, items: [] }];
+        AppState.salesHistory = [];
+        AppState.purchaseHistory = [{ id: 'o2', customerName: 'Ravi', date: '2026-08-01', timestamp: new Date(2026, 7, 1).getTime(), grandTotal: 500, payment: { cash: 0, online: 0, due: 500 }, items: [] }];
+        InsightsManager.init('actions');
+        const text = document.getElementById('insightsActionsDues').textContent;
+        expect(text).toContain('1 party owes you ₹300 overdue (bills more than 30 days old).');
+        expect(text).toContain('You owe 1 party ₹500 overdue (bills more than 30 days old).');
     });
 
     test('a sale below its cost shows with the item and kg', () => {
