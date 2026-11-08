@@ -22,7 +22,7 @@ import { noteRent, rentReminder, leaseReminder, leaseReminderText } from '../uti
 import { APP_IDENTITY } from '../config/app-identity.js';
 import { isShareToken, publicLink } from './rent-public.js';
 import {
-    UNIT_TYPES, VIEW_KEY, unitRows, summarize, tenantRows, placeText, typedPlace
+    UNIT_TYPES, VIEW_KEY, unitRows, summarize, tenantRows, placeText, typedPlace, meterPending
 } from './rent-views.js';
 import {
     PAYMENT_MODES, normalizeRentSettings, monthKey, monthLabel, monthsToCharge, chargeDue, leaseDues,
@@ -313,6 +313,8 @@ function attentionHtml(d, ix) {
     if (rem?.late) {
         rows.push(`<button type="button" class="rent-attn-row" data-onclick="rentals.onlyLate(true)"><span>${et('ui.today.reminder_rent_units', { count: rem.dueUnits, late: rem.late })}</span><strong>${money(rem.due)}</strong></button>`);
     }
+    const meters = meterPending(d, state.month).length;
+    if (meters) rows.push(`<button type="button" class="rent-attn-row" data-onclick="rentals.meters()"><span>⚡ ${et('ui.rent.meter_pending', { n: meters })}</span></button>`);
     for (const x of notes?.items || []) {
         const lease = d.leases.find(l => placeOf(ix, l.unitId) === x.place && ix.tenants.get(l.tenantId)?.name === x.tenant);
         const fn = !lease ? '' : x.kind === 'increase' ? 'editLease' : isManager() ? 'agreement' : '';
@@ -440,7 +442,7 @@ async function pay(leaseId, typed = null) {
     const due = (id) => chargeDue(dues.charges.find(c => c.id === id) || first);
     const options = dues.charges.map(c => `<option value="${esc(c.id)}" data-due="${esc(chargeDue(c))}"${c.id === v.id ? ' selected' : ''}>${esc(monthLabel(c.month, lang))} · ${money(chargeDue(c))}</option>`).join('');
     const chip = (key, n) => `<button type="button" class="rent-chip" data-amount="${esc(n)}" data-charge="${esc(first.id)}" data-onclick="rentals.fillAmount(this)">${et(key, { amount: formatINR(n) })}</button>`;
-    const modes = PAYMENT_MODES.map(m => `<button type="button" class="rent-seg-btn${m === v.mode ? ' active' : ''}" aria-pressed="${m === v.mode ? 'true' : 'false'}" data-mode="${m}" data-onclick="rentals.payMode(this)">${esc(modeLabel(m))}</button>`).join('');
+    const modes = PAYMENT_MODES.map(m => `<button type="button" class="rent-seg-btn${m === v.mode ? ' active' : ''}" aria-pressed="${m === v.mode ? 'true' : 'false'}" data-pay-mode="${m}" data-onclick="rentals.payMode(this)">${esc(modeLabel(m))}</button>`).join('');
     const name = snap.tenants.find(x => x.id === first.tenantId)?.name || first.tenantName || '';
     const html = `<h3>${et('ui.rent.record_payment')}${name ? ` · ${esc(name)}` : ''}</h3>
         ${lbl('ui.rent.amount', `
@@ -531,11 +533,11 @@ function fillAmount(chip) {
 }
 
 function payMode(b) {
-    const mode = b?.getAttribute('data-mode');
+    const mode = b?.getAttribute('data-pay-mode');
     const input = byId('rentPayMode');
     if (!input || !PAYMENT_MODES.includes(mode)) return;
     input.value = mode;
-    b.parentElement.querySelectorAll('[data-mode]').forEach((x) => {
+    b.parentElement.querySelectorAll('[data-pay-mode]').forEach((x) => {
         x.classList.toggle('active', x === b);
         x.setAttribute('aria-pressed', String(x === b));
     });
@@ -651,7 +653,7 @@ const unitCtx = () => ({
 
 /** Runs function `fn` of a lazy file (rent-unit.js / rent-link.js) with what it needs from here. */
 function lazyUi(file, fn, ...args) {
-    return (file === './rent-unit.js' ? loadPages().then(unitMod) : file === './rent-deposit.js' ? import('./rent-deposit.js') : file === './rent-expense.js' ? import('./rent-expense.js') : file === './rent-report.js' ? import('./rent-report.js') : import('./rent-link.js')).then(
+    return (file === './rent-unit.js' ? loadPages().then(unitMod) : file === './rent-deposit.js' ? import('./rent-deposit.js') : file === './rent-expense.js' ? import('./rent-expense.js') : file === './rent-report.js' ? import('./rent-report.js') : file === './rent-meter.js' ? import('./rent-meter.js') : import('./rent-link.js')).then(
         (m) => Promise.resolve().then(() => m[fn](unitCtx(), ...args)).catch((e) => {
             console.error(`Rentals ${fn} failed:`, e);
             fail('msg.rent.save_failed');
@@ -751,7 +753,8 @@ export const RentalsModule = {
         deposit: (id) => depUi('showDeposit', id), deposits: () => depUi('showHeld'), depositAction: (a, id, i) => depUi('action', a, id, i), advanceToDeposit: (id) => depUi('advanceAction', id),
         expenses: (pid) => expUi('showExpenses', pid), expenseAction: (a, pid, id) => expUi('action', a, pid, id),
         agreement: (id) => lazyUi('./rent-report.js', 'editAgreement', id), yearReport: () => lazyUi('./rent-report.js', 'showYearReport'),
-        reportAction: (a, v) => lazyUi('./rent-report.js', 'action', a, v)
+        reportAction: (a, v) => lazyUi('./rent-report.js', 'action', a, v),
+        meters: () => lazyUi('./rent-meter.js', 'showMeters'), meterPreview: () => lazyUi('./rent-meter.js', 'preview')
     }
 };
 

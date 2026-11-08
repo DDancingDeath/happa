@@ -15,11 +15,12 @@
         <div class="settings-card">
             <h3 data-i18n="ui.settings.appearance">Appearance</h3>
             
-            <label class="checkbox-label">
-                <input type="checkbox" id="settingDarkMode" data-onchange="settings.toggleDarkMode()">
-                <span data-i18n="ui.settings.enable_dark_mode">🌙 Enable Dark Mode</span>
-            </label>
-            <p class="setting-description" data-i18n="ui.settings.switch_between_light_dark">Switch between light and dark theme</p>
+            <div class="lang-switch" role="group" aria-label="Appearance" data-i18n-aria-label="ui.settings.appearance">
+                <button type="button" class="lang-switch-btn" data-appearance-choice="light" aria-pressed="false" data-onclick="settings.setAppearance('light')" data-i18n="ui.settings.appearance_light">Light</button>
+                <button type="button" class="lang-switch-btn" data-appearance-choice="dark" aria-pressed="false" data-onclick="settings.setAppearance('dark')" data-i18n="ui.settings.appearance_dark">Dark</button>
+                <button type="button" class="lang-switch-btn" data-appearance-choice="system" aria-pressed="false" data-onclick="settings.setAppearance('system')" data-i18n="ui.settings.appearance_system">System</button>
+            </div>
+            <p class="setting-description" data-i18n="ui.settings.appearance_hint">System follows this device's light or dark setting. Saved on this device.</p>
 
             <label class="checkbox-label">
                 <input type="checkbox" id="settingShowHindi" data-onchange="settings.save()">

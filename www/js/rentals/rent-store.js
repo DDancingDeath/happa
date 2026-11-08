@@ -499,17 +499,19 @@ async function recordPaymentOnce(id, { amount, mode, ref, date, exact }, rc, yea
  * @param {string} id charge id
  * @param {{prev: number, curr: number, rate: number, units: number, amount: number}} meter from meterBill()
  */
-export function recordMeter(id, unitId, meter) {
-    return withPendingRetry(() => recordMeterOnce(id, unitId, meter));
+/** `onlyIfEmpty`: refuse ('already') when the month got a reading meanwhile (the bulk sheet only fills missing ones). */
+export function recordMeter(id, unitId, meter, { onlyIfEmpty = false } = {}) {
+    return withPendingRetry(() => recordMeterOnce(id, unitId, meter, onlyIfEmpty));
 }
 
-async function recordMeterOnce(id, unitId, meter) {
+async function recordMeterOnce(id, unitId, meter, onlyIfEmpty) {
     const db = FirebaseService.db;
     const chargeRef = coll('rent_charges').doc(id);
     return db.runTransaction(async (tx) => {
         const snap = await tx.get(chargeRef);
         if (!snap.exists) throw new Error('missing');
         const charge = snap.data();
+        if (onlyIfEmpty && charge.electricity) throw new Error('already');
         const next = applyMeter(charge, meter);
         const leaseSnap = await tx.get(coll('rent_leases').doc(charge.leaseId));
         const pub = leaseSnap.exists ? await readPublic(tx, leaseSnap.data(), true) : null;

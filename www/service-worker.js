@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v562';
+const CACHE_NAME = 'happa-v567';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -125,6 +125,8 @@ const STATIC_ASSETS = [
     '/js/ui/scroll-cue.js',
     '/js/ui/sticky-focus.js',
     '/js/ui/sync-status.js',
+    '/js/ui/theme.js',
+    '/js/ui/themes.js',
     '/js/ui/ui-manager.js',
     '/js/ui/voice-mic.js',
     '/js/modules/voice-billing.js',
@@ -288,6 +290,7 @@ const LAZY_ASSETS = [
     '/js/rentals/rent-pages.js',
     '/js/rentals/rent-tenants.js',
     '/js/rentals/rent-advanced.js',
+    '/js/rentals/rent-meter.js',
     '/js/rentals/rent-unit.js'
 ];
 
