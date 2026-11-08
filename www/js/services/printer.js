@@ -730,7 +730,8 @@ class BluetoothPrinterManager {
             this._receipt = null;
         }
         
-        return { canvas: tempCanvas, height: Math.ceil(y * scale) };
+        // rows past the canvas read back as transparent black and would print as a black band
+        return { canvas: tempCanvas, height: Math.min(Math.ceil(y * scale), tempCanvas.height) };
     }
 
     /** ESC/POS raster bytes for a bill (the used rows of the render canvas), `dots` wide. */

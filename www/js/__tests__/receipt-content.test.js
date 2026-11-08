@@ -156,6 +156,11 @@ describe('the printed bill', () => {
         expect(shared.height).toBe(Math.max(...sharedMark.map(([, y]) => y)) + 1 + 4);
     });
 
+    test('a bill longer than the render canvas never reads rows past its end', () => {
+        const items = Array.from({ length: 120 }, () => ({ ...bill.items[0] }));
+        expect(PrinterService.manager._renderBillCanvas({ ...bill, items }, 384, {}).height).toBe(2600);
+    });
+
     test('a long footer wraps instead of running off the paper', () => {
         render({ footer: 'word '.repeat(20).trim() });
         const lines = drawn.filter(s => s.startsWith('word'));
