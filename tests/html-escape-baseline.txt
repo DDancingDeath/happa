@@ -414,7 +414,7 @@ www/js/rentals/rent-unit.js: c.tenantSectionHtml({ rent: shown.rent, meterRate: 
 www/js/rentals/rent-unit.js: id
 www/js/rentals/rent-unit.js: id
 www/js/rentals/rent-unit.js: id (markup via unitPickHtml)
-www/js/rentals/rentals.js: PAYMENT_MODES (markup via map(m => `<option value="${m}">${esc(modeLabel(m))}</option>`))
+www/js/rentals/rentals.js: PAYMENT_MODES (markup via map(m => `<button type="button" class="rent-seg-btn${m === v.mode ? ' active' : ''}" aria-pressed="${m === v.mode ? 'true' : 'false'}" data-mode))
 www/js/rentals/rentals.js: TemplateLoader.loadTemplate('rentals') (sink)
 www/js/rentals/rentals.js: args
 www/js/rentals/rentals.js: args
