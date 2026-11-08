@@ -4,7 +4,7 @@
  * a property expense (RENT-17) in the yearly report and its CSV (RENT-19).
  */
 const { test, expect, login } = require('./support/app');
-const { button, dialog, dialogButton, closeDialog, toastHas, showPage, openTenant, rentRow, setUpTenant, pay, openProperty } = require('./support/rentals');
+const { button, dialog, dialogButton, closeDialog, toastHas, showPage, openTenant, rentRow, setUpTenant, pay, openProperty, receiptMore } = require('./support/rentals');
 
 test('a payment over the due carries an advance; its receipt is cancelled with a reason', async ({ page, problems }) => {
     await login(page, 'owner');
@@ -24,6 +24,7 @@ test('a payment over the due carries an advance; its receipt is cancelled with a
     await expect(box).toContainText(`Receipts: ${tenant}`);
     await expect(box).toContainText(no);
     await button(box, 'View').click();
+    await receiptMore(page);
     await button(box, 'Cancel receipt').click();
     await expect(box).toContainText(`Cancel receipt ${no}?`);
     const save = page.locator('#rentDialog [data-onclick="rentals.dialogClose(true)"]');
