@@ -71,6 +71,33 @@
                 <p class="auth-link"><span data-i18n="ui.auth.already_have_an_account">Already have an account?</span> <a href="#" data-onclick="auth.showTab('login'); return false;" data-i18n="ui.auth.login">Login</a></p>
             </div>
 
+            <!-- Google sign-in (docs/google-sign-in.md): shown only when happa.config.json switches it on -->
+            <div id="googleSignIn" class="auth-google" hidden>
+                <p class="auth-divider"><span data-i18n="ui.auth.or">or</span></p>
+                <div id="googleMessage" class="auth-message" role="alert" aria-live="assertive" aria-atomic="true"></div>
+                <button type="button" id="googleSignInBtn" class="google-btn" data-onclick="auth.google()">
+                    <svg class="google-btn-logo" viewBox="0 0 48 48" width="20" height="20" aria-hidden="true" focusable="false"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                    <span class="google-btn-text" data-i18n="ui.auth.continue_with_google">Continue with Google</span>
+                </button>
+                <form id="googleLinkForm" class="auth-google-link" hidden data-onsubmit="auth.googleLink(); return false;">
+                    <p id="googleLinkHint" class="auth-google-hint"></p>
+                    <div class="form-group">
+                        <label for="googleLinkEmail" data-i18n="ui.auth.email">Email</label>
+                        <input type="email" id="googleLinkEmail" autocomplete="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="googleLinkPassword" data-i18n="ui.auth.password">Password</label>
+                        <div class="password-field">
+                            <input type="password" id="googleLinkPassword" placeholder="Enter your password" data-i18n-placeholder="ui.auth.enter_your_password" autocomplete="current-password" required>
+                            <button type="button" class="password-toggle" data-password-toggle="googleLinkPassword" aria-pressed="false" aria-label="Show password" title="Show password" data-i18n-aria-label="ui.auth.show_password" data-i18n-title="ui.auth.show_password" data-onclick="auth.togglePassword('googleLinkPassword', this)">&#128065;</button>
+                        </div>
+                    </div>
+                    <div id="googleLinkMessage" class="auth-message" role="alert" aria-live="assertive" aria-atomic="true"></div>
+                    <button type="submit" class="auth-btn" data-i18n="ui.auth.google_link_button">Link Google and sign in</button>
+                    <button type="button" class="auth-reset-toggle" data-onclick="auth.googleLinkCancel()" data-i18n="ui.auth.google_link_cancel">Not now</button>
+                </form>
+            </div>
+
             <div class="auth-lang-links" id="authLangLinks" role="group" aria-label="Language" data-i18n-aria-label="ui.settings.language">
                 <button type="button" class="auth-lang-link" data-lang-option="en" lang="en" aria-pressed="true" data-onclick="i18n.setLang('en')">English</button>
                 <span class="auth-lang-sep" aria-hidden="true">|</span>
