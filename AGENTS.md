@@ -158,6 +158,12 @@ In order:
   `www/styles.css` (cascade order; a new stylesheet is added there). Commit the
   rebuilt `app.css` with your change: `check:sw` and `load-perf.test.js` fail
   while it is out of date. The joined files are not precached on their own.
+- **Colours come from design tokens** (`www/css/variables.css`: semantic `--bg`, `--surface`,
+  `--ink`, `--accent`, `--positive`…, component tokens, and the old names such as
+  `--primary-color` as aliases), so every theme and dark mode restyle them. A hard-coded colour
+  (hex, `rgb()`, a colour name) in `www/css`, a template's `style=` / `<style>` or `www/js` fails
+  `tests/ci/colour-guard.test.js` (per-file baseline `tests/colour-baseline.json`, which may only
+  go down: `COLOUR_BASELINE=lower npx jest colour-guard`). Print and receipt output is exempt.
 - **Date strings**: bills mix ISO-8601 and `DD/MM/YYYY`. Use
   `www/js/utils/dates.js` (`parseAnyBillDate`, `todayLocalISO`,
   `parseLocalDate`) or `Helpers.parseDate()` — never raw
