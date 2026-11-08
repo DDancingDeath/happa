@@ -49,7 +49,7 @@
                 </div>
             </div>
 
-            <!-- LABOUR: deducted from farmers (T-LAB-1) and to pay labour (T-LAB-2); tap for bill-wise breakdown -->
+            <!-- LABOUR: deducted from farmers (T-LAB-1), paid to labourers (T-LAB-4), the difference (T-LAB-5) and the estimate to pay (T-LAB-2); tap for bill-wise breakdown -->
             <div id="todayLabourCard" class="today-labour-card" role="button" tabindex="0"
                 data-onclick="day.showLabourBreakdown()">
                 <div class="today-labour-title" data-i18n="ui.today.labor">👷 Labour:</div>
@@ -59,7 +59,13 @@
                     <span class="today-labour-sub" id="todayLabourDeductedBills"></span>
                 </div>
                 <div class="today-labour-row">
-                    <span data-i18n="ui.today.labour_to_pay">To pay labour:</span>
+                    <span data-i18n="ui.today.labour_paid">Paid to labourers:</span>
+                    <strong id="todayLabourPaid" data-metric="T-LAB-4">₹0</strong>
+                    <span class="today-labour-sub" id="todayLabourPaidCount"></span>
+                </div>
+                <div class="today-labour-diff" id="todayLabourPaidDiff" data-metric="T-LAB-5"></div>
+                <div class="today-labour-row">
+                    <span data-i18n="ui.today.labour_to_pay">To pay labour (estimate):</span>
                     <strong id="todayLabourToPay">₹0</strong>
                     <span class="today-labour-sub" id="todayLabourToPayCalc"></span>
                 </div>

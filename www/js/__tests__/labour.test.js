@@ -191,8 +191,10 @@ describe('Today Labour card (single language)', () => {
     test('English: deducted, to pay with its working, and the difference', () => {
         const card = render('en');
         expect(card).toContain('Deducted from farmers: ₹72 (1 bill)');
-        expect(card).toContain('To pay labour: ₹174 (1,000 kg ÷ 35 kg = 29 packages × ₹6)');
-        expect(card).toContain('To pay is ₹102 more than deducted');
+        expect(card).toContain('Paid to labourers: ₹0 (0 expenses)');
+        expect(card).toContain('₹72 less paid than deducted');
+        expect(card).toContain('To pay labour (estimate): ₹174 (1,000 kg ÷ 35 kg = 29 packages × ₹6)');
+        expect(card).toContain('The estimate is ₹102 more than deducted');
         expect(card).toContain('A part package counts as a full one.');
         expect(card).not.toMatch(DEVANAGARI);
     });
@@ -200,7 +202,9 @@ describe('Today Labour card (single language)', () => {
     test('Hindi: the same numbers with no English words', () => {
         const card = render('hi');
         expect(card).toContain('किसानों से काटी गई: ₹72 (1 बिल)');
-        expect(card).toContain('मज़दूरों को देनी है: ₹174 (1,000 kg ÷ 35 kg = 29 बोरी × ₹6)');
+        expect(card).toContain('मज़दूरों को दिया: ₹0 (0 खर्च)');
+        expect(card).toContain('काटी गई से ₹72 कम दिया');
+        expect(card).toContain('मज़दूरों को देनी है (अनुमान): ₹174 (1,000 kg ÷ 35 kg = 29 बोरी × ₹6)');
         expect(card).toContain('₹102 ज़्यादा');
         expect(card).not.toMatch(LATIN_WORD);
     });
@@ -208,10 +212,33 @@ describe('Today Labour card (single language)', () => {
     test('less than deducted, and equal, are worded neutrally', () => {
         AppState.purchaseHistory = [purchase('p', [line(35, 2)], 12)];
         render('en');
-        expect(document.getElementById('todayLabourDiff').textContent).toBe('To pay is ₹6 less than deducted');
+        expect(document.getElementById('todayLabourDiff').textContent).toBe('The estimate is ₹6 less than deducted');
         AppState.purchaseHistory = [purchase('p', [line(35, 1)], 6)];
         DayManager.loadTodayData();
-        expect(document.getElementById('todayLabourDiff').textContent).toBe('To pay matches what was deducted');
+        expect(document.getElementById('todayLabourDiff').textContent).toBe('The estimate matches what was deducted');
+    });
+
+    test('OD-03 step 1: paid to labourers = today\'s Labour expenses (any spelling); the difference is paid − deducted', () => {
+        const today = todayLocalISO();
+        AppState.expensesHistory = [
+            { id: 'e1', date: today, type: 'Labor', amount: 50, category: 'business' },
+            { id: 'e2', date: today, type: ' labour charges ', amount: 40 },
+            { id: 'e3', date: today, type: 'मजदूरी', amount: 10 },
+            { id: 'e4', date: today, type: 'Labour', amount: 500, voided: true },
+            { id: 'e5', date: today, type: 'Labour', amount: 300, category: 'personal' },
+            { id: 'e6', date: today, type: 'Tea', amount: 20 },
+            { id: 'e7', date: '2020-01-01', type: 'Labour', amount: 70 }
+        ];
+        render('en');
+        expect(document.getElementById('todayLabourPaid').textContent).toBe('₹100');
+        expect(document.getElementById('todayLabourPaidCount').textContent).toBe('(3 expenses)');
+        expect(document.getElementById('todayLabourPaidDiff').textContent).toBe('₹28 more paid than deducted');
+        AppState.expensesHistory = [{ id: 'e1', date: today, type: 'Labour', amount: 72 }];
+        DayManager.loadTodayData();
+        expect(document.getElementById('todayLabourPaidCount').textContent).toBe('(1 expense)');
+        expect(document.getElementById('todayLabourPaidDiff').textContent).toBe('Paid matches what was deducted');
+        // display only: Today's business expenses still count it once, as before
+        expect(document.getElementById('todayBusinessExpenses').textContent).toBe('₹72');
     });
 
     test('tap: bill-wise breakdown with kg, packets and labour deducted, names escaped', async () => {

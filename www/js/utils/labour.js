@@ -8,7 +8,7 @@
  */
 
 import {
-    activityBills, billLabour, formatKg, formatRupees, normalizeLabourSettings, readLineItem, round2, toMoney,
+    activeExpenses, activityBills, billLabour, formatKg, formatRupees, isPersonalExpense, normalizeLabourSettings, readLineItem, round2, toMoney,
     DEFAULT_LABOUR_PACKAGE_KG, LABOUR_PACKAGE_KG_MIN, LABOUR_PACKAGE_KG_MAX, normalizePackageKg
 } from './money.js';
 import { tn } from '../i18n/index.js';
@@ -142,6 +142,50 @@ export function labourGap(difference) {
  */
 export function periodLabourGap(toPay, deducted) {
     return labourGap(round2(toPay - deducted));
+}
+
+/**
+ * LABOUR-EXP: an expense type that means wages paid to labourers, until OD-09's fixed list: "Labour",
+ * "Labor" (the form's suggestion), "Labourers", "Labour charges", "मजदूरी"; any case and spacing.
+ */
+const LABOUR_TYPE = /^(?:labou?r(?:er)?s?|मज\u093C?दूरी)(?![\p{L}\p{M}])/u;
+
+/**
+ * LABOUR-EXP: a business expense (EXP-KIND) whose type is a labour wage.
+ * @param {?Expense|undefined} e
+ * @returns {boolean}
+ */
+export function isLabourExpense(e) {
+    if (!e || isPersonalExpense(e)) return false;
+    return LABOUR_TYPE.test(String(e.type ?? '').normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase());
+}
+
+/**
+ * T-LAB-4 / M20: paid to labourers = Σ amount of the LABOUR-EXP expenses among these (voided ones never count).
+ * Callers pass the day's (T4) or period's (M4) expenses.
+ * @param {?Array<Expense>|undefined} expenses
+ * @returns {{amount: number, count: number}}
+ */
+export function labourPaid(expenses) {
+    let amount = 0;
+    let count = 0;
+    activeExpenses(expenses).forEach(e => {
+        if (!isLabourExpense(e)) return;
+        amount += Number(e?.amount) || 0;
+        count += 1;
+    });
+    return { amount: round2(amount), count };
+}
+
+/**
+ * T-LAB-5 / M21: paid − deducted, to paise; within 50 paise they match.
+ * @param {number} paid T-LAB-4 / M20
+ * @param {number} deducted T-LAB-1 / M7
+ * @returns {{difference: number, amount: number, kind: 'same'|'more'|'less'}}
+ */
+export function labourPaidGap(paid, deducted) {
+    const difference = round2(paid - deducted);
+    return { difference, ...labourGap(difference) };
 }
 
 /**

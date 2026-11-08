@@ -284,6 +284,17 @@ export function labourDay(data, nowMs, { laborRate = 6, labourPackageKg = 35 } =
     };
 }
 
+/** LABOUR-EXP (OD-03 step 1): wages to labourers, by the first word of the expense type (any case, nukta ignored). */
+const LABOUR_WORDS = new Set(['labour', 'labor', 'labours', 'labors', 'labourer', 'laborer', 'labourers', 'laborers', 'मजदूरी']);
+const isLabourExpense = (e) => !isPersonal(e)
+    && LABOUR_WORDS.has(String(e.type ?? '').normalize('NFC').replace(/\u093C/g, '').trim().toLowerCase().split(/[^\p{L}\p{M}]+/u)[0]);
+
+/** T-LAB-4 / M20: paid to labourers in [from, to) (business Labour expenses by date); callers pass withoutVoided data. */
+export function labourPaid(data, range) {
+    const list = dated(data.expenses, range).filter(isLabourExpense);
+    return { amount: r2(sum(list, expenseAmount)), count: list.length };
+}
+
 // ---------------------------------------------------------------- Stock (S*) and cost of goods sold
 
 /**

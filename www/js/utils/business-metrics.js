@@ -19,6 +19,7 @@ import { saleTimePayment, dueEvents, sumDueEvents } from './due-payments.js';
 import { buildAging, normalizePartyName, pickPartyName } from './aging.js';
 import { INSIGHTS_DEFAULTS } from './insights-config.js';
 import { lastCountedSession } from './cash-session.js';
+import { labourPaid } from './labour.js';
 
 const DAY_MS = 86400000;
 /** @typedef {import('./finance-calc.js').Catalogue} Catalogue */
@@ -447,11 +448,7 @@ export function moneySummary(input, { from, to }, { detail = false } = {}) {
 export function expenseCategories(expenses, from, to) {
     /** @type {Map<string, {category: string, total: number, count: number}>} */
     const out = new Map();
-    activeExpenses(expenses).forEach(e => {
-        if (isPersonalExpense(e)) return;
-        const t = recordTime(e?.date);
-        const ok = t !== null ? inRange(t, from, to) : from === -Infinity && to === Infinity;
-        if (!ok) return;
+    businessExpensesIn(expenses, from, to).forEach(e => {
         const key = String(e.type || '').trim() || (e.category === 'business' ? 'other' : 'untagged');
         const row = out.get(key) || { category: key, total: 0, count: 0 };
         row.total = round2(row.total + num(e.amount));
@@ -459,6 +456,32 @@ export function expenseCategories(expenses, from, to) {
         out.set(key, row);
     });
     return [...out.values()].sort((a, b) => b.total - a.total);
+}
+
+/**
+ * M4's expenses: the active business expenses (EXP-KIND) dated in [from, to); undated ones only for all time.
+ * @param {?Array<Expense>|undefined} expenses
+ * @param {number} from
+ * @param {number} to
+ * @returns {Array<Expense>}
+ */
+function businessExpensesIn(expenses, from, to) {
+    return activeExpenses(expenses).filter(e => {
+        if (isPersonalExpense(e)) return false;
+        const t = recordTime(e?.date);
+        return t !== null ? inRange(t, from, to) : from === -Infinity && to === Infinity;
+    });
+}
+
+/**
+ * M20: paid to labourers in the period = T-LAB-4 over M4's expenses (LABOUR-EXP).
+ * @param {?Array<Expense>|undefined} expenses
+ * @param {number} from
+ * @param {number} to
+ * @returns {{amount: number, count: number}}
+ */
+export function labourPaidIn(expenses, from, to) {
+    return labourPaid(businessExpensesIn(expenses, from, to));
 }
 
 /**
