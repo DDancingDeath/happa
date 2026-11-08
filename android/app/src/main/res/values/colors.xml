@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Bahi splash (issue #109). Theme-independent: never follows the in-app theme. -->
+    <color name="splash_background">#F7F7F9</color>
+    <color name="splash_icon_background">#16161D</color>
+</resources>

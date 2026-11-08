@@ -25,6 +25,19 @@ const RASTER_THRESHOLD = 128;
 /** Receipts are laid out for 58 mm paper; wider paper scales them up. */
 const LAYOUT_DOTS = PAPER_DOTS[58];
 
+/** "by happa" (docs/brand/by-happa-black.svg) as 1-bit rows, 87 × 24 dots, MSB = left dot (#109). */
+const MAKER_MARK = {
+    width: 87,
+    rows: [
+        'e000000e00000000000000', 'e000000e00000000000000', 'e000000e00000000000000', 'e000000e00000000000000',
+        'e000000e00000000000000', 'e000000e00000000000000', 'e004180e00006600600006', 'ff0e380ff01fe7f87f81fe',
+        'ff86380ff83fe7fc7fc3fe', 'fbc7380f3c7be7de79e7be', 'e1c7700e0c70e70e70e70e', 'e0e7700e0ee0e70660ee0e',
+        'e0e3f00e0ee0e70660ee0e', 'e1c3e00e0e70e70e70e70e', 'ffc3e00e0e7fe7fe7fe7fe', 'ff81c00e0e3fe7fc7fc3fe',
+        'ff01c00e0e1fe7f87f81fe', '0001c00000000700600000', '0003800000000700600000', '0003800000000700600000',
+        '0003800000000700600000', '0007000000000700600000', '0007000000000700600000', '0007000000000700600000'
+    ]
+};
+
 const jobKey = (kind, id) => (id ? `${kind}:${id}` : null);
 const UNCERTAIN_KEY = 'printerMayHavePrinted';
 const UNCERTAIN_TTL_MS = 24 * 60 * 60 * 1000;
@@ -411,6 +424,25 @@ class BluetoothPrinterManager {
         return y;
     }
 
+    /** The small "by happa" maker line, last on the slip (#109). */
+    _drawMakerFooter(ctx, config, y) {
+        const left = Math.round((config.width - MAKER_MARK.width) / 2);
+        const top = y - 4;
+        ctx.fillStyle = '#000000';
+        MAKER_MARK.rows.forEach((hex, r) => {
+            let start = -1;
+            for (let c = 0; c <= MAKER_MARK.width; c++) {
+                const on = c < MAKER_MARK.width && (parseInt(hex[c >> 2], 16) >> (3 - (c & 3))) & 1;
+                if (on && start < 0) start = c;
+                if (!on && start >= 0) {
+                    ctx.fillRect(left + start, top + r, c - start, 1);
+                    start = -1;
+                }
+            }
+        });
+        return top + MAKER_MARK.rows.length + 4;
+    }
+
     _drawReceiptHeader(ctx, billData, config, utils, y) {
         const logo = this._receipt?.logo;
         if (logo) {
@@ -693,11 +725,13 @@ class BluetoothPrinterManager {
             y = this._drawItemsTable(tempCtx, billData, config, utils, y);
             y = this._drawTotalsSection(tempCtx, billData, config, utils, y);
             y = this._drawReceiptFooter(tempCtx, billData, config, utils, y);
+            y = this._drawMakerFooter(tempCtx, config, y);
         } finally {
             this._receipt = null;
         }
         
-        return { canvas: tempCanvas, height: Math.ceil(y * scale) };
+        // rows past the canvas read back as transparent black and would print as a black band
+        return { canvas: tempCanvas, height: Math.min(Math.ceil(y * scale), tempCanvas.height) };
     }
 
     /** ESC/POS raster bytes for a bill (the used rows of the render canvas), `dots` wide. */
