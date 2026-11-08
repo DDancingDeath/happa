@@ -19,6 +19,8 @@
 
   --accent: #4f46e5;
   --accent-hover: #4338ca;
+  /* Deep fill for hero cards: their translucent white text keeps AA in both modes */
+  --accent-strong: #4338ca;
   --accent-text: #4338ca;
   --accent-soft: #eef0ff;
   --accent-line: #c9cdfb;
@@ -155,7 +157,7 @@ body.dark-mode {
   --primary-dark: var(--accent-hover);
   --primary-light: var(--accent-text);
   --primary-soft: var(--accent-soft);
-  --primary-gradient: var(--accent);
+  --primary-gradient: var(--accent-strong);
   --primary-border: var(--accent-line);
   --on-primary-soft: var(--accent-text);
   --focus-ring: var(--focus);
