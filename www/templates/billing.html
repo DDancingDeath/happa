@@ -202,7 +202,7 @@
                 <label data-i18n="ui.billing.weight_kg">Weight (kg):</label>
                 <div style="display: flex; gap: 8px; flex: 1;">
                     <input type="number" inputmode="decimal" id="saleWeight" placeholder="Weight" style="flex: 1;" data-onenter="event.preventDefault(); billing.addSaleWeight()"  data-i18n-placeholder="ui.billing.enter_weight"/>
-                    <button class="quick-add-btn-inline" data-onclick="billing.addSaleWeight()" style="background: #15803d; border-color: #15803d;" data-i18n="ui.billing.add">Add</button>
+                    <button class="quick-add-btn-inline" data-onclick="billing.addSaleWeight()" data-i18n="ui.billing.add">Add</button>
                 </div>
             </div>
 
@@ -213,7 +213,7 @@
                 <span><span data-i18n="ui.billing.packets">Packets:</span> <strong><span id="salePacketCount">0</span></strong></span>
             </div>
 
-            <button class="add-to-bill-btn" data-onclick="billing.addToSalesBill()" style="background: #15803d;" data-i18n="ui.common.add_bill">Add to Bill</button>
+            <button class="add-to-bill-btn" data-onclick="billing.addToSalesBill()" data-i18n="ui.common.add_bill">Add to Bill</button>
         </div>
 
         <h3 data-i18n="ui.common.bill_items">Bill Items</h3>
