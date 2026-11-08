@@ -24,6 +24,12 @@ import { safeSetItem } from '../utils/storage-full.js';
 const RASTER_THRESHOLD = 128;
 /** Receipts are laid out for 58 mm paper; wider paper scales them up. */
 const LAYOUT_DOTS = PAPER_DOTS[58];
+/** Tallest single GS v 0 image: the old fixed slip canvas, known to print on the shops' printers. */
+const MAX_RASTER_ROWS = 2600;
+/** First render height (layout rows); a longer bill is drawn again on a canvas that fits it. */
+const SLIP_ROWS = 2600;
+/** Browsers refuse canvases taller than this. */
+const MAX_CANVAS_ROWS = 32767;
 
 /** "by happa" (docs/brand/by-happa-black.svg) as 1-bit rows, 87 × 24 dots, MSB = left dot (#109). */
 const MAKER_MARK = {
@@ -96,6 +102,7 @@ export function packMonochromeRaster(pixels, width, height, threshold = RASTER_T
 /**
  * Wrap a packed raster in the ESC/POS commands used for printing:
  * ESC @, ESC a 1 (center), GS v 0 raster, ESC d 3 (feed), GS V A 3 (partial cut).
+ * A raster taller than MAX_RASTER_ROWS goes as several GS v 0 blocks, one under the other.
  * Returns a standalone Uint8Array (byteOffset 0) because bluetoothSerial.write
  * sends `data.buffer`.
  * @param {Uint8Array} raster - Output of packMonochromeRaster
@@ -104,21 +111,23 @@ export function packMonochromeRaster(pixels, width, height, threshold = RASTER_T
  * @returns {Uint8Array}
  */
 export function buildRasterPrintCommand(raster, bytesPerLine, height) {
-    const header = [
-        0x1B, 0x40,
-        0x1B, 0x61, 0x01,
-        0x1D, 0x76, 0x30, 0x00,
-        bytesPerLine & 0xFF, (bytesPerLine >> 8) & 0xFF,
-        height & 0xFF, (height >> 8) & 0xFF
-    ];
+    const header = [0x1B, 0x40, 0x1B, 0x61, 0x01];
     const trailer = [
         0x1B, 0x64, 0x03,
         0x1D, 0x56, 0x41, 0x03
     ];
-    const out = new Uint8Array(header.length + raster.length + trailer.length);
+    const bands = Math.max(1, Math.ceil(height / MAX_RASTER_ROWS));
+    const out = new Uint8Array(header.length + bands * 8 + raster.length + trailer.length);
     out.set(header, 0);
-    out.set(raster, header.length);
-    out.set(trailer, header.length + raster.length);
+    let at = header.length;
+    for (let top = 0, b = 0; b < bands; b++, top += MAX_RASTER_ROWS) {
+        const rows = Math.min(MAX_RASTER_ROWS, height - top);
+        out.set([0x1D, 0x76, 0x30, 0x00, bytesPerLine & 0xFF, (bytesPerLine >> 8) & 0xFF, rows & 0xFF, (rows >> 8) & 0xFF], at);
+        at += 8;
+        out.set(raster.subarray(top * bytesPerLine, (top + rows) * bytesPerLine), at);
+        at += rows * bytesPerLine;
+    }
+    out.set(trailer, at);
     return out;
 }
 
@@ -454,6 +463,8 @@ class BluetoothPrinterManager {
         const details = String(AppState.settings?.businessDetails || '').trim();
         if (name) y = utils.drawCenter(name, y, config.fonts.header, true);
         if (details) y = utils.drawCenter(details, y, config.fonts.small);
+        // drawCenter steps by the line just drawn; the taller title needs the difference too
+        if (name || details) y += config.fonts.title.size - (details ? config.fonts.small.size : config.fonts.header.size);
         y = utils.drawCenter(this._t('ui.print.receipt'), y, config.fonts.title, true);
         if (billData.isCopy) {
             y = utils.drawCenter(copyMark(this._lang), y, config.fonts.header, true);
@@ -494,23 +505,43 @@ class BluetoothPrinterManager {
         ctx.font = `bold ${config.fonts.header.size}px Arial`;
         ctx.fillStyle = '#000000';
         ctx.textAlign = 'left';
-        ctx.fillText(this._t('ui.print.th_item'), config.columns.item, y);
-        ctx.fillText(this._t('ui.print.th_rate'), config.columns.rate, y);
-        ctx.fillText(this._t('ui.print.th_qty'), config.columns.quantity, y);
-        ctx.fillText(this._t('ui.print.th_total'), config.columns.total, y);
-        y += config.spacing.line;
-        
-        // Items
-        ctx.font = `${config.fonts.body.size}px Arial`;
-        billData.items.forEach(item => {
+        const headFont = `bold ${config.fonts.header.size}px Arial`;
+        const bodyFont = `${config.fonts.body.size}px Arial`;
+        const widthIn = (font, text) => { ctx.font = font; return ctx.measureText(text).width; };
+        const head = ['ui.print.th_item', 'ui.print.th_rate', 'ui.print.th_qty', 'ui.print.th_total'].map((k) => this._t(k));
+        const rows = billData.items.map((item) => {
             const itemObj = AppState.items.find(i => i.id === item.itemId || i.name === item.name);
-            const displayName = this._itemName(itemObj, item);
-            
-            ctx.textAlign = 'left';
-            ctx.fillText(displayName.substring(0, 11), config.columns.item, y);
-            ctx.fillText(item.rate.toString(), config.columns.rate, y);
-            ctx.fillText(formatKg(item.qty), config.columns.quantity, y);
-            ctx.fillText(Math.round(item.total).toString(), config.columns.total, y);
+            return [this._itemName(itemObj, item), String(item.rate), formatKg(item.qty), String(Math.round(item.total))];
+        });
+        // Rate, Qty and Total are as wide as their widest cell, right-aligned from the paper edge; the name gets the rest
+        const gap = 10;
+        const right = [];
+        let edge = config.width - 2;
+        for (let c = 3; c >= 1; c--) {
+            right[c] = edge;
+            edge -= Math.max(widthIn(headFont, head[c]), ...rows.map((r) => widthIn(bodyFont, r[c]))) + gap;
+        }
+        const nameRoom = edge - config.columns.item;
+        const cell = (font, text, c) => {
+            ctx.font = font;
+            if (c > 0) {
+                ctx.fillText(text, right[c] - ctx.measureText(text).width, y);
+                return;
+            }
+            let shown = text;
+            if (ctx.measureText(shown).width > nameRoom) {
+                const chars = typeof Intl.Segmenter === 'function'
+                    ? [...new Intl.Segmenter().segment(text)].map((s) => s.segment) : Array.from(text);
+                while (chars.length > 1 && ctx.measureText(chars.join('')).width > nameRoom) chars.pop();
+                shown = chars.join('');
+            }
+            ctx.fillText(shown, config.columns.item, y);
+        };
+
+        head.forEach((text, c) => cell(headFont, text, c));
+        y += config.spacing.line;
+        rows.forEach((r) => {
+            r.forEach((text, c) => cell(bodyFont, text, c));
             y += config.spacing.line;
         });
         
@@ -527,16 +558,21 @@ class BluetoothPrinterManager {
         
         // BILL-LINES: the lines before labour (purchases), the sale total (sales)
         const subtotal = billLineTotal(billData, !!billData.isPurchase);
+        const amountPayable = receiptPayable(billData);
+        const labour = billData.isPurchase ? billLabour(billData) : 0;
         
-        // Subtotal
-        ctx.fillText(`${this._t('ui.bill.total')}:`, config.padding.left, y);
-        const totalText = formatRupees(subtotal);
-        const totalWidth = ctx.measureText(totalText).width;
-        ctx.fillText(totalText, config.width - totalWidth - config.padding.left, y);
-        y += config.spacing.line;
+        // printed only when it differs from the payable as printed, or labour comes between them (BILL-LINES)
+        const showSubtotal = labour > 0 || formatRupees(subtotal) !== formatRupees(amountPayable);
+        if (showSubtotal) {
+            ctx.fillText(`${this._t('ui.bill.subtotal')}:`, config.padding.left, y);
+            const totalText = formatRupees(subtotal);
+            const totalWidth = ctx.measureText(totalText).width;
+            ctx.fillText(totalText, config.width - totalWidth - config.padding.left, y);
+            y += config.spacing.line;
+        }
         
         // Labor charges (only for purchases)
-        if (billData.isPurchase && billLabour(billData) > 0) {
+        if (labour > 0) {
             if (billData.laborCalc) {
                 // Show calculation in middle and amount on right
                 ctx.fillText(`${this._t('ui.bill.labour')}:`, config.padding.left, y);
@@ -557,13 +593,12 @@ class BluetoothPrinterManager {
         }
         
         // Add spacing before grand total
-        y += 8;
+        if (showSubtotal) y += 8;
         
         // Grand total - Total bill amount
         ctx.font = `bold ${config.fonts.total.size}px Arial`;
         const grandTotalLabel = `${this._t('ui.bill.total')}:`;
         ctx.fillText(grandTotalLabel, config.padding.left, y);
-        const amountPayable = receiptPayable(billData);
         const payableText = formatRupees(amountPayable);
         const payableWidth = ctx.measureText(payableText).width;
         ctx.fillText(payableText, config.width - payableWidth - config.padding.left, y);
@@ -697,41 +732,46 @@ class BluetoothPrinterManager {
             lines: { thin: 1.5, normal: 2, bold: 3 }
         };
 
-        // Create temporary canvas
         const scale = dots / LAYOUT_DOTS;
-        const tempCanvas = document.createElement('canvas');
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCanvas.width = dots;
-        tempCanvas.height = Math.ceil(2600 * scale);
-        
-        // Initialize with white background
-        tempCtx.fillStyle = '#ffffff';
-        tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-        tempCtx.fillStyle = '#000000';
-        if (scale !== 1) tempCtx.scale(scale, scale);
-        
-        // Drawing utilities
-        const utils = this._createDrawingUtils(tempCtx, config);
+        const maxRows = Math.floor(MAX_CANVAS_ROWS / scale);
         this._receipt = receipt || {};
-        let y = 20;
-
-        // Draw receipt sections
+        let rows = SLIP_ROWS;
+        let tempCanvas;
+        let y;
         try {
-            y = this._drawWeightsBreakdown(tempCtx, billData, utils, y);
-            y += config.spacing.section;
-
-            y = this._drawReceiptHeader(tempCtx, billData, config, utils, y);
-            y = this._drawCustomerInfo(billData, utils, y);
-            y = this._drawItemsTable(tempCtx, billData, config, utils, y);
-            y = this._drawTotalsSection(tempCtx, billData, config, utils, y);
-            y = this._drawReceiptFooter(tempCtx, billData, config, utils, y);
-            y = this._drawMakerFooter(tempCtx, config, y);
+            for (;;) {
+                tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCanvas.width = dots;
+                tempCanvas.height = Math.ceil(rows * scale);
+                tempCtx.fillStyle = '#ffffff';
+                tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                tempCtx.fillStyle = '#000000';
+                if (scale !== 1) tempCtx.scale(scale, scale);
+                y = this._drawBill(tempCtx, billData, config);
+                // a long bill is drawn again on a canvas that fits it, so nothing below the items is lost
+                if (y <= rows || rows >= maxRows) break;
+                rows = Math.min(Math.ceil(y), maxRows);
+            }
         } finally {
             this._receipt = null;
         }
         
         // rows past the canvas read back as transparent black and would print as a black band
         return { canvas: tempCanvas, height: Math.min(Math.ceil(y * scale), tempCanvas.height) };
+    }
+
+    _drawBill(ctx, billData, config) {
+        const utils = this._createDrawingUtils(ctx, config);
+        let y = 20;
+        y = this._drawWeightsBreakdown(ctx, billData, utils, y);
+        y += config.spacing.section;
+        y = this._drawReceiptHeader(ctx, billData, config, utils, y);
+        y = this._drawCustomerInfo(billData, utils, y);
+        y = this._drawItemsTable(ctx, billData, config, utils, y);
+        y = this._drawTotalsSection(ctx, billData, config, utils, y);
+        y = this._drawReceiptFooter(ctx, billData, config, utils, y);
+        return this._drawMakerFooter(ctx, config, y);
     }
 
     /** ESC/POS raster bytes for a bill (the used rows of the render canvas), `dots` wide. */
