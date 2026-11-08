@@ -258,11 +258,11 @@
 #historyDatePreset {
   flex: 1 1 180px;
   min-width: 0;
-  padding: 10px 12px;
+  padding: 10px 36px 10px 12px;
   border: 2px solid var(--border-color);
   border-radius: 8px;
   font-size: var(--fs-body);
-  background: var(--card-bg);
+  background-color: var(--card-bg);
 }
 
 .history-custom-range {

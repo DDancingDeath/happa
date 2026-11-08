@@ -927,7 +927,7 @@ input[type="checkbox"].switch,
   height: 22px;
   margin: 0;
   border-radius: var(--r-full);
-  background: radial-gradient(circle at 11px 50%, var(--surface) 8px, transparent 8.5px), var(--line-strong);
+  background: radial-gradient(circle at 11px 50%, var(--surface) 8px, transparent 8.5px), var(--ink-3);
   cursor: pointer;
   transition: background var(--transition-fast);
 }
@@ -977,6 +977,12 @@ input[type="checkbox"].switch:focus-visible,
   box-shadow: var(--e1);
 }
 
+.seg > button:focus-visible,
+.filter-buttons .filter-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
 /* Mode dot: purchase / sale segments show the mode colour */
 .filter-buttons .filter-btn.active.filter-purchase::before,
 .filter-buttons .filter-btn.active.filter-sale::before,
@@ -995,6 +1001,8 @@ input[type="checkbox"].switch:focus-visible,
   background: var(--mode-sale);
 }
 
+/* These set display, which would otherwise beat the hidden attribute */
+:is(.btn, .save-btn, .print-btn, .draft-btn, .add-to-bill-btn, .quick-add-btn-inline, .split-rest-btn, .filter-btn)[hidden],
 .seg[hidden],
 .filter-buttons[hidden],
 .tabs[hidden],
@@ -3694,11 +3702,11 @@ body.dark-mode .party-due-line.party-due-old {
 #historyDatePreset {
   flex: 1 1 180px;
   min-width: 0;
-  padding: 10px 12px;
+  padding: 10px 36px 10px 12px;
   border: 2px solid var(--border-color);
   border-radius: 8px;
   font-size: var(--fs-body);
-  background: var(--card-bg);
+  background-color: var(--card-bg);
 }
 
 .history-custom-range {
