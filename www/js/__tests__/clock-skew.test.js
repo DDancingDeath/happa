@@ -98,10 +98,11 @@ describe('payment refused because of the phone clock', () => {
         expect(toast).toHaveBeenLastCalledWith("Your phone's time is wrong. Fix the date and time to record payments.");
     });
 
-    test('a right clock keeps the plain error', async () => {
+    test('a right clock: a plain refusal, never the raw rules text (D-2)', async () => {
         user = userWithServerAt(30 * 1000);
         await OutstandingManager.recordDuePayment({ billType: 'retail', billId: 'r1', cash: 40 });
-        expect(toast).toHaveBeenLastCalledWith('Error: Missing or insufficient permissions.');
+        // Never the raw rules / SDK text (D-2)
+        expect(toast).toHaveBeenLastCalledWith('Not recorded: the server refused this change. Check the bill and try again.');
     });
 });
 

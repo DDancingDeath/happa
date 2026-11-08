@@ -236,7 +236,7 @@ function ensureCss() {
     document.head.appendChild(link);
 }
 
-/** Receipt dialog: preview and WhatsApp / Print / Image / PDF (+ Cancel receipt for owner/manager). */
+/** Receipt dialog: preview and WhatsApp; Print / Image / PDF (+ Cancel receipt for owner/manager) under More. */
 export function showReceipt(env, rcpt) {
     ensureCss();
     // Business name and address come from Settings › Rentals (not stored on the receipt).
@@ -255,11 +255,11 @@ export function showReceipt(env, rcpt) {
             ${rows}
             <div class="rent-sub">${esc(h.by)}</div>
         </div>
-        <div class="rent-actions">
-            ${act('wa', ' rent-btn-wa', 'ui.rcpt.send_whatsapp')}${act('print', '', 'ui.rcpt.print')}
-            ${act('image', '', 'ui.rcpt.image')}${act('pdf', '', 'ui.rcpt.pdf')}
-            ${env.canVoid && !r.void ? act('void', '', 'ui.rcpt.void') : ''}
-        </div>`, { info: true });
+        <div class="rent-actions">${act('wa', ' rent-btn-primary', 'ui.rcpt.send_whatsapp')}</div>
+        <details class="rent-more"><summary>${esc(t('ui.rcpt.more'))}</summary><div class="rent-actions">
+            ${act('print', '', 'ui.rcpt.print')}${act('image', '', 'ui.rcpt.image')}${act('pdf', '', 'ui.rcpt.pdf')}
+            ${env.canVoid && !r.void ? act('void', ' rent-btn-danger', 'ui.rcpt.void') : ''}
+        </div></details>`, { info: true });
 }
 
 /** The tenant's payment history: receipts newest first (one bounded query); each can be reprinted. */

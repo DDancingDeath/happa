@@ -20,6 +20,10 @@ export function formatReport(summary) {
         L.push('');
         L.push(`Excluded (dev_ test data, never migrated): ${s.devExcluded.map(d => `${d.name} (${d.docs})`).join(', ')}`);
     }
+    if (s.rentalsExcluded?.length) {
+        L.push('');
+        L.push(`Excluded (Rentals: Happa's own data is the real one, never migrated or overwritten): ${s.rentalsExcluded.map(d => `${d.name} (${d.docs})`).join(', ')}`);
+    }
     L.push('');
     L.push('## Copied as is');
     Object.entries(s.copied).forEach(([n, c]) => L.push(`- ${n}: ${c}`));

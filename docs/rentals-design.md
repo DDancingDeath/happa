@@ -648,6 +648,8 @@ Owner: *"maybe we should have unit option in tenant page"*.
   move-out and change writes (the change is already at the limits). The transaction
   above enforces it for every app write path.
 
+- **One writer for a changed lease's months (Nov 2026):** while a move-in or change of unit is saving, the visit's charge pass (`maybeCharge`) waits and runs again after it, so the new lease's first month is created by the change itself (`moveIn` → `chargeLease`), never by two transactions at once (the slower one was refused with a 403), and the toast always names the first month's amount when it was charged.
+
 ## 13. Security deposit ledger (phase 2; owner, 2026-11-01, #157)
 
 Owner: *"record the deposit received, refunds and adjustments against dues at move-out. Show the balance."*

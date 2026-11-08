@@ -186,6 +186,16 @@ const BillingManager = {
     // -------------------- MODE SWITCHING --------------------
 
     /**
+     * Billing opened from the menu / bottom bar (D-5): starts on Purchase synchronously,
+     * so a mode the user taps right after is never switched back by a late timer.
+     * A bill being edited keeps its own mode.
+     */
+    startFromNav() {
+        if (this.editingBillIndex !== undefined) return;
+        this.switchMode('purchase', { currentTarget: document.getElementById('purchaseModeBtn') });
+    },
+
+    /**
      * Switch between purchase and sale modes
      * @param {'purchase'|'sale'} mode - The mode to switch to
      * @param {Event} [event] - Optional click event for button styling
@@ -1652,13 +1662,6 @@ const BillingManager = {
             this.prepareBillDates();
             
             window.app.nav.showTab('billing');
-            // Switch to sale mode for retail sales
-            setTimeout(() => {
-                const saleBtn = document.getElementById('saleModeBtn');
-                if (saleBtn) {
-                    window.app.billing.switchMode('sale', { currentTarget: saleBtn });
-                }
-            }, 100);
             UIManager.showToast(t('msg.billing.editing_sale_modify_save'));
         }
     },

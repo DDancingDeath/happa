@@ -171,7 +171,8 @@ export function buildBillShareText(bill, type, { copy = true } = {}) {
  * @returns {string}
  */
 export function buildDraftShareText({ kind, customer, date = new Date(), note, items = [], total, labour = 0, expenses = 0, profit = 0 }) {
-    const lines = [`*${t(TITLES[kind] || TITLES.retail)}*`, ''];
+    // Not saved yet: says so, so nobody takes it for a recorded bill (S-10)
+    const lines = [`*${t(TITLES[kind] || TITLES.retail)}* (${t('ui.bill.draft_mark')})`, ''];
     lines.push(`${t('ui.bill.customer')}: ${customer || t('ui.bill.customer_default')}`);
     lines.push(`${t('ui.bill.date')}: ${date.toLocaleDateString('en-IN')}`);
     if (note) lines.push(`${t('ui.bill.note')}: ${note}`);

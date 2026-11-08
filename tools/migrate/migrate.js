@@ -10,6 +10,7 @@
  *
  *   node tools/migrate/migrate.js convert --in rest-docs.json --out backup.json [--exclude a,b] [--exported-at ISO]
  *   node tools/migrate/migrate.js wipe --project <newProjectId> (--key service-account.json | --emulator) [--yes] [--test-domain @happa.local]
+ *        [--bundle tools/migrate/out/bundle.json]
  *   node tools/migrate/migrate.js auth:import --users users.json --hash-params hash-params.txt --project <newProjectId>
  *        (--key service-account.json | --emulator) [--yes]
  *   node tools/migrate/migrate.js auth:filter --users users.json --out users-filtered.json
@@ -18,6 +19,7 @@
  * `plan` leaves their users docs out, `auth:import` / `auth:filter` their logins, and `wipe` deletes them from Auth.
  *
  * `plan` and `convert` are offline. `apply`, `wipe` and `auth:import` are dry runs unless --yes is given.
+ * `wipe` never deletes the Rentals data (rent_*, RENT_* audit entries, profiles with a rentRole: lib/wipe.js).
  * `--emulator` uses the local Firebase emulators (FIRESTORE_EMULATOR_HOST / FIREBASE_AUTH_EMULATOR_HOST)
  * and needs a demo-* --project (a real project id is refused).
  */
@@ -138,10 +140,17 @@ async function wipe() {
     const { getAuth } = await import('firebase-admin/auth');
     await initAdmin({ key, project });
     const dryRun = !flag('--yes');
-    console.log(`Target project: ${project}${targetNote(emulator)}${dryRun ? ' — DRY RUN' : ' — DELETING EVERYTHING IN FIRESTORE + TEST AND SERVICE-ACCOUNT LOGINS'}`);
+    let oldProfiles = null;
+    if (arg('--bundle')) {
+        const { validateBundle } = await import('./lib/apply.js');
+        const bundle = JSON.parse(fs.readFileSync(arg('--bundle'), 'utf8'));
+        validateBundle(bundle);
+        oldProfiles = new Map(bundle.writes.filter(w => w.coll === 'users').map(w => [w.id, w.data || {}]));
+    }
+    console.log(`Target project: ${project}${targetNote(emulator)}${dryRun ? ' — DRY RUN' : ' — DELETING FIRESTORE DATA (RENTALS DATA IS KEPT) + TEST AND SERVICE-ACCOUNT LOGINS'}`);
     await wipeProject({
         project, keyProject: key?.project_id, emulator: !!emulator, db: getFirestore(), auth: getAuth(), dryRun,
-        testDomain: arg('--test-domain'), log: (line) => console.log(line)
+        testDomain: arg('--test-domain'), oldProfiles, log: (line) => console.log(line)
     });
 }
 
