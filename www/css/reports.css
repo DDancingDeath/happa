@@ -204,7 +204,7 @@
 }
 
 .reports-hero-card.sale-theme {
-    background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+    background: var(--btn-success);
 }
 
 .hero-stat {
@@ -671,7 +671,7 @@
 }
 
 .compare-card.sale {
-    background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+    background: var(--btn-success);
     color: white;
 }
 
