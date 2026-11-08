@@ -350,7 +350,8 @@ record, and the owner's full edits skip the split check (old bills keep legacy m
 change the legacy `due`, `amountPaid` or `openingBalance`. Each app path writes its audit entry in
 the same transaction or batch as the change (D-3): edit (`EDIT_BILL` / `EDIT_SALE`), void, delete,
 payment, write-off (`CLEAR_DUE`, id `wo_<entry id>`) and Complete all due. A refused edit says so
-plainly ("Not saved: the server refused this change…"), never the raw error. Every app version that
+plainly ("Not saved: the server refused this change…", or "Your phone's time is wrong…" when the
+audit entry's phone time is over 10 minutes ahead), never the raw error. Every app version that
 can edit bills (`clientVersion` ≥ 4) already writes these records, so no app version needed a bump.
 
 **Write off as bad debt** (Outstanding and Wholesale › Outstanding, on bills to receive): asks for a

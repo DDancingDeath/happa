@@ -21,6 +21,7 @@ import { TIME_MS, AUTO_SAVE_DELAY } from '../utils/constants.js';
 import { PurchaseManager } from './purchase.js';
 import { RetailSaleManager } from './retail-sale.js';
 import { t } from '../i18n/index.js';
+import { refusedForClock } from '../utils/clock-skew.js';
 import { isStorageFullError, saveFailedText, STORAGE_FULL_KEY, SAVED_ON_PHONE_KEY } from '../utils/storage-full.js';
 import { accessFor, canEditBillWith } from '../utils/role-access.js';
 import { billEditChanges, hasEditChanges } from '../utils/bill-edits.js';
@@ -1876,9 +1877,10 @@ const BillingManager = {
                 UIManager.showToast(t(EDIT_OFFLINE_KEY));
                 return undefined;
             }
-            // Refused by the rules (an edit without its record, OD-14): never the raw message
+            // Refused by the rules (a wrong phone clock fails the audit entry's time; else an edit
+            // without its record, OD-14): never the raw message
             if (error?.code === 'permission-denied') {
-                UIManager.showToast(t('msg.billing.edit_refused'), 'error');
+                UIManager.showToast(t(await refusedForClock(error) ? 'msg.common.phone_clock_wrong_save' : 'msg.billing.edit_refused'), 'error');
                 return undefined;
             }
             UIManager.showToast(t('msg.billing.failed_update_bill', { message: error.message }));

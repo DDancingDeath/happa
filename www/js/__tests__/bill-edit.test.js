@@ -12,6 +12,7 @@ import { AppState } from '../utils/state.js';
 import { NAME_REQUIRED_FOR_DUE_KEY, round2 } from '../utils/money.js';
 import { t } from '../i18n/index.js';
 import { withCanonicalDue } from '../firebase/repos/bill-due.js';
+import * as clockSkew from '../utils/clock-skew.js';
 
 /** What the repository writes for an edit: the record with its dueAmount mirror (repos/bill-due.js). */
 const asRepo = (b, list) => withCanonicalDue(b, (list || []).find(x => x.id === b.id) || null, { full: true });
@@ -149,6 +150,13 @@ describe('saveEditedBill', () => {
         expect(toast).toHaveBeenCalledWith(t('msg.billing.edit_refused'), 'error');
         expect(toast).not.toHaveBeenCalledWith(expect.stringContaining('insufficient'));
         expect(BillingManager.editingBillIndex).toBe(0);
+    });
+
+    it('a refusal caused by a wrong phone clock (the audit entry\'s time) says to fix the clock', async () => {
+        jest.spyOn(clockSkew, 'refusedForClock').mockResolvedValue(true);
+        jest.spyOn(FirebaseService, 'updatePurchase').mockRejectedValue(Object.assign(new Error('denied'), { code: 'permission-denied' }));
+        expect(await BillingManager.saveEditedBill()).toBeUndefined();
+        expect(toast).toHaveBeenCalledWith(t('msg.common.phone_clock_wrong_save'), 'error');
     });
 });
 

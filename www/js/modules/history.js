@@ -30,7 +30,7 @@ import { accessFor, canDeleteBillWith, canVoidBillWith, historyCutoff, withinBil
 import { askReason, editsRowHtml, renderEditsList, setBillActions, voidedBannerHtml } from '../ui/bill-status.js';
 import { voidBlocker } from '../utils/bill-edits.js';
 import { buildReprintPayload, buildBillShareText } from '../utils/bill-share.js';
-import { billTimes } from '../utils/clock-skew.js';
+import { billTimes, refusedForClock } from '../utils/clock-skew.js';
 import { todayLocalISO } from '../utils/dates.js';
 import { paymentBreakdown } from '../utils/due-payments.js';
 import { whatsAppShareUrl } from '../utils/release-info.js';
@@ -771,7 +771,8 @@ export class HistoryManager {
         } catch (error) {
             console.error('Error voiding bill:', error);
             UIManager.hideLoading();
-            const key = error?.code === 'has-payments' ? 'msg.void.has_payments'
+            const key = await refusedForClock(error) ? 'msg.common.phone_clock_wrong_save'
+                : error?.code === 'has-payments' ? 'msg.void.has_payments'
                 : error?.code === 'already-voided' ? 'msg.void.already'
                     : (error?.code === 'unavailable' || (typeof navigator !== 'undefined' && navigator.onLine === false)) ? 'msg.void.needs_internet'
                         : 'msg.void.failed';
@@ -831,7 +832,8 @@ export class HistoryManager {
             console.error('Error deleting bill:', error);
             UIManager.hideLoading();
             // Refused by the rules (only the owner deletes, and only a voided bill: #75)
-            UIManager.showToast(t(error?.code === 'permission-denied' ? 'msg.void.delete_refused' : 'msg.history.failed_delete_bill'));
+            UIManager.showToast(t(await refusedForClock(error) ? 'msg.common.phone_clock_wrong_save'
+                : error?.code === 'permission-denied' ? 'msg.void.delete_refused' : 'msg.history.failed_delete_bill'));
         }
     }
 
