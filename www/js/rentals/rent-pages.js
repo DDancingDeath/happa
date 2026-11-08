@@ -335,6 +335,16 @@ function unitRentToTenant() {
     if (rentInput && Number(rentInput.value) === 0 && rent > 0) rentInput.value = String(rent);
 }
 
+/** Add unit's Save check with the unit rent as the tenant's; a refused form keeps the tenant rent as typed, so a later unit rent still fills it. */
+function tenantCheck() {
+    const rentInput = byId('rentTRent');
+    const typed = rentInput?.value;
+    unitRentToTenant();
+    const ok = checkTenantSection({ newUnit: true });
+    if (!ok && rentInput) rentInput.value = typed;
+    return ok;
+}
+
 async function unitDialog(title, unit, { withTenant = false, defs = null } = {}) {
     const ok = await c.dialog(`<h3>${esc(title)}</h3>
         ${lbl('ui.rent.unit_label', `<input id="rentUnitLabel" type="text" maxlength="60" value="${esc(unit?.label || '')}">`)}
@@ -343,7 +353,7 @@ async function unitDialog(title, unit, { withTenant = false, defs = null } = {})
         <details class="rent-more"${unit?.floor || Number.isFinite(unit?.area) ? ' open' : ''}><summary>${et('ui.rent.more_unit')}</summary>
         ${lbl('ui.rent.unit_area', `<input id="rentUnitArea" type="number" inputmode="decimal" min="0" step="1" value="${esc(unit?.area ?? '')}">`)}
         ${lbl('ui.rent.unit_floor', `<input id="rentUnitFloor" type="text" maxlength="20" value="${esc(unit?.floor || '')}">`)}</details>
-        ${withTenant ? tenantSectionHtml({ toggle: true, rent: unit?.rent ?? 0, newUnit: true, defs: defs || undefined }) : ''}`, withTenant ? { check: () => { unitRentToTenant(); return checkTenantSection({ newUnit: true }); } } : {});
+        ${withTenant ? tenantSectionHtml({ toggle: true, rent: unit?.rent ?? 0, newUnit: true, defs: defs || undefined }) : ''}`, withTenant ? { check: tenantCheck } : {});
     if (!ok) return null;
     const area = val('rentUnitArea');
     const u = {

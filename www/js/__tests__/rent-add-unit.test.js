@@ -138,6 +138,27 @@ test('start a tenancy: who, rent, start and deposit first; the rest under a clos
     await p;
 });
 
+test('a refused tenant section keeps the tenant rent as typed, so the unit rent changed afterwards is the lease rent', async () => {
+    const before = raw('rent_leases').length;
+    const p = RentalsModule.api.addUnit('P1');
+    for (let i = 0; i < 50 && document.getElementById('rentDialog').hidden; i++) await new Promise(r => setTimeout(r));
+    set('rentUnitLabel', 'S7');
+    set('rentUnitRent', '6000');
+    set('rentTOn', true);
+    set('rentTName', 'Mohan');
+    set('rentTPhone', '12345');
+    RentalsModule.api.dialogClose(true);
+    expect(document.getElementById('rentDialog').hidden).toBe(false);
+    expect(document.getElementById('rentTRent').value).toBe('0');
+    set('rentTPhone', '9876512345');
+    set('rentUnitRent', '7000');
+    RentalsModule.api.dialogClose(true);
+    await p;
+    const lease = raw('rent_leases').slice(before)[0];
+    expect(lease.rent).toBe(7000);
+    expect(fake.raw('rent_charges').get(`${lease.id}_${M}`)).toMatchObject({ amount: 7000 });
+});
+
 test('not occupied: only the vacant unit is saved, as before', async () => {
     const counts = ['rent_tenants', 'rent_leases', 'rent_charges'].map(c => raw(c).length);
     const units = raw('rent_units').length;
