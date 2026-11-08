@@ -8209,6 +8209,7 @@ body.dark-mode .app-sheet-fallback {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background: var(--card-bg);
+  color: var(--text-primary);
   box-shadow: var(--shadow-sm);
   cursor: pointer;
   display: flex;
@@ -8774,6 +8775,7 @@ body.dark-mode .notif-panel-actions {
     height: 40px;
     border-color: transparent;
     background: rgba(255, 255, 255, 0.18);
+    color: var(--on-accent);
     box-shadow: none;
   }
 
