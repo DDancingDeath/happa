@@ -185,7 +185,7 @@ describe('wholesale screen escapes record values', () => {
         assertNoInjection(list);
         const handlers = [...list.querySelectorAll('[onclick],[onchange],[data-onclick],[data-onchange]')]
             .map(el => runHandler(handlerAttr(el)));
-        expect(handlers).toEqual([[[QUOTE_ID]], [[QUOTE_ID]], [[QUOTE_ID]]]);
+        expect(handlers).toEqual([[[QUOTE_ID]], [[QUOTE_ID]], [[QUOTE_ID]], [[QUOTE_ID]]]);
         expect(list.querySelector('input[type="number"]').id).toBe(`payment_${QUOTE_ID}`);
         expect(list.querySelector('label[for]').htmlFor).toBe(`clear_${QUOTE_ID}`);
     });

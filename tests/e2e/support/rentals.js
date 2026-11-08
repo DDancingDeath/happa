@@ -47,6 +47,12 @@ async function openTenant(page, tenant) {
     return page.locator('#rentalsBody');
 }
 
+/** Opens "More" in the start-a-tenancy form (second phone, due day, yearly increase, electricity). */
+async function tenancyMore(page) {
+    const more = page.locator('#rentTMore');
+    if (!(await more.evaluate(e => e.open))) await more.locator('summary').click();
+}
+
 /** Opens "More options" on the open receipt (print, image, PDF, Cancel receipt). */
 async function receiptMore(page) {
     const more = dialog(page).locator('details.rent-more');
@@ -117,6 +123,7 @@ async function setUpTenant(page, { units = [['A', 5000]], deposit = 0, start = '
     await page.selectOption('#rentLeaseUnit', { label: `Shop ${unit(units[0][0])}` });
     if (start) await page.fill('#rentTDate', start);
     if (deposit) await page.fill('#rentTDeposit', String(deposit));
+    await tenancyMore(page);
     await page.selectOption('#rentTElec', 'included');
     await dialogButton(page, true);
     await expect(tenantRow).toContainText(unit(units[0][0]));
@@ -135,4 +142,4 @@ async function pay(page, tenant, amount, { confirm = '' } = {}) {
     return (await title.innerText()).match(/R-\d{4}-\d{4}/)[0];
 }
 
-module.exports = { firstOfMonth, button, dialog, row, dialogButton, closeDialog, confirmModal, toastHas, showPage, openTenant, tenantMenu, rentRow, setUpTenant, pay, addProperty, openProperty, receiptMore };
+module.exports = { firstOfMonth, button, dialog, row, dialogButton, closeDialog, confirmModal, toastHas, showPage, openTenant, tenantMenu, rentRow, setUpTenant, pay, addProperty, openProperty, tenancyMore, receiptMore };

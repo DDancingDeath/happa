@@ -5,7 +5,7 @@
  * @module firebase/repos/bill-fields
  */
 
-import { serverCreatedAt } from '../db.js';
+import { col, getDb, serverCreatedAt } from '../db.js';
 import { billEditChanges, editCountOf, editRecord, hasEditChanges, nextEditNumber } from '../../utils/bill-edits.js';
 import { AppState } from '../../utils/state.js';
 import { t } from '../../i18n/index.js';
@@ -19,6 +19,20 @@ export const billEditsRef = (billRef) => billRef.collection(BILL_EDITS);
 export const BILL_MONEY_FIELDS = ['payment', 'payments', 'dueAmount', 'cashPayment', 'onlinePayment', 'openDue', 'cleared'];
 
 export const withServerCreatedAt = (record) => ({ ...record, createdAt: serverCreatedAt() });
+
+/** A new audit log id, made before a transaction so its retries write the same entry. */
+export const newAuditId = () => getDb().collection(col('auditLogs')).doc().id;
+
+/**
+ * The audit entry of a bill change, written by the change's own transaction or batch (D-3):
+ * the change and its entry land together or not at all. Nothing for a null `audit`.
+ * @param {{set: Function}} write - a transaction or a batch
+ * @param {?{id: string, data: Object}} audit - data: AuditService.entry()
+ */
+export function setAuditEntry(write, audit) {
+    if (!audit) return;
+    write.set(getDb().collection(col('auditLogs')).doc(String(audit.id)), { ...audit.data, serverTime: serverCreatedAt() });
+}
 
 /** Keeps the bill's stored `createdAt` on an overwrite (the rules refuse a change). */
 export function keepStoredCreatedAt(record, stored) {

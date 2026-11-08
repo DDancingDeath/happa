@@ -183,6 +183,23 @@ export function sortRows(rows, by = 'amount') {
     });
 }
 
+/** Every grouping the sheet can offer (label key: `ui.finance.group_<id>`). */
+export const GROUPS = ['none', 'item', 'party', 'day', 'term'];
+
+/**
+ * FB-COUNT: when every row is a line of a bill (an item line, its COGS, or a
+ * bill's rest) from one card, the number of distinct bills they come from ("168
+ * lines in 136 bills"); else null (counted as entries). Rows of several cards
+ * (Gross profit = sales and their COGS) would count each sale line twice.
+ * @param {Array<Rec>} rows
+ * @returns {?number}
+ */
+export function billsOfLines(rows) {
+    if (!rows.length || new Set(rows.map(r => r.term)).size > 1) return null;
+    if (!rows.every(r => r.billId && r.billType && (r.itemKey !== undefined || r.rest))) return null;
+    return new Set(rows.map(r => `${r.billType}:${r.billId}`)).size;
+}
+
 /**
  * Grouping choices that make sense for these rows.
  * @param {Array<Rec>} rows

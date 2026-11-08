@@ -373,8 +373,12 @@ test('a non-owner back-dating a start more than 2 days: clear message, nothing s
     await waitFor('rentTDate');
     set('rentTDate', localISODaysAgo(3));
     RentalsModule.api.dialogClose(true);
+    // The message stays at the date, with the form open.
+    expect(document.getElementById('rentDialog').hidden).toBe(false);
+    expect(document.getElementById('rentTError').textContent).toMatch(/more than 2 days back needs the owner/);
+    expect(document.activeElement.id).toBe('rentTDate');
+    RentalsModule.api.dialogClose(false);
     await p;
-    expect(UIManager.showToast).toHaveBeenCalledWith(expect.stringMatching(/more than 2 days back needs the owner/), 'error');
     expect(leases()).toHaveLength(before);
 });
 

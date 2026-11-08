@@ -18,7 +18,7 @@
 import {
     billTotal, dueNeedsName, NAME_REQUIRED_FOR_DUE_KEY, paymentSplitMessage, readLineItem, round2, toMoney, formatKg, formatRupees, formatRate
 } from './money.js';
-import { validatePaymentSplit, wholesaleCostRate } from './calc/billing.js';
+import { rateConfirmed, validatePaymentSplit, wholesaleCostRate } from './calc/billing.js';
 import { parseAnyBillDate, startOfLocalDay } from './dates.js';
 import { t } from '../i18n/index.js';
 import { computeShortfallsFrom, stockKeyFor, approxStockNote, stockedItemKeys } from './stock-check.js';
@@ -191,7 +191,8 @@ function rateIssues(line, field, ctx, rates, extra) {
     }
     const usual = usualRate(line, ctx, rates);
     const m = ctx.thresholds.rateMultiple;
-    if (usual) {
+    // An extreme rate confirmed at Add to bill (BF-RATECHECK) is recorded on its line, not asked again
+    if (usual && !rateConfirmed(line)) {
         const ratio = rate / usual;
         if (ratio > m + 1e-9) {
             out.push(issue('rate-high', field, 'warn',

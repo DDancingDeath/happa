@@ -81,6 +81,36 @@ describe('bill rules', () => {
         expect(list.map(a => [a.type, a.refId, a.item])).toEqual([['rate-high', 'b2', 'Rice']]);
     });
 
+    test('OD-02: an extreme rate confirmed at billing is a high anomaly with who and both amounts; no 2× warning on top', () => {
+        const earlier = bill({ id: 'b0', timestamp: T(9), items: [{ itemId: 'rice', name: 'Rice', rate: 40, qty: 1, total: 40 }], total: 40, payment: { cash: 40 } });
+        const rateCheck = { rate: 400, todayRate: 40, by: 's1', byName: 'Staff One', at: T(12) };
+        const confirmed = bill({ id: 'b2', timestamp: T(12), userId: 's1', items: [{ itemId: 'rice', name: 'Rice', rate: 400, qty: 15, total: 6000, rateCheck }], total: 6000, payment: { cash: 6000 } });
+        const list = run({ bills: { retail: [confirmed, earlier] } });
+        expect(list).toEqual([expect.objectContaining({
+            id: anomalyId('rate-confirmed', 'bill', 'b2'), type: 'rate-confirmed', severity: 'high', item: 'Rice', user: 'Staff One', userId: 's1',
+            en: 'Rice: 15 kg × ₹400.00 = ₹6,000; today\'s rate ₹40.00 would give ₹600',
+            hi: 'Rice: 15 kg × ₹400.00 = ₹6,000; आज के रेट ₹40.00 से ₹600 होता'
+        })]);
+        // A record for another rate (the line was changed afterwards) is not a confirm: the 2× warning is back
+        const stale = bill({ ...confirmed, items: [{ ...confirmed.items[0], rate: 300, total: 4500 }], total: 4500, payment: { cash: 4500 } });
+        expect(types(run({ bills: { retail: [stale, earlier] } }))).toEqual(['rate-high']);
+    });
+
+    test('BF-BAGCHECK: a confirmed bag above 100 kg is a high anomaly with who and the weight', () => {
+        const weightCheck = [{ kg: 485, by: 's1', byName: 'Staff One', at: T(11) }];
+        const line = { itemId: 'rice', name: 'Rice', rate: 40, qty: 525, total: 21000, weights: [40, 485], weightCheck };
+        const purchase = bill({ id: 'p1', items: [line], grandTotal: 21000, total: 21000, payment: { cash: 21000 } });
+        const list = run({ bills: { purchase: [purchase] } });
+        expect(list).toEqual([expect.objectContaining({
+            type: 'bag-weight-confirmed', severity: 'high', billType: 'purchase', item: 'Rice', user: 'Staff One',
+            en: 'Rice: bag of 485 kg (usually under 100 kg)', hi: 'Rice: 485 kg की बोरी (आमतौर पर 100 kg से कम)'
+        })]);
+        // Retail lines have packets; a record whose bag is no longer on the line is not shown
+        expect(run({ bills: { retail: [bill({ items: [{ ...line }], total: 21000, payment: { cash: 21000 } })] } })[0].en)
+            .toBe('Rice: packet of 485 kg (usually under 100 kg)');
+        expect(run({ bills: { purchase: [bill({ id: 'p2', items: [{ ...line, weights: [40, 48.5] }], grandTotal: 21000, total: 21000, payment: { cash: 21000 } })] } })).toEqual([]);
+    });
+
     test('re-check: duplicate flags only the later of two identical bills', () => {
         const a = bill({ id: 'a', timestamp: T(11, 0) });
         const b = bill({ id: 'b', timestamp: T(11, 1) });

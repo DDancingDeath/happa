@@ -12,11 +12,12 @@ import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
 import { KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, formatRate, formatRupees, formatKg } from '../utils/money.js';
 import {
-    buildPaymentSplit, computeLine, computeRetailTotals, editSplitFor, paidOnScreen, paymentSplit, pendingLine, prefillPayment, restInDue,
+    bagChecks, buildPaymentSplit, computeLine, computeRetailTotals, editSplitFor, paidOnScreen, paymentSplit, pendingLine, prefillPayment, restInDue,
     shownAmount, sumWeights, validatePaymentSplit, weightsForEdit
 } from '../utils/calc/billing.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
 import { settlePendingLine } from '../ui/pending-line.js';
+import { checkBagWeight, checkLineRate, confirmLineBags, keptBagChecks } from '../ui/rate-check.js';
 import { t, tn } from '../i18n/index.js';
 import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
@@ -41,6 +42,10 @@ let saleItems = [];
  * @private
  */
 let saleWeights = [];
+/** Confirms of heavy packets among the weights (BF-BAGCHECK), moved onto the line at Add to bill. */
+let saleWeightChecks = [];
+/** The line taken back into the entry boxes to edit (its rate confirm is kept if put back unchanged). */
+let editedLine = null;
 
 /**
  * Id (and bill number, once issued) of the sale being entered, reused by every
@@ -83,8 +88,12 @@ const RetailSaleManager = {
             UIManager.showToast(t('msg.common.enter_valid_weight'));
             return;
         }
+        // One packet above 100 kg: confirm first (BF-BAGCHECK)
+        const bag = await checkBagWeight(weight, 'packet', 'saleWeight');
+        if (!bag.ok) return;
         
         saleWeights.push(weight);
+        if (bag.record) saleWeightChecks.push(bag.record);
         weightInput.value = '';
         weightInput.focus();
         
@@ -137,6 +146,7 @@ const RetailSaleManager = {
      */
     removeSaleWeight(index) {
         saleWeights.splice(index, 1);
+        saleWeightChecks = bagChecks(saleWeights, saleWeightChecks).confirmed;
         this.renderSaleWeights();
         if (this.billingManager) this.billingManager.triggerAutoSave();
         UIManager.hapticFeedback();
@@ -147,6 +157,7 @@ const RetailSaleManager = {
      */
     clearSaleWeights() {
         saleWeights = [];
+        saleWeightChecks = [];
         this.renderSaleWeights();
         if (this.billingManager) this.billingManager.triggerAutoSave();
         UIManager.hapticFeedback();
@@ -204,7 +215,17 @@ const RetailSaleManager = {
         // Bill lines keep the catalogue name; Hindi is only for display (#143, Reports group by item).
         const itemName = lineLabel(item);
         
+        // Packets above 100 kg are confirmed (BF-BAGCHECK), the weight typed with them too;
+        // a weight typed with no packets is the line's total kg, not a packet
+        const packetWeights = saleWeights.length > 0 ? allWeights : [];
+        const bags = await confirmLineBags(packetWeights, saleWeightChecks, 'packet', 'saleWeight');
+        saleWeightChecks = bags.kept;
+        if (!bags.ok) return;
+        
         const { qty, packets, total } = computeLine({ rate, weights: allWeights });
+        // ≥ 5× or ≤ ⅕ of today's rate: confirm first (BF-RATECHECK, OD-02)
+        const { ok, rateCheck } = await checkLineRate({ kind: 'retail', item, label: itemName, rate, qty, rateInputId: 'saleRate', keptLines: this.keptLines() });
+        if (!ok) return;
         
         saleItems.push({
             itemId: item.id,
@@ -214,14 +235,18 @@ const RetailSaleManager = {
             packets,
             weights: allWeights,
             total,
+            ...(rateCheck ? { rateCheck } : {}),
+            ...(bags.weightCheck.length ? { weightCheck: bags.weightCheck } : {}),
             timestamp: Date.now()
         });
+        editedLine = null;
         
         this.renderSalesBill();
         if (this.billingManager) this.billingManager.triggerAutoSave();
         
         // Clear weights and reset inputs
         saleWeights = [];
+        saleWeightChecks = [];
         this.renderSaleWeights();
         
         itemSelect.selectedIndex = 0;
@@ -326,12 +351,14 @@ const RetailSaleManager = {
      * Edit a sale item
      * @param {number} index - Index of item to edit
      */
-    editSaleItem(index) {
+    async editSaleItem(index) {
         const currentItem = Helpers.getInputText('saleItem');
         const currentRate = Helpers.getInputNumber('saleRate');
         
         if (currentItem && currentRate && saleWeights.length > 0) {
-            this.addToSalesBill(true);
+            await this.addToSalesBill(true);
+            // The typed line was not added (e.g. "Fix rate"): finish it before opening another
+            if (saleWeights.length > 0) return;
         }
         
         const item = saleItems[index];
@@ -352,6 +379,8 @@ const RetailSaleManager = {
         }
         
         saleWeights = weightsForEdit(item);
+        saleWeightChecks = keptBagChecks(saleWeights, item.weightCheck);
+        editedLine = item;
         this.renderSaleWeights();
         
         if (this.billingManager) this.billingManager.triggerAutoSave();
@@ -608,6 +637,7 @@ const RetailSaleManager = {
             // Clear sale
             pendingBill = null;
             saleItems = [];
+            editedLine = null;
             this.renderSalesBill();
             
             // Reset form
@@ -683,6 +713,7 @@ const RetailSaleManager = {
             },
             discard: () => {
                 saleWeights = [];
+                saleWeightChecks = [];
                 const itemSelect = document.getElementById('saleItem');
                 if (itemSelect) itemSelect.selectedIndex = 0;
                 ['saleRate', 'saleWeight'].forEach(id => {
@@ -722,7 +753,9 @@ const RetailSaleManager = {
     clearSale() {
         pendingBill = null;
         saleItems = [];
+        editedLine = null;
         saleWeights = [];
+        saleWeightChecks = [];
         this.renderSalesBill();
         this.renderSaleWeights();
         this.resetForm();
@@ -799,6 +832,12 @@ const RetailSaleManager = {
      * Id/bill number of the sale being entered, created on first use (#70)
      * @returns {{id: string, billNumber: (string|null)}}
      */
+    /** Lines whose rate confirm is kept when put back unchanged: the saved bill being edited, the line taken back to edit. */
+    keptLines() {
+        const bill = this.billingManager?.editingBillIndex !== undefined ? this.billingManager.getEditingBill?.() : null;
+        return [...(Array.isArray(bill?.items) ? bill.items : []), ...(editedLine ? [editedLine] : [])];
+    },
+
     /**
      * The sale as the check engine sees it (utils/bill-checks.js).
      * @returns {Object}
@@ -879,6 +918,7 @@ const RetailSaleManager = {
      */
     setSaleWeights(w) {
         saleWeights = w || [];
+        saleWeightChecks = bagChecks(saleWeights, saleWeightChecks).confirmed;
     }
 };
 

@@ -1,6 +1,6 @@
-/** Edit an existing purchase from History (#127; ported from the e2e-edit session suite), then void it (#75, #121). */
+/** Edit an existing purchase from History (#127; ported from the e2e-edit session suite), void it (#75, #121), then delete it (OD-14). */
 const { test, expect, login, showTab, expectToast, confirmModalIfOpen } = require('./support/app');
-const { getDoc } = require('./support/emulator');
+const { getDoc, listDocs } = require('./support/emulator');
 const { seed } = require('./support/seed');
 
 // The test edits and then voids its bill: start from the seed so a retry finds it as it was.
@@ -8,7 +8,7 @@ test.beforeEach(async () => {
     await seed();
 });
 
-test('edit a purchase from History keeps its money fields and records why; then void it', async ({ page, problems }, testInfo) => {
+test('edit a purchase from History keeps its money fields and records why; then void it and delete it (OD-14)', async ({ page, problems }, testInfo) => {
     const id = `edit_${testInfo.project.name}`;
     const billNumber = `PEDIT-${testInfo.project.name.toUpperCase()}`;
     const newName = `After Edit ${testInfo.project.name}`;
@@ -67,5 +67,16 @@ test('edit a purchase from History keeps its money fields and records why; then 
     await expect(page.locator('#historyList .history-item:not(.is-voided)')).toHaveCount(0);
     await page.click('#historyVoidedToggle');
     await expect(page.locator('#historyList .history-item.is-voided .voided-reason')).toHaveText('Entered twice');
+
+    // OD-14: only now (voided) can the owner delete it for good, with its edit records
+    await page.locator('#historyList .history-item.is-voided .bill-row__link').first().click();
+    await page.click('#billDeleteBtn');
+    await page.click('#modalConfirm');
+    await expectToast(page, /deleted/i, 25000);
+    expect(await getDoc('dev_purchases', id)).toBeNull();
+    expect(await listDocs(`dev_purchases/${id}/edits`)).toEqual([]);
+    // each step's audit entry landed with it (D-3)
+    const audits = (await listDocs('dev_auditLogs')).filter(a => a.details?.billNumber === billNumber).map(a => a.action);
+    expect(audits.sort()).toEqual(['DELETE_BILL', 'EDIT_BILL', 'VOID_BILL']);
     expect(problems.pageErrors).toEqual([]);
 });

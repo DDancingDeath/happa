@@ -85,7 +85,6 @@ www/js/modules/insights.js: p.count
 www/js/modules/insights.js: partySummary(src, kind, r) (markup via table)
 www/js/modules/insights.js: pct(m.M1.retail.total) ← sharePct(v, total)
 www/js/modules/insights.js: pct(m.M1.wholesale.total) ← sharePct(v, total)
-www/js/modules/insights.js: roundTo(x.qty)
 www/js/modules/insights.js: value (sink)
 www/js/modules/insights.js: x.per100 === null ? '—' : roundTo(x.per100, 1) ← roundTo(x.per100, 1)
 www/js/modules/items.js: idx

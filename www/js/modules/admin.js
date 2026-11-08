@@ -830,7 +830,7 @@ const AdminManager = {
                         </label>
                     `).join('')}
                 </div>
-                ${clearable.length < collections.length ? `<p style="margin: 10px 0 0; font-size: 12px; color: #555;">🔒 ${tx('ui.admin.live_data_locked')}</p>` : ''}
+                ${clearable.length < collections.length ? `<p style="margin: 10px 0 0; font-size: 12px; color: #555;">🔒 ${tx(env === 'dev' ? 'ui.admin.bills_locked' : 'ui.admin.live_data_locked')}</p>` : ''}
             </div>
             <p style="color: #e74c3c; margin-top: 10px; font-size: 12px; text-align: center;">⚠️ ${tx('ui.admin.cannot_undo')}</p>
         `;

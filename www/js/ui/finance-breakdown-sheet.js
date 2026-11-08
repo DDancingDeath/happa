@@ -9,7 +9,7 @@
 import { Helpers } from '../utils/helpers.js';
 import { t, getLang, tn } from '../i18n/index.js';
 import {
-    CARDS, buildBreakdown, searchRows, sortRows, groupRows, groupOptions, sumRows, PAGE_SIZE
+    CARDS, buildBreakdown, searchRows, sortRows, groupRows, groupOptions, sumRows, billsOfLines, PAGE_SIZE
 } from '../utils/finance-breakdown.js';
 import { formatKg, formatRupees, formatAmount } from '../utils/money.js';
 
@@ -287,8 +287,12 @@ export const FinanceBreakdownSheet = {
             }).join('');
         }
         const shownTotal = sumRows(rows);
+        const bills = billsOfLines(rows);
+        let countText = tn('ui.finance.total_entries', rows.length);
+        if (bills === 1) countText = tn('ui.finance.total_lines_one_bill', rows.length);
+        else if (bills !== null) countText = t('ui.finance.total_lines_bills', { count: rows.length, bills });
         totalEl.innerHTML = this.state.query.trim()
             ? `<span>${esc(t('ui.finance.matching_total', { count: rows.length, total: rupees(b.total) }))}</span><strong>${esc(rupees(shownTotal))}</strong>`
-            : `<span>${esc(tn('ui.finance.total_entries', rows.length))}</span><strong>${esc(rupees(b.total))}</strong>`;
+            : `<span>${esc(countText)}</span><strong>${esc(rupees(b.total))}</strong>`;
     }
 };
