@@ -365,6 +365,12 @@ self.addEventListener('fetch', (event) => {
     if (url.pathname === '/r.html' || url.pathname.startsWith('/r/')) {
         return;
     }
+
+    // Firebase Hosting's reserved paths (/__/auth/handler and iframe for Google sign-in, docs/google-sign-in.md):
+    // never cached (the handler URL carries one-time OAuth codes) and never answered with the app.
+    if (url.pathname.startsWith('/__/')) {
+        return;
+    }
     
     // Skip non-GET requests
     if (event.request.method !== 'GET') {

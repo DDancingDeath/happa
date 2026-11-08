@@ -80,6 +80,21 @@ export const GoogleSignIn = {
     busy: false,
     /** { credential, email } while the link form waits for the password */
     pendingLink: null,
+    /** The AuthManager whose flow left for Google's page (redirect fallback), until the page is back */
+    redirectingFrom: null,
+
+    /**
+     * Back (browser Back) from Google's page to this same page from the back/forward cache: no reload,
+     * so nothing would finish the redirect. Undo its hold on the app and the button.
+     */
+    onPageShow(event) {
+        const manager = this.redirectingFrom;
+        if (!event?.persisted || !manager) return;
+        this.redirectingFrom = null;
+        clearGoogleRedirect();
+        manager.authFlowInProgress = false;
+        this.setBusy(false);
+    },
 
     setBusy(busy) {
         this.busy = busy;
@@ -155,10 +170,12 @@ export const GoogleSignIn = {
         if (what.action === 'ignore') return false;
         if (what.action === 'redirect' && allowRedirect) {
             markGoogleRedirect();
+            this.redirectingFrom = manager;
             try {
                 await firebase.auth().signInWithRedirect(googleProvider());
                 return true;
             } catch (e) {
+                this.redirectingFrom = null;
                 clearGoogleRedirect();
                 return this.handleError(manager, e, { allowRedirect: false });
             }
@@ -266,3 +283,5 @@ export const GoogleSignIn = {
         }
     }
 };
+
+if (typeof window !== 'undefined') window.addEventListener('pageshow', (event) => GoogleSignIn.onPageShow(event));

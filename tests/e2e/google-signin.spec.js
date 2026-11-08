@@ -53,7 +53,7 @@ test('a new Google account waits for the owner (pending profile), then gets in o
     await expect(page.locator('#authScreen')).toBeVisible();
     const pending = await profileOf(email);
     expect(pending).toMatchObject({ name: 'New Google', email, role: 'staff', status: 'pending' });
-    expect(await page.evaluate(() => firebase.auth().currentUser)).toBeNull();
+    expect(await page.evaluate(() => window.firebase.auth().currentUser)).toBeNull();
 
     // Still pending: signed straight back out
     await googlePopup(page, { email });
@@ -64,7 +64,7 @@ test('a new Google account waits for the owner (pending profile), then gets in o
     await commit([['dev_users', pendingUid, { ...pendingProfile, status: 'approved' }]]);
     await googlePopup(page, { email });
     await page.waitForFunction(isReady, null, { timeout: 60000 });
-    expect(await page.evaluate(() => firebase.auth().currentUser.uid)).toBe(pendingUid);
+    expect(await page.evaluate(() => window.firebase.auth().currentUser.uid)).toBe(pendingUid);
     expect(problems.pageErrors).toEqual([]);
     expect(problems.consoleErrors).toEqual([]);
 });
@@ -87,7 +87,7 @@ test('an email that already has a password: Google is linked after that password
         const token = JSON.stringify({ sub: `g-${mail}`, email: mail, email_verified: false, name: 'Linker G' });
         AuthManager.authFlowInProgress = true;
         try {
-            await firebase.auth().signInWithCredential(firebase.auth.GoogleAuthProvider.credential(token));
+            await window.firebase.auth().signInWithCredential(window.firebase.auth.GoogleAuthProvider.credential(token));
         } catch (error) {
             await google.handleError(AuthManager, error, { allowRedirect: false });
         } finally {
@@ -102,7 +102,7 @@ test('an email that already has a password: Google is linked after that password
     await page.fill('#googleLinkPassword', PASSWORD);
     await page.click('#googleLinkForm button[type=submit]');
     await page.waitForFunction(isReady, null, { timeout: 60000 });
-    const user = await page.evaluate(() => ({ uid: firebase.auth().currentUser.uid, providers: firebase.auth().currentUser.providerData.map((p) => p.providerId).sort() }));
+    const user = await page.evaluate(() => ({ uid: window.firebase.auth().currentUser.uid, providers: window.firebase.auth().currentUser.providerData.map((p) => p.providerId).sort() }));
     expect(user).toEqual({ uid, providers: ['google.com', 'password'] });
     expect(await profileOf(email)).toMatchObject({ role: 'manager', status: 'approved' });
     expect(problems.pageErrors).toEqual([]);

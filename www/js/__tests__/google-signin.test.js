@@ -229,6 +229,21 @@ describe('redirect fallback', () => {
         expect(AuthManager.authFlowInProgress).toBe(true);
     });
 
+    test('back from Google out of the back/forward cache (no reload): the hold on the app and the button is undone', async () => {
+        auth.signInWithPopup.mockRejectedValueOnce(authError('auth/popup-blocked'));
+        auth.signInWithRedirect.mockImplementationOnce(() => new Promise(() => {})); // the page navigates away
+        AuthManager.signInWithGoogle();
+        await flush();
+        expect(AuthManager.authFlowInProgress).toBe(true);
+        expect($('googleSignInBtn').disabled).toBe(true);
+        window.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: false }));
+        expect(AuthManager.authFlowInProgress).toBe(true);
+        window.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true }));
+        expect(AuthManager.authFlowInProgress).toBe(false);
+        expect($('googleSignInBtn').disabled).toBe(false);
+        expect(googleRedirectPending()).toBe(false);
+    });
+
     test('back from Google: the same profile check runs before the app starts', async () => {
         sessionStorage.setItem(GOOGLE_REDIRECT_KEY, String(Date.now()));
         expect(AuthManager.resumeGoogleRedirect()).toBe(true);
