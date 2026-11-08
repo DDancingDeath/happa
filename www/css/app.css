@@ -2663,16 +2663,19 @@ select:focus, input:focus {
   color: var(--on-warning-soft);
 }
 
-/* Save with a line not added to the bill (BF-PENDING): three choices, wrapping on a phone */
-.pending-line-dialog .modal-footer {
+/* Save with a line not added to the bill (BF-PENDING), extreme rate (BF-RATECHECK): choices wrap on a phone */
+.pending-line-dialog .modal-footer,
+.rate-check-dialog .modal-footer {
   flex-wrap: wrap;
 }
 
-.pending-line-dialog .modal-footer .modal-btn {
+.pending-line-dialog .modal-footer .modal-btn,
+.rate-check-dialog .modal-footer .modal-btn {
   flex: 1 1 auto;
 }
 
-.pending-line-discard {
+.pending-line-discard,
+.rate-check-confirm {
   background: var(--card-bg);
   color: var(--danger-color);
   border: 1px solid var(--danger-color);

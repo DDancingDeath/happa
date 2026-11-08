@@ -220,6 +220,35 @@ describe('save gate', () => {
         expect(modal).toHaveBeenCalledTimes(2);
     });
 
+    test('OD-02 at Save: an extreme rate not confirmed yet asks "Fix rate" first; confirmed, the one-tap 2× "Save anyway?" is not stacked on it', async () => {
+        state.items[0] = { itemId: 'rice', name: 'Rice', rate: 400, qty: 10, total: 4000 };
+        renderRows();
+        $('cash').value = '4000';
+        const toast = jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
+        const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
+        const dialog = () => document.querySelector('.rate-check-dialog');
+
+        const fixed = BillChecksUI.confirmSave('test');
+        await Promise.resolve();
+        expect(dialog().querySelector('#rateCheckMessage').textContent).toBe('Rice 10 kg × ₹400.00 = ₹4,000. Today\'s rate ₹40.00 would give ₹400.');
+        expect(document.activeElement.dataset.choice).toBe('fix');
+        dialog().querySelector('[data-choice="fix"]').click();
+        expect((await fixed).ok).toBe(false);
+        expect(toast).toHaveBeenLastCalledWith('Change the rate of Rice on the bill, then save.', 'warning');
+        expect(state.items[0]).not.toHaveProperty('rateCheck');
+
+        const confirmed = BillChecksUI.confirmSave('test');
+        await Promise.resolve();
+        dialog().querySelector('[data-choice="confirm"]').click();
+        const result = await confirmed;
+        expect(result).toEqual({ ok: true, flags: [], overrides: [] });
+        expect(state.items[0].rateCheck).toEqual({ rate: 400, todayRate: 40, by: 'u1', byName: expect.any(String), at: expect.any(Number) });
+        expect(modal).not.toHaveBeenCalled();
+        // Saved again: confirmed already, nothing asked
+        expect(await BillChecksUI.confirmSave('test')).toEqual({ ok: true, flags: [], overrides: [] });
+        expect(dialog()).toBeNull();
+    });
+
     test('clean bill saves with no dialog', async () => {
         $('cash').value = '400';
         const modal = jest.spyOn(UIManager, 'showModal');
