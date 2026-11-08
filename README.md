@@ -15,3 +15,10 @@ Before/after screenshots for the V2 Phase 1 PRs, from the E2E emulator seed plus
 ## P1.3 (History › Sale with wholesale and a ₹ total)
 - `p1-3/history-sale-month-{before,after}-en.png` (+ `after-hi`): This month, Sale: before 1 bill (retail only), no total; after 2 bills (Retail + Wholesale tags) · ₹19,600.
 - `p1-3/history-sale-search-{before,after}-en.png` (+ `after-hi`): search "Gali": before nothing (the wholesale bill was not in History); after 1 bill · ₹19,200.
+
+## P1.4 (one "overdue": bills more than 30 days old, OD-08)
+E2E seed + old dues: retail Asha ₹1,500 (45 days) + ₹500 (5 days); wholesale Gali 4 ₹6,000 (40 days); purchase Ram 1 ₹9,000 (70 days); plus today's bills.
+- `p1-4/today-reminders-{before,after}-en.png` (+ `after-hi`): headlines unchanged (₹2,000 / ₹6,000 / ₹55,980, the parties' whole dues); new "of which overdue (> 30 days)" ₹1,500 / ₹6,000 / ₹9,000 and "₹Y overdue" per party.
+- `p1-4/insights-todo-{before,after}-en.png` (+ `after-hi`): same ₹7,500 / ₹9,000; text now "owe you ₹7,500 overdue (bills more than 30 days old)", "You owe 1 party" (was "1 parties").
+- `p1-4/outstanding-sale-{before,after}-en.png` (+ `after-hi`): new "Overdue (> 30 days) ₹7,500" under ₹26,000 (= Insights = Today's 1,500 + 6,000); "₹Y overdue" on chase-first and party rows.
+- `p1-4/outstanding-purchase-{before,after}-en.png` (+ `after-hi`): "Overdue (> 30 days) ₹9,000" under ₹55,980 (= Insights "You owe").
