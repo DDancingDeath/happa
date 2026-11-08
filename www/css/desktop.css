@@ -49,6 +49,7 @@
     height: 40px;
     border-color: transparent;
     background: rgba(255, 255, 255, 0.18);
+    color: var(--on-accent);
     box-shadow: none;
   }
 
@@ -86,7 +87,6 @@
   }
 
   .nav-icon {
-    font-size: 18px;
     margin-right: 10px;
   }
 
@@ -121,12 +121,6 @@
   /* rentals.css (loaded later) caps the phone width; desktop pages are full width */
   .tab.rentals-tab {
     max-width: none;
-  }
-
-  /* Top-of-page segmented toggles (Purchase | Sale etc.) span the content
-     width (no max-width) and match Today's .sub-tabs bar height. */
-  .tab > .filter-buttons:first-child > .filter-btn {
-    padding: 14px 20px;
   }
 
   /* ---------- Billing: entry left, sticky bill summary right ---------- */

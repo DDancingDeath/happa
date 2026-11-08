@@ -106,10 +106,11 @@
 }
 
 .nav-icon {
-  font-size: var(--fs-title);
+  display: inline-flex;
+  justify-content: center;
+  flex: none;
   margin-right: 14px;
   width: 28px;
-  text-align: center;
 }
 
 /* Business switcher (#149): the menu shows only the current business's pages */
@@ -176,8 +177,7 @@ body {
 }
 
 .bottom-nav-icon {
-  font-size: var(--fs-title);
-  line-height: 1;
+  display: inline-flex;
   padding: 3px 16px;
   border-radius: var(--radius-full);
   transition: background var(--transition);

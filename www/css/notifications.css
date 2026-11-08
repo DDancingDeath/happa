@@ -9,6 +9,7 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background: var(--card-bg);
+  color: var(--text-primary);
   box-shadow: var(--shadow-sm);
   cursor: pointer;
   display: flex;
@@ -18,8 +19,7 @@
 }
 
 .notif-bell-icon {
-  font-size: var(--fs-title);
-  line-height: 1;
+  display: inline-flex;
 }
 
 .notif-bell.notif-error .notif-bell-icon {
