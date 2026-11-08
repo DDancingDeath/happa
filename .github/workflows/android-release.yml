@@ -373,6 +373,10 @@ jobs:
     if: needs.build.outputs.release == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # One publish at a time, so two tags pushed together can't both read the old latest.
+    concurrency:
+      group: android-release-publish
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
@@ -401,7 +405,11 @@ jobs:
           files=("dist/$name.apk" "dist/$name-v$VERSION.apk")
           # Every release, rc or final, is a normal release marked latest: releases/latest feeds
           # the update banner and /download. Only re-running an older tag leaves latest alone.
-          latest="$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name 2>/dev/null || true)"
+          latest=""
+          if ! latest="$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name 2> latest-err.txt)"; then
+            grep -q 'HTTP 404' latest-err.txt || { cat latest-err.txt; echo "::error::Could not read the latest release."; exit 1; }
+            latest=""
+          fi
           latest_code=0
           if [[ -n "$latest" && "$latest" != "$TAG" ]]; then
             latest_code="$(node scripts/android-version-code.js "$latest" 2>/dev/null || echo 0)"
