@@ -4,6 +4,9 @@
 `googleSignIn` in `happa.config.json` is `{ "web": false, "android": false }` until the owner has
 done the console steps below. Off means no button, and its code is never loaded.
 
+Target projects: `happa-bahi` (live) and `happa-bahi-dev` (test), Android package `com.happa.bahi`
+after the rename. No Google sign-in is planned on the current project `happa-bfc07` (owner decision).
+
 - Code: `www/js/auth/google-signin.js` (loaded with `import()` only when switched on; in the
   service worker's `LAZY_ASSETS`, not precached), the switch and the profile check in
   `www/js/auth/authentication.js` (`googleSignInMode`, `completeSignIn`), the button in
@@ -114,22 +117,26 @@ Why this plugin:
 
 ## Owner / console steps
 
-Do these for each Firebase project the app uses (today `happa-bfc07`; after the move `happa-bahi` for
-live and `happa-bahi-dev` for test). Nothing here goes in the repo except the last step.
+**Target projects: `happa-bahi` (live) and `happa-bahi-dev` (test)**, with the Android package
+`com.happa.bahi` after the rename. By owner decision, **no Google sign-in setup is planned on
+`happa-bfc07`** (the current project): Google sign-in stays off there and is switched on only once the
+app runs on the new projects (`happa.config.json` then names them). Do these steps for each of the two
+new projects. Nothing here goes in the repo except the last step.
 
-1. **Enable Google**: console.firebase.google.com → the project → Build → Authentication → Sign-in
-   method → Add new provider → Google → Enable. Public-facing name: the app's name (Google's chooser
-   says "to continue to *name*"). Project support email: pick the shop's email → Save. This also
-   creates the Web OAuth client the APK uses.
-2. **Authorised domains**: Authentication → Settings → Authorized domains → Add domain →
-   `myhappa.web.app` (the `hostingSite` in `happa.config.json`; after the move, the new project's
-   site). `localhost`, `<project>.firebaseapp.com` and `<project>.web.app` are there by default. Preview
-   channels are not added, so Google sign-in says "not set up" there.
+1. **Enable Google** (done by the owner on 8 Nov 2026 for `happa-bahi` and `happa-bahi-dev`, support
+   email guptasdata@gmail.com): console.firebase.google.com → the project → Build → Authentication →
+   Sign-in method → Add new provider → Google → Enable. Public-facing name: the app's name (Google's
+   chooser says "to continue to *name*"). Project support email → Save. This also creates the Web OAuth
+   client the APK uses.
+2. **Authorised domains**: Authentication → Settings → Authorized domains → Add domain → the project's
+   app site (the `hostingSite` in `happa.config.json` once it names the new project; `myhappa.web.app`
+   today is a site of `happa-bfc07`). `localhost`, `<project>.firebaseapp.com` and `<project>.web.app`
+   are there by default. Preview channels are not added, so Google sign-in says "not set up" there.
 3. **Account linking**: Authentication → Settings → User account linking → keep "Link accounts that use
    the same email".
 4. **Android app**: Project settings (gear) → General → Your apps → Add app → Android →
-   - Android package name: `androidPackage` from `happa.config.json` (`com.happa` today; after the
-     change to `com.happa.bahi`, add a new Android app with that name);
+   - Android package name: `com.happa.bahi` (the `androidPackage` in `happa.config.json` after the
+     rename; the APK build stops if `google-services.json` has no client for the APK's package);
    - App nickname: happa Android;
    - Debug signing certificate SHA-1: the release key's SHA-1,
      `58:FD:C7:C6:D8:30:86:B0:60:C6:D4:16:B1:10:69:5D:33:9A:E3:43`
