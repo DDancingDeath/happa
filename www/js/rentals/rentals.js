@@ -439,7 +439,7 @@ async function pay(leaseId, typed = null) {
     const due = (id) => chargeDue(dues.charges.find(c => c.id === id) || first);
     const options = dues.charges.map(c => `<option value="${esc(c.id)}" data-due="${esc(chargeDue(c))}"${c.id === v.id ? ' selected' : ''}>${esc(monthLabel(c.month, lang))} · ${money(chargeDue(c))}</option>`).join('');
     const chip = (key, n) => `<button type="button" class="rent-chip" data-amount="${esc(n)}" data-charge="${esc(first.id)}" data-onclick="rentals.fillAmount(this)">${et(key, { amount: formatINR(n) })}</button>`;
-    const modes = PAYMENT_MODES.map(m => `<button type="button" class="rent-seg-btn${m === v.mode ? ' active' : ''}" aria-pressed="${m === v.mode ? 'true' : 'false'}" data-mode="${m}" data-onclick="rentals.payMode(this)">${esc(modeLabel(m))}</button>`).join('');
+    const modes = PAYMENT_MODES.map(m => `<button type="button" class="rent-seg-btn${m === v.mode ? ' active' : ''}" aria-pressed="${m === v.mode ? 'true' : 'false'}" data-pay-mode="${m}" data-onclick="rentals.payMode(this)">${esc(modeLabel(m))}</button>`).join('');
     const name = snap.tenants.find(x => x.id === first.tenantId)?.name || first.tenantName || '';
     const html = `<h3>${et('ui.rent.record_payment')}${name ? ` · ${esc(name)}` : ''}</h3>
         ${lbl('ui.rent.amount', `
@@ -530,11 +530,11 @@ function fillAmount(chip) {
 }
 
 function payMode(b) {
-    const mode = b?.getAttribute('data-mode');
+    const mode = b?.getAttribute('data-pay-mode');
     const input = byId('rentPayMode');
     if (!input || !PAYMENT_MODES.includes(mode)) return;
     input.value = mode;
-    b.parentElement.querySelectorAll('[data-mode]').forEach((x) => {
+    b.parentElement.querySelectorAll('[data-pay-mode]').forEach((x) => {
         x.classList.toggle('active', x === b);
         x.setAttribute('aria-pressed', String(x === b));
     });
