@@ -391,6 +391,7 @@ describe('Add to bill on the three forms (OD-02)', () => {
 
         // Taking the line back to edit keeps the bags and their confirm: not asked again
         await PurchaseManager.editBillItem(0);
+        await new Promise(r => setTimeout(r, 60)); // editBillItem puts the rate back after 50 ms
         setVal('billRate', 24);
         await PurchaseManager.addToBill();
         expect(dialog()).toBeNull();
