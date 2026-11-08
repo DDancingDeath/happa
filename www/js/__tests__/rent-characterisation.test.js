@@ -28,7 +28,7 @@ import { rentalsRole } from '../ui/business-switcher.js';
 import { setLang, resetLangForTests } from '../i18n/index.js';
 import { receiptRows, buildReceiptText } from '../rentals/rent-receipt.js';
 import { unitRows, summarize, propertySummaries } from '../rentals/rent-views.js';
-import { leaseDues, chargeDue, chargeStatus, rentTotals } from '../rentals/rent-math.js';
+import { leaseDues, chargeDue, chargeStatus, rentTotals, receivedIn } from '../rentals/rent-math.js';
 import { paidEarlier } from '../rentals/rent-math-ledger.js';
 
 const M = '2028-02';
@@ -230,6 +230,19 @@ test('the figures behind the pages (unit rows, totals, per-tenant dues, month su
         rows, all: summarize(rows), properties: propertySummaries(d.properties, rows).map(x => [x.property.id, x.summary]),
         dues, monthSummary: monthSummary(d.charges, M), lastMonth: monthSummary(d.charges, '2028-01')
     }).toMatchSnapshot();
+});
+
+test('RENT-20 (V2 OD-07): an older month paid off this month leaves the open list but counts as received this month; RENT-2 does not move', async () => {
+    const before = store.snapshot();
+    expect(receivedIn(before.paidCharges, M)).toBe(18500.25);
+    await store.recordPayment('L1_2028-01', { amount: 2800, mode: 'cash', ref: '', date: '2028-02-20' }, null);
+    await fake.settle();
+    const d = store.snapshot();
+    expect(d.charges.some(c => c.id === 'L1_2028-01')).toBe(false);
+    expect(d.paidCharges.find(c => c.id === 'L1_2028-01')?.open).toBe(false);
+    expect(receivedIn(d.paidCharges, M)).toBe(18500.25 + 2800);
+    expect(rentTotals(d.charges, M).collected).toBe(rentTotals(before.charges, M).collected);
+    expect(_test.state.loaded.has('monthPaid')).toBe(true);
 });
 
 test('unit list filters: late, due, one property, sorted ascending', async () => {
