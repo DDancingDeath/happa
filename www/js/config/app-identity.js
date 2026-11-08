@@ -1,7 +1,7 @@
 // Generated from happa.config.json by `npm run apply:happa-config`. Do not edit by hand.
 export const APP_IDENTITY = Object.freeze({
-    "appName": "happa",
-    "appNameHi": "happa",
+    "appName": "Bahi",
+    "appNameHi": "Bahi",
     "androidPackage": "com.happa",
     "projectId": "happa-bfc07",
     "siteUrl": "https://myhappa.web.app",
