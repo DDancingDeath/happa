@@ -26,7 +26,7 @@ import {
 } from './rent-views.js';
 import {
     PAYMENT_MODES, normalizeRentSettings, monthKey, monthLabel, monthsToCharge, chargeDue, leaseDues,
-    buildRentReminderText, elecMode, dateLabel, payOldestFirst, payAmount, expenseTotals
+    buildRentReminderText, elecMode, dateLabel, payOldestFirst, payAmount, applyPayment, expenseTotals
 } from './rent-math.js';
 
 const PAGES = ['rent', 'tenants', 'properties', 'reports'];
@@ -424,23 +424,39 @@ function openProperty(id) {
     byId('rentals')?.scrollIntoView?.({ block: 'start' });
 }
 
-async function pay(leaseId) {
+/**
+ * Record payment: amount (the oldest month's due, or a chip for all that is due), how it was paid; month, reference
+ * and date under More. A refused amount reopens the form with the message under the amount.
+ */
+async function pay(leaseId, typed = null) {
     if (Helpers.isBusy('rent-pay')) return;
-    const dues = leaseDues(store.snapshot().charges, leaseId);
+    const snap = store.snapshot();
+    const dues = leaseDues(snap.charges, leaseId);
     if (!dues.charges.length) return;
     const lang = getLang();
     const first = dues.charges[0];
-    const options = dues.charges.map(c => `<option value="${esc(c.id)}" data-due="${esc(chargeDue(c))}">${esc(monthLabel(c.month, lang))} · ${money(chargeDue(c))}</option>`).join('');
-    const modes = PAYMENT_MODES.map(m => `<option value="${m}">${esc(modeLabel(m))}</option>`).join('');
-    const html = `<h3>${et('ui.rent.record_payment')}</h3>
-        ${lbl('ui.rent.month', `
-            <select id="rentPayCharge" data-onchange="rentals.fillDue(this)">${options}</select>`)}
+    const today = todayLocalISO();
+    const v = typed || { id: first.id, amount: chargeDue(first), mode: 'cash', ref: '', date: today, error: '' };
+    const due = (id) => chargeDue(dues.charges.find(c => c.id === id) || first);
+    const options = dues.charges.map(c => `<option value="${esc(c.id)}" data-due="${esc(chargeDue(c))}"${c.id === v.id ? ' selected' : ''}>${esc(monthLabel(c.month, lang))} · ${money(chargeDue(c))}</option>`).join('');
+    const chip = (key, n) => `<button type="button" class="rent-chip" data-amount="${esc(n)}" data-charge="${esc(first.id)}" data-onclick="rentals.fillAmount(this)">${et(key, { amount: formatINR(n) })}</button>`;
+    const modes = PAYMENT_MODES.map(m => `<button type="button" class="rent-seg-btn${m === v.mode ? ' active' : ''}" aria-pressed="${m === v.mode ? 'true' : 'false'}" data-mode="${m}" data-onclick="rentals.payMode(this)">${esc(modeLabel(m))}</button>`).join('');
+    const name = snap.tenants.find(x => x.id === first.tenantId)?.name || first.tenantName || '';
+    const html = `<h3>${et('ui.rent.record_payment')}${name ? ` · ${esc(name)}` : ''}</h3>
         ${lbl('ui.rent.amount', `
-            <input id="rentPayAmount" type="number" inputmode="decimal" min="0" step="1" value="${esc(chargeDue(first))}">`)}
-        ${lbl('ui.rent.mode', `<select id="rentPayMode">${modes}</select>`)}
-        ${lbl('ui.rent.reference', `<input id="rentPayRef" type="text" maxlength="60">`)}
-        ${lbl('ui.rent.date', `<input id="rentPayDate" type="date" value="${esc(todayLocalISO())}">`)}
-        <p class="rent-help">${et('ui.rent.advance_help')}</p>`;
+            <input id="rentPayAmount" type="number" inputmode="decimal" min="0" step="1" value="${esc(v.amount)}" aria-describedby="rentPayErr" data-oninput="rentals.payHint()">`)}
+        <p id="rentPayErr" class="rent-field-error" role="alert"${v.error ? '' : ' hidden'}>${v.error ? et(v.error) : ''}</p>
+        <div class="rent-chips">${chip('ui.rent.chip_oldest', chargeDue(first))}${dues.charges.length > 1 ? chip('ui.rent.chip_all', dues.total) : ''}</div>
+        <div class="rent-label" id="rentPayModeL">${et('ui.rent.mode')}</div>
+        <div class="rent-seg rent-seg-wide" role="group" aria-labelledby="rentPayModeL">${modes}</div>
+        <input id="rentPayMode" type="hidden" value="${esc(v.mode)}">
+        <details class="rent-more"${v.id !== first.id || v.ref || v.date !== today ? ' open' : ''}><summary>${et('ui.rent.more_pay')}</summary>
+            ${lbl('ui.rent.month', `
+                <select id="rentPayCharge" data-onchange="rentals.fillDue(this)">${options}</select>`)}
+            ${lbl('ui.rent.reference', `<input id="rentPayRef" type="text" maxlength="60" value="${esc(v.ref)}">`)}
+            ${lbl('ui.rent.date', `<input id="rentPayDate" type="date" value="${esc(v.date)}">`)}
+        </details>
+        <p id="rentPayAdv" class="rent-help"${Number(v.amount) > due(v.id) ? '' : ' hidden'}>${et('ui.rent.advance_help')}</p>`;
     const ok = await dialog(html);
     if (!ok) return;
     const id = val('rentPayCharge');
@@ -448,18 +464,25 @@ async function pay(leaseId) {
     const amount = Number(val('rentPayAmount'));
     const mode = PAYMENT_MODES.includes(val('rentPayMode')) ? val('rentPayMode') : 'cash';
     const ref = val('rentPayRef');
-    const date = val('rentPayDate') || todayLocalISO();
+    const date = val('rentPayDate') || today;
+    const again = (key) => {
+        fail(key);
+        return pay(leaseId, { id, amount: val('rentPayAmount'), mode, ref, date, error: key });
+    };
     // RENT-5, RENT-16: more than the month's due pays the unpaid months oldest first; only the rest is an advance.
     let parts = [{ id, amount }];
     if (charge && amount > chargeDue(charge)) {
         try {
             parts = payOldestFirst(dues.charges, amount, store.snapshot().leases.find(l => l.id === leaseId)?.chargedThrough);
         } catch (e) {
-            return fail(e.message === 'over' ? 'msg.rent.more_than_due' : 'msg.rent.bad_amount');
+            return again(e.message === 'over' ? 'msg.rent.more_than_due' : 'msg.rent.bad_amount');
         }
         const adv = parts[parts.length - 1].adv;
         const lines = parts.map(p => `${monthLabel(p.month, lang)}: ${formatINR(p.amount)}`).concat(adv ? [t('ui.rent.adv_next', { amount: formatINR(adv) })] : []).join(' · ');
         if (!await UIManager.showModal(t('msg.rent.pay_split', { lines }), t('ui.rent.record_payment'), true)) return;
+    } else if (charge) {
+        // The same check the save runs (applyPayment), before the form closes.
+        try { applyPayment(charge, amount); } catch (e) { return again(e.message === 'too_many' ? 'msg.rent.too_many_payments' : 'msg.rent.bad_amount'); }
     }
     await Helpers.runExclusive('rent-pay', '[data-rent-pay]', () => savePayment(parts, dues.charges, { mode, ref, date }));
 }
@@ -495,6 +518,36 @@ function fillDue(select) {
     const due = select?.selectedOptions?.[0]?.getAttribute('data-due');
     const input = byId('rentPayAmount');
     if (input && due != null) input.value = due;
+    payHint();
+}
+
+/** A chip's amount into the payment form; both chips start from the oldest unpaid month. */
+function fillAmount(chip) {
+    const input = byId('rentPayAmount');
+    const month = byId('rentPayCharge');
+    if (month && chip?.getAttribute('data-charge')) month.value = chip.getAttribute('data-charge');
+    if (input && chip?.getAttribute('data-amount') != null) input.value = chip.getAttribute('data-amount');
+    payHint();
+}
+
+function payMode(b) {
+    const mode = b?.getAttribute('data-mode');
+    const input = byId('rentPayMode');
+    if (!input || !PAYMENT_MODES.includes(mode)) return;
+    input.value = mode;
+    b.parentElement.querySelectorAll('[data-mode]').forEach((x) => {
+        x.classList.toggle('active', x === b);
+        x.setAttribute('aria-pressed', String(x === b));
+    });
+}
+
+/** The advance note only when the amount is more than the chosen month's due; a typed amount clears the message. */
+function payHint() {
+    const due = byId('rentPayCharge')?.selectedOptions?.[0]?.getAttribute('data-due');
+    const adv = byId('rentPayAdv');
+    if (adv && due != null) adv.hidden = !(Number(val('rentPayAmount')) > Number(due));
+    const err = byId('rentPayErr');
+    if (err) err.hidden = true;
 }
 
 // ---------- Receipts (rent-receipt.js, loaded on first use) ----------
@@ -625,6 +678,8 @@ function dialog(html, { info = false } = {}) {
     body.innerHTML = html;
     const save = box.querySelector('.rent-dialog-actions .rent-btn-primary');
     if (save) save.hidden = info;
+    const close = box.querySelector('.rent-dialog-actions .rent-btn:not(.rent-btn-primary)');
+    if (close) close.textContent = t(info ? 'ui.common.close' : 'ui.modals.cancel');
     box.hidden = false;
     body.querySelector('input, select')?.focus();
     return new Promise((resolve) => {
@@ -679,7 +734,7 @@ export const RentalsModule = {
     api: {
         page: (p) => RentalsModule.enter(p),
         dialogClose: (v) => dialogResolve?.(v),
-        pay, fillDue, remind, payAny, setMode, onlyLate: (on) => { state.onlyLate = on === undefined ? !state.onlyLate : !!on; render(); },
+        pay: (id) => pay(id), fillDue, fillAmount, payMode, payHint, remind, payAny, setMode, onlyLate: (on) => { state.onlyLate = on === undefined ? !state.onlyLate : !!on; render(); },
         settings: (which) => NavigationManager.showTabFromNav(which === 'roles' ? 'settings-roles' : 'settings-rentals'),
         filterUnits: lazyCall('advanced', 'filterUnits'),
         ...Object.fromEntries(['meter', 'editLease', 'addTenant', 'editTenant', 'archiveTenant', 'moveIn', 'moveOut', 'fillRent', 'addProperty', 'editProperty',

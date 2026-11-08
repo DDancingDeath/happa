@@ -1369,11 +1369,17 @@ const PrinterService = {
         return this.manager.link.check();
     },
 
-    async printBill(billData) {
+    /**
+     * @param {Object} billData
+     * @param {{outcome?: ('printed'|'preview'|'failed'|'uncertain'|'cancelled'), error?: string}} [report]
+     *   filled with what really happened, so the caller's toast says it (a preview is not a print)
+     * @returns {Promise<boolean>}
+     */
+    async printBill(billData, report = {}) {
         if (this.canPrint() && this.settings().previewFirst) {
-            return this.showBillPreview(billData, { onPrint: () => this._printBillNow(billData) });
+            return this.showBillPreview(billData, { onPrint: () => this._printBillNow(billData, 1, report) });
         }
-        return this._printBillNow(billData);
+        return this._printBillNow(billData, 1, report);
     },
 
     /**
@@ -1382,8 +1388,9 @@ const PrinterService = {
      * printer link itself makes one quick reconnect per try), up to BILL_PRINT_TRIES (#77).
      * @param {Object} billData
      * @param {number} [tries] this try's number
+     * @param {Object} [report] see printBill
      */
-    async _printBillNow(billData, tries = 1) {
+    async _printBillNow(billData, tries = 1, report = {}) {
         if (this.canPrint()) {
             let outcome;
             let error;
@@ -1396,6 +1403,7 @@ const PrinterService = {
                 if (error?.kind === 'permission' && this._permissions()) this.setPermissionState('denied');
             }
             if (outcome !== 'cancelled') recordPrint(billData, outcome, outcome === 'failed' ? { errorKind: error?.kind, error: error?.message } : {});
+            report.outcome = outcome;
             if (outcome === 'printed') {
                 track('print.bill');
                 UIManager.showToast(t('msg.printer.printed_successfully'));
@@ -1403,24 +1411,28 @@ const PrinterService = {
             }
             if (outcome !== 'failed') return false;
             console.error('Bluetooth print failed:', error);
+            report.error = this.errorText(error);
             const last = tries >= BILL_PRINT_TRIES;
             UIManager.showToast(last
                 ? t('msg.printer.print_failed_last', { message: this.errorText(error), tries })
                 : t('msg.printer.print_failed', { message: this.errorText(error) }));
-            if (!last) return await this.showBillPreview(billData, { onPrint: () => this._retryBillPrint(billData, tries + 1) });
+            if (!last) return await this.showBillPreview(billData, { onPrint: () => this._retryBillPrint(billData, tries + 1, report) });
             await this.showBillPreview(billData);
             return false;
         }
-        return await this.showBillPreview(billData);
+        // No printer: the receipt is only shown as a picture
+        const shown = await this.showBillPreview(billData);
+        if (shown === true) report.outcome = 'preview';
+        return shown;
     },
 
     /** @private Print from the preview after a failed try: asks Android first when the permission was refused. */
-    async _retryBillPrint(billData, tries) {
+    async _retryBillPrint(billData, tries, report = {}) {
         // Still refused: keep the "allow it in Android settings" message and this try; the picture stays
         if (this.permissionState === 'denied' && !(await this.requestBluetoothPermission())) {
-            return this.showBillPreview(billData, { onPrint: () => this._retryBillPrint(billData, tries) });
+            return this.showBillPreview(billData, { onPrint: () => this._retryBillPrint(billData, tries, report) });
         }
-        return this._printBillNow(billData, tries);
+        return this._printBillNow(billData, tries, report);
     },
 
     /**
@@ -1808,7 +1820,23 @@ const PrinterService = {
         }
     },
 
-    async printWholesaleSale(saleData) {
+    /**
+     * The toast after Save & Print (S-12): the save's own words and, separately, what
+     * happened to the print. A receipt only shown as a picture (no printer) or a failed
+     * print is never called "printed"; "may have printed" / cancelled leave the last toast.
+     * @param {{printed: boolean, report: {outcome?: string, error?: string}, savedText: string, printedText: string}} status
+     */
+    showSavePrintStatus({ printed, report, savedText, printedText }) {
+        if (report?.outcome === 'preview') {
+            UIManager.showToast(t('msg.printer.saved_not_printed_preview', { saved: savedText }), 'warning', 6000);
+        } else if (report?.outcome === 'failed' && printed !== true) {
+            UIManager.showToast(t('msg.printer.saved_not_printed', { saved: savedText, reason: report.error || '' }), 'warning', 6000);
+        } else if (printed === true) {
+            UIManager.showToast(printedText);
+        }
+    },
+
+    async printWholesaleSale(saleData, report = {}) {
         // Convert sale data to bill format for printing
         const billData = {
             id: saleData.id || Date.now(),
@@ -1846,7 +1874,7 @@ const PrinterService = {
         };
 
         // Use the standard printBill method
-        return await this.printBill(billData);
+        return await this.printBill(billData, report);
     }
 };
 

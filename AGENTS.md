@@ -158,6 +158,12 @@ In order:
   `www/styles.css` (cascade order; a new stylesheet is added there). Commit the
   rebuilt `app.css` with your change: `check:sw` and `load-perf.test.js` fail
   while it is out of date. The joined files are not precached on their own.
+- **Colours come from design tokens** (`www/css/variables.css`: semantic `--bg`, `--surface`,
+  `--ink`, `--accent`, `--positive`…, component tokens, and the old names such as
+  `--primary-color` as aliases), so every theme and dark mode restyle them. A hard-coded colour
+  (hex, `rgb()`, a colour name) in `www/css`, a template's `style=` / `<style>` or `www/js` fails
+  `tests/ci/colour-guard.test.js` (per-file baseline `tests/colour-baseline.json`, which may only
+  go down: `COLOUR_BASELINE=lower npx jest colour-guard`). Print and receipt output is exempt.
 - **Date strings**: bills mix ISO-8601 and `DD/MM/YYYY`. Use
   `www/js/utils/dates.js` (`parseAnyBillDate`, `todayLocalISO`,
   `parseLocalDate`) or `Helpers.parseDate()` — never raw
@@ -241,7 +247,9 @@ In order:
   answer within 3 s it is saved like offline (`saveBill`, `BILL_CREATE_WAIT_MS`), and later first saves
   skip the transaction until the server is heard again (at most 2 minutes).
   A write the app retries itself keeps a client-made id (bills: `pendingBill`,
-  due payments: the payment entry `id`).
+  due payments: the payment entry `id`, owned by `services/payment-intents.js` per bill, amounts
+  and action until the payment is known to be recorded, never by an input that a redraw replaces;
+  a payment whose answer is lost is looked up on the server, never reported as "try again", D-1).
 - **Saved / offline (#70, #153)**: never show "Saved" for a write this phone refused.
   Failure toasts use `saveFailedText()` and localStorage writes `safeSetItem()`
   (`utils/storage-full.js`: "Save failed — storage full"); a new bill stored while
