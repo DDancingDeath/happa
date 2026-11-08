@@ -4,7 +4,7 @@
  * with the old months.
  */
 const { test, expect, login } = require('./support/app');
-const { button, dialog, row, dialogButton, closeDialog, confirmModal, showPage, openTenant, tenantMenu, rentRow, setUpTenant, pay, firstOfMonth } = require('./support/rentals');
+const { button, dialog, row, dialogButton, closeDialog, confirmModal, toastHas, showPage, openTenant, tenantMenu, rentRow, setUpTenant, pay, firstOfMonth } = require('./support/rentals');
 
 test('change of unit keeps the old dues and the tenant link follows the tenant', async ({ page, problems }) => {
     // On the 1st the old lease ends with last month (moveMonthSplit), so this month is not split between the units.
@@ -30,6 +30,7 @@ test('change of unit keeps the old dues and the tenant link follows the tenant',
     await page.uncheck('#rentSplitOn');
     await dialogButton(page, true);
     await confirmModal(page, 'Both units are charged the full rent');
+    await toastHas(page, "First month's rent in the new unit: ₹6,000");
     await expect(screen).toContainText(unit('B'));
 
     const tenantCtx = await page.context().browser().newContext();
@@ -48,8 +49,6 @@ test('change of unit keeps the old dues and the tenant link follows the tenant',
     await expect(rh).toContainText(/Paid \(shown months\)\s*₹5,000/);
     await tenantCtx.close();
     expect(problems.pageErrors).toEqual([]);
-    // App race (reported): the new lease's first month is charged twice at once and the slower write is refused (403).
-    const refused = problems.consoleErrors.filter(e => /status of 403/.test(e));
-    expect(refused.length).toBeLessThanOrEqual(1);
-    expect(problems.consoleErrors.filter(e => !refused.includes(e))).toEqual([]);
+    // Exactly one path charges the new lease's first month: no refused second write.
+    expect(problems.consoleErrors).toEqual([]);
 });
