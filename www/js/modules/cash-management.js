@@ -564,7 +564,7 @@ export class CashManagementManager {
 
         const {
             opening, cashAdded, purchases, sales, others, expected,
-            totalCashIn, totalCashOut, availableCash, actual, diff, diffLevel
+            cashIn, totalCashOut, availableCash, actual, diff, diffLevel
         } = drawerStatus(this.todaySession, this.todayTransactions);
 
         if (this.todaySession.signedOut) {
@@ -600,7 +600,7 @@ export class CashManagementManager {
             if (statusCashInCard) statusCashInCard.style.display = 'block';
             if (statusCashOutCard) statusCashOutCard.style.display = 'block';
             if (statusAvailableCard) statusAvailableCard.style.display = 'block';
-            if (statusCashAddedCard) statusCashAddedCard.style.display = 'none';
+            if (statusCashAddedCard) statusCashAddedCard.style.display = cashAdded ? 'block' : 'none';
             if (statusBuyCard) statusBuyCard.style.display = 'none';
             if (statusSaleCard) statusSaleCard.style.display = 'none';
             if (statusOthersCard) statusOthersCard.style.display = 'none';
@@ -609,7 +609,8 @@ export class CashManagementManager {
             if (statusDiffCard) statusDiffCard.style.display = 'none';
             
             if (statusOpeningBalance) statusOpeningBalance.textContent = formatRupees(opening, { exact: true });
-            if (statusCashIn) statusCashIn.textContent = formatRupees(totalCashIn, { exact: true });
+            if (statusCashAdded) statusCashAdded.textContent = formatRupees(cashAdded, { exact: true });
+            if (statusCashIn) statusCashIn.textContent = formatRupees(cashIn, { exact: true });
             if (statusCashOut) statusCashOut.textContent = formatRupees(totalCashOut, { exact: true });
             if (statusAvailable) statusAvailable.textContent = formatRupees(availableCash, { exact: true });
         }
@@ -1316,7 +1317,7 @@ export class CashManagementManager {
                 
                 <!-- Cash In Group -->
                 <div style="background: #d1fae5; padding: 10px; border-radius: 8px; margin-bottom: 8px;">
-                    <h3 style="margin: 0 0 6px 0; font-size: 13px; color: #166534;">${L('ui.cash.cash_in')}</h3>
+                    <h3 style="margin: 0 0 6px 0; font-size: 13px; color: #166534;">${L('ui.cash.into_drawer')}</h3>
                     <div style="display: grid; gap: 6px; font-size: 13px;">
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.cash.opening_balance_2')}</span>
