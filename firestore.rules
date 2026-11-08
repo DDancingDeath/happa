@@ -246,15 +246,16 @@ service cloud.firestore {
           && !(n is int && n == resource.data.get('editCount', 0) + 1 && voidAwareBill()
                && existsAfter(/databases/$(database)/documents/$(usersCol == 'users' ? base : 'dev_' + base)/$(docId)/edits/$(string(n))))
           ? false
-        : role == 'owner' ? !changed.hasAny(editLoggedFields()) || voidAwareBill() || bookkeepingOnly(docId, changed)
-        : changed.hasAny(['userId']) ? false
+        : changed.hasAny(['userId']) && role != 'owner' ? false
         : changed.hasAny(['payments', 'paidAt']) ? bookkeepingOnly(docId, changed) && paymentEditOk(changed)
-        : (role == 'manager'
-           || (resource.data.get('userId', null) != null && resource.data.get('userId', null) == request.auth.uid))
-          && withinBillWindowFor(usersCol, role)
-          && d.get('createdAt', null) == resource.data.get('createdAt', null)
+        : (role == 'owner'
+           || ((role == 'manager'
+                || (resource.data.get('userId', null) != null && resource.data.get('userId', null) == request.auth.uid))
+               && withinBillWindowFor(usersCol, role)
+               && d.get('createdAt', null) == resource.data.get('createdAt', null)))
           && (!changed.hasAny(editLoggedFields()) || changed.hasAny(['editCount']))
-          ? changedMoneyOk(changed) && clearFieldsOk(changed, d)
+          ? (role == 'owner' ? !changed.hasAny(['openingBalance', 'amountPaid', 'due']) : changedMoneyOk(changed))
+            && clearFieldsOk(changed, d)
         : bookkeepingOnly(docId, changed) ? paymentEditOk(changed)
         : false;
     }
@@ -596,7 +597,8 @@ service cloud.firestore {
     }
 
     function canDeleteRecord(base, u, docId) {
-      return base in ['purchases', 'retailSales', 'wholesaleSales'] ? isOwnerIn(u) || (isApprovedIn(u) && resource == null)
+      return base in ['purchases', 'retailSales', 'wholesaleSales']
+          ? isApprovedIn(u) && (resource == null || (resource.data.get('voided', false) == true && isOwnerIn(u)))
         : base in ['autoSaves', 'drafts', 'notifications']
           ? isOwnerIn(u)
             || (base == 'autoSaves'

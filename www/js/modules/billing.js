@@ -1769,16 +1769,18 @@ const BillingManager = {
                 const reason = await askEditReason(bill, updatedBill);
                 if (reason === null) return undefined;
                 FirebaseService.withLoadedPaymentSignature(updatedBill, this.editingBillPaymentSig);
-                await commitBillEdit(FirebaseService.updatePurchase(updatedBill, { reason }));
+                // The audit entry lands with the edit and its edit record (D-3)
+                await commitBillEdit(FirebaseService.updatePurchase(updatedBill, {
+                    reason,
+                    audit: AuditService.entry(AuditService.ACTIONS.EDIT_BILL, {
+                        billNumber: updatedBill.billNumber || 'N/A',
+                        amount: billTotal,
+                        supplier: customerName
+                    })
+                }));
                 if (typeof options.onWriteIssued === 'function') options.onWriteIssued(updatedBill);
                 const savedIndex = findBillIndex(AppState.purchaseHistory, bill.id, currentIndex);
                 if (savedIndex !== -1) AppState.purchaseHistory[savedIndex] = updatedBill;
-                
-                AuditService.log(AuditService.ACTIONS.EDIT_BILL, {
-                    billNumber: updatedBill.billNumber || 'N/A',
-                    amount: billTotal,
-                    supplier: customerName
-                }).catch(e => console.warn('Audit log failed:', e));
                 
                 this._refreshAfterEdit();
                 
@@ -1827,18 +1829,19 @@ const BillingManager = {
                 const reason = await askEditReason(bill, updatedSale);
                 if (reason === null) return undefined;
                 FirebaseService.withLoadedPaymentSignature(updatedSale, this.editingBillPaymentSig);
-                await commitBillEdit(FirebaseService.updateRetailSale(updatedSale, { reason }));
+                await commitBillEdit(FirebaseService.updateRetailSale(updatedSale, {
+                    reason,
+                    audit: AuditService.entry(AuditService.ACTIONS.EDIT_SALE, {
+                        billNumber: updatedSale.billNumber || 'N/A',
+                        amount: salesTotal,
+                        customer: saleCustomer
+                    })
+                }));
                 if (typeof options.onWriteIssued === 'function') options.onWriteIssued(updatedSale);
                 const saleIndex = AppState.retailSalesHistory.findIndex(s => s.id === bill.id);
                 if (saleIndex !== -1) {
                     AppState.retailSalesHistory[saleIndex] = updatedSale;
                 }
-                
-                AuditService.log(AuditService.ACTIONS.EDIT_SALE, {
-                    billNumber: updatedSale.billNumber || 'N/A',
-                    amount: salesTotal,
-                    customer: saleCustomer
-                }).catch(e => console.warn('Audit log failed:', e));
                 
                 this._refreshAfterEdit();
                 
@@ -1871,6 +1874,11 @@ const BillingManager = {
             }
             if (error?.code === 'unavailable' || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
                 UIManager.showToast(t(EDIT_OFFLINE_KEY));
+                return undefined;
+            }
+            // Refused by the rules (an edit without its record, OD-14): never the raw message
+            if (error?.code === 'permission-denied') {
+                UIManager.showToast(t('msg.billing.edit_refused'), 'error');
                 return undefined;
             }
             UIManager.showToast(t('msg.billing.failed_update_bill', { message: error.message }));

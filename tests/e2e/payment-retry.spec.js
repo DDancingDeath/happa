@@ -5,45 +5,9 @@
  * told in plain words, with the due read again, never the rules' raw text.
  */
 const { devices } = require('@playwright/test');
-const { test, expect, login, showTab, expectToast, confirmModalIfOpen, clickAfterTyping } = require('./support/app');
+const { test, expect, login, expectToast } = require('./support/app');
+const { creditSale, openDueRow, record } = require('./support/due');
 const { listDocs, getDoc } = require('./support/emulator');
-
-async function creditSale(page, customer) {
-    await showTab(page, 'billing');
-    await page.click('#saleModeBtn');
-    const rice = await page.evaluate(() => [...document.querySelectorAll('#saleItem option')].find(o => /Rice/.test(o.textContent))?.value);
-    await page.selectOption('#saleItem', rice);
-    await page.fill('#saleRate', '36');
-    await page.fill('#saleWeight', '10');
-    await page.click('#saleSection .quick-add-btn-inline');
-    await page.click('#saleSection .add-to-bill-btn');
-    await expect(page.locator('#saleTotal')).toHaveText('360');
-    await page.fill('#saleCustomerName', customer);
-    await page.check('#saleDueCheckbox');
-    await clickAfterTyping(page, '#saveSaleBtn');
-    await page.waitForTimeout(300);
-    await confirmModalIfOpen(page);
-    await expectToast(page, /Sale completed successfully/);
-    return (await listDocs('dev_retailSales')).find(d => d.customerName === customer);
-}
-
-async function openDueRow(page, id) {
-    await showTab(page, 'due');
-    await page.click('#due .filter-sale');
-    await page.waitForFunction((billId) => !!document.getElementById(`payment_${billId}`), id, { timeout: 30000 });
-}
-
-/** Types the amount and presses Record in one go (rows redraw whenever the bill lists change). */
-async function record(page, id, amount) {
-    await page.evaluate(() => { document.getElementById('toast').textContent = ''; });
-    await page.waitForFunction((billId) => !!document.getElementById(`payment_${billId}`), id, { timeout: 30000 });
-    await page.evaluate(({ billId, value }) => {
-        const el = document.getElementById(`payment_${billId}`);
-        el.value = String(value);
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.parentElement.querySelector('button[data-record-payment]').click();
-    }, { billId: id, value: amount });
-}
 
 const paymentAudits = async (billNumber) => (await listDocs('dev_auditLogs'))
     .filter(a => a.action === 'UPDATE_PAYMENT' && a.details?.billNumber === billNumber);

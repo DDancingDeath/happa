@@ -714,7 +714,7 @@ mirrors this in `utils/role-access.js` (`canEditBillWith` / `canVoidBillWith`).
 
 **Void, never delete; every edit keeps a record (#75, #121).** A bill is voided
 (`voided`, `voidedAt`, `voidedBy`, `voidReason`; `FirebaseService.voidBill`), not
-deleted: only the owner deletes bills (the app offers it only for a voided bill).
+deleted: only the owner deletes bills, and the rules allow it only for a voided bill (OD-14).
 Whether a bill counts anywhere is one predicate, `isActiveBill()` in
 `utils/money.js`: FirebaseService keeps voided bills out of AppState's bill
 lists (History gets them from `FirebaseService.voidedBills()`), and every
@@ -723,9 +723,18 @@ calculation that reads bills checks it too (`activeBills()` / `activityBills()`,
 while the bill has later payments; a voided bill never changes again. Every
 change to a bill's items, money or party writes `<bills>/{id}/edits/{n}`
 (before/after of the changed fields, the editor, a required reason) in the same
-transaction (`updateBillChecked(collKey, record, { reason })`); records are read
+transaction (`updateBillChecked(collKey, record, { reason, audit })`); records are read
 only from the bill details (`loadBillEdits`). Details: docs/role-permissions.md
 "Void and edit records".
+
+**The owner keeps records too (OD-13, OD-14).** The rules hold the owner to the
+same trail as everyone (no edit window): a total, items or due change only with
+an edit record, a `payments[]` entry (payment, or a write-off = bad debt, M5) or a
+void; never zero a due by setting `cleared` / `openDue` / `payment.due` alone. A
+new money path on bills must write one of these, and its audit entry in the same
+transaction or batch (`AuditService.entry` + `setAuditEntry` in repos, or the
+`audit` that `updateBill(s)InTransaction` takes), not a separate `AuditService.log`
+after it (D-3).
 
 **Expenses are voided too (#99).** No edit or delete in place: `FirebaseService.voidExpense`
 (reason required; a personal expense leaves `personalExpenseDays` in the same write), and

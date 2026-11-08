@@ -754,15 +754,17 @@ export class HistoryManager {
     static async voidBill(type, bill, reason) {
         try {
             UIManager.showLoading();
-            await FirebaseService.voidBill(BILL_COLLECTION[type], bill, reason);
-            AuditService.log(AuditService.ACTIONS.VOID_BILL, {
-                billId: bill.id != null ? String(bill.id) : null,
-                billNumber: bill.billNumber || 'N/A',
-                billType: type,
-                amount: billTotal(bill),
-                customer: bill.customerName || 'N/A',
-                reason
-            }).catch(e => console.warn('Audit log failed:', e));
+            // The audit entry lands with the void (D-3)
+            await FirebaseService.voidBill(BILL_COLLECTION[type], bill, reason, {
+                audit: AuditService.entry(AuditService.ACTIONS.VOID_BILL, {
+                    billId: bill.id != null ? String(bill.id) : null,
+                    billNumber: bill.billNumber || 'N/A',
+                    billType: type,
+                    amount: billTotal(bill),
+                    customer: bill.customerName || 'N/A',
+                    reason
+                })
+            });
             this.afterBillRemoved();
             UIManager.hideLoading();
             UIManager.showToast(t('msg.void.done'));
@@ -814,13 +816,14 @@ export class HistoryManager {
         const { bill, type } = current;
         try {
             UIManager.showLoading();
-            await FirebaseService.deleteVoidedBill(BILL_COLLECTION[type], bill);
-            AuditService.log(type === 'purchase' ? AuditService.ACTIONS.DELETE_BILL : AuditService.ACTIONS.DELETE_SALE, {
-                billNumber: bill.billNumber || 'N/A',
-                amount: billTotal(bill),
-                customer: bill.customerName || 'N/A',
-                voided: true
-            }).catch(e => console.warn('Audit log failed:', e));
+            await FirebaseService.deleteVoidedBill(BILL_COLLECTION[type], bill, {
+                audit: AuditService.entry(type === 'purchase' ? AuditService.ACTIONS.DELETE_BILL : AuditService.ACTIONS.DELETE_SALE, {
+                    billNumber: bill.billNumber || 'N/A',
+                    amount: billTotal(bill),
+                    customer: bill.customerName || 'N/A',
+                    voided: true
+                })
+            });
             this.afterBillRemoved();
             UIManager.hideLoading();
             UIManager.showToast(t('msg.void.deleted'));
