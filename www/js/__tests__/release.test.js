@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { validateChangelog, checkRelease, applyRelease } = require('../../../scripts/release.js');
+const { versionCodeForTag } = require('../../../scripts/android-version-code.js');
 import {
     compareVersions, whatsNewToShow, shouldCheckForUpdate, updateToOffer,
     buildShareMessage, whatsAppShareUrl, DOWNLOAD_PAGE_URL, UPDATE_CHECK_INTERVAL_MS,
@@ -25,8 +26,16 @@ describe('compareVersions', () => {
         expect(compareVersions('1.2.9', 'v1.3.0')).toBe(-1);
     });
 
-    test('returns null for anything that is not a plain release version', () => {
+    test('orders release candidates by number and below their final release', () => {
+        expect(compareVersions('v1.0.0-rc11', '1.0.0-rc9')).toBe(1);
+        expect(compareVersions('v1.0.0-rc10', '1.0.0-rc10')).toBe(0);
+        expect(compareVersions('1.0.0-rc99', '1.0.0')).toBe(-1);
+        expect(compareVersions('1.0.1-rc1', '1.0.0')).toBe(1);
+    });
+
+    test('returns null for anything that is not a release version', () => {
         expect(compareVersions('1.3.0-beta', '1.2.0')).toBeNull();
+        expect(compareVersions('1.3.0-rc', '1.2.0')).toBeNull();
         expect(compareVersions('', '1.2.0')).toBeNull();
         expect(compareVersions('latest', '1.2.0')).toBeNull();
     });
@@ -180,9 +189,17 @@ describe('Android update banner', () => {
         expect(updateToOffer('1.3.0', 'v1.5.0', '1.4.0')).toBe('1.5.0');
     });
 
+    test('offers a newer release candidate: rc builds are published as latest', () => {
+        expect(updateToOffer('1.0.0-rc10', 'v1.0.0-rc11', null)).toBe('1.0.0-rc11');
+        expect(updateToOffer('1.0.0-rc11', 'v1.0.0', null)).toBe('1.0.0');
+        expect(updateToOffer('1.0.0-rc11', 'v1.0.0-rc11', null)).toBeNull();
+        expect(updateToOffer('1.0.0', 'v1.0.0-rc12', null)).toBeNull();
+        expect(updateToOffer('1.0.0-rc10', 'v1.0.0-rc11', '1.0.0-rc11')).toBeNull();
+    });
+
     test('ignores missing or odd tags', () => {
         expect(updateToOffer('1.3.0', null, null)).toBeNull();
-        expect(updateToOffer('1.3.0', 'v2.0.0-rc1', null)).toBeNull();
+        expect(updateToOffer('1.3.0', 'v2.0.0-beta1', null)).toBeNull();
         expect(updateToOffer('1.3.0', 'nightly', null)).toBeNull();
     });
 });
@@ -204,5 +221,21 @@ describe('share message', () => {
         expect(url.startsWith('https://wa.me/?text=')).toBe(true);
         expect(decodeURIComponent(url.slice('https://wa.me/?text='.length))).toBe(msg);
         expect(url).not.toContain('&');
+    });
+});
+
+describe('Android versionCode from the release tag (scripts/android-version-code.js)', () => {
+    test('rises with every tag and stays above the old hard-coded 1', () => {
+        const tags = ['v1.0.0-rc1', 'v1.0.0-rc9', 'v1.0.0-rc10', 'v1.0.0-rc11', 'v1.0.0', 'v1.0.1-rc1', 'v1.0.1', 'v1.1.0-rc1', 'v1.1.0', 'v2.0.0'];
+        const codes = tags.map(versionCodeForTag);
+        expect(codes.slice(0, 5)).toEqual([10000001, 10000009, 10000010, 10000011, 10000999]);
+        expect(codes[0]).toBeGreaterThan(1);
+        codes.slice(1).forEach((code, i) => expect(code).toBeGreaterThan(codes[i]));
+    });
+
+    test('refuses tags it cannot order', () => {
+        for (const tag of ['1.0.0-beta1', 'v1.0', 'v1.0.0-rc0', 'v1.0.0-rc999', 'v1.100.0', 'v1.0.100', 'v211.0.0', '', undefined]) {
+            expect(() => versionCodeForTag(tag)).toThrow();
+        }
     });
 });

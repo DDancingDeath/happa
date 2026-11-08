@@ -10,7 +10,7 @@ import { openExternal } from '../utils/open-external.js';
 import { getLang, t, LANG_CHANGE_EVENT } from '../i18n/index.js';
 import {
     APK_DOWNLOAD_URL, APP_NAME, DOWNLOAD_PAGE_URL, LATEST_RELEASE_API,
-    buildShareMessage, findRelease, shouldCheckForUpdate, updateToOffer,
+    buildShareMessage, findRelease, formatVersion, shouldCheckForUpdate, updateToOffer,
     whatsAppShareUrl, whatsNewToShow, whatsNewContent, WHATS_NEW_LABELS
 } from '../utils/release-info.js';
 
@@ -28,6 +28,17 @@ const store = {
 
 function isNative() {
     return Boolean(window.Capacitor?.isNativePlatform?.());
+}
+
+/** The APK's versionName (its release tag, e.g. 1.0.0-rc11); the bundled web version if unknown. */
+async function installedVersion() {
+    try {
+        const version = formatVersion((await window.Capacitor?.Plugins?.App?.getInfo?.())?.version);
+        if (version) return version;
+    } catch (_) {
+        // No App plugin: use the bundled version.
+    }
+    return APP_VERSION;
 }
 
 function el(tag, className, text) {
@@ -152,7 +163,7 @@ export class AppUpdatesManager {
                 // Offline / rate limited: try again next start.
             }
         }
-        const version = updateToOffer(APP_VERSION, latestTag, store.get(KEYS.dismissed));
+        const version = updateToOffer(await installedVersion(), latestTag, store.get(KEYS.dismissed));
         if (version) this.renderUpdateBanner(version);
     }
 
