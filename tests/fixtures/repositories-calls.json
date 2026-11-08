@@ -1175,9 +1175,38 @@
           }
         ],
         "paidAt": 1792557000000,
-        "dueAmount": 0,
         "openDue": false,
-        "clientVersion": 5
+        "clientVersion": 5,
+        "dueAmount": 0
+      }
+    ],
+    [
+      "collection",
+      "dev_auditLogs"
+    ],
+    [
+      "doc",
+      "wo_gen-1"
+    ],
+    [
+      "tx.set",
+      "ref(dev_auditLogs/wo_gen-1)",
+      {
+        "action": "CLEAR_DUE",
+        "userId": "u1",
+        "userName": "Owner",
+        "userRole": "owner",
+        "details": {
+          "billNumber": "S1",
+          "transactionType": "purchase",
+          "method": "writeOff",
+          "amount": 495,
+          "reason": "left town",
+          "customer": "Sita"
+        },
+        "timestamp": 1792557000000,
+        "date": "2026-10-21T04:30:00.000Z",
+        "serverTime": "SERVER_TIME"
       }
     ]
   ],

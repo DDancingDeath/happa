@@ -12,6 +12,7 @@ import { AppState } from '../utils/state.js';
 import { NAME_REQUIRED_FOR_DUE_KEY, round2 } from '../utils/money.js';
 import { t } from '../i18n/index.js';
 import { withCanonicalDue } from '../firebase/repos/bill-due.js';
+import * as clockSkew from '../utils/clock-skew.js';
 
 /** What the repository writes for an edit: the record with its dueAmount mirror (repos/bill-due.js). */
 const asRepo = (b, list) => withCanonicalDue(b, (list || []).find(x => x.id === b.id) || null, { full: true });
@@ -120,7 +121,9 @@ describe('saveEditedBill', () => {
         const update = jest.spyOn(FirebaseService, 'updatePurchase').mockImplementation(async b => b);
         expect(await BillingManager.saveEditedBill()).toBeDefined();
         expect(UIManager.showModalWithHtml).toHaveBeenCalledWith(expect.stringContaining('reasonInput'), t('ui.edits.reason_title'), true);
-        expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: 'b1' }), { reason: 'Typo fix' });
+        // the audit entry goes in the edit's own transaction (D-3)
+        expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: 'b1' }),
+            { reason: 'Typo fix', audit: expect.objectContaining({ action: 'EDIT_BILL', details: expect.objectContaining({ amount: 0 }) }) });
     });
 
     it('a cancelled or too short reason saves nothing and keeps the editor', async () => {
@@ -139,6 +142,21 @@ describe('saveEditedBill', () => {
         expect(await BillingManager.saveEditedBill()).toBeUndefined();
         expect(toast).toHaveBeenCalledWith(t('msg.billing.edit_voided'));
         expect(BillingManager.editingBillIndex).toBe(0);
+    });
+
+    it('an edit the rules refuse (OD-14: no record) says so plainly, never the raw error; the editor stays open', async () => {
+        jest.spyOn(FirebaseService, 'updatePurchase').mockRejectedValue(Object.assign(new Error('Missing or insufficient permissions.'), { code: 'permission-denied' }));
+        expect(await BillingManager.saveEditedBill()).toBeUndefined();
+        expect(toast).toHaveBeenCalledWith(t('msg.billing.edit_refused'), 'error');
+        expect(toast).not.toHaveBeenCalledWith(expect.stringContaining('insufficient'));
+        expect(BillingManager.editingBillIndex).toBe(0);
+    });
+
+    it('a refusal caused by a wrong phone clock (the audit entry\'s time) says to fix the clock', async () => {
+        jest.spyOn(clockSkew, 'refusedForClock').mockResolvedValue(true);
+        jest.spyOn(FirebaseService, 'updatePurchase').mockRejectedValue(Object.assign(new Error('denied'), { code: 'permission-denied' }));
+        expect(await BillingManager.saveEditedBill()).toBeUndefined();
+        expect(toast).toHaveBeenCalledWith(t('msg.common.phone_clock_wrong_save'), 'error');
     });
 });
 

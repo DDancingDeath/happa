@@ -724,6 +724,11 @@ export class WholesaleSalesManager {
         if (cleared) this.renderSalesHistory();
     }
 
+    /** "Write off as bad debt" (OD-13), the Due screen's action. */
+    static async writeOffSale(saleId) {
+        if (await OutstandingManager.writeOffDue(saleId, 'wholesale')) this.renderSalesHistory();
+    }
+
     /** One payment from a party spread over their bills, oldest first (#152). */
     static receiveFromParty(name) {
         return OutstandingManager.receiveFromParty(normalizePartyName(name), 'wholesale');
@@ -776,7 +781,7 @@ export class WholesaleSalesManager {
             UIManager.showToast(t('msg.outstanding.choose_how_due_was_settled'));
             return;
         }
-        await Helpers.runExclusive('due-payment', '[data-record-payment], [data-mark-cleared], [data-complete-all]',
+        await Helpers.runExclusive('due-payment', '[data-record-payment], [data-mark-cleared], [data-write-off], [data-complete-all]',
             () => this._completeAllDue(String(name).trim(), bills, method, chosen.map(x => x.due)));
     }
 
@@ -795,7 +800,7 @@ export class WholesaleSalesManager {
         let result;
         const entryIds = this.settleEntryIds(name, method, bills);
         try {
-            result = await OutstandingManager.settleAllDues('wholesale', bills, method, confirmed, entryIds);
+            result = await OutstandingManager.settleAllDues('wholesale', bills, method, confirmed, entryIds, { name });
         } catch (error) {
             console.error('Complete all due failed:', error);
             // A definite refusal forgets the ids; any other error may have reached the server: a retry reuses them
@@ -826,14 +831,6 @@ export class WholesaleSalesManager {
             return;
         }
         settled.forEach(s => Object.assign(s.bill, s.fields));
-        AuditService.log(AuditService.ACTIONS.UPDATE_PAYMENT, {
-            bulk: true,
-            transactionType: 'wholesale',
-            customer: name,
-            method,
-            paymentAmount: total,
-            billNumbers: settled.map(s => s.bill.billNumber || String(s.bill.id)).join(', ').slice(0, 900)
-        }).catch(e => console.warn('Audit log failed:', e));
         UIManager.showToast(t('msg.wholesale.complete_all_due_done', { count: settled.length, total: Helpers.formatCurrency(total) }));
         UIManager.hapticFeedback('light');
         // Saved: a screen that fails to redraw must not look like a failed payment
@@ -942,6 +939,7 @@ export class WholesaleSalesManager {
                                 <input type="checkbox" data-mark-cleared id="clear_${Helpers.escapeHtml(sale.id)}" data-onchange="wholesaleSales.markSaleAsCleared('${Helpers.escapeJsAttr(sale.id)}')" style="margin-right: 8px; transform: scale(1.2);" />
                                 <label for="clear_${Helpers.escapeHtml(sale.id)}" style="cursor: pointer; font-weight: 500;">${L('ui.wholesale.mark_as_cleared')}</label>
                             </div>
+                            <button type="button" data-write-off data-onclick="wholesaleSales.writeOffSale('${Helpers.escapeJsAttr(sale.id)}')" style="margin-top: 8px; padding: 6px 12px; background: transparent; color: var(--danger-color); border: 1px solid var(--danger-color); border-radius: 4px; cursor: pointer; font-weight: 500;">${L('ui.outstanding.write_off_bad_debt')}</button>
                             ${this.canCompleteAllDue() && sale.customerName && !party ? `<button type="button" data-complete-all data-onclick="wholesaleSales.completeAllDue('${Helpers.escapeJsAttr(sale.customerName)}')" style="margin-top: 8px; padding: 6px 12px; background: #fff; color: #15803d; border: 1px solid #15803d; border-radius: 4px; cursor: pointer; font-weight: 500;">${L('ui.wholesale.complete_all_due_party', { party: sale.customerName })}</button>` : ''}
                         </div>
                     </div>
