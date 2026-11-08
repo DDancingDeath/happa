@@ -132,6 +132,191 @@ export function pendingLine({ itemChosen, rateText, qtyText, chips = [] }) {
     return { state: 'complete', missing: null, rate, qty: line.qty, total: line.total };
 }
 
+/** BF-RATECHECK (OD-02): a rate this many times today's rate, or 1/this of it, needs a confirm. */
+export const RATE_CHECK_FACTOR = 5;
+
+/** Rates-page list of an item per bill type (as utils/rate-history.js RATE_FIELDS). */
+const RATE_LIST_FIELD = Object.freeze({ purchase: 'rates', retail: 'saleRates', wholesale: 'wholesaleRates' });
+
+/** A rate in whole paise; 0 for blank, zero, negative or not a number. */
+const ratePaise = (/** @type {*} */ v) => {
+    const n = toMoney(v);
+    return n !== null && n > 0 ? Math.round(n * 100) : 0;
+};
+
+/**
+ * BF-RATECHECK: today's rates of an item for a bill type, the positive rates of its
+ * Rates-page list (purchase `rates`, retail `saleRates`, wholesale `wholesaleRates`).
+ * @param {?Rec|undefined} item - catalogue item
+ * @param {'purchase'|'retail'|'wholesale'} kind
+ * @returns {number[]}
+ */
+export function todaysRates(item, kind) {
+    const list = item?.[RATE_LIST_FIELD[kind]];
+    return (Array.isArray(list) ? list : []).filter(r => ratePaise(r) > 0).map(r => ratePaise(r) / 100);
+}
+
+/**
+ * BF-RATECHECK: is a line rate extreme against today's rates? At least
+ * RATE_CHECK_FACTOR × the highest of them, or at most 1/RATE_CHECK_FACTOR of the
+ * lowest (both ends included, compared in whole paise). No today's rate, or a
+ * blank / zero rate: no check.
+ * @param {*} rate
+ * @param {Array<*>} rates - today's rates (todaysRates)
+ * @returns {?{todayRate: number, direction: 'high'|'low'}}
+ */
+export function extremeRate(rate, rates) {
+    const r = ratePaise(rate);
+    const list = (Array.isArray(rates) ? rates : []).map(ratePaise).filter(p => p > 0);
+    if (!r || list.length === 0) return null;
+    const high = Math.max(...list);
+    const low = Math.min(...list);
+    if (r >= RATE_CHECK_FACTOR * high) return { todayRate: high / 100, direction: 'high' };
+    if (r * RATE_CHECK_FACTOR <= low) return { todayRate: low / 100, direction: 'low' };
+    return null;
+}
+
+/**
+ * BF-RATECHECK: the money the confirm shows: the line at its rate and at today's
+ * rate, each BF-LINE (kg × rate, whole rupees).
+ * @param {{rate: number, qty: number, todayRate: number}} line
+ * @returns {{amount: number, todayAmount: number}}
+ */
+export function rateCheckFigures({ rate, qty, todayRate }) {
+    return { amount: computeLine({ rate, qty }).total, todayAmount: computeLine({ rate: todayRate, qty }).total };
+}
+
+/**
+ * BF-RATECHECK: the confirm stored on the line (`rateCheck`).
+ * @param {{rate: number, todayRate: number, by?: *, byName?: *, at: number}} c
+ * @returns {{rate: number, todayRate: number, by: string, byName: string, at: number}}
+ */
+export function rateCheckRecord({ rate, todayRate, by, byName, at }) {
+    return { rate: ratePaise(rate) / 100, todayRate: ratePaise(todayRate) / 100, by: String(by || ''), byName: String(byName || ''), at: Number(at) || 0 };
+}
+
+/**
+ * BF-RATECHECK: a line whose extreme rate was confirmed, for the rate it has now.
+ * @param {*} line
+ * @returns {boolean}
+ */
+export function rateConfirmed(line) {
+    const c = line?.rateCheck;
+    const r = ratePaise(c?.rate);
+    return r > 0 && r === ratePaise(readLineItem(line).rate);
+}
+
+/**
+ * BF-RATECHECK at Save: lines with an extreme rate (extremeRate against today's
+ * rates of their item) that are not confirmed. Editing a bill, a line the saved bill
+ * already has (same item, same rate) is not asked again.
+ * @param {Array<*>} items - bill lines
+ * @param {Array<Rec>} catalogue
+ * @param {'purchase'|'retail'|'wholesale'} kind
+ * @param {Array<*>} [savedItems] - lines of the saved bill being edited
+ * @returns {Array<{index: number, todayRate: number, direction: 'high'|'low'}>}
+ */
+export function linesNeedingRateCheck(items, catalogue, kind, savedItems = []) {
+    const cat = Array.isArray(catalogue) ? catalogue : [];
+    /** @type {Array<{index: number, todayRate: number, direction: 'high'|'low'}>} */
+    const out = [];
+    (Array.isArray(items) ? items : []).forEach((line, index) => {
+        if (!line || rateConfirmed(line) || savedLineOf(line, savedItems)) return;
+        const { rate, name } = readLineItem(line);
+        const item = (line.itemId && cat.find(i => i.id === line.itemId))
+            || cat.find(i => normName(name) && (normName(i.name) === normName(name) || normName(i.hindiName) === normName(name)));
+        const hit = extremeRate(rate, todaysRates(item, kind));
+        if (hit) out.push({ index, ...hit });
+    });
+    return out;
+}
+
+const normName = (/** @type {*} */ s) => String(s ?? '').trim().toLowerCase();
+const lineKeyOf = (/** @type {*} */ line) => line?.itemId || normName(readLineItem(line).name);
+
+/**
+ * The saved bill's line with the same item and rate as `line`, if any.
+ * @param {*} line
+ * @param {Array<*>} savedItems
+ * @returns {*}
+ */
+function savedLineOf(line, savedItems) {
+    const key = lineKeyOf(line);
+    const r = ratePaise(readLineItem(line).rate);
+    return (Array.isArray(savedItems) ? savedItems : [])
+        .find(l => l && lineKeyOf(l) === key && ratePaise(readLineItem(l).rate) === r) || null;
+}
+
+/**
+ * BF-RATECHECK, editing a bill: a line put back with the item and rate it had on the
+ * saved bill is not asked again and keeps that line's confirm (null when it had none).
+ * @param {*} line
+ * @param {Array<*>} savedItems - lines of the saved bill being edited
+ * @returns {{saved: boolean, rateCheck: ?Rec}}
+ */
+export function savedRateCheck(line, savedItems) {
+    const saved = savedLineOf(line, savedItems);
+    return { saved: !!saved, rateCheck: saved && rateConfirmed(saved) ? saved.rateCheck : null };
+}
+
+/** BF-BAGCHECK (owner, 8 Nov 2026): one bag / packet weight above this many kg needs a confirm (exactly 100 is fine). */
+export const BAG_WEIGHT_LIMIT_KG = 100;
+
+/** A weight in whole grams; 0 for blank, zero, negative or not a number. */
+const grams = (/** @type {*} */ v) => {
+    const n = toMoney(v);
+    return n !== null && n > 0 ? Math.round(n * 1000) : 0;
+};
+
+/**
+ * BF-BAGCHECK: is one bag / packet weight above BAG_WEIGHT_LIMIT_KG? Blank, zero or
+ * not a number: no.
+ * @param {*} kg
+ * @returns {boolean}
+ */
+export function heavyBag(kg) {
+    return grams(kg) > BAG_WEIGHT_LIMIT_KG * 1000;
+}
+
+/**
+ * BF-BAGCHECK: the weight the confirm suggests ("Did you mean 48.5?"): kg ÷ 10, to the gram.
+ * @param {*} kg
+ * @returns {number}
+ */
+export function bagWeightGuess(kg) {
+    return Math.round(grams(kg) / 10) / 1000;
+}
+
+/**
+ * BF-BAGCHECK: one confirmed bag weight, stored in the line's `weightCheck` list.
+ * @param {{kg: number, by?: *, byName?: *, at: number}} c
+ * @returns {{kg: number, by: string, byName: string, at: number}}
+ */
+export function weightCheckRecord({ kg, by, byName, at }) {
+    return { kg: grams(kg) / 1000, by: String(by || ''), byName: String(byName || ''), at: Number(at) || 0 };
+}
+
+/**
+ * BF-BAGCHECK: the heavy bag weights among `weights` and which of them a confirm
+ * covers (each record covers one bag of the same weight, to the gram).
+ * @param {Array<*>} weights - the bag / packet weights
+ * @param {Array<*>} [records] - confirms (weightCheckRecord)
+ * @returns {{confirmed: Array<Rec>, unconfirmed: number[]}}
+ */
+export function bagChecks(weights, records = []) {
+    const left = (Array.isArray(records) ? records : []).filter(r => r && heavyBag(r.kg));
+    /** @type {Array<Rec>} */
+    const confirmed = [];
+    /** @type {number[]} */
+    const unconfirmed = [];
+    (Array.isArray(weights) ? weights : []).filter(heavyBag).forEach(w => {
+        const i = left.findIndex(r => grams(r.kg) === grams(w));
+        if (i === -1) unconfirmed.push(grams(w) / 1000);
+        else confirmed.push(...left.splice(i, 1));
+    });
+    return { confirmed, unconfirmed };
+}
+
 /**
  * BF-KG: the packet weights to put back when a retail line is edited: its own
  * weights, else its kg split evenly over its packets, else its kg as one packet.
@@ -635,6 +820,17 @@ export const BILLING_SPEC = Object.freeze({
     sumWeights: 'BF-KG',
     computeLine: 'BF-KG, BF-LINE',
     pendingLine: 'BF-PENDING',
+    todaysRates: 'BF-RATECHECK',
+    extremeRate: 'BF-RATECHECK',
+    rateCheckFigures: 'BF-RATECHECK, BF-LINE',
+    rateCheckRecord: 'BF-RATECHECK',
+    rateConfirmed: 'BF-RATECHECK',
+    linesNeedingRateCheck: 'BF-RATECHECK',
+    savedRateCheck: 'BF-RATECHECK',
+    heavyBag: 'BF-BAGCHECK',
+    bagWeightGuess: 'BF-BAGCHECK',
+    weightCheckRecord: 'BF-BAGCHECK',
+    bagChecks: 'BF-BAGCHECK',
     weightsForEdit: 'BF-KG',
     draftLineSum: 'BF-TOTAL',
     computePurchaseTotals: 'BF-TOTAL, BF-LAB, BF-PAYABLE',

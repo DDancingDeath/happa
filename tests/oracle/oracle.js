@@ -967,3 +967,32 @@ export function billForm(kind, entries, { laborRate = 6, heavyKg = 30, labour, s
     }
     return out;
 }
+
+/**
+ * BF-RATECHECK (OD-02): the confirm for a line rate against the Rates-page rates of its
+ * item for the bill type: asked from 5× the highest up, or from ⅕ of the lowest down
+ * (both ends included, in paise); the line amount at each rate, kg × rate to the rupee.
+ * Blank / zero rates (typed or listed) are left out. null when not asked.
+ */
+export function rateCheckOracle({ rate, qty, listed }) {
+    const paise = (v) => {
+        const x = typeof v === 'number' ? v : parseFloat(v);
+        return Number.isFinite(x) && x > 0 ? Math.round(x * 100) : 0;
+    };
+    const r = paise(rate);
+    const list = (listed || []).map(paise).filter(p => p > 0);
+    if (!r || !list.length) return null;
+    let today = null;
+    if (r >= 5 * Math.max(...list)) today = Math.max(...list);
+    else if (r * 5 <= Math.min(...list)) today = Math.min(...list);
+    if (today === null) return null;
+    const rupee = (p) => Math.round(r2((n(qty) * p) / 100)) || 0;
+    return { todayRate: today / 100, amount: rupee(r), todayAmount: rupee(today) };
+}
+
+/** BF-BAGCHECK: one bag / packet weight is asked when above 100 kg (to the gram); the suggestion is ÷ 10. */
+export function bagCheckOracle(kg) {
+    const x = typeof kg === 'number' ? kg : parseFloat(kg);
+    const g = Number.isFinite(x) && x > 0 ? Math.round(x * 1000) : 0;
+    return g > 100000 ? { asked: true, guess: Math.round(g / 10) / 1000 } : { asked: false };
+}

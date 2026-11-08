@@ -17,6 +17,16 @@ While a bill is being typed:
 - **A line typed but not added** (BF-PENDING): Save or Print never drops it. A
   complete line (item, rate, weight) asks "Add this line and save" or "Discard
   line and save"; a half-typed one is named and the bill waits.
+- **A very different rate** (BF-RATECHECK): a rate at least 5× today's rate of the
+  item on the Rates page, or at most ⅕ of it, asks before the line is added and shows
+  the money: "15 kg × ₹260.00 = ₹3,900. Today's rate ₹26.00 would give ₹390."
+  **Fix rate** is the default; "Yes, ₹260.00 is right" adds the line and records who
+  confirmed it. The owner sees every confirmed rate on Today's Day report and in Anomalies.
+- **A very heavy bag** (BF-BAGCHECK): one bag (purchase) or packet (retail) weight above
+  100 kg asks when it is added: "Bag weight 485 kg — usually under 100 kg. Did you mean
+  48.5?" **Fix weight** is the default; "Yes, 485 kg" adds it and records who confirmed
+  it. A retail weight typed without packets is the line's total and wholesale kg are
+  totals: they are not asked. The owner sees every confirmed bag on Today's Day report and in Anomalies.
 - **Share draft (not saved)**: sends the bill on the form to WhatsApp without
   saving it; the message itself says "DRAFT, not saved". Save first to record it.
 - **Print** saves the bill, then prints it. With no printer connected the
