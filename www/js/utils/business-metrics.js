@@ -750,7 +750,7 @@ export function overdueParties(bills, now = new Date()) {
     let oldest = 0;
     late.forEach(p => {
         total += p.overdue;
-        if (p.oldestDays !== null) oldest = Math.max(oldest, p.oldestDays);
+        p.bills.forEach(b => { if (b.days !== null) oldest = Math.max(oldest, b.days); });
     });
     return { parties: late.length, total: round2(total), oldestDays: oldest };
 }

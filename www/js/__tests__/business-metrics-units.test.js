@@ -448,6 +448,8 @@ describe('I10: overdueParties', () => {
         ];
         expect(overdueParties(bills, NOW)).toEqual({ parties: 2, total: 190, oldestDays: 44 });
         expect(overdueParties(undefined, NOW)).toEqual({ parties: 0, total: 0, oldestDays: 0 });
+        // a party with an undated bill still reports its dated bills' age
+        expect(overdueParties([...bills, { customerName: 'asha', payment: { due: 5 } }], NOW)).toEqual({ parties: 2, total: 195, oldestDays: 44 });
     });
 });
 
