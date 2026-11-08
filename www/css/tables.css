@@ -8,7 +8,7 @@
 #billTable thead, #saleTable thead {
   display: table-header-group;
   background: var(--surface-muted);
-  font-weight: 600;
+  font-weight: var(--w-strong);
   color: var(--text-primary);
 }
 
@@ -21,8 +21,8 @@
   padding: 10px 8px;
   text-align: center;
   border-bottom: 1px solid var(--border-color);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-caption);
+  font-weight: var(--w-label);
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -57,7 +57,7 @@
 
 #billTable td:first-child, #saleTable td:first-child {
   text-align: left;
-  font-weight: 600;
+  font-weight: var(--w-strong);
 }
 
 #billTable td:last-child, #saleTable td:last-child {
@@ -77,7 +77,7 @@
   padding: 8px 12px;
   border-radius: var(--radius);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   cursor: pointer;
   min-width: 40px;
   transition: all var(--transition);
@@ -114,7 +114,7 @@
   justify-content: flex-end;
   padding-right: 4px;
   font-size: 22px;
-  font-weight: 700;
+  font-weight: var(--w-strong);
   color: var(--text-secondary);
   background: linear-gradient(to right, transparent, var(--card-bg) 70%);
   border-radius: 0 12px 12px 0;

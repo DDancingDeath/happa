@@ -18,7 +18,7 @@
 }
 
 .notif-bell-icon {
-  font-size: 20px;
+  font-size: var(--fs-title);
   line-height: 1;
 }
 
@@ -36,8 +36,8 @@
   border-radius: 10px;
   background: var(--btn-danger);
   color: #fff;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: var(--fs-caption);
+  font-weight: var(--w-strong);
   line-height: 20px;
   text-align: center;
   box-shadow: 0 0 0 2px #fff;
@@ -87,14 +87,14 @@
 }
 
 .notif-panel-hi {
-  font-weight: 500;
+  font-weight: var(--w-regular);
   color: var(--text-secondary);
 }
 
 .notif-close {
   border: none;
   background: transparent;
-  font-size: 28px;
+  font-size: var(--fs-display);
   line-height: 1;
   cursor: pointer;
   color: var(--text-secondary);
@@ -114,7 +114,7 @@
   border-radius: 8px;
   padding: 8px 12px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   cursor: pointer;
 }
 
@@ -163,7 +163,7 @@
 }
 
 .notif-en {
-  font-weight: 600;
+  font-weight: var(--w-strong);
   color: var(--text-primary);
   word-break: break-word;
 }
@@ -174,7 +174,7 @@
 }
 
 .notif-meta {
-  font-size: 12px;
+  font-size: var(--fs-caption);
   color: var(--text-secondary);
 }
 

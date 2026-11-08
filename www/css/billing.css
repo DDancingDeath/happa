@@ -8,7 +8,7 @@
 .form-row label {
   width: 140px;
   flex-shrink: 0;
-  font-weight: 600;
+  font-weight: var(--w-label);
   font-size: 14px;
   color: var(--text-primary);
   margin: 0;
@@ -22,7 +22,7 @@
   padding: 13px 15px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  font-size: 15px;
+  font-size: var(--fs-body);
   background: var(--card-bg);
   color: var(--text-primary);
   transition: all var(--transition);
@@ -54,7 +54,7 @@ input[type="number"] {
   padding: 12px 18px;
   border-radius: var(--radius);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   cursor: pointer;
   white-space: nowrap;
   box-shadow: var(--shadow-sm);
@@ -81,7 +81,7 @@ label {
   display: block;
   margin-top: 12px;
   margin-bottom: 8px;
-  font-weight: 600;
+  font-weight: var(--w-label);
   font-size: 14px;
   color: var(--text-primary);
 }
@@ -91,7 +91,7 @@ select, input[type="number"], input[type="text"] {
   padding: 13px 15px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  font-size: 15px;
+  font-size: var(--fs-body);
   background: var(--card-bg);
   color: var(--text-primary);
   transition: all var(--transition);
@@ -132,7 +132,7 @@ select:focus, input:focus {
   padding: 14px 20px;
   border-radius: var(--radius-md);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   cursor: pointer;
   white-space: nowrap;
   box-shadow: var(--shadow-sm);
@@ -172,7 +172,7 @@ select:focus, input:focus {
   border-radius: var(--radius-full);
   border: 2px solid var(--primary-border);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   color: var(--on-primary-soft);
   box-shadow: none;
 }
@@ -189,7 +189,7 @@ select:focus, input:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
+  font-weight: var(--w-strong);
   transition: all var(--transition);
 }
 
@@ -219,12 +219,12 @@ select:focus, input:focus {
 .summary-item span {
   font-size: 14px;
   color: var(--text-secondary);
-  font-weight: 600;
+  font-weight: var(--w-strong);
 }
 
 .summary-item strong {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: var(--w-strong);
   color: var(--text-primary);
   margin-left: 4px;
 }
@@ -237,7 +237,7 @@ select:focus, input:focus {
   padding: 16px;
   border-radius: var(--radius-md);
   font-size: 16px;
-  font-weight: 700;
+  font-weight: var(--w-strong);
   cursor: pointer;
   margin: 16px 0;
   box-shadow: var(--shadow);
@@ -295,7 +295,7 @@ select:focus, input:focus {
   width: 70px;
   padding: 10px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   border: 2px solid;
   border-radius: var(--radius);
   text-align: center;
@@ -330,7 +330,7 @@ select:focus, input:focus {
   align-items: center;
   justify-content: center;
   line-height: 1;
-  font-weight: bold;
+  font-weight: var(--w-strong);
   margin-right: 4px;
   transition: all var(--transition);
 }
@@ -344,8 +344,8 @@ select:focus, input:focus {
   height: 32px;
   border: none;
   border-radius: var(--radius);
-  font-size: 20px;
-  font-weight: bold;
+  font-size: var(--fs-title);
+  font-weight: var(--w-strong);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -406,7 +406,7 @@ select:focus, input:focus {
 .autosave-banner-actions button {
   padding: 8px 14px;
   border-radius: 6px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   cursor: pointer;
 }
 
@@ -424,7 +424,7 @@ select:focus, input:focus {
 
 .bill-no-hint {
   margin-top: 12px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 /* Voice billing (#81): shown only when switched on in Settings */
@@ -437,7 +437,7 @@ select:focus, input:focus {
   border-radius: 8px;
   background: var(--primary-soft);
   color: var(--on-primary-soft);
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 
 .voice-mic-btn[hidden] {
@@ -454,7 +454,7 @@ select:focus, input:focus {
 .voice-check th {
   text-align: left;
   padding-right: 12px;
-  font-weight: normal;
+  font-weight: var(--w-regular);
 }
 
 .voice-warn {
