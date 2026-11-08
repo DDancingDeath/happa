@@ -9,6 +9,11 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
+        // Release builds (.github/workflows/android-release.yml) take both from the tag.
+        if (System.getenv('HAPPA_VERSION_CODE')) {
+            versionCode Integer.parseInt(System.getenv('HAPPA_VERSION_CODE'))
+            versionName System.getenv('HAPPA_VERSION_NAME')
+        }
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
