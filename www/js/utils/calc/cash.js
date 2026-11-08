@@ -213,7 +213,7 @@ export function drawerStatus(session, transactions) {
     const duePaid = tx.duePaid || 0;
     const others = totalExpenses + duePaid;
     const expected = closed ? (Number(session.expectedBalance) || 0) : expectedCash(session, tx);
-    const cashIn = sales + dueReceived;
+    const cashIn = round2(sales + dueReceived);
     const totalCashIn = opening + cashAdded + cashIn;
     const totalCashOut = purchases + duePaid + totalExpenses;
     const availableCash = totalCashIn - totalCashOut;
@@ -302,8 +302,8 @@ export function openingCheck(lastClosing, opening) {
 }
 
 /**
- * Figures of one day's details: cash in with the opening, cash in without it,
- * cash out and expected (C7) from the transactions given (the saved snapshot,
+ * Figures of one day's details: opening + cash added + cash in, cash in (C1 +
+ * C4, as on the status card), cash out and expected (C7) from the transactions given (the saved snapshot,
  * or today's live totals), and the colour bands of the saved difference and of
  * counted − expected balance.
  * @param {Rec} session
@@ -317,7 +317,7 @@ export function sessionDetail(session, transactions, uncounted) {
     return {
         totals,
         totalCashIn,
-        cashIn: totalCashIn - (session.openingBalance || 0),
+        cashIn: round2((transactions?.cashSales || 0) + (transactions?.dueReceived || 0)),
         totalCashOut: totals.cashOut,
         countedLevel: differenceBand(counted).level
     };

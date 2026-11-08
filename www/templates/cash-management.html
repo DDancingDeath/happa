@@ -10,6 +10,10 @@
                     <div style="opacity: 0.9; margin-bottom: 4px;" data-i18n="ui.cash.opening_balance">Opening Balance</div>
                     <div style="font-size: 20px; font-weight: bold;" id="statusOpeningBalance">₹0</div>
                 </div>
+                <div id="statusCashAddedCard" style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; display: none;">
+                    <div style="opacity: 0.9; margin-bottom: 4px;" data-i18n="ui.cash.cash_added">Cash Added</div>
+                    <div style="font-size: 20px; font-weight: bold;" id="statusCashAdded">₹0</div>
+                </div>
                 <div id="statusCashInCard" style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px;">
                     <div style="opacity: 0.9; margin-bottom: 4px;" data-i18n="ui.cash.cash_in">Cash In</div>
                     <div style="font-size: 20px; font-weight: bold;" id="statusCashIn">₹0</div>
@@ -24,10 +28,6 @@
                 </div>
                 
                 <!-- For signed-out session: Show all 8 cards -->
-                <div id="statusCashAddedCard" style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; display: none;">
-                    <div style="opacity: 0.9; margin-bottom: 4px;" data-i18n="ui.cash.cash_added">Cash Added</div>
-                    <div style="font-size: 20px; font-weight: bold;" id="statusCashAdded">₹0</div>
-                </div>
                 <div id="statusBuyCard" style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; display: none;">
                     <div style="opacity: 0.9; margin-bottom: 4px;" data-i18n="ui.cash.purchases_buy">Purchases (Buy)</div>
                     <div style="font-size: 20px; font-weight: bold;" id="statusBuy">₹0</div>
@@ -140,7 +140,7 @@
                             <strong style="color: #3b82f6;" id="dueReceivedTotal">₹0</strong>
                         </div>
                         <div style="border-top: 2px solid #059669; margin-top: 8px; padding-top: 8px; display: flex; justify-content: space-between; font-weight: 600;">
-                            <span data-i18n="ui.cash.total_cash_in">Opening + cash in:</span>
+                            <span data-i18n="ui.cash.total_cash_in">Opening + added + cash in:</span>
                             <strong style="color: #059669;" id="totalCashIn">₹0</strong>
                         </div>
                     </div>

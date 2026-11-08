@@ -1317,7 +1317,7 @@ export class CashManagementManager {
                 
                 <!-- Cash In Group -->
                 <div style="background: #d1fae5; padding: 10px; border-radius: 8px; margin-bottom: 8px;">
-                    <h3 style="margin: 0 0 6px 0; font-size: 13px; color: #166534;">${L('ui.cash.cash_in')}</h3>
+                    <h3 style="margin: 0 0 6px 0; font-size: 13px; color: #166534;">${L('ui.cash.into_drawer')}</h3>
                     <div style="display: grid; gap: 6px; font-size: 13px;">
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.cash.opening_balance_2')}</span>

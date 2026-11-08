@@ -61,7 +61,7 @@ describe('#69 session totals', () => {
         jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async (h) => { html = h; return true; });
         await CashManagementManager.showSessionDetails('2026-10-20');
         const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-        expect(text).toContain('Opening + cash in: ₹4,050');
+        expect(text).toContain('Opening + added + cash in: ₹4,050');
         expect(text).toContain('Total Cash Out: ₹1,830');
     });
 
