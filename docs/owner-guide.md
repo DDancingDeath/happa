@@ -1,4 +1,4 @@
-# happa: owner guide
+# Bahi: owner guide
 
 A short guide for the owner: what each page shows, how its numbers are worked
 out, and what to do when something goes wrong. Plain words only; the exact
@@ -91,12 +91,12 @@ Each page has its own short file in `docs/pages/` (English and Hindi): what it s
 3. Still nothing: turn the printer off and on, then connect it again from
    Settings › Common › Bluetooth Printer.
 4. Android stops apps in the background to save battery. Open Android Settings ›
-   Apps › happa › Battery and choose **Unrestricted** (or "Don't optimise"), so the
+   Apps › Bahi › Battery and choose **Unrestricted** (or "Don't optimise"), so the
    printer link is not cut.
 5. The bill is saved even when printing fails: its picture opens with **Print**,
    to try again once the printer is on (3 tries in all), or reprint later from History.
 6. "Bluetooth permission needed" banner (Android 12 and newer): tap **Allow**, or
-   allow **Nearby devices** in Android Settings › Apps › happa › Permissions.
+   allow **Nearby devices** in Android Settings › Apps › Bahi › Permissions.
 
 ### The phone's clock is wrong
 
