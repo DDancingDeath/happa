@@ -370,8 +370,8 @@ export const InsightsManager = {
         const bought = purchaseItems(AppState.purchaseHistory || [], AppState.items || [], r);
         const paid = this.may('purchaseRates');
         this.html('insightsBoughtTable', bought.length
-            ? `<thead><tr><th>${esc(t('ui.insights.item'))}</th><th class="num">${esc(t('ui.insights.kg'))}</th>${paid ? `<th class="num" data-perm="purchaseRates">${esc(t('ui.insights.paid'))}</th>` : ''}</tr></thead><tbody>`
-                + bought.map(x => `<tr data-item="${esc(x.itemKey)}"><td>${esc(nameOf(x))}</td><td class="num">${roundTo(x.qty)}</td>${paid ? `<td class="num" data-perm="purchaseRates">${money(x.amount)}</td>` : ''}</tr>`).join('') + '</tbody>'
+            ? `<thead><tr><th>${esc(t('ui.insights.item'))}</th><th class="num">${esc(t('ui.insights.kg'))}</th>${paid ? `<th class="num" data-perm="purchaseRates">${esc(t('ui.insights.bought_for'))}</th>` : ''}</tr></thead><tbody>`
+                + bought.map(x => `<tr data-item="${esc(x.itemKey)}"><td>${esc(nameOf(x))}</td><td class="num">${formatKg(roundTo(x.qty))}</td>${paid ? `<td class="num" data-perm="purchaseRates">${money(x.amount)}</td>` : ''}</tr>`).join('') + '</tbody>'
             : `<tr><td>${esc(t('ui.insights.no_purchases'))}</td></tr>`);
     },
 
@@ -409,7 +409,7 @@ export const InsightsManager = {
         const rows = partySummary(src, kind, r);
         const lang = getLang();
         const table = (list) => (list.length
-            ? `<thead><tr><th>${esc(t('ui.insights.party'))}</th><th class="num">${esc(t(kind === 'sales' ? 'ui.money.sales' : 'ui.insights.paid'))}</th><th class="num">${esc(t('ui.insights.bills'))}</th><th class="num">${esc(t('ui.insights.last_bill'))}</th></tr></thead><tbody>`
+            ? `<thead><tr><th>${esc(t('ui.insights.party'))}</th><th class="num">${esc(t(kind === 'sales' ? 'ui.money.sales' : 'ui.insights.bought_for'))}</th><th class="num">${esc(t('ui.insights.bills'))}</th><th class="num">${esc(t('ui.insights.last_bill'))}</th></tr></thead><tbody>`
                 + list.map(p => `<tr data-party="${esc(p.key)}"><td>${esc(p.name || t('ui.insights.walk_in'))}</td><td class="num">${money(p.total)}</td><td class="num">${p.count}</td><td class="num">${esc(p.last ? formatDay(p.last, { lang, year: false }) : '—')}</td></tr>`).join('') + '</tbody>'
             : `<tr><td>${esc(t('ui.insights.no_parties'))}</td></tr>`);
         const cust = document.getElementById('insightsCustomersTable');

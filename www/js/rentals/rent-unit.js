@@ -73,7 +73,7 @@ export async function toUnit(c, tenant, unitId = '') {
     const open = c.dialog(`<h3>${c.esc(t(from ? 'ui.rent.change_unit' : tenant ? 'ui.rent.move_in' : 'ui.rent.add_tenant'))}${pick ? '' : `: ${c.esc(c.placeOf(ix, unitId))}`}</h3>
         ${pick ? unitPickHtml(c, 'rentLeaseUnit', d, { none: false, attrs: ' data-onchange="rentals.fillRent(this)"' }) : ''}
         ${c.tenantSectionHtml({ rent: shown.rent, meterRate: shown.meterRate, fixedTenant: tenant && { id: '', ...tenant }, ...(from ? keptTerms(from, defs) : { defs }) })}
-        ${from ? splitHtml(c, mgr) : ''}`);
+        ${from ? splitHtml(c, mgr) : ''}`, { check: () => c.checkTenantSection({ given: tenant?.id ? null : tenant }) });
     if (from) {
         el('rentTProRate')?.closest('label')?.setAttribute('hidden', '');
         const refill = () => fillSplit(from, d);
