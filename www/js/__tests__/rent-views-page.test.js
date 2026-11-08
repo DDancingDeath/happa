@@ -51,7 +51,7 @@ async function show(mode = 'advanced') {
     _test.state.page = 'rent';
     _test.state.mode = mode;
     _test.state.month = M;
-    ['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges', 'monthExpenses'].forEach(k => _test.state.loaded.add(k));
+    ['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges', 'monthPaid', 'monthExpenses'].forEach(k => _test.state.loaded.add(k));
     await _test.render();
     return document.getElementById('rentalsBody');
 }
@@ -66,7 +66,7 @@ test('property wise (default): cards with type counts, then a property grouped b
     let root = await show();
     expect(root.textContent).toContain('2 flats · 1 commercial');
     expect(root.textContent).toContain('2 occupied · 1 vacant');
-    expect(root.textContent).toMatch(/This month: ₹20,000 rent, ₹10,000 collected/);
+    expect(root.textContent).toMatch(/This month: ₹20,000 rent, ₹10,000 paid/);
     RentalsModule.api.openProperty('P1');
     root = document.getElementById('rentalsBody');
     const groups = [...root.querySelectorAll('.rent-group-title')].map(h => h.textContent);
@@ -123,22 +123,30 @@ test('no properties yet: the Rent page offers Add property, and the side menu ma
 });
 
 describe('This month in Simple', () => {
-    const OWES = () => ({
-        ...DATA,
-        tenants: [...DATA.tenants, { id: 'T3', name: 'Hari' }],
-        charges: [
+    // Ram paid ₹8,000 of an older month this month: that month is closed, so only the "touched this month" listener has it.
+    const OLD_PAID = { id: 'L1_2025-10', leaseId: 'L1', unitId: 'U1', tenantId: 'T1', month: '2025-10', dueDay: 10, amount: 8000, paid: 8000, open: false,
+        payments: [{ amount: 8000, mode: 'cash', date: `${M}-02` }] };
+    const OWES = () => {
+        const charges = [
             ...global.__rentData.charges,
             { id: 'L3_2025-11', leaseId: 'L3', unitId: 'U3', tenantId: 'T2', month: '2025-11', dueDay: 28, amount: 12000, paid: 0, payments: [] },
             { id: 'L9_2025-12', leaseId: 'L9', unitId: 'U2', tenantId: 'T3', tenantName: 'Hari', month: '2025-12', dueDay: 10, amount: 5000, paid: 0, payments: [] }
-        ]
-    });
+        ];
+        return { ...DATA, tenants: [...DATA.tenants, { id: 'T3', name: 'Hari' }], charges, paidCharges: [...charges, OLD_PAID] };
+    };
     let saved;
     beforeEach(() => { saved = global.__rentData; global.__rentData = OWES(); AppState.currentUser = { uid: 'u1' }; setLang('en'); });
     afterEach(() => { global.__rentData = saved; });
 
     test('collected of the month rent, who owes (a moved-out tenant once, late first), paid folded, one filled button', async () => {
         const root = await show('simple');
-        expect(root.textContent).toContain('Collected ₹10,000 of ₹20,000');
+        expect(root.textContent).toContain("This month's rent: ₹10,000 paid of ₹20,000");
+        // RENT-20: the ₹8,000 that came in this month for an older month
+        expect(root.querySelector('[data-rent-received]').textContent).toBe('Received this month: ₹8,000');
+        // RENT-21: each tenant's month (Hari moved out: none)
+        expect(root.querySelector('[data-lease="L3"] [data-rent-month-state]').textContent).toBe('This month: part paid, ₹2,000 of ₹12,000');
+        expect(root.querySelector('[data-lease="L1"] [data-rent-month-state]').textContent).toBe('This month: paid');
+        expect(root.querySelector('[data-lease="L9"] [data-rent-month-state]')).toBeNull();
         expect(root.textContent).toContain('Total due (all months): ₹27,000');
         const owing = [...root.querySelectorAll('#rentalsBody > .rent-list > [data-lease]')].map(e => e.getAttribute('data-lease'));
         expect(owing).toEqual(['L3', 'L9']);
@@ -149,6 +157,18 @@ describe('This month in Simple', () => {
         expect(root.textContent).toContain('2 vacant units');
         expect(root.querySelectorAll('.rent-btn-primary').length).toBe(1);
         expect(root.querySelector('.rent-filters, .rent-prop-card')).toBeNull();
+    });
+
+    test('Received this month waits for its listener ("—"), and Hindi', async () => {
+        _test.state.loaded.delete('monthPaid');
+        document.body.innerHTML = '<div id="rentals" class="tab active"><div id="rentalsNotice"></div><div id="rentalsBody"></div></div>';
+        _test.state.mode = 'simple';
+        await _test.render();
+        expect(document.querySelector('[data-rent-received]').textContent).toBe('Received this month: —');
+        setLang('hi');
+        const root = await show('simple');
+        expect(root.querySelector('[data-rent-received]').textContent).toBe('इस महीने मिला: ₹8,000');
+        expect(root.querySelector('[data-lease="L3"] [data-rent-month-state]').textContent).toBe('इस महीने: ₹12,000 में से ₹2,000 चुकाया');
     });
 
     test('Needs attention shows what Today shows (REM-2, REM-4), the meter readings to enter (REM-7), and opens the action', async () => {

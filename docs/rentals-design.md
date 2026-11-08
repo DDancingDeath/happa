@@ -225,7 +225,7 @@ reads. At the limit the owner gave (100 properties, say 300 units/tenants/leases
 
 | Screen / action | Reads (first open of the day) | Re-open within 30 min | Writes |
 |---|---|---|---|
-| Enter Rentals (5 listeners: properties, units, tenants, active leases, open + this month's charges) | ≈ 100 + 300 + 300 + 300 + 400 + 300 ≈ **1,700** | only changed docs (offline persistence resumes the listen) | 0 |
+| Enter Rentals (5 listeners: properties, units, tenants, active leases, open + this month's charges; V2 OD-07 adds charges updated since the 1st for RENT-20, ≈ this month's charges + the older months paid this month, ≈ +300) | ≈ 100 + 300 + 300 + 300 + 400 + 300 ≈ **1,700** (+ ≈ 300) | only changed docs (offline persistence resumes the listen) | 0 |
 | Monthly charge generation | 1 per lease once a month (≈ 300) | 0 | 1–2 per lease per month |
 | Rent / Tenants / Properties pages | 0 (same listeners, switching pages re-renders from memory) | 0 | 0 |
 | Record a payment | 1 (transaction) | – | 1 + 1 audit |

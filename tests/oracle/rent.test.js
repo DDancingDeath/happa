@@ -5,11 +5,12 @@
  * (change of unit, the move month) against the same module; RENT-14 / RENT-15
  * (deposit ledger) on generated entries; RENT-16 (advance carried forward) on
  * generated payments; RENT-17 / RENT-18 (property expenses, net) on generated
- * expenses.
+ * expenses; RENT-20 (received this month) on generated payments; RENT-21 (a tenant's month state).
  */
 import fc from 'fast-check';
 import {
-    monthsToCharge, newCharge, applyPayment, rentTotals, leaseDues, firstMonthRent, withAdvance, payOldestFirst, payAmount, expenseTotals, netOf
+    monthsToCharge, newCharge, applyPayment, rentTotals, leaseDues, firstMonthRent, withAdvance, payOldestFirst, payAmount, expenseTotals, netOf,
+    receivedIn, monthState
 } from '../../www/js/rentals/rent-math.js';
 import { depositEntry, depositHeld, depositsTotal, moveMonthRent, oldMonth } from '../../www/js/rentals/rent-math-ledger.js';
 
@@ -258,5 +259,54 @@ describe('property expenses and net (RENT-17, RENT-18)', () => {
             }
             expect(netOf(coll, got.total)).toBe(net);
         }), { seed: 1572, numRuns: Number(process.env.FC_RUNS) || 100 });
+    });
+});
+
+describe('RENT-20: received this month = money in dated in the month (V2 OD-07)', () => {
+    const MODES = ['cash', 'upi', 'bank', 'cheque', 'advance', 'deposit'];
+    test('Σ amount + advance of payments dated in the month, each charge once (two listeners can hold the same charge); advance and deposit moves are not money in', () => {
+        fc.assert(fc.property(
+            fc.array(fc.array(fc.record({
+                amount: fc.integer({ min: 1, max: 20000 }), adv: fc.constantFrom(0, 0, 500), mode: fc.constantFrom(...MODES),
+                day: fc.constantFrom('2026-05-31', '2026-06-01', '2026-06-15', '2026-06-30', '2026-07-01')
+            }), { maxLength: 4 }), { maxLength: 8 }),
+            fc.array(fc.nat({ max: 7 }), { maxLength: 5 }),
+            (perCharge, dupes) => {
+                const charges = perCharge.map((ps, i) => ({ id: `c${i}`, month: MONTHS[i % MONTHS.length],
+                    payments: ps.map(p => ({ amount: p.amount, ...(p.adv ? { adv: p.adv } : {}), mode: p.mode, date: p.day })) }));
+                const listed = [...charges, ...dupes.filter(i => i < charges.length).map(i => charges[i])];
+                let want = 0;
+                for (const ps of perCharge) {
+                    for (const p of ps) if (p.day.startsWith('2026-06') && p.mode !== 'advance' && p.mode !== 'deposit') want += p.amount + p.adv;
+                }
+                expect(receivedIn(listed, '2026-06')).toBe(want);
+            }
+        ), { numRuns: 300, seed: 207 });
+    });
+
+    test('the owner\'s case: ₹8,000 of arrears paid today counts as received this month, while this month\'s rent paid stays ₹0', () => {
+        const lease = { id: 'L1', unitId: 'U1', propertyId: 'P1', tenantId: 'T1', rent: 4000, dueDay: 10 };
+        const open = ['2026-04', '2026-05', '2026-06'].map(m => ({ ...newCharge(lease, m, { tenantName: 'Ram', unitLabel: '1A' }), id: `L1_${m}` }));
+        const parts = payOldestFirst(open, 8000, '2026-06');
+        const charges = open.map(c => {
+            const part = parts.find(p => p.id === c.id);
+            if (!part) return c;
+            const next = applyPayment(c, part.amount, false, true);
+            return { ...c, paid: next.paid, open: next.open, payments: [{ amount: next.amount, mode: 'cash', date: '2026-06-08' }] };
+        });
+        expect(parts.map(p => p.month)).toEqual(['2026-04', '2026-05']);
+        expect(receivedIn(charges, '2026-06')).toBe(8000);
+        expect(rentTotals(charges, '2026-06').collected).toBe(0);
+    });
+});
+
+describe('RENT-21: a tenant\'s state for the month (paid / part paid ₹X of ₹Y / due)', () => {
+    test('from the month\'s charge: nothing paid = due, some = part paid with paid and amount, all = paid; no charge = none', () => {
+        fc.assert(fc.property(fc.integer({ min: 0, max: 30000 }), fc.integer({ min: 0, max: 30000 }), (amount, paidRaw) => {
+            const paid = Math.min(paidRaw, amount);
+            const want = paid >= amount ? 'paid' : paid > 0 ? 'partial' : 'due';
+            expect(monthState({ month: '2026-06', amount, paid })).toEqual({ status: want, paid, amount, due: amount - paid });
+        }), { numRuns: 300, seed: 207 });
+        expect(monthState(null)).toBeNull();
     });
 });

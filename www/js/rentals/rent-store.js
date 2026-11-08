@@ -7,7 +7,7 @@
 
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
-import { todayLocalISO } from '../utils/dates.js';
+import { todayLocalISO, parseLocalDate } from '../utils/dates.js';
 import {
     applyPayment, withAdvance, advanceBack, addAdvance, applyMeter, chargeId, monthsToCharge, newCharge, isMonth, addMonths, monthRange, normalizeRentSettings, firstMonthRent,
     receiptNo, receiptAmounts, istYear, MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, MAX_BACKFILL_MONTHS
@@ -26,6 +26,7 @@ export const LISTEN_LIMITS = {
     openCharges: 2 * MAX_PROPERTIES * MAX_UNITS_PER_PROPERTY,
     linked: 2 * MAX_PROPERTIES * MAX_UNITS_PER_PROPERTY,
     monthCharges: MAX_PROPERTIES * MAX_UNITS_PER_PROPERTY,
+    monthPaid: 2 * MAX_PROPERTIES * MAX_UNITS_PER_PROPERTY,
     monthExpenses: MAX_PROPERTIES * MAX_UNITS_PER_PROPERTY
 };
 
@@ -39,7 +40,7 @@ export const uid = () => AppState.currentUser?.uid || null;
 
 const data = {
     properties: new Map(), units: new Map(), tenants: new Map(), leases: new Map(),
-    openCharges: new Map(), monthCharges: new Map(), linked: new Map(), monthExpenses: new Map()
+    openCharges: new Map(), monthCharges: new Map(), monthPaid: new Map(), linked: new Map(), monthExpenses: new Map()
 };
 let unsubs = [];
 const truncated = new Set();
@@ -75,6 +76,8 @@ export function attach(month, onChange) {
     listen('linked', coll('rent_leases').where('shareToken', '>', ''));
     listen('openCharges', coll('rent_charges').where('open', '==', true));
     listen('monthCharges', coll('rent_charges').where('month', '==', month));
+    // RENT-20: charges touched since the month began (older months paid off this month are no longer open).
+    listen('monthPaid', coll('rent_charges').where('updatedAt', '>=', parseLocalDate(`${month}-01`)?.getTime() || Date.now()));
     // RENT-17: this month's property expenses (Rent page totals and property cards).
     listen('monthExpenses', coll('rent_expenses').where('month', '==', month));
 }
@@ -99,6 +102,7 @@ export function snapshot() {
         leases: [...data.leases.values()],
         linked: [...data.linked.values()],
         charges: [...charges.values()],
+        paidCharges: [...charges.values(), ...data.monthPaid.values()],
         expenses: [...data.monthExpenses.values()]
     };
 }
