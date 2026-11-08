@@ -686,11 +686,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // STEP 3: Initialize Firebase auth listener
     if (typeof firebase !== 'undefined' && firebase.auth) {
+        // Back from the Google redirect (web fallback): its profile check runs first
+        AuthManager.resumeGoogleRedirect();
         firebase.auth().onAuthStateChanged(user => {
             markStartup('auth', { signedIn: !!user });
             if (user) {
                 // Registration signs in temporarily to create/recover the profile and then signs
-                // out; don't start loading the app (and showing its errors) for that sign-in.
+                // out, and Google sign-in checks the profile first; don't start the app for those.
                 if (AuthManager.authFlowInProgress) return;
                 // Set current user in AppState
                 AppState.currentUser = user;
@@ -904,7 +906,10 @@ window.app = {
         logout: () => AuthManager.handleLogout(),
         forgotPassword: () => AuthManager.handleForgotPassword(),
         sendPasswordReset: () => AuthManager.handleSendPasswordReset(),
-        togglePassword: (inputId, btn) => AuthManager.togglePassword(inputId, btn)
+        togglePassword: (inputId, btn) => AuthManager.togglePassword(inputId, btn),
+        google: () => AuthManager.signInWithGoogle(),
+        googleLink: () => AuthManager.linkGoogle(),
+        googleLinkCancel: () => AuthManager.cancelGoogleLink()
     },
     
     // App language (#143): Settings switch + login card links

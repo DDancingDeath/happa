@@ -8,5 +8,9 @@ export const APP_IDENTITY = Object.freeze({
     "downloadPageUrl": "https://myhappa.web.app/download",
     "apkFile": "happa.apk",
     "apkDownloadUrl": "https://github.com/DDancingDeath/happa/releases/latest/download/happa.apk",
-    "latestReleaseApi": "https://api.github.com/repos/DDancingDeath/happa/releases/latest"
+    "latestReleaseApi": "https://api.github.com/repos/DDancingDeath/happa/releases/latest",
+    "googleSignIn": {
+        "web": false,
+        "android": false
+    }
 });

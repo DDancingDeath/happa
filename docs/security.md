@@ -44,7 +44,7 @@ font-src 'self' data:;
 connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com
             https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com
             https://apis.google.com https://www.google.com https://api.github.com;
-worker-src 'self'; manifest-src 'self'; frame-src https://happa-bfc07.firebaseapp.com;
+worker-src 'self'; manifest-src 'self'; frame-src 'self' https://happa-bfc07.firebaseapp.com;
 object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 ```
 
@@ -55,7 +55,7 @@ object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 | `https://cdn.sheetjs.com` (script) | Excel export (`ensureXLSX()`, pinned with SRI) |
 | `firestore.googleapis.com` | Firestore SDK and the tenant page's single REST read |
 | `identitytoolkit.googleapis.com`, `securetoken.googleapis.com` | Firebase Auth sign-in and token refresh |
-| `apis.google.com` (script, connect), `www.google.com` (connect), `happa-bfc07.firebaseapp.com` (frame) | Firebase Auth (compat) on **phones** (and Safari) loads Google's `gapi` loader at start-up and frames `<authDomain>/__/auth/iframe` (its popup/redirect helper), even though the app only signs in with email + password. Found by the E2E phone runs. These scripts can't carry SRI; dropping them needs Auth without the popup/redirect resolver (modular SDK), a separate change |
+| `apis.google.com` (script, connect), `www.google.com` (connect), `happa-bfc07.firebaseapp.com` and `'self'` (frame) | Firebase Auth (compat) on **phones** (and Safari) loads Google's `gapi` loader at start-up and frames `<authDomain>/__/auth/iframe` (its popup/redirect helper), even when the person signs in with email + password. Found by the E2E phone runs. These scripts can't carry SRI; dropping them needs Auth without the popup/redirect resolver (modular SDK), a separate change. `'self'`: with Google sign-in on, the helper is the site's own `/__/auth/` ([google-sign-in.md](google-sign-in.md)) |
 | `firebaseinstallations.googleapis.com` | not called today; listed for the Firebase SDKs that use it (App Check, see below) |
 | `api.github.com` | the "Update available" check |
 | `data:` / `blob:` images | receipts and bill images drawn on a canvas, the inline favicon, downloads |
@@ -90,7 +90,7 @@ script and an `onclick=` attribute don't run) and listens for `securitypolicyvio
 while the app loads, signs in and opens the main pages, `/download`, `/r/` and the printer test page `/spike/serial.html`. The CI checks cover every HTML file under `www/` (`spike/`, `r.html`, templates included).
 When you add a new external origin, add it to the CSP in
 `firebase.json` in the same PR. `frame-src` must name the project's `authDomain`
-(the test reads it from `www/firebaseConfig.js`), so a project change updates it too.
+(the test reads it from `www/firebaseConfig.js`); `npm run apply:happa-config` writes it from the project id, so a project change updates it too.
 
 `tests/e2e/external-origins.spec.js` covers the two non-Firebase loads that no
 page does on its own: the Excel export (real script load from `cdn.sheetjs.com`,
@@ -135,6 +135,10 @@ separate change tested on a device, because:
   (the WebView is a phone browser to Firebase Auth, so gapi and the authDomain frame too).
 - A meta tag can't set `frame-ancestors`, `report-uri` or `sandbox`, and it would also
   apply on the web next to the header (both must pass) and in E2E.
+
+Google sign-in in the APK never opens a Google page in the WebView: the native account picker
+(`@capacitor-firebase/authentication`) returns an ID token and the JS SDK signs in with it
+([google-sign-in.md](google-sign-in.md)).
 
 ## innerHTML audit (#89, 2 Nov 2026)
 
