@@ -223,6 +223,21 @@
   }
 }
 
+/* "Continue with Google" button: Google's own light and dark button colours (its branding guidelines) */
+:root {
+  --google-btn-bg: #ffffff;
+  --google-btn-line: #747775;
+  --google-btn-ink: #1f1f1f;
+}
+
+@media screen {
+  [data-mode="dark"] {
+    --google-btn-bg: #131314;
+    --google-btn-line: #8e918f;
+    --google-btn-ink: #e3e3e3;
+  }
+}
+
 /* Layout, type scale, density and motion: the same in every theme */
 :root {
   --w-label: 600;
@@ -625,6 +640,42 @@ input[type="number"],
 .badge-info {
   background: var(--info-light);
   color: var(--info-dark);
+}
+
+/* ---- css/icons.css ---- */
+/* Line icons (redesign 2.4, DIRECTION 3.5): 24 grid, 1.75 stroke, currentColor. Sprite in templates/navigation.html */
+.icon-sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.i {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  vertical-align: middle;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.i-sm {
+  width: 16px;
+  height: 16px;
+}
+
+.i-lg {
+  width: 24px;
+  height: 24px;
+}
+
+.i-fill {
+  fill: currentColor;
+  stroke: none;
 }
 
 /* ---- css/forms.css ---- */
@@ -1100,13 +1151,16 @@ input[type="checkbox"].switch:focus-visible,
   height: 100%;
   background: var(--light-bg);
   display: flex;
-  align-items: center;
+  /* Centred while it fits; scrolls from the top when it doesn't (Google's link form on a phone) */
+  align-items: flex-start;
   justify-content: center;
+  overflow-y: auto;
   z-index: 10000;
   padding: 20px;
 }
 
 .auth-container {
+  margin: auto 0;
   background: var(--card-bg);
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-color);
@@ -1353,6 +1407,80 @@ input[type="checkbox"].switch:focus-visible,
   display: none;
 }
 
+/* "Continue with Google" (docs/google-sign-in.md): Google's sign-in button guidelines (its
+   light / dark colours, the multicolour G, "Continue with Google"); 44 px tall for touch. */
+.auth-google {
+  padding: 0 24px 24px;
+}
+
+.auth-google[hidden],
+.auth-google-link[hidden],
+.google-btn[hidden] {
+  display: none;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--border-color);
+}
+
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  background: var(--google-btn-bg);
+  color: var(--google-btn-ink);
+  border: 1px solid var(--google-btn-line);
+  border-radius: 4px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
+  letter-spacing: 0.25px;
+  cursor: pointer;
+}
+
+.google-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.google-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.google-btn-logo {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.auth-google-link {
+  margin-top: 8px;
+}
+
+.auth-google-hint {
+  margin-bottom: 16px;
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
 /* Language choice before signing in */
 .auth-lang-links {
   display: flex;
@@ -1565,10 +1693,11 @@ body {
 }
 
 .nav-icon {
-  font-size: var(--fs-title);
+  display: inline-flex;
+  justify-content: center;
+  flex: none;
   margin-right: 14px;
   width: 28px;
-  text-align: center;
 }
 
 /* Business switcher (#149): the menu shows only the current business's pages */
@@ -1635,8 +1764,7 @@ body {
 }
 
 .bottom-nav-icon {
-  font-size: var(--fs-title);
-  line-height: 1;
+  display: inline-flex;
   padding: 3px 16px;
   border-radius: var(--radius-full);
   transition: background var(--transition);
@@ -8320,6 +8448,7 @@ body.dark-mode .app-sheet-fallback {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background: var(--card-bg);
+  color: var(--text-primary);
   box-shadow: var(--shadow-sm);
   cursor: pointer;
   display: flex;
@@ -8329,8 +8458,7 @@ body.dark-mode .app-sheet-fallback {
 }
 
 .notif-bell-icon {
-  font-size: var(--fs-title);
-  line-height: 1;
+  display: inline-flex;
 }
 
 .notif-bell.notif-error .notif-bell-icon {
@@ -8886,6 +9014,7 @@ body.dark-mode .notif-panel-actions {
     height: 40px;
     border-color: transparent;
     background: rgba(255, 255, 255, 0.18);
+    color: var(--on-accent);
     box-shadow: none;
   }
 
@@ -8923,7 +9052,6 @@ body.dark-mode .notif-panel-actions {
   }
 
   .nav-icon {
-    font-size: 18px;
     margin-right: 10px;
   }
 

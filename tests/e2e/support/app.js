@@ -34,14 +34,14 @@ const isReady = () => {
     return !!ac && !ac.classList.contains('hidden') && !(ov && ov.classList.contains('active')) && au && au.style.display === 'none';
 };
 
-async function openApp(page) {
+async function openApp(page, search = '?emulator=1') {
     // Keep the one-time "What's new" sheet and the update banner out of the way.
     await page.addInitScript((version) => {
         localStorage.setItem('aadhat.lastSeenVersion', version);
         localStorage.setItem('aadhat.updateLastCheck', String(Date.now()));
         localStorage.setItem('aadhat.updateDismissedVersion', '999.0.0');
     }, APP_VERSION);
-    await page.goto('/?emulator=1', { waitUntil: 'domcontentloaded' });
+    await page.goto(`/${search}`, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#loginEmail', { state: 'visible' });
 }
 
@@ -107,4 +107,4 @@ async function clickAfterTyping(page, selector) {
     await page.click(selector);
 }
 
-module.exports = { test, expect: base.expect, login, openApp, showTab, settle, expectToast, confirmModalIfOpen, clickAfterTyping };
+module.exports = { test, expect: base.expect, isReady, login, openApp, showTab, settle, expectToast, confirmModalIfOpen, clickAfterTyping };

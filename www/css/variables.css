@@ -221,6 +221,21 @@
   }
 }
 
+/* "Continue with Google" button: Google's own light and dark button colours (its branding guidelines) */
+:root {
+  --google-btn-bg: #ffffff;
+  --google-btn-line: #747775;
+  --google-btn-ink: #1f1f1f;
+}
+
+@media screen {
+  [data-mode="dark"] {
+    --google-btn-bg: #131314;
+    --google-btn-line: #8e918f;
+    --google-btn-ink: #e3e3e3;
+  }
+}
+
 /* Layout, type scale, density and motion: the same in every theme */
 :root {
   --w-label: 600;

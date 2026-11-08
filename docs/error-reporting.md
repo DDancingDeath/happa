@@ -92,7 +92,8 @@ grow about as much; turning on R8 would win most of it back.
 **Set-up (owner, once).** Until this is done the APK builds and runs as before
 and the switch says "Not set up in this version of the app yet":
 1. Firebase console › project `happa-bfc07` › Project settings › Add app ›
-   Android, package name `com.happa` (no SHA-1 needed for Crashlytics).
+   Android, package name `com.happa` (no SHA-1 needed for Crashlytics; Google sign-in needs the
+   release key's SHA-1 and SHA-256: [google-sign-in.md](google-sign-in.md), which uses the same file and secret).
 2. Download `google-services.json`. It is configuration, not a secret, but keep
    it out of the public repo: GitHub › Settings › Secrets › Actions › new secret
    `GOOGLE_SERVICES_JSON` with the file's whole text.

@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v589';
+const CACHE_NAME = 'happa-v593';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -293,7 +293,8 @@ const LAZY_ASSETS = [
     '/js/rentals/rent-tenants.js',
     '/js/rentals/rent-advanced.js',
     '/js/rentals/rent-meter.js',
-    '/js/rentals/rent-unit.js'
+    '/js/rentals/rent-unit.js',
+    '/js/auth/google-signin.js'
 ];
 
 /**
@@ -368,6 +369,12 @@ self.addEventListener('fetch', (event) => {
     // The tenant rent-history page (/r/<token>) is not part of the app: never
     // serve it from (or store it in) the app cache, and never fall back to the app.
     if (url.pathname === '/r.html' || url.pathname.startsWith('/r/')) {
+        return;
+    }
+
+    // Firebase Hosting's reserved paths (/__/auth/handler and iframe for Google sign-in, docs/google-sign-in.md):
+    // never cached (the handler URL carries one-time OAuth codes) and never answered with the app.
+    if (url.pathname.startsWith('/__/')) {
         return;
     }
     

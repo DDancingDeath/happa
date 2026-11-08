@@ -36,6 +36,19 @@ test.each([
     expect(caches.match).not.toHaveBeenCalled();
 });
 
+// Google sign-in's same-origin helper (docs/google-sign-in.md): its return URL carries a one-time code
+test.each([
+    'https://myhappa.web.app/__/auth/handler?state=s&code=one-time',
+    'https://myhappa.web.app/__/auth/iframe?apiKey=k'
+])('Hosting\'s reserved %s is neither cached nor answered with the app', (url) => {
+    const { fetchHandler, caches } = loadSw();
+    const e = event(url);
+    fetchHandler(e);
+    expect(e.respondWith).not.toHaveBeenCalled();
+    expect(caches.match).not.toHaveBeenCalled();
+    expect(caches.open).not.toHaveBeenCalled();
+});
+
 test('app pages are still handled (control)', () => {
     const { fetchHandler } = loadSw();
     const e = event('https://myhappa.web.app/');

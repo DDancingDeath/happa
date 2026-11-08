@@ -66,6 +66,30 @@ describe('happa.config.json', () => {
         expect(files['www/download.html']).toContain('releases/latest/download/happa.apk');
         expect(files['android/app/build.gradle']).toMatch(/applicationId "com\.happa"/);
         expect(files['android/app/build.gradle']).toMatch(/namespace "com\.happa"/);
+        // A new project moves the CSP's Auth frame with it (Google sign-in, docs/google-sign-in.md)
+        const appCsp = JSON.parse(files['firebase.json']).hosting.headers[0].headers.find((h) => h.key === 'Content-Security-Policy').value;
+        expect(appCsp).toContain("frame-src 'self' https://happa-shop.firebaseapp.com;");
+        expect(appCsp).not.toContain('happa-bfc07');
+    });
+
+    test('Google sign-in is off unless switched on, per platform, from happa.config.json', () => {
+        const off = Object.fromEntries(plan(ROOT, filled()).map((p) => [p.file, p.wanted]));
+        expect(off['www/js/config/app-identity.js']).toContain('"googleSignIn": {\n        "web": false,\n        "android": false\n    }');
+        expect(off['www/firebaseConfig.js']).toContain('const googleSignInWeb = false;\n// </happa-config>');
+
+        const raw = filled();
+        raw.googleSignIn = { web: true, android: false };
+        const on = Object.fromEntries(plan(ROOT, raw).map((p) => [p.file, p.wanted]));
+        expect(on['www/firebaseConfig.js']).toContain('const googleSignInWeb = true;');
+        expect(derive(raw).googleSignIn).toEqual({ web: true, android: false });
+        expect(configProblems(raw)).toEqual([]);
+
+        delete raw.googleSignIn;
+        expect(derive(raw).googleSignIn).toEqual({ web: false, android: false });
+        raw.googleSignIn = { web: 'yes' };
+        expect(configProblems(raw).join('\n')).toMatch(/googleSignIn must be/);
+        raw.googleSignIn = { ios: true };
+        expect(configProblems(raw).join('\n')).toMatch(/googleSignIn must be/);
     });
 
     test('only the app site serves www/; redirect sites only 301 every path to it', () => {
