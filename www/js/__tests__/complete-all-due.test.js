@@ -19,7 +19,7 @@ jest.mock('../firebase/repos/bill-payments.js', () => ({
     updateBillsInTransaction: jest.fn()
 }));
 jest.mock('../services/printer.js', () => ({ PrinterService: {} }));
-jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}), ACTIONS: { UPDATE_PAYMENT: 'UPDATE_PAYMENT' } } }));
+jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}), entry: jest.fn((action, details) => ({ action, details })), ACTIONS: { UPDATE_PAYMENT: 'UPDATE_PAYMENT' } } }));
 jest.mock('../ui/infinite-scroll.js', () => ({ attachOlderHistoryScroll: jest.fn() }));
 
 import { updateBillsInTransaction } from '../firebase/repos/bill-payments.js';
@@ -40,12 +40,16 @@ const bill = (id, customerName, due, extra = {}) => ({
     payment: { cash: 100, online: 0, due, total: 100 }, dueAmount: due, payments: [], ...extra
 });
 
+/** Audit entries the transactions wrote (D-3: in the same commit as the bills). */
+let audits = [];
+
 /** Runs the transaction's change on copies of `server` and applies its writes there (through the repository's due writer). */
 function serverTx(server) {
     updateBillsInTransaction.mockImplementation(async (collKey, ids, change) => {
         const fresh = ids.map(id => JSON.parse(JSON.stringify(server[id])));
         const out = change(fresh);
         out.bills.forEach((fields, i) => { if (fields) server[ids[i]] = { ...server[ids[i]], ...withCanonicalDue(fields, fresh[i]) }; });
+        if (out.audit) audits.push(out.audit);
         return out.result;
     });
 }
@@ -60,6 +64,7 @@ beforeEach(() => {
     AppState.settings = { showHindi: false };
     updateBillsInTransaction.mockReset();
     AuditService.log.mockClear();
+    audits = [];
 });
 afterEach(() => jest.restoreAllMocks());
 
@@ -221,8 +226,11 @@ describe('Wholesale › Outstanding: "Complete all due" (owner / manager)', () =
         expect(readPayment(server.w3).due).toBe(50);
         expect(AppState.salesHistory.filter(s => outstandingDue(s) > 0).map(s => s.id)).toEqual(['w3']);
         expect(console.error.mock.calls).toEqual([]);
-        expect(AuditService.log).toHaveBeenCalledTimes(1);
-        expect(AuditService.log.mock.calls[0][1]).toMatchObject({ bulk: true, customer: 'gupta', method: 'online', paymentAmount: 200 });
+        // One audit entry, written by the settle's own transaction (D-3), none after it
+        expect(AuditService.log).not.toHaveBeenCalled();
+        expect(audits).toHaveLength(1);
+        expect(audits[0].id).toBe(`pay_${server.w1.payments[0].id}`);
+        expect(audits[0].data).toMatchObject({ action: 'UPDATE_PAYMENT', details: { bulk: true, customer: 'gupta', method: 'online', paymentAmount: 200, billNumbers: 'W-w1, W-w2' } });
         expect(UIManager.showToast).toHaveBeenLastCalledWith('2 bills settled, ₹200 received');
     });
 
@@ -231,6 +239,7 @@ describe('Wholesale › Outstanding: "Complete all due" (owner / manager)', () =
         updateBillsInTransaction.mockImplementationOnce(async (collKey, ids, change) => {
             const out = change(ids.map(id => JSON.parse(JSON.stringify(server[id]))));
             out.bills.forEach((fields, i) => { if (fields) server[ids[i]] = { ...server[ids[i]], ...fields }; });
+            if (out.audit) audits.push(out.audit);
             throw Object.assign(new Error('deadline'), { code: 'unavailable' });
         });
         jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async () => {
@@ -248,8 +257,9 @@ describe('Wholesale › Outstanding: "Complete all due" (owner / manager)', () =
         const firstIds = [server.w1, server.w2].map(b => b.payments[0].id);
         expect(UIManager.showToast).toHaveBeenLastCalledWith('2 bills settled, ₹200 received');
         expect(UIManager.showToast).not.toHaveBeenCalledWith(expect.stringContaining('0 bills'));
-        expect(AuditService.log).toHaveBeenCalledTimes(1);
-        expect(AuditService.log.mock.calls[0][1]).toMatchObject({ bulk: true, method: 'cash', paymentAmount: 200 });
+        // The audit entry landed with the first commit; the retry writes neither again
+        expect(audits).toHaveLength(1);
+        expect(audits[0].data.details).toMatchObject({ bulk: true, method: 'cash', paymentAmount: 200 });
 
         // Done: the ids are forgotten; another party's settle (or a later one) gets new ids
         expect(WholesaleSalesManager.pendingSettle).toBeNull();
@@ -266,6 +276,7 @@ describe('Wholesale › Outstanding: "Complete all due" (owner / manager)', () =
         expect(UIManager.showToast).toHaveBeenLastCalledWith('Already settled: nothing is due on these bills now. Nothing was recorded again');
         expect([server.w1, server.w2].map(b => b.payments.length)).toEqual([0, 0]);
         expect(AuditService.log).not.toHaveBeenCalled();
+        expect(audits).toEqual([]);
     });
 
     test('a definite refusal (due changed) forgets the ids; a network error keeps them', async () => {

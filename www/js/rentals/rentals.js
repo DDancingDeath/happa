@@ -643,7 +643,7 @@ async function whileMoving(fn) {
 }
 const unitCtx = () => ({
     esc, js, val, dialog, closeDialog: () => dialogResolve?.(false), index, placeOf, linkPlace, linkFor, findLease, knownType, typeWord,
-    defaults, headerName, tenantSectionHtml: fromPages('tenantSectionHtml'), readTenantSection: fromPages('readTenantSection'),
+    defaults, headerName, tenantSectionHtml: fromPages('tenantSectionHtml'), readTenantSection: fromPages('readTenantSection'), checkTenantSection: fromPages('checkTenantSection'),
     elecFieldsHtml: fromPages('elecFieldsHtml'), saveRent: fromPages('saveRent'), refreshLinkNames: fromPages('refreshLinkNames'), back,
     saveMoveIn: (...a) => whileMoving(() => fromPages('saveMoveIn')(...a)), isManager: isManager(), isOwner: isOwner(), canWrite: canWrite(), month: state.month,
     state, typeLabel, elecTag, sinceText, receiptsBtn, payBtns, badge, render, unitUi, depUi, linkUi: (fn, ...a) => lazyUi('./rent-link.js', fn, ...a), unitMod, unitCtx, auditWarn
@@ -669,8 +669,11 @@ const expUi = (fn, ...args) => lazyUi('./rent-expense.js', fn, ...args);
 
 let dialogResolve = null;
 
-/** Rentals form dialog (template #rentDialog); resolves true on Save. Inputs stay readable after it closes. `info`: no Save button. */
-function dialog(html, { info = false } = {}) {
+/**
+ * Rentals form dialog (template #rentDialog); resolves true on Save. Inputs stay readable after it closes.
+ * `info`: no Save button; `check`: on Save, false keeps it open (it shows the error at the field).
+ */
+function dialog(html, { info = false, check: canSave = null } = {}) {
     dialogResolve?.(false);
     const box = byId('rentDialog');
     const body = byId('rentDialogBody');
@@ -684,6 +687,7 @@ function dialog(html, { info = false } = {}) {
     body.querySelector('input, select')?.focus();
     return new Promise((resolve) => {
         dialogResolve = (v) => {
+            if (v === true && canSave && !canSave()) return;
             dialogClosedAt = Date.now();
             box.hidden = true;
             dialogResolve = null;

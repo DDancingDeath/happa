@@ -45,8 +45,12 @@ describe('data-export helpers', () => {
         expect(backup).toMatchObject({ format: 'aadhat-backup-v1', collections: { items: [{ id: 'a', data: { name: 'Chana' } }] } });
     });
 
-    test('the live business record can only be cleared on dev_ data (#63)', () => {
-        ['purchases', 'retailSales', 'wholesaleSales', 'expenses', 'stockAdjustments', 'withdrawals', 'cashManagement', 'items', 'users']
+    test('bills are never cleared, the test data included (OD-14: a bill is voided, then deleted from its details)', () => {
+        ['purchases', 'retailSales', 'wholesaleSales'].forEach(id => ['prod', 'dev'].forEach(env => expect(canClearCollection(id, env)).toBe(false)));
+    });
+
+    test('the rest of the live business record can only be cleared on dev_ data (#63)', () => {
+        ['expenses', 'stockAdjustments', 'withdrawals', 'cashManagement', 'items', 'users']
             .forEach(id => {
                 expect(canClearCollection(id, 'prod')).toBe(false);
                 expect(canClearCollection(id, 'dev')).toBe(true);
@@ -87,7 +91,7 @@ describe('AdminManager.clearAllData', () => {
         AppState.userRole = 'owner';
         AppState.currentUser = { uid: 'owner1' };
         typedWord = 'DELETE';
-        tickIds = ['purchases'];
+        tickIds = ['expenses'];
         firstModalHtml = null;
         FirebaseService.deleteDocsInBatches.mockClear();
         FirebaseService.deleteDocsInBatches.mockImplementation(async (name, ids) => { order.push(`delete:${name}`); return ids.length; });
@@ -137,14 +141,14 @@ describe('AdminManager.clearAllData', () => {
 
     test('DELETE: backup, owner confirms it, then audit, then batched delete; localStorage kept', async () => {
         await AdminManager.clearAllData();
-        expect(order).toEqual(['backup', 'confirmed', 'audit', 'delete:purchases']);
+        expect(order).toEqual(['backup', 'confirmed', 'audit', 'delete:expenses']);
         expect(backupHtml).toMatch(/I have saved the backup file/);
         expect(backupHtml).not.toMatch(/checked/);
         expect(AuditService.log.mock.calls[0][1]).toMatchObject({ backupOffered: true, ownerConfirmedBackup: true });
         expect(AuditService.log.mock.calls[0][1]).not.toHaveProperty('backupSaved');
         const [backup] = AdminManager.saveJsonBackup.mock.calls[0];
-        expect(backup.collections.purchases.map(d => d.id)).toEqual(['purchases1', 'purchases2']);
-        expect(FirebaseService.deleteDocsInBatches).toHaveBeenCalledWith('purchases', ['purchases1', 'purchases2']);
+        expect(backup.collections.expenses.map(d => d.id)).toEqual(['expenses1', 'expenses2']);
+        expect(FirebaseService.deleteDocsInBatches).toHaveBeenCalledWith('expenses', ['expenses1', 'expenses2']);
         expect(Storage.prototype.clear).not.toHaveBeenCalled();
     });
 
@@ -205,6 +209,17 @@ describe('AdminManager.clearAllData', () => {
         expect(offered).toEqual(['autoSaves', 'drafts', 'itemFrequency']);
         expect(div.textContent).toMatch(/can't be deleted here/);
         expect(order).toEqual(['backup', 'confirmed', 'audit', 'delete:drafts']);
+    });
+
+    test('test data: everything but the bills is offered, with the note to void a wrong bill (OD-14)', async () => {
+        tickIds = [];
+        await AdminManager.clearAllData();
+        const div = document.createElement('div');
+        div.innerHTML = firstModalHtml;
+        const offered = [...div.querySelectorAll('.collection-checkbox')].map(cb => cb.dataset.collection);
+        expect(offered).toEqual(expect.arrayContaining(['expenses', 'cashManagement', 'items', 'users']));
+        expect(offered.filter(id => ['purchases', 'retailSales', 'wholesaleSales'].includes(id))).toEqual([]);
+        expect(div.textContent).toMatch(/Bills can't be deleted here\. Void a wrong bill/);
     });
 
     test('live data: a ledger collection slipped into the selection is ignored', async () => {

@@ -692,7 +692,49 @@ describe('#104 "Mark as cleared" asks how and records it (no silent write-off)',
         expect(sumDueEvents(events)).toMatchObject({ receivedCash: 0, receivedOnline: 0, writtenOffReceivable: 495 });
         OutstandingManager.renderDue();
         expect(document.getElementById('dueList').textContent).not.toContain('S1');
-        expect(AuditService.log).toHaveBeenCalledWith('CLEAR_DUE', expect.objectContaining({ method: 'writeOff', amount: 495, reason: 'Customer moved away' }));
+        // its audit entry was written by the write-off's own transaction (D-3), none after it
+        expect(AuditService.log).not.toHaveBeenCalledWith('CLEAR_DUE', expect.anything());
+        expect(ctx.fake.raw('auditLogs').get(`wo_${bill.payments[0].id}`)).toMatchObject({
+            action: 'CLEAR_DUE', details: { method: 'writeOff', amount: 495, reason: 'Customer moved away', transactionType: 'retail' } });
+    });
+
+    test('OD-13: "Write off as bad debt" on a sale row says the amount and that it is a loss, needs a reason, and writes a write-off entry', async () => {
+        AppState.purchaseHistory = [{ id: 'p9', billNumber: 'P9', total: 100, payment: { cash: 0, online: 0, due: 100 }, timestamp: TODAY_SALE.timestamp }];
+        OutstandingManager.renderDue();
+        expect([...document.querySelectorAll('#dueList [data-write-off]')].map(b => b.textContent.trim())).toEqual(['Write off as bad debt', 'Write off as bad debt']);
+        AppState.currentDueFilter = 'purchase';
+        OutstandingManager.renderDue();
+        expect(document.querySelectorAll('#dueList [data-mark-cleared]').length).toBe(1);
+        expect(document.querySelectorAll('#dueList [data-write-off]').length).toBe(0);
+
+        let shown = null;
+        const reply = (reason, ok = true) => jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async (html, title) => {
+            shown = { html, title };
+            document.getElementById('modalMessage').innerHTML = html;
+            document.getElementById('writeOffReason').value = reason;
+            return ok;
+        });
+        reply('ab');
+        const writes = ctx.fake.stats.writes;
+        expect(await OutstandingManager.writeOffDue('r1', 'retail')).toBe(false);
+        expect(toast).toHaveBeenCalledWith('Please write a reason for the write-off');
+        expect(ctx.fake.stats.writes).toBe(writes);
+        expect(shown.title).toBe('Write off ₹495 as bad debt');
+        expect(shown.html).toContain('Money counts it as a bad debt');
+
+        reply('Shop closed down');
+        expect(await OutstandingManager.writeOffDue('r1', 'retail')).toBe(true);
+        const bill = ctx.fake.raw('retailSales').get('r1');
+        expect(bill.payment).toMatchObject({ due: 0, writtenOff: 495 });
+        expect(bill.payments).toEqual([expect.objectContaining({ kind: 'writeOff', amount: 495, reason: 'Shop closed down' })]);
+        expect(ctx.fake.raw('auditLogs').get(`wo_${bill.payments[0].id}`)).toMatchObject({ action: 'CLEAR_DUE', details: { amount: 495 } });
+        // M5: a bad debt of today, never money received
+        const events = dueEvents({ bills: { retail: [{ ...TODAY_SALE, ...bill }] }, from: new Date(2026, 9, 21).getTime(), to: new Date(2026, 9, 22).getTime() });
+        expect(sumDueEvents(events)).toMatchObject({ receivedCash: 0, receivedOnline: 0, writtenOffReceivable: 495 });
+        // nothing left to write off
+        AppState.retailSalesHistory[1] = { ...TODAY_SALE, ...bill };
+        expect(await OutstandingManager.writeOffDue('r1', 'retail')).toBe(false);
+        expect(toast).toHaveBeenLastCalledWith('Nothing is due on this bill');
     });
 
     test.each([

@@ -53,7 +53,7 @@ const COLLECTION_BY_TYPE = { purchase: 'purchases', retail: 'retailSales', whole
 const RECEIVABLE_TITLE = { retail: 'ui.outstanding.retail_by_age', wholesale: 'ui.outstanding.wholesale_by_age' };
 
 /** Record / Mark cleared buttons disabled while a due payment is being saved (#70, #95) */
-const RECORD_PAYMENT_BUTTONS = '[data-record-payment], [data-mark-cleared]';
+const RECORD_PAYMENT_BUTTONS = '[data-record-payment], [data-mark-cleared], [data-write-off]';
 
 /**
  * Outstanding Manager - Manages due payments
@@ -235,8 +235,9 @@ export class OutstandingManager {
                         <input type="number" inputmode="decimal" min="0" id="${Helpers.escapeHtml(this.paymentInputIds(transaction.id, transaction.transactionType).online)}" placeholder="${tt('ui.outstanding.online_placeholder')}" aria-label="${tt('ui.outstanding.online_amount')}" style="flex: 1; min-width: 80px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
                         <button data-record-payment data-onclick="outstanding.recordPayment('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')" style="background-color: #1c7430; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600;">${tt('ui.outstanding.record')}</button>
                     </div>
-                    <div style="margin-top: 8px;">
+                    <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
                         <button type="button" data-mark-cleared data-onclick="outstanding.markAsCleared('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')" style="background: white; color: #333; border: 1px solid #666; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">${tt('ui.outstanding.mark_as_cleared')}</button>
+                        ${transaction.transactionType === 'purchase' ? '' : `<button type="button" data-write-off data-onclick="outstanding.writeOffDue('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')" style="background: transparent; color: var(--danger-color); border: 1px solid var(--danger-color); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">${tt('ui.outstanding.write_off_bad_debt')}</button>`}
                     </div>
                 </div>
             `;
@@ -925,7 +926,50 @@ export class OutstandingManager {
                 clear: true
             });
         }
+        return this.confirmWriteOff(transactionType, transaction, reason);
+    }
 
+    /**
+     * "Write off as bad debt" (OD-13): a due to receive that will never come is taken off with
+     * a reason as a write-off entry (applyWriteOffTransaction), never by zeroing it. It counts as
+     * a bad debt in Money (M5) and stays on the bill and in the customer's history.
+     * @param {string} transactionId
+     * @param {'purchase'|'retail'|'wholesale'} transactionType
+     * @returns {Promise<boolean>} true when written off
+     */
+    static async writeOffDue(transactionId, transactionType) {
+        if (Helpers.isBusy('due-payment')) return false;
+        const transaction = this.findBill(transactionType, transactionId);
+        if (!transaction) {
+            UIManager.showToast(t('msg.outstanding.error_transaction_not_found'));
+            return false;
+        }
+        const due = readPayment(transaction).due;
+        if (due <= PAYMENT_TOLERANCE) {
+            UIManager.showToast(t('msg.outstanding.nothing_due_on_bill'));
+            return false;
+        }
+        const esc = (v) => Helpers.escapeHtml(v);
+        const amount = formatRupees(due, { exact: true });
+        const party = transaction.customerName ? ` — ${esc(transaction.customerName)}` : '';
+        const html = `
+            <div style="text-align: left;">
+                <div style="margin-bottom: 10px;">${esc(t('ui.outstanding.bill_no', { billNumber: transaction.billNumber || String(transaction.id).slice(0, 8) }))}${party}</div>
+                <div style="margin-bottom: 10px;">${esc(t('ui.outstanding.write_off_explain', { amount }))}</div>
+                <label for="writeOffReason">${esc(t('ui.outstanding.write_off_reason'))}</label>
+                <textarea id="writeOffReason" rows="2" maxlength="300" style="width: 100%; box-sizing: border-box; padding: 6px;"></textarea>
+            </div>`;
+        const confirmed = await UIManager.showModalWithHtml(html, t('ui.outstanding.write_off_title', { amount }), true);
+        if (!confirmed) return false;
+        return this.confirmWriteOff(transactionType, transaction, (document.getElementById('writeOffReason')?.value || '').trim());
+    }
+
+    /** Writes off a bill's remaining due once a reason is given (Mark as cleared or Write off). @private */
+    static async confirmWriteOff(transactionType, transaction, reason) {
+        if (reason.length < 3) {
+            UIManager.showToast(t('msg.outstanding.write_reason_write_off'));
+            return false;
+        }
         if (typeof navigator !== 'undefined' && navigator.onLine === false) {
             UIManager.showToast(t('msg.outstanding.internet_required_clear_due'));
             return false;
@@ -939,14 +983,6 @@ export class OutstandingManager {
             const written = await this.applyWriteOffTransaction(transactionType, transaction, reason);
             Object.assign(transaction, written);
             this.refreshAfterPayment();
-            await AuditService.log(AuditService.ACTIONS.CLEAR_DUE, {
-                billNumber: transaction.billNumber || 'N/A',
-                transactionType,
-                method: 'writeOff',
-                amount: written.payment?.writtenOff,
-                reason,
-                customer: transaction.customerName || 'N/A'
-            });
             UIManager.hapticFeedback('light');
             UIManager.showToast(t('msg.outstanding.due_written_off'));
             return true;
@@ -983,9 +1019,11 @@ export class OutstandingManager {
      *   server (an edit meanwhile) aborts with code 'due-changed', so no more money is recorded
      * @param {string[]} [entryIds] - one payments[] id per bill, reused when the same settle is retried
      *   (#70): entries already on the server with these ids count as this settle's, written once
+     * @param {{name?: string}} [opts] - `name`: the party, for the UPDATE_PAYMENT audit entry written by the
+     *   same transaction (id `pay_<first entry id>`, D-3); none without it, or when nothing new is written
      * @returns {Promise<{settled: Array<{bill: Object, amount: number, fields: Object}>, total: number}>}
      */
-    static async settleAllDues(billType, bills, method, confirmed = [], entryIds = null) {
+    static async settleAllDues(billType, bills, method, confirmed = [], entryIds = null, { name = null } = {}) {
         const collKey = COLLECTION_BY_TYPE[billType] || 'wholesaleSales';
         const at = Date.now();
         const recordedBy = AppState.userName || (AppState.currentUser ? AppState.currentUser.email : 'Unknown');
@@ -1020,7 +1058,19 @@ export class OutstandingManager {
                 updates.push(update);
                 settled.push({ index: i, amount: part.amount, fields: update });
             });
-            return { bills: updates, result: settled };
+            const written = settled.filter(s => updates[s.index]);
+            const audit = name !== null && written.length ? {
+                id: `pay_${ids[0]}`,
+                data: AuditService.entry(AuditService.ACTIONS.UPDATE_PAYMENT, {
+                    bulk: true,
+                    transactionType: billType,
+                    customer: name,
+                    method,
+                    paymentAmount: sumMoney(written, s => s.amount),
+                    billNumbers: written.map(s => freshList[s.index].billNumber || String(bills[s.index].id)).join(', ').slice(0, 900)
+                })
+            } : null;
+            return { bills: updates, result: settled, audit };
         });
         const settled = result.map(s => ({ bill: bills[s.index], amount: s.amount, fields: s.fields }));
         return { settled, total: sumMoney(settled, s => s.amount) };
@@ -1316,7 +1366,9 @@ export class OutstandingManager {
     /**
      * Write off the remaining due in one transaction: payment.due to 0 (and its
      * dueAmount mirror, repos/bill-due.js), payment.writtenOff raised by the amount, and a payments[] entry
-     * { kind: 'writeOff', amount, reason, who, when } — never counted as money.
+     * { kind: 'writeOff', amount, reason, who, when } — never counted as money; a due to receive
+     * counts as a bad debt (M5). Its CLEAR_DUE audit entry (`auditLogs/wo_<entry id>`) is
+     * written by the same transaction (D-3); a run that finds nothing due writes neither.
      * @returns {Promise<Object>} fields written
      */
     static async applyWriteOffTransaction(transactionType, bill, reason) {
@@ -1335,11 +1387,13 @@ export class OutstandingManager {
                 },
                 ...this.clearedFields()
             };
+            let audit = null;
             if (amount > 0) {
                 const by = this.clearedFields();
                 const at = Date.now();
+                const id = Helpers.generateId();
                 update.payments = [...(Array.isArray(fresh.payments) ? fresh.payments : []), {
-                    id: Helpers.generateId(),
+                    id,
                     kind: 'writeOff',
                     amount,
                     reason,
@@ -1350,10 +1404,21 @@ export class OutstandingManager {
                 }];
                 // A write-off is a bad debt of this period: phones keep loading the bill (#163).
                 update.paidAt = at;
+                audit = {
+                    id: `wo_${id}`,
+                    data: AuditService.entry(AuditService.ACTIONS.CLEAR_DUE, {
+                        billNumber: fresh.billNumber || bill.billNumber || 'N/A',
+                        transactionType,
+                        method: 'writeOff',
+                        amount,
+                        reason,
+                        customer: fresh.customerName || 'N/A'
+                    })
+                };
             }
             update.openDue = false;
             update.clientVersion = FirebaseService.CLIENT_VERSION;
-            return { bill: update, result: update };
+            return { bill: update, result: update, audit };
         });
     }
 

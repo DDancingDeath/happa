@@ -62,6 +62,9 @@ export const DELETE_CONFIRM_WORD = 'DELETE';
  */
 export const LIVE_CLEARABLE_COLLECTIONS = Object.freeze(['drafts', 'autoSaves', 'itemFrequency']);
 
+/** Never cleared, the test data included: the rules let only a voided bill be deleted (OD-14). */
+export const BILL_COLLECTIONS = Object.freeze(['purchases', 'retailSales', 'wholesaleSales']);
+
 /**
  * Whether Clear Data may delete a collection.
  * @param {string} id unprefixed collection name
@@ -69,6 +72,7 @@ export const LIVE_CLEARABLE_COLLECTIONS = Object.freeze(['drafts', 'autoSaves', 
  * @returns {boolean}
  */
 export function canClearCollection(id, env) {
+    if (BILL_COLLECTIONS.includes(id)) return false;
     return env === 'dev' || LIVE_CLEARABLE_COLLECTIONS.includes(id);
 }
 

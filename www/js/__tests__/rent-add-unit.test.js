@@ -41,7 +41,11 @@ async function addUnitWith(fill) {
     set('rentUnitRent', '6000');
     fill();
     RentalsModule.api.dialogClose(true);
+    // A form error stays at its field with the dialog open.
+    const form = document.getElementById('rentDialog').hidden ? '' : document.getElementById('rentTError').textContent;
+    if (form) RentalsModule.api.dialogClose(false);
     await p;
+    return form;
 }
 
 test('store.moveIn: unit, new tenant, lease (start date, own meter) and first charge in one batch', async () => {
@@ -112,13 +116,47 @@ test('names tenants see: no guessed "Flat" for an untyped unit; the property kin
 test('a form error (bad phone) saves nothing at all', async () => {
     const counts = ['rent_units', 'rent_tenants', 'rent_leases', 'rent_charges'].map(c => raw(c).length);
     UIManager.showToast.mockClear();
-    await addUnitWith(() => {
+    const form = await addUnitWith(() => {
         set('rentTOn', true);
         set('rentTName', 'Bad');
         set('rentTPhone', '12345');
     });
     expect(['rent_units', 'rent_tenants', 'rent_leases', 'rent_charges'].map(c => raw(c).length)).toEqual(counts);
-    expect(UIManager.showToast).toHaveBeenCalledWith(expect.stringMatching(/10-digit/), 'error');
+    expect(form).toMatch(/10-digit/);
+    expect(UIManager.showToast).not.toHaveBeenCalled();
+});
+
+test('start a tenancy: who, rent, start and deposit first; the rest under a closed More with the same defaults', async () => {
+    const p = RentalsModule.api.addUnit('P1');
+    for (let i = 0; i < 50 && document.getElementById('rentDialog').hidden; i++) await new Promise(r => setTimeout(r));
+    const more = document.getElementById('rentTMore');
+    expect(more.open).toBe(false);
+    ['rentTName', 'rentTPhone', 'rentTRent', 'rentTDate', 'rentTDeposit'].forEach(id => expect(more.contains(document.getElementById(id))).toBe(false));
+    ['rentTPhone2', 'rentTProRate', 'rentTDay', 'rentTPct', 'rentTElec', 'rentTOpen', 'rentTRate'].forEach(id => expect(more.contains(document.getElementById(id))).toBe(true));
+    expect(document.getElementById('rentTDay').value).toBe('10');
+    RentalsModule.api.dialogClose(false);
+    await p;
+});
+
+test('a refused tenant section keeps the tenant rent as typed, so the unit rent changed afterwards is the lease rent', async () => {
+    const before = raw('rent_leases').length;
+    const p = RentalsModule.api.addUnit('P1');
+    for (let i = 0; i < 50 && document.getElementById('rentDialog').hidden; i++) await new Promise(r => setTimeout(r));
+    set('rentUnitLabel', 'S7');
+    set('rentUnitRent', '6000');
+    set('rentTOn', true);
+    set('rentTName', 'Mohan');
+    set('rentTPhone', '12345');
+    RentalsModule.api.dialogClose(true);
+    expect(document.getElementById('rentDialog').hidden).toBe(false);
+    expect(document.getElementById('rentTRent').value).toBe('0');
+    set('rentTPhone', '9876512345');
+    set('rentUnitRent', '7000');
+    RentalsModule.api.dialogClose(true);
+    await p;
+    const lease = raw('rent_leases').slice(before)[0];
+    expect(lease.rent).toBe(7000);
+    expect(fake.raw('rent_charges').get(`${lease.id}_${M}`)).toMatchObject({ amount: 7000 });
 });
 
 test('not occupied: only the vacant unit is saved, as before', async () => {
