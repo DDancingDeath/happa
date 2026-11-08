@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v576';
+const CACHE_NAME = 'happa-v582';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -15,7 +15,9 @@ const STATIC_ASSETS = [
     '/img/download-qr.svg',
     '/manifest.webmanifest',
     '/icons/apple-touch-icon.png',
+    '/icons/favicon-16.png',
     '/icons/favicon-32.png',
+    '/icons/favicon.svg',
     '/icons/icon-192.png',
     '/icons/icon-512.png',
     '/icons/icon-maskable-512.png',
