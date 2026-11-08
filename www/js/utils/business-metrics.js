@@ -16,7 +16,7 @@ import { activeExpenses, activityBills, billLabour, billTotal, isPersonalExpense
 import { eventTime, createItemKeyResolver } from './stock-replay.js';
 import { parseAnyBillDate, toLocalISODate } from './dates.js';
 import { saleTimePayment, dueEvents, sumDueEvents } from './due-payments.js';
-import { normalizePartyName, pickPartyName } from './aging.js';
+import { buildAging, normalizePartyName, pickPartyName } from './aging.js';
 import { INSIGHTS_DEFAULTS } from './insights-config.js';
 import { lastCountedSession } from './cash-session.js';
 
@@ -738,31 +738,21 @@ export function stoppedComingCheck(src, now = new Date(), cfg = INSIGHTS_DEFAULT
 }
 
 /**
- * Parties with dues older than `overdueDays` (from Outstanding's rule: BILL-DUE).
+ * I10: parties with OVERDUE bills (OD-08: open BILL-DUE on a bill more than 30 days old,
+ * Outstanding's aging) and the Σ due on those bills only; oldest known age in days.
  * @param {?Array<Rec>|undefined} bills purchases or sales
  * @param {Date} now
- * @param {typeof INSIGHTS_DEFAULTS} [cfg]
  * @returns {{parties: number, total: number, oldestDays: number}}
  */
-export function overdueParties(bills, now = new Date(), cfg = INSIGHTS_DEFAULTS) {
-    const today = localMidnight(now).getTime();
-    /** @type {Map<string, number>} */
-    const parties = new Map();
+export function overdueParties(bills, now = new Date()) {
+    const late = buildAging(bills || [], { today: now }).parties.filter(p => p.overdue > 0);
     let total = 0;
     let oldest = 0;
-    (bills || []).forEach(b => {
-        const due = outstandingDue(b);
-        if (!(due > 0.005)) return;
-        const t = billTime(b);
-        if (t === null) return;
-        const days = Math.floor((today - localMidnight(new Date(t)).getTime()) / DAY_MS);
-        if (days <= cfg.overdueDays) return;
-        const key = normalizePartyName(b.customerName);
-        parties.set(key, (parties.get(key) || 0) + due);
-        total += due;
-        oldest = Math.max(oldest, days);
+    late.forEach(p => {
+        total += p.overdue;
+        p.bills.forEach(b => { if (b.days !== null) oldest = Math.max(oldest, b.days); });
     });
-    return { parties: parties.size, total: round2(total), oldestDays: oldest };
+    return { parties: late.length, total: round2(total), oldestDays: oldest };
 }
 
 // ------------------------------------------------------------------ Seasons (I5, I9)

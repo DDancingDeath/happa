@@ -210,7 +210,9 @@ describe('#46/#77 Outstanding panel', () => {
         expect(panel.querySelector('img')).toBeNull();
         expect(panel.querySelectorAll('.aging-party')).toHaveLength(2);
         expect(panel.querySelector('.aging-chase li').textContent).toContain('Ram <img');
-        expect(panel.querySelector('.aging-badge').textContent).toContain('Long overdue');
+        expect(panel.querySelector('.aging-badge').textContent).toContain('Over 90 days');
+        expect(panel.querySelector('.aging-overdue').textContent).toBe('Overdue (> 30 days) ₹500');
+        expect(panel.querySelector('.aging-chase li').textContent).toContain('₹500 overdue');
         expect(panel.textContent.toLowerCase()).not.toContain('staff');
         expect(document.querySelectorAll('#dueList .history-item')).toHaveLength(2);
     });

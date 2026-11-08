@@ -22,6 +22,7 @@ import {
     soldKgByMonth, seasonKgTotal, weeklyKgWindow, weeklyKgByItem, roundTo, sharePct,     topShare, addsUp, fiscalYearLabel, stepDayOrWeek
 } from '../utils/business-metrics.js';
 import { insightsSettings } from '../utils/insights-config.js';
+import { OVERDUE_DAYS } from '../utils/aging.js';
 import { getInsightsContext, setInsightsContext, contextMonth } from '../utils/insights-context.js';
 import { figuresFromSnapshot, monthKeyOf, monthKeysBetween, snapshotCustomers as customersOfSnapshot, snapshotItemSales } from '../utils/month-snapshots.js';
 import { MoneyManager } from './money.js';
@@ -246,11 +247,11 @@ export const InsightsManager = {
         const now = new Date();
         const cfg = this.cfg();
         const sales = [...(AppState.retailSalesHistory || []), ...(AppState.salesHistory || [])];
-        const owed = overdueParties(sales, now, cfg);
-        const owe = overdueParties(AppState.purchaseHistory || [], now, cfg);
+        const owed = overdueParties(sales, now);
+        const owe = overdueParties(AppState.purchaseHistory || [], now);
         let duesHtml = '';
-        if (owed.parties > 0) duesHtml += this.actionCard('⏰', t('ui.insights.act_overdue', { n: owed.parties, amount: formatRupees(owed.total), days: cfg.overdueDays }), 'due', t('ui.insights.open_outstanding'));
-        if (owe.parties > 0) duesHtml += this.actionCard('📤', t('ui.insights.act_you_owe', { n: owe.parties, amount: formatRupees(owe.total), days: cfg.overdueDays }), 'due', t('ui.insights.open_outstanding'));
+        if (owed.parties > 0) duesHtml += this.actionCard('⏰', t(owed.parties === 1 ? 'ui.insights.act_overdue_one' : 'ui.insights.act_overdue', { n: owed.parties, amount: formatRupees(owed.total), days: OVERDUE_DAYS }), 'due', t('ui.insights.open_outstanding'));
+        if (owe.parties > 0) duesHtml += this.actionCard('📤', t(owe.parties === 1 ? 'ui.insights.act_you_owe_one' : 'ui.insights.act_you_owe', { n: owe.parties, amount: formatRupees(owe.total), days: OVERDUE_DAYS }), 'due', t('ui.insights.open_outstanding'));
         this.html('insightsActionsDues', duesHtml);
         if (!m) {
             this.html('insightsActionsBelow', `<p class="ins-empty-text">${esc(t('ui.money.older_not_loaded', { period: this.periodLabel(this.range()) }))}</p>`);

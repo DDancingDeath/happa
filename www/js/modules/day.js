@@ -250,8 +250,8 @@ export const DayManager = {
 
     /**
      * Reminders (#86): REM-5 manual reminders (owner/manager add them, anyone marks done),
-     * REM-1 who to collect from / pay (dues older than 30 days,
-     * Outstanding's chase-first order) and REM-2 rent still due as Rentals last
+     * REM-1 who to collect from / pay (parties with OVERDUE bills: their whole dues
+     * and the overdue part, Outstanding's chase-first order) and REM-2 rent still due as Rentals last
      * showed it this month on this phone. Nothing is read from the server.
      */
     renderReminders(now = new Date()) {
@@ -263,10 +263,12 @@ export const DayManager = {
         const e = Helpers.escapeHtml;
         const party = (p) => `<li class="today-reminder-party"><span>${e(p.name || t('ui.reports.unknown'))}</span>`
             + ` <strong>${e(formatINR(p.total))}</strong>`
-            + (p.oldestDays !== null && p.oldestDays !== undefined ? ` <span class="today-reminder-days">${e(t('ui.today.reminder_days', { count: p.oldestDays }))}</span>` : '')
+            + ` <span class="today-reminder-days">${e([t('ui.outstanding.party_overdue', { amount: formatINR(p.overdue) }),
+                ...(p.oldestDays !== null && p.oldestDays !== undefined ? [t('ui.today.reminder_days', { count: p.oldestDays })] : [])].join(' · '))}</span>`
             + '</li>';
         const block = (kind, r, open) => `<div class="today-reminder" data-reminder="${kind}">`
             + `<div class="today-reminder-head"><strong>${e(t(`ui.today.reminder_${kind}`))}</strong> ${e(formatINR(r.total))}</div>`
+            + `<div class="today-reminder-more" data-overdue>${e(t('ui.today.reminder_overdue', { amount: formatINR(r.overdue) }))}</div>`
             + `<ul>${r.parties.map(party).join('')}</ul>`
             + (r.more ? `<div class="today-reminder-more">${e(t('ui.today.reminder_more', { count: r.more }))}</div>` : '')
             + `<button type="button" class="filter-btn" data-onclick="${open}">${e(t('ui.today.reminder_open_dues'))}</button></div>`;

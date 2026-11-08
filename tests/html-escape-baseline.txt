@@ -227,7 +227,7 @@ www/js/modules/notifications.js: d.icon ← d = describeNotification(n)
 www/js/modules/outstanding.js: Helpers.formatDate(transaction.date)
 www/js/modules/outstanding.js: bucketIndex(ageDays)
 www/js/modules/outstanding.js: by
-www/js/modules/outstanding.js: chaseFirst(aging.parties) (markup via map(p => ` <li class="aging-b${p.bucket}"><strong>${partyName(p)}</strong> — ${esc(formatINR(p.total))} <span class="aging-age aging-b${p.bucket) .bucket)
+www/js/modules/outstanding.js: chaseFirst(aging.parties) (markup via map(p => ` <li class="aging-b${p.bucket}"><strong>${partyName(p)}</strong> — ${esc(formatINR(p.total))} · ${tt('ui.outstanding.party_overdue', {) .bucket)
 www/js/modules/outstanding.js: i
 www/js/modules/outstanding.js: i
 www/js/modules/outstanding.js: label
