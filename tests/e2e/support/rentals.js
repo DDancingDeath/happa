@@ -47,6 +47,12 @@ async function openTenant(page, tenant) {
     return page.locator('#rentalsBody');
 }
 
+/** Opens "More options" on the open receipt (print, image, PDF, Cancel receipt). */
+async function receiptMore(page) {
+    const more = dialog(page).locator('details.rent-more');
+    if (!(await more.evaluate(e => e.open))) await more.locator('summary').click();
+}
+
 /** Properties › + Add property: saves property `name`. */
 async function addProperty(page, name) {
     await showPage(page, 'properties');
@@ -129,4 +135,4 @@ async function pay(page, tenant, amount, { confirm = '' } = {}) {
     return (await title.innerText()).match(/R-\d{4}-\d{4}/)[0];
 }
 
-module.exports = { firstOfMonth, button, dialog, row, dialogButton, closeDialog, confirmModal, toastHas, showPage, openTenant, tenantMenu, rentRow, setUpTenant, pay, addProperty, openProperty };
+module.exports = { firstOfMonth, button, dialog, row, dialogButton, closeDialog, confirmModal, toastHas, showPage, openTenant, tenantMenu, rentRow, setUpTenant, pay, addProperty, openProperty, receiptMore };
