@@ -433,6 +433,40 @@ test('change of unit when the first charge fails: no claim it was charged; the n
     expect(fake.raw('rent_charges').get(`${lease2.id}_${M}`)).toMatchObject({ amount: firstMonthRent(7000, `${M}-16`, true) });
 });
 
+test('change of unit whose own first charge fails: the charge pass held back during the save runs after it and adds the month', async () => {
+    at(16);
+    await showTenants();
+    const orig = fake.db.runTransaction;
+    let fail = true;
+    let heard = false;
+    const failing = (fn) => orig((tx) => fn({
+        ...tx,
+        set: (ref, data, o) => {
+            if (fail && ref.path.startsWith('rent_charges/')) { fail = false; throw Object.assign(new Error('offline'), { code: 'unavailable' }); }
+            return tx.set(ref, data, o);
+        }
+    }));
+    // The listeners show the new lease while the change is still saving; that pass (as onData would start it) is held back.
+    fake.db.runTransaction = (fn) => failing(fn).then(async (r) => {
+        if (!heard && leases().some(l => l.fromLeaseId === 'L1')) {
+            heard = true;
+            await fake.settle();
+            await _test.maybeCharge();
+        }
+        return r;
+    });
+    const p = _test.toUnit({ id: 'T1', name: 'Ram' }, 'U2');
+    await waitFor('rentTRent');
+    RentalsModule.api.dialogClose(true);
+    await p;
+    await fake.settle();
+    await new Promise(r => setTimeout(r));
+    fake.db.runTransaction = orig;
+    expect(heard).toBe(true);
+    const lease2 = leases().find(l => l.fromLeaseId === 'L1');
+    expect(fake.raw('rent_charges').get(`${lease2.id}_${M}`)).toMatchObject({ amount: firstMonthRent(7000, `${M}-16`, true) });
+});
+
 test('change of unit with a tenant link: the link moves to the new unit for a member or a manager (no new link)', async () => {
     const TOKEN = 'AbCdEfGhIjKlMnOpQrStUvWx';
     for (const role of ['member', 'manager']) {
