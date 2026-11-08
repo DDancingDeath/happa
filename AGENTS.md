@@ -164,6 +164,14 @@ In order:
   (hex, `rgb()`, a colour name) in `www/css`, a template's `style=` / `<style>` or `www/js` fails
   `tests/ci/colour-guard.test.js` (per-file baseline `tests/colour-baseline.json`, which may only
   go down: `COLOUR_BASELINE=lower npx jest colour-guard`). Print and receipt output is exempt.
+  Light / Dark / System and the visual theme are per device (`js/ui/theme.js` ThemeManager, keys
+  `happa.theme` / `happa.appearance`); `<html>` carries `data-theme`, `data-appearance` and `data-mode`, and CSS keys on
+  `[data-mode="dark"]` (`body.dark-mode` mirrors it). The pre-paint `#themeBoot` reads the same keys; it is data-only, so a new
+  theme never changes it or its CSP hash.
+- **Type comes from tokens too**: font sizes `--fs-caption|sm|body|lead|title|display|hero` and weights
+  `--w-regular|label|strong` (400/600 only; labels go regular in Hindi, `--w-strong` is 500 on the Android app).
+  A new raw `font-size` / `font-weight` fails `tests/ci/type-guard.test.js` (baseline `tests/type-baseline.json`,
+  `TYPE_BASELINE=lower`). Off-scale sizes still raw are counted there; print CSS is exempt.
 - **Date strings**: bills mix ISO-8601 and `DD/MM/YYYY`. Use
   `www/js/utils/dates.js` (`parseAnyBillDate`, `todayLocalISO`,
   `parseLocalDate`) or `Helpers.parseDate()` — never raw
@@ -398,14 +406,19 @@ section 7) before pushing; don't commit one-off probe scripts.
    `www/js/version.js`, `android/app/build.gradle`), then
    `npm run check:release`.
 3. Merge to `main` after shop hours (web deploys automatically), then push a
-   release-candidate tag `v<x.y.z>-rc<n>` (a prerelease, never offered by the
-   update banner) and run the manual checks in `docs/release-checklist.md` with
-   its APK (real printer, 5 bills offline, cash open/close, install over the
-   previous APK, timings).
+   release-candidate tag `v<x.y.z>-rc<n>` (published as latest like a final
+   release: the shop installs rc builds and the update banner offers them) and
+   run the manual checks in `docs/release-checklist.md` with its APK (real
+   printer, 5 bills offline, cash open/close, install over the previous APK,
+   timings).
 4. All good: push tag `v<x.y.z>` on the same commit, after shop hours.
    The tag-driven Android release workflow (#92 / PR #173) builds and signs
    the APK (Happa key, `HAPPA_*` secrets, pinned to `HAPPA_CERT_SHA256`) and
-   publishes a GitHub Release with `happa.apk`.
+   publishes a GitHub Release with `happa.apk`. The APK's versionCode comes
+   from the tag (`scripts/android-version-code.js`: 1.0.0-rc11 → 10000011,
+   1.0.0 → 10000999), so each tag installs over the one before; its
+   versionName is the tag without `v`. The `androidVersionCode` in step 1 only
+   applies to local builds.
 5. Installed apps see the "Update available" banner (checks
    `releases/latest`, at most every 12 h); `/download` always links to the
    latest APK; users get a one-time "What's new" sheet.

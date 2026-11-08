@@ -15,7 +15,8 @@ import { AnomaliesManager } from '../../www/js/modules/anomalies.js';
 import { CashManagementManager } from '../../www/js/modules/cash-management.js';
 import { WholesaleSalesManager } from '../../www/js/modules/wholesale-sales.js';
 import { FirebaseService } from '../../www/js/firebase/firestore-service.js';
-import { moneySummary, expenseCategories, outstandingTotals } from '../../www/js/utils/business-metrics.js';
+import { moneySummary, expenseCategories, outstandingTotals, overdueParties } from '../../www/js/utils/business-metrics.js';
+import { overdueReminder } from '../../www/js/utils/reminders.js';
 import { dayBook } from '../../www/js/utils/statements.js';
 import { billListAmount, paymentChipsHtml } from '../../www/js/ui/bill-row.js';
 import { HistoryManager } from '../../www/js/modules/history.js';
@@ -243,5 +244,95 @@ describe('History cards, bill details and the Expenses lists use the same rules'
         const ids = (el) => [...document.getElementById(el).innerHTML.matchAll(/viewExpenseDetails\('(\w+)'/g)].map(m => m[1]).sort();
         expect(ids('personalExpenseHistoryList')).toEqual(EXPENSES.filter(e => O.isPersonalExpenseOracle(e)).map(e => e.id).sort());
         expect(ids('businessExpenseHistoryList')).toEqual(EXPENSES.filter(e => !O.isPersonalExpenseOracle(e)).map(e => e.id).sort());
+    });
+});
+
+describe('H. H-TOTAL: History › Sale lists retail + wholesale; its ₹ total = Money M1, Purchase = M16 (V2 O-9)', () => {
+    const RETAIL = [
+        { id: 'r1', billNumber: 'R-1', customerName: '', date: '2026-09-05', timestamp: new Date(2026, 8, 5, 11).getTime(),
+            total: 250, items: [{ name: 'Rice', qty: 5, rate: 50, total: 250 }], payment: { cash: 250, online: 0, due: 0 } },
+        { id: 'r2', billNumber: 'R-2', customerName: 'Sharma', date: '2026-09-29', timestamp: new Date(2026, 8, 29, 11).getTime(),
+            total: 120.5, items: [], payment: { cash: 100, online: 0, due: 20.5 } },
+        { id: 'r3', billNumber: 'R-3', customerName: 'Voided', date: '2026-09-10', timestamp: new Date(2026, 8, 10, 11).getTime(),
+            total: 999, items: [], voided: true, payment: { cash: 999, online: 0, due: 0 } }
+    ];
+    const SEPT = [new Date(2026, 8, 1).getTime(), new Date(2026, 9, 1).getTime()];
+    const html = `<div id="history"><div class="history-type-filter"><button class="filter-btn" data-type="purchase"></button>
+        <button class="filter-btn" data-type="sale"></button></div><select id="historyDatePreset"><option value="all"></option>
+        <option value="custom"></option></select><div id="historyCustomRange" hidden><input id="historyFromDate"><input id="historyToDate"></div>
+        <div id="historyRangeLabel" hidden></div><input id="historySearch" value=""><div id="historyList"></div></div>`;
+    const label = () => document.getElementById('historyRangeLabel').textContent;
+    const rupees = (text) => Number(text.split('·').pop().replace(/[^\d.]/g, ''));
+
+    beforeEach(() => {
+        document.body.innerHTML = html;
+        sessionStorage.clear();
+        Object.assign(HistoryManager, { filter: null, pageKey: '', viewMode: 'card', showOpening: { purchase: false, sale: false }, showVoided: { purchase: false, sale: false } });
+        AppState.retailSalesHistory = copy(RETAIL);
+    });
+
+    test('September: Sale = M1 (retail + wholesale, no voided bill, no old-app record), and the search total', () => {
+        const w = O.metrics(O.withoutVoided({ ...data, retailSales: RETAIL }), SEPT);
+        HistoryManager.setFilter({ type: 'sale', preset: 'custom', from: '2026-09-01', to: '2026-09-30' });
+        HistoryManager.refreshHistory();
+        expect(label()).toMatch(new RegExp(`· ${w.M1_saleCount} bills · `));
+        expect(rupees(label())).toBe(Math.round(w.M1_sales));
+        document.getElementById('historySearch').value = 'sharma';
+        HistoryManager.searchHistory('sharma');
+        expect(rupees(label())).toBe(121);
+    });
+
+    test('October: Purchase = M16', () => {
+        const w = O.metrics(data, [new Date(2026, 9, 1).getTime(), new Date(2026, 10, 1).getTime()]);
+        HistoryManager.setFilter({ type: 'purchase', preset: 'custom', from: '2026-10-01', to: '2026-10-31' });
+        HistoryManager.refreshHistory();
+        expect(rupees(label())).toBe(Math.round(w.M16_purchases));
+    });
+});
+
+describe('I. OVERDUE (OD-08): Today reminders, Insights and Outstanding give one overdue figure', () => {
+    const due = (id, name, date, amount, extra = {}) => ({ id, billNumber: id, customerName: name, ...(date ? { date, timestamp: new Date(`${date}T11:00:00`).getTime() } : {}),
+        total: amount, items: [], payment: { cash: 0, online: 0, due: amount }, ...extra });
+    const RETAIL = [
+        due('a1', 'Asha', '2026-09-01', 300),
+        due('a2', 'asha ', '2026-10-15', 200),
+        due('b1', 'Bala', '2026-09-20', 100),
+        due('b2', 'Bala', '2026-09-21', 50),
+        due('c1', 'Chetan', null, 70),
+        due('d1', 'Dev', '2026-08-01', 400, { cleared: true })
+    ];
+    const SALES = () => copy([...RETAIL, ...WHOLESALE]);
+    const want = O.overdue(SALES(), NOW);
+    const amount = (el) => Number(el.textContent.replace(/[^\d.]/g, ''));
+
+    beforeEach(() => {
+        AppState.retailSalesHistory = copy(RETAIL);
+    });
+
+    test('oracle: bills more than 30 days old (31 days counts, 30 does not), an undated bill counts, a cleared one does not', () => {
+        expect(want).toEqual({ parties: 5, total: 2770, oldestDays: 284 });
+    });
+    test('Insights I10 = the oracle', () => {
+        expect(overdueParties(SALES(), new Date(NOW))).toEqual(want);
+    });
+    test('Today REM-1: the overdue parts of Collect udhaar + Collect wholesale dues = the oracle; the headline stays the parties\' whole dues', () => {
+        const retail = overdueReminder(copy(RETAIL), { today: new Date(NOW) });
+        const wholesale = overdueReminder(copy(WHOLESALE), { today: new Date(NOW) });
+        expect(retail.overdue + wholesale.overdue).toBe(want.total);
+        expect(retail.total).toBe(720);
+        expect(retail.parties.map(p => [p.name, p.total, p.overdue])).toEqual([['Chetan', 70, 70], ['Asha', 500, 300], ['Bala', 150, 100]]);
+        document.body.innerHTML = '<div id="todayReminders"></div>';
+        DayManager.renderReminders(new Date(NOW));
+        const shownOverdue = ['collect', 'collect_wholesale'].map(k => Number(document.querySelector(`[data-reminder="${k}"] [data-overdue]`).textContent.split(':').pop().replace(/[^\d.]/g, '')));
+        expect(shownOverdue).toEqual([retail.overdue, wholesale.overdue]);
+    });
+    test('Outstanding › Sales (All): "Overdue (> 30 days)" = the oracle = Σ of the 31–60, 61–90 and 90+ buckets', async () => {
+        const { OutstandingManager } = await import('../../www/js/modules/outstanding.js');
+        document.body.innerHTML = '<div id="due"><div id="dueAging"></div><div id="dueList"></div></div>';
+        OutstandingManager.agingBucket = null;
+        OutstandingManager.filterDue('sale');
+        expect(amount(document.querySelector('#dueAging .aging-overdue-amount'))).toBe(want.total);
+        const buckets = [...document.querySelectorAll('#dueAging .aging-bucket-amount')].map(amount);
+        expect(buckets.slice(1).reduce((a, v) => a + v, 0)).toBe(want.total);
     });
 });

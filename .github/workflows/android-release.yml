@@ -1,7 +1,9 @@
 # Builds the Happa Android APK (identity from happa.config.json).
 #  - Tag push v<version> (or manual re-run with a tag): signed release APK,
-#    verified against the production signing cert, published as a GitHub Release.
-#    A v<version>-rc<n> tag publishes a prerelease that is never marked latest.
+#    verified against the production signing cert, published as a GitHub Release
+#    marked latest. A v<version>-rc<n> tag is published the same way: the shop
+#    installs rc builds. The APK's versionCode comes from the tag
+#    (scripts/android-version-code.js) and its versionName is the tag without "v".
 #  - Pull requests touching the Android build: unsigned debug APK only (no release),
 #    to catch build breakage before merge.
 
@@ -14,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing release tag to (re)build and publish, e.g. v1.3.0 or v1.3.0-rc1 (prerelease). Leave empty for a build-only run.'
+        description: 'Existing release tag to (re)build and publish, e.g. v1.3.0 or v1.3.0-rc1. Leave empty for a build-only run.'
         required: false
         type: string
   pull_request:
@@ -49,7 +51,7 @@ jobs:
       release: ${{ steps.mode.outputs.release }}
       tag: ${{ steps.mode.outputs.tag }}
       version: ${{ steps.mode.outputs.version }}
-      prerelease: ${{ steps.mode.outputs.prerelease }}
+      version_code: ${{ steps.tag.outputs.version_code }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -77,23 +79,19 @@ jobs:
             echo "release=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # v1.3.0 = release (becomes "latest"); v1.3.0-rc1 = release candidate:
-          # published as a prerelease and never marked latest, so the update
-          # banner and /download (both read releases/latest) don't offer it.
+          # v1.3.0 = release; v1.3.0-rc1 = release candidate built from the 1.3.0 commit.
+          # Both become "latest": the update banner and /download read releases/latest.
           if [[ ! "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)(-rc[0-9]+)?$ ]]; then
             echo "::error::Release tag '$tag' must look like v<major>.<minor>.<patch> (e.g. v1.3.0) or v<major>.<minor>.<patch>-rc<n> (e.g. v1.3.0-rc1)."
             exit 1
           fi
           base="${BASH_REMATCH[1]}"
-          prerelease=false
-          [[ -n "${BASH_REMATCH[2]}" ]] && prerelease=true
-          echo "Release run for $tag (prerelease: $prerelease)"
+          echo "Release run for $tag"
           {
             echo "release=true"
             echo "tag=$tag"
             echo "version=${tag#v}"
             echo "base=$base"
-            echo "prerelease=$prerelease"
           } >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v4
@@ -115,11 +113,11 @@ jobs:
         run: npm run check:happa-config
 
       - name: Check tag matches version and render release notes
+        id: tag
         if: steps.mode.outputs.release == 'true'
         env:
           TAG: ${{ steps.mode.outputs.tag }}
           BASE: ${{ steps.mode.outputs.base }}
-          PRERELEASE: ${{ steps.mode.outputs.prerelease }}
         run: |
           # A release candidate (v1.3.0-rc1) is built from the commit whose version is 1.3.0.
           pkg_version="$(node -p "require('./package.json').version")"
@@ -127,11 +125,15 @@ jobs:
             echo "::error::Tag $TAG does not match package.json version $pkg_version. Tag the commit that bumped the version (npm run release)."
             exit 1
           fi
-          mkdir -p dist
-          if [[ "$PRERELEASE" == "true" ]]; then
-            printf '**Release candidate %s** for testing. Not offered as an update; install it from this page only.\n\n' "$TAG" > dist/release-notes.md
+          if [[ ! -f scripts/android-version-code.js ]]; then
+            echo "::error::$TAG predates tag-derived Android version codes; its APK would have versionCode 1. Tag a newer commit."
+            exit 1
           fi
-          node scripts/release-notes.js "$BASE" >> dist/release-notes.md
+          version_code="$(node scripts/android-version-code.js "$TAG")"
+          echo "Android versionCode $version_code, versionName ${TAG#v}"
+          echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
+          mkdir -p dist
+          node scripts/release-notes.js "$BASE" > dist/release-notes.md
           cat dist/release-notes.md
 
       - name: Require signing secrets
@@ -204,6 +206,8 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.HAPPA_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.HAPPA_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.HAPPA_KEY_PASSWORD }}
+          HAPPA_VERSION_CODE: ${{ steps.tag.outputs.version_code }}
+          HAPPA_VERSION_NAME: ${{ steps.mode.outputs.version }}
         run: |
           # android/app/build.gradle reads ANDROID_KEYSTORE_FILE/_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD.
           export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/release.keystore"
@@ -219,6 +223,8 @@ jobs:
         if: steps.mode.outputs.release == 'true'
         env:
           EXPECTED_CERT_SHA256: ${{ vars.HAPPA_CERT_SHA256 }}
+          VERSION_CODE: ${{ steps.tag.outputs.version_code }}
+          VERSION: ${{ steps.mode.outputs.version }}
         run: |
           apk=android/app/build/outputs/apk/release/app-release.apk
           if [[ ! -f "$apk" ]]; then
@@ -248,10 +254,15 @@ jobs:
           fi
           echo "Certificate matches HAPPA_CERT_SHA256."
           want_pkg="$(node scripts/happa-config.js get androidPackage)"
-          pkg="$("$build_tools/aapt2" dump badging "$apk" | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -n 1)"
-          echo "Package: $pkg"
+          badging="$("$build_tools/aapt2" dump badging "$apk" | head -n 1)"
+          pkg="$(sed -n "s/^package: name='\([^']*\)'.*/\1/p" <<< "$badging")"
+          echo "$badging"
           if [[ "$pkg" != "$want_pkg" || "$pkg" == "com.hitesh.aadhat" ]]; then
             echo "::error::APK package is '$pkg', expected '$want_pkg' (happa.config.json)."
+            exit 1
+          fi
+          if [[ "$badging" != *" versionCode='$VERSION_CODE' versionName='$VERSION'"* ]]; then
+            echo "::error::APK must have versionCode '$VERSION_CODE' and versionName '$VERSION' (from the tag)."
             exit 1
           fi
 
@@ -373,9 +384,20 @@ jobs:
     if: needs.build.outputs.release == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # One publish at a time, so two tags pushed together can't both read the old latest.
+    concurrency:
+      group: android-release-publish
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ needs.build.outputs.tag }}
+          sparse-checkout: scripts/android-version-code.js
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
       - uses: actions/download-artifact@v4
         with:
           name: happa-release
@@ -387,32 +409,40 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.build.outputs.tag }}
           VERSION: ${{ needs.build.outputs.version }}
-          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+          VERSION_CODE: ${{ needs.build.outputs.version_code }}
         run: |
           name="$(cat dist/apk-name.txt)"
           title="$name v$VERSION"
           files=("dist/$name.apk" "dist/$name-v$VERSION.apk")
-          # Release candidates: prerelease, never "latest" (releases/latest feeds the update banner and /download).
-          if [[ "$PRERELEASE" == "true" ]]; then
-            flags=(--prerelease --latest=false)
-            edit_flags=(--prerelease=true --latest=false)
+          # Every release, rc or final, is a normal release marked latest: releases/latest feeds
+          # the update banner and /download. Only re-running an older tag leaves latest alone.
+          latest=""
+          if ! latest="$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name 2> latest-err.txt)"; then
+            grep -q 'HTTP 404' latest-err.txt || { cat latest-err.txt; echo "::error::Could not read the latest release."; exit 1; }
+            latest=""
+          fi
+          latest_code=0
+          if [[ -n "$latest" && "$latest" != "$TAG" ]]; then
+            latest_code="$(node scripts/android-version-code.js "$latest" 2>/dev/null || echo 0)"
+          fi
+          if (( latest_code > VERSION_CODE )); then
+            echo "::warning::$latest is newer than $TAG; publishing $TAG without marking it latest."
+            make_latest=false
           else
-            flags=(--latest)
-            edit_flags=(--prerelease=false --latest)
+            make_latest=true
           fi
           if gh release view "$TAG" > /dev/null 2>&1; then
             echo "Release $TAG exists; replacing assets."
             gh release upload "$TAG" "${files[@]}" --clobber
-            gh release edit "$TAG" --title "$title" --notes-file dist/release-notes.md --draft=false "${edit_flags[@]}"
+            gh release edit "$TAG" --title "$title" --notes-file dist/release-notes.md --draft=false --prerelease=false --latest="$make_latest"
           else
-            gh release create "$TAG" "${files[@]}" --verify-tag --title "$title" --notes-file dist/release-notes.md "${flags[@]}"
+            gh release create "$TAG" "${files[@]}" --verify-tag --title "$title" --notes-file dist/release-notes.md --latest="$make_latest"
           fi
-          if [[ "$PRERELEASE" == "true" ]]; then
-            latest="$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name 2>/dev/null || true)"
-            if [[ "$latest" == "$TAG" ]]; then
-              echo "::error::Release candidate $TAG became the latest release."
+          if [[ "$make_latest" == "true" ]]; then
+            latest="$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name)"
+            if [[ "$latest" != "$TAG" ]]; then
+              echo "::error::$TAG was published but the latest release is ${latest:-none}."
               exit 1
             fi
-            echo "Prerelease; latest release is still: ${latest:-none}"
           fi
           echo "Published: https://github.com/$GH_REPO/releases/tag/$TAG" | tee -a "$GITHUB_STEP_SUMMARY"

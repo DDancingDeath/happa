@@ -12,9 +12,10 @@ Today's figures, from today's bills, expenses and cash sessions.
 | Cash / online paid (T8, T9) | Paid at save on today's purchases + today's expenses + due payments paid today. |
 | Total in, total out, net (T10–T12) | In = cash + online received; out = cash + online paid; net = in − out. |
 | Due received / paid (T13, T14) | Due payments received / paid today. |
-| Due to receive / pay (T15, T16) | What today's own sales / purchases still owe. The all-time totals are on Outstanding. |
+| New udhaar today, new to pay today (T15, T16) | What today's own sales / purchases still owe (not the total dues). The all-time totals are on Outstanding. |
 | Items (T17) | Today's bill lines by item: kg, value, average rate (value ÷ kg). |
 | By bill type, Today's bills (T18, T19) | Each type's total split into cash, online, paid later today, written off and still due; these add up to the total. |
+| Reminders: Collect udhaar, Collect wholesale dues, Pay suppliers (REM-1) | Parties with a bill **more than 30 days old** still owing: the headline is their whole dues; "of which overdue (> 30 days)" is the part on those old bills (OVERDUE, owner decision, 8 Nov 2026): Collect udhaar has the same ₹ as Outstanding › Sales › Retail "Overdue (> 30 days)", Pay suppliers as Outstanding › Purchases; Collect wholesale dues follows the Wholesale page's own list. Each party shows its whole due, "₹Y overdue" and the age of its oldest due. |
 | Labour: deducted from farmers (T-LAB-1) | Sum of the labour on today's purchase bills. |
 | Labour: to pay (T-LAB-2) | Today's purchase kg ÷ the package weight (Settings › Aadhat, default 35 kg), **rounded up**, × the labour rate. |
 | More / less than deducted (T-LAB-3) | The gap between the two. Not an error: it happens when labour was unticked on a bill or packets were light. |

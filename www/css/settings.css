@@ -16,14 +16,14 @@
 .settings-card h3 {
   margin: 0 0 16px 0;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: var(--w-strong);
   padding-bottom: 13px;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-primary);
 }
 
 .setting-description {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 8px 0 16px 0;
   font-style: italic;
@@ -37,7 +37,7 @@
   padding: 16px;
   border-radius: var(--radius-md);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   cursor: pointer;
   width: 100%;
   box-shadow: var(--shadow-sm);
@@ -66,8 +66,8 @@
   border-radius: 8px;
   background: transparent;
   color: var(--primary-color);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--fs-body);
+  font-weight: var(--w-strong);
   cursor: pointer;
 }
 
@@ -116,7 +116,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 }
 
 .role-access-group td {
-  font-weight: 600;
+  font-weight: var(--w-strong);
   color: var(--text-secondary);
   background: var(--surface-muted);
 }
@@ -124,14 +124,14 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .role-access-note {
   display: block;
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--fs-caption);
   color: var(--text-secondary);
 }
 /* Settings sections: Common, Aadhat, Rentals */
 .settings-section-title {
   margin: 8px 0 12px;
-  font-size: 20px;
-  font-weight: 700;
+  font-size: var(--fs-title);
+  font-weight: var(--w-strong);
 }
 
 .settings-biz-bar {
@@ -150,7 +150,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 }
 
 .settings-biz-toggle {
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 
 .role-people-table td {
@@ -193,7 +193,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
   border-radius: 8px;
   background: #c2410c;
   color: #fff;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   cursor: pointer;
 }
 
@@ -203,6 +203,6 @@ body.no-perm-contacts [data-perm~="contacts"] {
   border: none;
   background: none;
   color: inherit;
-  font-size: 20px;
+  font-size: var(--fs-title);
   cursor: pointer;
 }

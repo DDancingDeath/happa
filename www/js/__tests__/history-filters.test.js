@@ -35,7 +35,7 @@ describe('matchesHistoryType', () => {
         ['purchase', [true, false, false]],
         ['retail', [false, true, false]],
         ['wholesale', [false, false, true]],
-        ['sale', [false, true, false]]
+        ['sale', [false, true, true]]
     ])('%s', (type, expected) => {
         expect([p, r, w].map(b => matchesHistoryType(b, type))).toEqual(expected);
     });

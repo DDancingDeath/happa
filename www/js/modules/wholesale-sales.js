@@ -10,6 +10,7 @@ import { computeShortfallsFrom, approxStockNote } from '../utils/stock-check.js'
 import { normalizeThresholds, stockCreditFor } from '../utils/bill-checks.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
 import { settlePendingLine } from '../ui/pending-line.js';
+import { checkLineRate } from '../ui/rate-check.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import {
     isFullHistoryLoaded, historyLoadedFrom, formatWindowDate, rangeStatus, retryRange, applyRangeState, renderStaleHistoryHint
@@ -231,6 +232,10 @@ export class WholesaleSalesManager {
         }
         
         const { total } = computeLine({ rate, qty: quantity });
+        // ≥ 5× or ≤ ⅕ of today's rate: confirm first (BF-RATECHECK, OD-02)
+        const label = lineItemIdentity({ itemId: item.id, name: item.name }, AppState.items, AppState.settings.showHindi).label;
+        const { ok, rateCheck } = await checkLineRate({ kind: 'wholesale', item, label, rate, qty: quantity, rateInputId: 'sellRate' });
+        if (!ok) return;
         ensurePendingBill();
         
         wholesaleSaleItems.push({
@@ -240,6 +245,7 @@ export class WholesaleSalesManager {
             rate,
             qty: quantity,
             total,
+            ...(rateCheck ? { rateCheck } : {}),
             timestamp: Date.now()
         });
         
@@ -478,6 +484,7 @@ export class WholesaleSalesManager {
                     rate: item.rate,
                     quantity: item.qty,
                     total: item.total,
+                    ...(item.rateCheck ? { rateCheck: item.rateCheck } : {}),
                     ...(unknownCost.includes(i) ? { costUnknown: true } : {})
                 })),
                 total,

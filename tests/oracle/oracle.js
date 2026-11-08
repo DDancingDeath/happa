@@ -728,8 +728,9 @@ export function weeklySoldKg(data, nowMs) {
 }
 
 /**
- * I10 overdue parties: parties with an open BILL-DUE on a bill more than `days`
- * local days old (bill day by its stock time), OPENING records included.
+ * OVERDUE (OD-08) / I10: parties with an open BILL-DUE on a bill more than 30 local days
+ * old (bill day by its stock time), OPENING records included; a bill with no date counts
+ * (Outstanding's oldest bucket) but has no age. Total = Σ due on those bills only.
  * @returns {{parties: number, total: number, oldestDays: number}}
  */
 export function overdue(bills, nowMs, days = 30) {
@@ -739,13 +740,13 @@ export function overdue(bills, nowMs, days = 30) {
     let oldest = 0;
     (bills || []).forEach(b => {
         const due = openDue(b);
+        if (!(due > 0.005)) return;
         const t = eventTimeOf(b);
-        if (!(due > 0.005) || !Number.isFinite(t)) return;
-        const age = Math.round((today - dayRange(t)[0]) / 86400000);
-        if (age <= days) return;
+        const age = Number.isFinite(t) ? Math.round((today - dayRange(t)[0]) / 86400000) : null;
+        if (age !== null && age <= days) return;
         parties.add(partyKey(b.customerName));
         total += due;
-        oldest = Math.max(oldest, age);
+        if (age !== null) oldest = Math.max(oldest, age);
     });
     return { parties: parties.size, total: r2(total), oldestDays: oldest };
 }
@@ -966,4 +967,33 @@ export function billForm(kind, entries, { laborRate = 6, heavyKg = 30, labour, s
         });
     }
     return out;
+}
+
+/**
+ * BF-RATECHECK (OD-02): the confirm for a line rate against the Rates-page rates of its
+ * item for the bill type: asked from 5× the highest up, or from ⅕ of the lowest down
+ * (both ends included, in paise); the line amount at each rate, kg × rate to the rupee.
+ * Blank / zero rates (typed or listed) are left out. null when not asked.
+ */
+export function rateCheckOracle({ rate, qty, listed }) {
+    const paise = (v) => {
+        const x = typeof v === 'number' ? v : parseFloat(v);
+        return Number.isFinite(x) && x > 0 ? Math.round(x * 100) : 0;
+    };
+    const r = paise(rate);
+    const list = (listed || []).map(paise).filter(p => p > 0);
+    if (!r || !list.length) return null;
+    let today = null;
+    if (r >= 5 * Math.max(...list)) today = Math.max(...list);
+    else if (r * 5 <= Math.min(...list)) today = Math.min(...list);
+    if (today === null) return null;
+    const rupee = (p) => Math.round(r2((n(qty) * p) / 100)) || 0;
+    return { todayRate: today / 100, amount: rupee(r), todayAmount: rupee(today) };
+}
+
+/** BF-BAGCHECK: one bag / packet weight is asked when above 100 kg (to the gram); the suggestion is ÷ 10. */
+export function bagCheckOracle(kg) {
+    const x = typeof kg === 'number' ? kg : parseFloat(kg);
+    const g = Number.isFinite(x) && x > 0 ? Math.round(x * 1000) : 0;
+    return g > 100000 ? { asked: true, guess: Math.round(g / 10) / 1000 } : { asked: false };
 }

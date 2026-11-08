@@ -151,14 +151,16 @@ describe('This month in Simple', () => {
         expect(root.querySelector('.rent-filters, .rent-prop-card')).toBeNull();
     });
 
-    test('Needs attention shows what Today shows (REM-2, REM-4) and opens the action', async () => {
+    test('Needs attention shows what Today shows (REM-2, REM-4), the meter readings to enter (REM-7), and opens the action', async () => {
         saveLeaseReminders(localStorage, { uid: 'u1', month: M, items: [{ kind: 'increase', place: 'Flat 2B, Gupta Bhawan', tenant: 'Ram', pct: 5, newRent: 8400 }] });
         const root = await show('simple');
         const rows = [...root.querySelectorAll('.rent-attn-row')];
         expect(rows[0].textContent).toContain('2 units owe rent · 1 late');
         expect(rows[0].textContent).toContain('₹27,000');
-        expect(rows[1].textContent).toContain('rent increase due: 5% → ₹8,400');
-        expect(rows[1].getAttribute('data-onclick')).toBe("rentals.editLease('L1')");
+        // Leases without an electricity choice are billed by our meter (the default).
+        expect(rows[1].textContent).toContain('Meter readings: 2 to enter');
+        expect(rows[2].textContent).toContain('rent increase due: 5% → ₹8,400');
+        expect(rows[2].getAttribute('data-onclick')).toBe("rentals.editLease('L1')");
         RentalsModule.api.onlyLate(true);
         expect([...document.querySelectorAll('#rentalsBody > .rent-list > [data-lease]')].map(e => e.getAttribute('data-lease'))).toEqual(['L3', 'L9']);
         RentalsModule.api.onlyLate(false);

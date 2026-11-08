@@ -58,7 +58,7 @@ const html = `
       <div><div id="salesHistoryList"></div></div>
     </div>`;
 
-const historyNos = () => [...document.querySelectorAll('#historyList .bill-row__no [data-onclick]')].map(s => s.textContent.replace('#', ''));
+const historyNos = () => [...document.querySelectorAll('#historyList .bill-row__link')].map(s => s.textContent.replace('#', ''));
 const wholesaleNos = () => [...document.querySelectorAll('#salesHistoryList .bill-row__no [data-onclick]')].map(s => s.textContent.replace('#', ''));
 
 beforeEach(() => {
@@ -70,25 +70,51 @@ beforeEach(() => {
     delete window.FirebaseService;
     window.app = { nav: { showTab: jest.fn() } };
     AppState.historyLoadedFrom = 0;
+    AppState.userRole = 'staff';
+    AppState.settings = {};
     AppState.purchaseHistory = [bill('P1', day(0)), opening('P-OLD-1', day(-2)), opening('P-OLD-2', day(-3))];
     AppState.retailSalesHistory = [bill('S20261022-005', day(-1)), opening('S-OLD-1', day(-4))];
     AppState.salesHistory = [bill('W1', day(0, 12), { source: 'sales-tab' }), bill('W2', day(-5)), opening('W-OLD-1', day(-6))];
 });
 
-describe('History tabs: Purchase | Sale only', () => {
-    test('no wholesale bills in History; the tab is remembered on this device, Purchase on first use', () => {
+describe('History tabs: Purchase | Sale (retail + wholesale)', () => {
+    test('Sale lists retail and wholesale bills with a type tag for a role that may open Wholesale; the tab is remembered', () => {
+        AppState.userRole = 'owner';
         HistoryManager.refreshHistory();
         expect(historyNos()).toEqual(['P1']);
         HistoryManager.filterHistory('sale');
-        expect(historyNos()).toEqual(['S20261022-005']);
-        expect(document.getElementById('historyList').textContent).not.toMatch(/W1|W2/);
+        expect(historyNos()).toEqual(['W1', 'S20261022-005', 'W2']);
+        const tags = [...document.querySelectorAll('#historyList .bill-type-tag')].map(s => s.textContent);
+        expect(tags).toEqual(['Wholesale', 'Retail', 'Wholesale']);
         expect(localStorage.getItem(HISTORY_TAB_KEY)).toBe('sale');
 
         HistoryManager.filter = null; // app reopened
         sessionStorage.clear();
         HistoryManager.refreshHistory();
-        expect(historyNos()).toEqual(['S20261022-005']);
+        expect(historyNos()).toEqual(['W1', 'S20261022-005', 'W2']);
         expect(document.querySelector('[data-type="sale"]').classList.contains('active')).toBe(true);
+    });
+
+    test('a member without Wholesale sees retail bills only in Sale', () => {
+        AppState.userRole = 'staff';
+        AppState.settings = { roleAccess: { staff: { wholesale: false } } };
+        HistoryManager.filterHistory('sale');
+        expect(historyNos()).toEqual(['S20261022-005']);
+        expect(document.getElementById('historyList').textContent).not.toMatch(/W1|W2/);
+        AppState.settings = {};
+    });
+
+    test('the whole row opens the bill (one call, not one per nested element)', () => {
+        AppState.userRole = 'owner';
+        HistoryManager.filterHistory('sale');
+        const row = document.querySelector('#historyList .bill-row');
+        expect(row.getAttribute('role')).toBe('button');
+        expect(row.getAttribute('data-onclick')).toMatch(/^history\.viewBill\('id:W1', 'wholesale'\)$/);
+        expect(row.querySelectorAll('[data-onclick]')).toHaveLength(0);
+        HistoryManager.toggleView();
+        expect([...document.querySelectorAll('#historyList .bill-table__row .bill-type-tag')].map(s => s.textContent))
+            .toEqual(['Wholesale', 'Retail', 'Wholesale']);
+        HistoryManager.toggleView();
     });
 
     test('old "wholesale" links and saved filters open Wholesale › History', () => {
@@ -123,7 +149,7 @@ describe('old-app carried dues in History', () => {
 
         chip.click();
         const group = document.querySelector('#historyList .bill-group--opening');
-        expect([...group.querySelectorAll('.bill-row__no [data-onclick]')].map(s => s.textContent)).toEqual(['#P-OLD-1', '#P-OLD-2']);
+        expect([...group.querySelectorAll('.bill-row__link')].map(s => s.textContent)).toEqual(['#P-OLD-1', '#P-OLD-2']);
         expect(group.querySelectorAll('.old-app-chip')).toHaveLength(2);
         expect(document.getElementById('historyOpeningToggle').textContent).toBe('Hide dues carried from old app (2)');
 

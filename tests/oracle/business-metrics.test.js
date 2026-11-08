@@ -343,15 +343,16 @@ describe('insights rules', () => {
         expect(belowCostSales(m)).toEqual([{ itemKey: 'i1', item: 'Rice', itemHi: 'Rice', times: 1, qty: 2, lost: 10 }]);
     });
 
-    test('I10 overdue parties: open dues older than 30 days, one count per party', () => {
+    test('I10 overdue parties (OD-08): open dues on bills older than 30 days, one count per party; an undated bill counts', () => {
         const now = new Date(2026, 9, 26);
         const bills = [
             { customerName: 'A', date: '2026-09-01', payment: { due: 100 } },
             { customerName: ' a ', date: '2026-09-10', payment: { due: 50 } },
             { customerName: 'B', date: '2026-10-20', payment: { due: 70 } },
-            { customerName: 'C', date: '2026-08-01', payment: { due: 70 }, cleared: true }
+            { customerName: 'C', date: '2026-08-01', payment: { due: 70 }, cleared: true },
+            { customerName: 'D', payment: { due: 30 } }
         ];
-        expect(overdueParties(bills, now)).toEqual({ parties: 1, total: 150, oldestDays: 55 });
+        expect(overdueParties(bills, now)).toEqual({ parties: 2, total: 180, oldestDays: 55 });
     });
 
     test('stopped coming: regular in the same 3 months last year, no bill for 60 days', () => {

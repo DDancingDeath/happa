@@ -77,60 +77,10 @@
   --rule-style: solid;
 }
 
-[data-mode="dark"],
-body.dark-mode {
-  color-scheme: dark;
-  --bg: #0d0d10;
-  --surface: #15151a;
-  --surface-2: #1c1c22;
-  --surface-3: #24242b;
-  --line: rgba(255, 255, 255, 0.07);
-  --line-strong: rgba(255, 255, 255, 0.12);
-  --ink: #ececf1;
-  --ink-2: #a8a8b5;
-  --ink-3: #8c8c99;
-  --ink-placeholder: #80808d;
-  --scrim: rgba(0, 0, 0, 0.56);
-
-  --accent: #5b54e8;
-  --accent-hover: #6a64ee;
-  --accent-text: #a5a6fb;
-  --accent-soft: rgba(124, 120, 248, 0.14);
-  --accent-line: rgba(124, 120, 248, 0.36);
-
-  --mode-sale: #057a55;
-  --mode-sale-soft: rgba(74, 222, 155, 0.12);
-  --mode-wholesale: #7039df;
-  --mode-wholesale-soft: rgba(196, 176, 253, 0.12);
-  --mode-rentals-soft: rgba(92, 200, 222, 0.12);
-
-  --positive: #4ade9b;
-  --positive-soft: rgba(74, 222, 155, 0.12);
-  --positive-line: rgba(74, 222, 155, 0.36);
-  --negative: #fb7185;
-  --negative-soft: rgba(251, 113, 133, 0.12);
-  --negative-line: rgba(251, 113, 133, 0.36);
-  --warning: #fbbf24;
-  --warning-soft: rgba(251, 191, 36, 0.12);
-  --warning-line: rgba(251, 191, 36, 0.36);
-  --info: #7dd3fc;
-  --info-soft: rgba(125, 211, 252, 0.12);
-  --info-line: rgba(125, 211, 252, 0.36);
-  --caution-soft: rgba(251, 146, 60, 0.14);
-  --on-caution-soft: #fdba74;
-
-  --e1: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --e2: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 8px 24px -6px rgba(0, 0, 0, 0.6);
-  --e3: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 24px 56px -12px rgba(0, 0, 0, 0.75);
-  --highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14);
-  --focus: 0 0 0 3px rgba(124, 120, 248, 0.4);
-}
-
 /* Every token defined with var() (layer 2, the old names): re-declared on each themed element, so it follows that element's layer-1 values */
 :root,
 [data-theme],
-[data-mode],
-body.dark-mode {
+[data-mode] {
   --page-bg: var(--bg);
   --mode-purchase: var(--accent);
   --mode-purchase-soft: var(--accent-soft);
@@ -216,10 +166,57 @@ body.dark-mode {
   --font-sans: var(--font-ui);
 }
 
-[data-mode="dark"],
-body.dark-mode {
-  --seg-on: var(--surface-3);
-  --toast-bg: #2a2a32;
+/* Graphite dark. Screen only: printing from any theme or mode uses the light values (black on white) */
+@media screen {
+  [data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #0d0d10;
+    --surface: #15151a;
+    --surface-2: #1c1c22;
+    --surface-3: #24242b;
+    --line: rgba(255, 255, 255, 0.07);
+    --line-strong: rgba(255, 255, 255, 0.12);
+    --ink: #ececf1;
+    --ink-2: #a8a8b5;
+    --ink-3: #8c8c99;
+    --ink-placeholder: #80808d;
+    --scrim: rgba(0, 0, 0, 0.56);
+
+    --accent: #5b54e8;
+    --accent-hover: #6a64ee;
+    --accent-text: #a5a6fb;
+    --accent-soft: rgba(124, 120, 248, 0.14);
+    --accent-line: rgba(124, 120, 248, 0.36);
+
+    --mode-sale: #057a55;
+    --mode-sale-soft: rgba(74, 222, 155, 0.12);
+    --mode-wholesale: #7039df;
+    --mode-wholesale-soft: rgba(196, 176, 253, 0.12);
+    --mode-rentals-soft: rgba(92, 200, 222, 0.12);
+
+    --positive: #4ade9b;
+    --positive-soft: rgba(74, 222, 155, 0.12);
+    --positive-line: rgba(74, 222, 155, 0.36);
+    --negative: #fb7185;
+    --negative-soft: rgba(251, 113, 133, 0.12);
+    --negative-line: rgba(251, 113, 133, 0.36);
+    --warning: #fbbf24;
+    --warning-soft: rgba(251, 191, 36, 0.12);
+    --warning-line: rgba(251, 191, 36, 0.36);
+    --info: #7dd3fc;
+    --info-soft: rgba(125, 211, 252, 0.12);
+    --info-line: rgba(125, 211, 252, 0.36);
+    --caution-soft: rgba(251, 146, 60, 0.14);
+    --on-caution-soft: #fdba74;
+
+    --e1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --e2: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 8px 24px -6px rgba(0, 0, 0, 0.6);
+    --e3: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 24px 56px -12px rgba(0, 0, 0, 0.75);
+    --highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    --focus: 0 0 0 3px rgba(124, 120, 248, 0.4);
+    --seg-on: var(--surface-3);
+    --toast-bg: #2a2a32;
+  }
 }
 
 /* "Continue with Google" button: Google's own light and dark button colours (its branding guidelines) */
@@ -229,11 +226,12 @@ body.dark-mode {
   --google-btn-ink: #1f1f1f;
 }
 
-[data-mode="dark"],
-body.dark-mode {
-  --google-btn-bg: #131314;
-  --google-btn-line: #8e918f;
-  --google-btn-ink: #e3e3e3;
+@media screen {
+  [data-mode="dark"] {
+    --google-btn-bg: #131314;
+    --google-btn-line: #8e918f;
+    --google-btn-ink: #e3e3e3;
+  }
 }
 
 /* Layout, type scale, density and motion: the same in every theme */
@@ -288,6 +286,12 @@ body.dark-mode {
   --text-lg: 17px;
   --text-xl: 20px;
   --text-2xl: 24px;
+}
+
+/* Android app: Roboto has a Medium face, the native emphasis (600 would render as Bold); before html[lang="hi"] so Hindi labels stay 400 */
+html.platform-android {
+  --w-strong: 500;
+  --w-label: 500;
 }
 
 /* Devanagari: larger type, more leading, regular labels (Nirmala UI / Noto Sans Devanagari have no 500 or 600) */
@@ -610,8 +614,8 @@ input[type="number"],
   align-items: center;
   padding: 4px 10px;
   border-radius: var(--radius-full);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-caption);
+  font-weight: var(--w-strong);
 }
 
 .badge-success {

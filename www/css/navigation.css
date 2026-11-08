@@ -31,7 +31,7 @@
 
 .nav-header h2 {
   font-size: 24px;
-  font-weight: 700;
+  font-weight: var(--w-strong);
   margin: 0;
   letter-spacing: -0.5px;
 }
@@ -84,8 +84,8 @@
   color: var(--text-primary);
   text-decoration: none;
   transition: all var(--transition);
-  font-size: 15px;
-  font-weight: 500;
+  font-size: var(--fs-body);
+  font-weight: var(--w-regular);
   margin: 1px 8px;
   border-radius: var(--radius);
 }
@@ -102,11 +102,11 @@
 .nav-menu a.active {
   background: var(--primary-soft);
   color: var(--primary-color);
-  font-weight: 600;
+  font-weight: var(--w-strong);
 }
 
 .nav-icon {
-  font-size: 20px;
+  font-size: var(--fs-title);
   margin-right: 14px;
   width: 28px;
   text-align: center;
@@ -123,8 +123,8 @@
   background: rgba(255,255,255,0.15);
   border: 1px solid rgba(255,255,255,0.5);
   color: white;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--fs-sm);
+  font-weight: var(--w-strong);
   padding: 5px 12px;
   border-radius: var(--radius-full);
   cursor: pointer;
@@ -169,14 +169,14 @@ body {
   background: none;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-caption);
+  font-weight: var(--w-strong);
   text-decoration: none;
   cursor: pointer;
 }
 
 .bottom-nav-icon {
-  font-size: 20px;
+  font-size: var(--fs-title);
   line-height: 1;
   padding: 3px 16px;
   border-radius: var(--radius-full);
@@ -220,7 +220,7 @@ body.typing .bottom-nav {
   color: var(--text-primary);
   box-shadow: var(--shadow-md);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   pointer-events: none;
 }
 

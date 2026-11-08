@@ -13,13 +13,20 @@
 }
 
 .aging-title {
-    font-weight: 600;
+    font-weight: var(--w-strong);
     color: var(--text-secondary);
 }
 
 .aging-total {
     font-size: 18px;
     color: var(--on-danger-soft);
+}
+
+/* OVERDUE (OD-08): the part of the total on bills more than 30 days old */
+.aging-overdue {
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    margin: -4px 0 8px;
 }
 
 .aging-buckets {
@@ -76,7 +83,7 @@
     padding: 1px 6px;
     border-radius: 10px;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: var(--w-strong);
     white-space: nowrap;
 }
 
@@ -87,12 +94,12 @@
 
 .aging-filter-note {
     margin-top: 6px;
-    font-size: 12px;
+    font-size: var(--fs-caption);
     color: var(--text-secondary);
 }
 
 .aging-subtitle {
-    font-weight: 600;
+    font-weight: var(--w-strong);
     color: var(--text-secondary);
     margin: 12px 0 6px;
 }
@@ -107,7 +114,7 @@
 }
 
 .aging-empty {
-    font-size: 13px;
+    font-size: var(--fs-sm);
     color: var(--text-secondary);
 }
 
@@ -116,7 +123,7 @@
 }
 
 .aging-parties > summary {
-    font-weight: 600;
+    font-weight: var(--w-strong);
     color: var(--text-secondary);
     cursor: pointer;
     padding: 4px 0;
@@ -164,7 +171,7 @@
 .aging-party.aging-b3 { border-left-color: #b91c1c; }
 
 .aging-party-name {
-    font-weight: 600;
+    font-weight: var(--w-strong);
     overflow-wrap: anywhere;
 }
 
@@ -192,7 +199,7 @@
     border-radius: 6px;
     background: var(--card-bg);
     cursor: pointer;
-    font-weight: 600;
+    font-weight: var(--w-strong);
     font-size: 14px;
 }
 
@@ -210,7 +217,7 @@
     background: var(--btn-danger);
     color: #fff;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: var(--w-strong);
     vertical-align: middle;
 }
 
@@ -244,7 +251,7 @@ body.dark-mode .party-filter-note {
     padding: 1px 8px;
     border-radius: 10px;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: var(--w-label);
     background: var(--success-soft);
     color: var(--on-success-soft);
     vertical-align: middle;
@@ -257,5 +264,5 @@ body.dark-mode .due-kind-chip {
 
 /* Outstanding search box (its inline style; the id keeps it over the generic input rules) and
    its focus ring, which was inline onfocus / onblur (#89) */
-#outstandingSearchInput { width: 100%; padding: 14px; border: 2px solid var(--border-color); border-radius: 10px; font-size: 15px; transition: all 0.2s; }
+#outstandingSearchInput { width: 100%; padding: 14px; border: 2px solid var(--border-color); border-radius: 10px; font-size: var(--fs-body); transition: all 0.2s; }
 #outstandingSearchInput:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }

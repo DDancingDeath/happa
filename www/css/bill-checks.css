@@ -43,7 +43,7 @@
     background: none;
     color: inherit;
     font: inherit;
-    font-weight: 700;
+    font-weight: var(--w-strong);
     text-align: left;
     cursor: pointer;
 }
@@ -86,7 +86,7 @@ tr.bill-check-warn > td:first-child {
 .bill-check-msg {
     margin: 2px 0 8px;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: var(--w-strong);
     line-height: 1.35;
     color: var(--on-danger-soft);
 }
@@ -164,8 +164,8 @@ body.dark-mode .bill-check-msg.bill-check-warn {
     border-radius: 6px;
     background: var(--info-soft);
     color: var(--on-info-soft);
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--fs-sm);
+    font-weight: var(--w-strong);
     line-height: 1.35;
     text-align: left;
     cursor: pointer;

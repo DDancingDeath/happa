@@ -198,10 +198,10 @@ describe('the Record payment form (#157 UX redesign)', () => {
         RentalsModule.api.fillAmount(chips()[1]);
         expect(document.getElementById('rentPayAmount').value).toBe('9000');
         expect(document.getElementById('rentPayAdv').hidden).toBe(false);
-        RentalsModule.api.payMode(body().querySelector('[data-mode="upi"]'));
+        RentalsModule.api.payMode(body().querySelector('[data-pay-mode="upi"]'));
         expect(document.getElementById('rentPayMode').value).toBe('upi');
-        expect(body().querySelector('[data-mode="upi"]').getAttribute('aria-pressed')).toBe('true');
-        expect(body().querySelector('[data-mode="cash"]').getAttribute('aria-pressed')).toBe('false');
+        expect(body().querySelector('[data-pay-mode="upi"]').getAttribute('aria-pressed')).toBe('true');
+        expect(body().querySelector('[data-pay-mode="cash"]').getAttribute('aria-pressed')).toBe('false');
         RentalsModule.api.dialogClose(true);
         await done;
         await flush();

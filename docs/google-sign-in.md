@@ -4,8 +4,9 @@
 `googleSignIn` in `happa.config.json` is `{ "web": false, "android": false }` until the owner has
 done the console steps below. Off means no button, and its code is never loaded.
 
-Target projects: `happa-bahi` (live) and `happa-bahi-dev` (test), Android package `com.happa.bahi`
-after the rename. No Google sign-in is planned on the current project `happa-bfc07` (owner decision).
+Target projects: `happa-bahi` (live) and `happa-bahi-dev` (test); the Android package stays
+`com.happa` (owner decision). No Google sign-in is planned on the current project `happa-bfc07`
+(owner decision). The `GOOGLE_SERVICES_JSON` secret is not set yet, so the APK has no Google sign-in.
 
 - Code: `www/js/auth/google-signin.js` (loaded with `import()` only when switched on; in the
   service worker's `LAZY_ASSETS`, not precached), the switch and the profile check in
@@ -117,8 +118,8 @@ Why this plugin:
 
 ## Owner / console steps
 
-**Target projects: `happa-bahi` (live) and `happa-bahi-dev` (test)**, with the Android package
-`com.happa.bahi` after the rename. By owner decision, **no Google sign-in setup is planned on
+**Target projects: `happa-bahi` (live) and `happa-bahi-dev` (test)**; the Android package stays
+`com.happa` (owner decision; existing installs update in place). By owner decision, **no Google sign-in setup is planned on
 `happa-bfc07`** (the current project): Google sign-in stays off there and is switched on only once the
 app runs on the new projects (`happa.config.json` then names them). Do these steps for each of the two
 new projects. Nothing here goes in the repo except the last step.
@@ -135,8 +136,8 @@ new projects. Nothing here goes in the repo except the last step.
 3. **Account linking**: Authentication → Settings → User account linking → keep "Link accounts that use
    the same email".
 4. **Android app**: Project settings (gear) → General → Your apps → Add app → Android →
-   - Android package name: `com.happa.bahi` (the `androidPackage` in `happa.config.json` after the
-     rename; the APK build stops if `google-services.json` has no client for the APK's package);
+   - Android package name: `com.happa` (the `androidPackage` in `happa.config.json`; the APK build
+     stops if `google-services.json` has no client for the APK's package);
    - App nickname: happa Android;
    - Debug signing certificate SHA-1: the release key's SHA-1,
      `58:FD:C7:C6:D8:30:86:B0:60:C6:D4:16:B1:10:69:5D:33:9A:E3:43`
@@ -151,7 +152,9 @@ new projects. Nothing here goes in the repo except the last step.
    Settings → Secrets and variables → Actions → New repository secret → Name `GOOGLE_SERVICES_JSON` →
    the file's whole text → Add secret. The release workflow already writes it to
    `android/app/google-services.json` before the build (the same file switches on the Crashlytics build
-   path, docs/error-reporting.md; crash reports still stay off until a user switches them on).
+   path, docs/error-reporting.md; crash reports still stay off until a user switches them on). The
+   secret holds the **live** project's file (`happa-bahi`), the one the released APK signs in against;
+   `happa-bahi-dev`'s file is only for local test builds.
 6. **Google consent screen** (only for a project made from scratch): Google Cloud console → the same
    project → Google Auth Platform → Branding: app name and support email; Audience: External, In
    production. Only the `openid`, `email` and `profile` scopes are used, so no Google review is needed.

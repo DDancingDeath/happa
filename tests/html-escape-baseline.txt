@@ -68,7 +68,7 @@ www/js/modules/diagnostics.js: typeLabels[error.type] || Helpers.escapeHtml(erro
 www/js/modules/health.js: html (sink)
 www/js/modules/history.js: (toMoney(item.total) ?? toMoney(item.amount)) === null ? '—' : formatAmount(toMoney(item.total) ?? toMoney(item.amount), { exact: true }) ← formatAmount(toMoney(item.total) ?? toMoney(item.amount), { exact: true })
 www/js/modules/history.js: bg
-www/js/modules/history.js: billTableHtml(bills, { openings: this.pageOpenings, voided: this.pageVoided, onclickFor: (bill) => `history.viewBill('${billRef(bill)}', '${ (sink)
+www/js/modules/history.js: billTableHtml(bills, { openings: this.pageOpenings, voided: this.pageVoided, typeTags: type === 'sale', onclickFor: (bill) => `history.viewB (sink)
 www/js/modules/history.js: editsRowHtml(bill, 'history.showEdits()')
 www/js/modules/history.js: fg
 www/js/modules/history.js: known ? formatRupees(billLineTotal(bill, true)) : UNKNOWN_AMOUNT ← UNKNOWN_AMOUNT
@@ -227,7 +227,7 @@ www/js/modules/notifications.js: d.icon ← d = describeNotification(n)
 www/js/modules/outstanding.js: Helpers.formatDate(transaction.date)
 www/js/modules/outstanding.js: bucketIndex(ageDays)
 www/js/modules/outstanding.js: by
-www/js/modules/outstanding.js: chaseFirst(aging.parties) (markup via map(p => ` <li class="aging-b${p.bucket}"><strong>${partyName(p)}</strong> — ${esc(formatINR(p.total))} <span class="aging-age aging-b${p.bucket) .bucket)
+www/js/modules/outstanding.js: chaseFirst(aging.parties) (markup via map(p => ` <li class="aging-b${p.bucket}"><strong>${partyName(p)}</strong> — ${esc(formatINR(p.total))} · ${tt('ui.outstanding.party_overdue', {) .bucket)
 www/js/modules/outstanding.js: i
 www/js/modules/outstanding.js: i
 www/js/modules/outstanding.js: label
@@ -364,6 +364,14 @@ www/js/rentals/rent-expense.js: cls
 www/js/rentals/rent-expense.js: field
 www/js/rentals/rent-link.js: action
 www/js/rentals/rent-link.js: cls
+www/js/rentals/rent-meter.js: i
+www/js/rentals/rent-meter.js: i
+www/js/rentals/rent-meter.js: i
+www/js/rentals/rent-meter.js: i (markup via num)
+www/js/rentals/rent-meter.js: i (markup via num)
+www/js/rentals/rent-meter.js: i (markup via num)
+www/js/rentals/rent-meter.js: i (markup via rowHtml)
+www/js/rentals/rent-meter.js: id
 www/js/rentals/rent-pages.js: ELEC_MODES (markup via map(m => `<option value="${m}"${m === mode ? ' selected' : ''}>${et(`ui.rent.elec_${m}`)}</option>`))
 www/js/rentals/rent-pages.js: PROPERTY_KINDS (markup via map(k => `<option value="${k}"${k === cur ? ' selected' : ''}>${esc(kindLabel(k))}</option>`))
 www/js/rentals/rent-pages.js: UNIT_TYPES (markup via map(k => `<option value="${k}"${k === unitType(unit) ? ' selected' : ''}>${esc(c.typeLabel(k))}</option>`))
@@ -413,7 +421,7 @@ www/js/rentals/rent-unit.js: c.tenantSectionHtml({ rent: shown.rent, meterRate: 
 www/js/rentals/rent-unit.js: id
 www/js/rentals/rent-unit.js: id
 www/js/rentals/rent-unit.js: id (markup via unitPickHtml)
-www/js/rentals/rentals.js: PAYMENT_MODES (markup via map(m => `<button type="button" class="rent-seg-btn${m === v.mode ? ' active' : ''}" aria-pressed="${m === v.mode ? 'true' : 'false'}" data-mode))
+www/js/rentals/rentals.js: PAYMENT_MODES (markup via map(m => `<button type="button" class="rent-seg-btn${m === v.mode ? ' active' : ''}" aria-pressed="${m === v.mode ? 'true' : 'false'}" data-pay-))
 www/js/rentals/rentals.js: TemplateLoader.loadTemplate('rentals') (sink)
 www/js/rentals/rentals.js: args
 www/js/rentals/rentals.js: args
@@ -433,11 +441,13 @@ www/js/rentals/rentals.js: lazyMods.pages.renderTenants(unitCtx(), d) (sink)
 www/js/rentals/rentals.js: m
 www/js/services/exporter.js: html
 www/js/ui/bill-highlight.js: ICON.block ← ICON = { block: '⛔', warn: '⚠️' }
-www/js/ui/bill-row.js: onclick || '' ← onclick
+www/js/ui/bill-row.js: link ← onclick
+www/js/ui/bill-row.js: onclick
 www/js/ui/bill-row.js: onclickFor(bill)
 www/js/ui/bill-row.js: opening ? '' : SyncStatus.chipHtml(bill?.id) ← SyncStatus.chipHtml(bill?.id)
 www/js/ui/bill-row.js: opening ? '' : SyncStatus.chipHtml(bill?.id) ← SyncStatus.chipHtml(bill?.id)
 www/js/ui/bill-row.js: st.s ← st = printStatusOf(bill)
+www/js/ui/bill-row.js: tag.cls ← tag = TYPE_TAGS[type]
 www/js/ui/bill-status.js: REASON_MAX
 www/js/ui/bill-status.js: onclick
 www/js/ui/finance-breakdown-sheet.js: g (markup via opt)

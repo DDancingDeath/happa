@@ -30,6 +30,7 @@ import { SECURITY_ACTIONS, OLD_BILL_TRIES_PER_DAY, deniedClusters } from './secu
 import { t, tn } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 import { peopleById } from './audit-changes.js';
+import { BAG_WEIGHT_LIMIT_KG, bagChecks, rateCheckFigures, rateConfirmed } from './calc/billing.js';
 
 /** Business day boundaries are Indian Standard Time (UTC+5:30), whatever the device clock zone. */
 export const IST_OFFSET_MS = 330 * 60000;
@@ -71,6 +72,10 @@ export const STATUS_LABELS = {
 export const ANOMALY_TYPES = Object.freeze({
     'rate-high': { en: 'Rate far above usual', hi: 'रेट सामान्य से बहुत ज़्यादा', severity: 'medium' },
     'rate-low': { en: 'Rate far below usual', hi: 'रेट सामान्य से बहुत कम', severity: 'medium' },
+    // OD-02: an extreme rate (≥ 5× / ≤ ⅕ of today's rate) confirmed at billing (BF-RATECHECK)
+    'rate-confirmed': { en: 'Extreme rate confirmed', hi: 'बहुत अलग रेट की पुष्टि', severity: 'high' },
+    // A bag / packet above 100 kg confirmed at billing (BF-BAGCHECK)
+    'bag-weight-confirmed': { en: 'Bag over 100 kg confirmed', hi: '100 kg से भारी बोरी की पुष्टि', severity: 'high' },
     'rate-invalid': { en: 'Zero rate', hi: 'शून्य रेट', severity: 'high' },
     'rate-round': { en: 'Round-number line', hi: 'गोल रकम वाली लाइन', severity: 'low' },
     'qty-invalid': { en: 'Zero weight/quantity', hi: 'शून्य वज़न/मात्रा', severity: 'high' },
@@ -401,6 +406,46 @@ function roundLines(items, t) {
         && Math.abs(l.rate * 4 - Math.round(l.rate * 4)) > 0.01);
 }
 
+/**
+ * Lines whose extreme rate was confirmed at billing (BF-RATECHECK, OD-02), with the
+ * money the confirm showed: the line at its rate and at today's rate.
+ * @param {*} items
+ * @returns {Array<{name: string, by: string, byName: string, en: string, hi: string}>}
+ */
+function rateConfirmedLines(items) {
+    return (Array.isArray(items) ? items : []).filter(rateConfirmed).map(line => {
+        const { name, qty, rate } = readLineItem(line);
+        const todayRate = toMoney(line.rateCheck.todayRate) || 0;
+        const { amount, todayAmount } = rateCheckFigures({ rate, qty, todayRate });
+        const head = `${name}: ${formatKg(qty)} kg × ${formatRate(rate)} = ${formatRupees(amount)}`;
+        const today = todayRate > 0;
+        return {
+            name, by: String(line.rateCheck.by || ''), byName: String(line.rateCheck.byName || ''),
+            en: today ? `${head}; today's rate ${formatRate(todayRate)} would give ${formatRupees(todayAmount)}` : head,
+            hi: today ? `${head}; आज के रेट ${formatRate(todayRate)} से ${formatRupees(todayAmount)} होता` : head
+        };
+    });
+}
+
+/**
+ * Bags / packets above 100 kg confirmed at billing (BF-BAGCHECK), one entry per bag.
+ * @param {*} items
+ * @param {'purchase'|'retail'|'wholesale'} kind - purchase lines have bags, retail lines packets
+ * @returns {Array<{name: string, by: string, byName: string, en: string, hi: string}>}
+ */
+function bagConfirmedLines(items, kind) {
+    const bag = kind === 'purchase';
+    return (Array.isArray(items) ? items : []).flatMap(line => {
+        if (!line || !Array.isArray(line.weightCheck)) return [];
+        const { name } = readLineItem(line);
+        return bagChecks(line.weights, line.weightCheck).confirmed.filter(r => !r.kept).map(r => ({
+            name, by: String(r.by || ''), byName: String(r.byName || ''),
+            en: `${name}: ${bag ? 'bag' : 'packet'} of ${formatKg(r.kg)} kg (usually under ${formatKg(BAG_WEIGHT_LIMIT_KG)} kg)`,
+            hi: `${name}: ${formatKg(r.kg)} kg ${bag ? 'की बोरी' : 'का पैकेट'} (आमतौर पर ${formatKg(BAG_WEIGHT_LIMIT_KG)} kg से कम)`
+        }));
+    });
+}
+
 const isNight = (/** @type {number} */ hour, /** @type {Rec} */ t) => (t.nightStartHour > t.nightEndHour
     ? hour >= t.nightStartHour || hour < t.nightEndHour
     : hour >= t.nightStartHour && hour < t.nightEndHour);
@@ -472,6 +517,24 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
                         at: ts, rule: overrides.map(o => o.rule).join(','),
                         en: `Saved past a block — ${rules}`, hi: `रोक के बावजूद सेव — ${rulesHi}`,
                         userId: by || userId, user: nameOf(by || userId, by ? '' : ref.user)
+                    }));
+                }
+                const confirmed = rateConfirmedLines(bill.items);
+                if (confirmed.length) {
+                    const by = confirmed[0].by;
+                    add(makeAnomaly('rate-confirmed', ref, {
+                        at: ts, item: [...new Set(confirmed.map(c => c.name))].join(', '),
+                        en: confirmed.map(c => c.en).join('; '), hi: confirmed.map(c => c.hi).join('; '),
+                        userId: by || userId, user: nameOf(by || userId, confirmed[0].byName || (by ? '' : ref.user))
+                    }));
+                }
+                const heavy = bagConfirmedLines(bill.items, kind);
+                if (heavy.length) {
+                    const by = heavy[0].by;
+                    add(makeAnomaly('bag-weight-confirmed', ref, {
+                        at: ts, item: [...new Set(heavy.map(c => c.name))].join(', '),
+                        en: heavy.map(c => c.en).join('; '), hi: heavy.map(c => c.hi).join('; '),
+                        userId: by || userId, user: nameOf(by || userId, heavy[0].byName || (by ? '' : ref.user))
                     }));
                 }
                 recheckBill(bill, kind, ts, earlierBills(sorted, index, lookbackMs), base).forEach(r => {

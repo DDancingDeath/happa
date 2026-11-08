@@ -26,20 +26,23 @@ const BELL_SEEN_KEY = 'happa.rentBellSeen';
 export const LEASE_REMINDER_LIMIT = 20;
 
 /**
- * REM-1: parties whose oldest open due is older than 30 days (Outstanding's
- * chase-first order: oldest bucket, then the biggest amount), top `limit`.
+ * REM-1: parties with an OVERDUE bill (oldest open due older than 30 days; Outstanding's
+ * chase-first order: oldest bucket, then the biggest amount), top `limit`. `total` is
+ * all those parties' dues, `overdue` the part on overdue bills (OD-08).
  * @param {Array<Rec>} bills open bills of one side (receivables or payables)
  * @param {{today?: Date, limit?: number}} [opts]
- * @returns {{parties: Array<{key: string, name: string, phone: string, total: number, oldestDays: ?number}>, more: number, total: number}}
+ * @returns {{parties: Array<{key: string, name: string, phone: string, total: number, overdue: number, oldestDays: ?number}>, more: number, total: number, overdue: number}}
  */
 export function overdueReminder(bills, { today = new Date(), limit = REMINDER_LIMIT } = {}) {
     const all = chaseFirst(buildAging(bills, { today }).parties, Infinity);
     let total = 0;
-    all.forEach(p => { total += p.total; });
+    let overdue = 0;
+    all.forEach(p => { total += p.total; overdue += p.overdue; });
     return {
-        parties: all.slice(0, limit).map(p => ({ key: p.key, name: p.name, phone: p.phone, total: p.total, oldestDays: p.oldestDays })),
+        parties: all.slice(0, limit).map(p => ({ key: p.key, name: p.name, phone: p.phone, total: p.total, overdue: p.overdue, oldestDays: p.oldestDays })),
         more: Math.max(0, all.length - limit),
-        total: Math.round(total * 100) / 100
+        total: round2(total),
+        overdue: round2(overdue)
     };
 }
 
