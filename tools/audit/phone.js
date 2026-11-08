@@ -791,12 +791,11 @@ async function auditOneDay({ fake, moment, at, label, open, cmp, unknown, T, pas
             cmp('I9_weeklyKg', 'Insights stock-up (phone)', P('item'), weeklyWant[k] || 0, r2(weekly.get(k) || 0), r2(fullWeekly.get(k) || 0), at + 1, 'kg');
         });
     }
-    const cfg = InsightsManager.cfg();
     [['sales', [...(AppState.retailSalesHistory || []), ...(AppState.salesHistory || [])], [...now.retailSales, ...now.wholesaleSales]],
         ['purchases', AppState.purchaseHistory || [], now.purchases]].forEach(([kind, mine, all]) => {
-        const a = overdueParties(mine, nowD, cfg);
-        const w = O.overdue(all, at, cfg.overdueDays);
-        const fa = overdueParties(all, nowD, cfg);
+        const a = overdueParties(mine, nowD);
+        const w = O.overdue(all, at);
+        const fa = overdueParties(all, nowD);
         cmp('I10_overdueTotal', `Insights to-do (phone, ${kind})`, P('now'), w.total, a.total, fa.total, at + 1);
         cmp('I10_overdueParties', `Insights to-do (phone, ${kind})`, P('now'), w.parties, a.parties, fa.parties, at + 1, 'count');
     });

@@ -75,7 +75,7 @@ Each page has its own short file in `docs/pages/` (English and Hindi): what it s
 
 ### Every week
 
-- **Outstanding**: call parties who owe for more than 30 days (Insights › To do).
+- **Outstanding**: call parties with overdue dues, bills more than 30 days old (Insights › To do; the same ₹ as Outstanding's "Overdue (> 30 days)").
 - **Anomalies**: clear the pending ones.
 - **Diagnostics › Number checks**: all should pass.
 - Days left "Not counted" on Cash: count them if the cash is still known.

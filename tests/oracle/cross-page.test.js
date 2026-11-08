@@ -15,7 +15,8 @@ import { AnomaliesManager } from '../../www/js/modules/anomalies.js';
 import { CashManagementManager } from '../../www/js/modules/cash-management.js';
 import { WholesaleSalesManager } from '../../www/js/modules/wholesale-sales.js';
 import { FirebaseService } from '../../www/js/firebase/firestore-service.js';
-import { moneySummary, expenseCategories, outstandingTotals } from '../../www/js/utils/business-metrics.js';
+import { moneySummary, expenseCategories, outstandingTotals, overdueParties } from '../../www/js/utils/business-metrics.js';
+import { overdueReminder } from '../../www/js/utils/reminders.js';
 import { dayBook } from '../../www/js/utils/statements.js';
 import { billListAmount, paymentChipsHtml } from '../../www/js/ui/bill-row.js';
 import { HistoryManager } from '../../www/js/modules/history.js';
@@ -286,5 +287,52 @@ describe('H. H-TOTAL: History › Sale lists retail + wholesale; its ₹ total =
         HistoryManager.setFilter({ type: 'purchase', preset: 'custom', from: '2026-10-01', to: '2026-10-31' });
         HistoryManager.refreshHistory();
         expect(rupees(label())).toBe(Math.round(w.M16_purchases));
+    });
+});
+
+describe('I. OVERDUE (OD-08): Today reminders, Insights and Outstanding give one overdue figure', () => {
+    const due = (id, name, date, amount, extra = {}) => ({ id, billNumber: id, customerName: name, ...(date ? { date, timestamp: new Date(`${date}T11:00:00`).getTime() } : {}),
+        total: amount, items: [], payment: { cash: 0, online: 0, due: amount }, ...extra });
+    const RETAIL = [
+        due('a1', 'Asha', '2026-09-01', 300),
+        due('a2', 'asha ', '2026-10-15', 200),
+        due('b1', 'Bala', '2026-09-20', 100),
+        due('b2', 'Bala', '2026-09-21', 50),
+        due('c1', 'Chetan', null, 70),
+        due('d1', 'Dev', '2026-08-01', 400, { cleared: true })
+    ];
+    const SALES = () => copy([...RETAIL, ...WHOLESALE]);
+    const want = O.overdue(SALES(), NOW);
+    const amount = (el) => Number(el.textContent.replace(/[^\d.]/g, ''));
+
+    beforeEach(() => {
+        AppState.retailSalesHistory = copy(RETAIL);
+    });
+
+    test('oracle: bills more than 30 days old (31 days counts, 30 does not), an undated bill counts, a cleared one does not', () => {
+        expect(want).toEqual({ parties: 5, total: 2770, oldestDays: 284 });
+    });
+    test('Insights I10 = the oracle', () => {
+        expect(overdueParties(SALES(), new Date(NOW))).toEqual(want);
+    });
+    test('Today REM-1: the overdue parts of Collect udhaar + Collect wholesale dues = the oracle; the headline stays the parties\' whole dues', () => {
+        const retail = overdueReminder(copy(RETAIL), { today: new Date(NOW) });
+        const wholesale = overdueReminder(copy(WHOLESALE), { today: new Date(NOW) });
+        expect(retail.overdue + wholesale.overdue).toBe(want.total);
+        expect(retail.total).toBe(720);
+        expect(retail.parties.map(p => [p.name, p.total, p.overdue])).toEqual([['Chetan', 70, 70], ['Asha', 500, 300], ['Bala', 150, 100]]);
+        document.body.innerHTML = '<div id="todayReminders"></div>';
+        DayManager.renderReminders(new Date(NOW));
+        const shownOverdue = ['collect', 'collect_wholesale'].map(k => Number(document.querySelector(`[data-reminder="${k}"] [data-overdue]`).textContent.split(':').pop().replace(/[^\d.]/g, '')));
+        expect(shownOverdue).toEqual([retail.overdue, wholesale.overdue]);
+    });
+    test('Outstanding › Sales (All): "Overdue (> 30 days)" = the oracle = Σ of the 31–60, 61–90 and 90+ buckets', async () => {
+        const { OutstandingManager } = await import('../../www/js/modules/outstanding.js');
+        document.body.innerHTML = '<div id="due"><div id="dueAging"></div><div id="dueList"></div></div>';
+        OutstandingManager.agingBucket = null;
+        OutstandingManager.filterDue('sale');
+        expect(amount(document.querySelector('#dueAging .aging-overdue-amount'))).toBe(want.total);
+        const buckets = [...document.querySelectorAll('#dueAging .aging-bucket-amount')].map(amount);
+        expect(buckets.slice(1).reduce((a, v) => a + v, 0)).toBe(want.total);
     });
 });

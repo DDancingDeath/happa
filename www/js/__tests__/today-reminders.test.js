@@ -26,10 +26,16 @@ describe('REM-1 who to collect from / pay', () => {
             bill('Old', 800, 200, { voided: true })
         ];
         const r = overdueReminder(bills, { today: TODAY });
-        expect(r.parties.map(p => [p.name, p.total, p.oldestDays])).toEqual([['Mohan', 300, 95], ['Gopal', 50, 70], ['Sita', 2000, 45]]);
+        expect(r.parties.map(p => [p.name, p.total, p.overdue, p.oldestDays])).toEqual([['Mohan', 300, 300, 95], ['Gopal', 50, 50, 70], ['Sita', 2000, 2000, 45]]);
         expect(r.more).toBe(1);
         expect(r.total).toBe(300 + 50 + 2000 + 1000);
-        expect(overdueReminder([bill('Asha', 500, 10)], { today: TODAY })).toEqual({ parties: [], more: 0, total: 0 });
+        expect(r.overdue).toBe(300 + 50 + 2000 + 1000);
+        expect(overdueReminder([bill('Asha', 500, 10)], { today: TODAY })).toEqual({ parties: [], more: 0, total: 0, overdue: 0 });
+    });
+    test('OD-08: a party\'s whole due, and the part on bills more than 30 days old', () => {
+        const r = overdueReminder([bill('Ravi', 900, 40), bill('Ravi', 100, 31), bill('Ravi', 250, 30), bill('Ravi', 60, 2)], { today: TODAY });
+        expect(r.parties.map(p => [p.total, p.overdue])).toEqual([[1310, 1000]]);
+        expect([r.total, r.overdue]).toEqual([1310, 1000]);
     });
 });
 

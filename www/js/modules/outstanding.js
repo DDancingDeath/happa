@@ -296,7 +296,7 @@ export class OutstandingManager {
             <div class="aging-chase">
                 <div class="aging-subtitle">${tt('ui.outstanding.who_to_chase')}</div>
                 ${chase.length ? `<ol>${chase.map(p => `
-                    <li class="aging-b${p.bucket}"><strong>${partyName(p)}</strong> — ${esc(formatINR(p.total))}
+                    <li class="aging-b${p.bucket}"><strong>${partyName(p)}</strong> — ${esc(formatINR(p.total))} · ${tt('ui.outstanding.party_overdue', { amount: formatINR(p.overdue) })}
                         <span class="aging-age aging-b${p.bucket}">${tt('ui.outstanding.oldest', { age: daysText(p.oldestDays) })}</span></li>`).join('')}</ol>`
                     : `<div class="aging-empty">${tt('ui.outstanding.no_one_owes')}</div>`}
             </div>`;
@@ -307,7 +307,7 @@ export class OutstandingManager {
             <div class="aging-party aging-b${p.bucket}">
                 <div class="aging-party-main">
                     <div class="aging-party-name">${partyName(p)}${p.longOverdue ? ` <span class="aging-badge">${tt('ui.outstanding.long_overdue')}</span>` : ''}</div>
-                    <div class="aging-party-meta">${esc(billsText(p.bills.length))} · ${tt('ui.outstanding.oldest', { age: daysText(p.oldestDays) })}</div>
+                    <div class="aging-party-meta">${esc(billsText(p.bills.length))} · ${tt('ui.outstanding.oldest', { age: daysText(p.oldestDays) })}${p.overdue > 0 ? ` · ${tt('ui.outstanding.party_overdue', { amount: formatINR(p.overdue) })}` : ''}</div>
                 </div>
                 <strong class="aging-party-total">${esc(formatINR(p.total))}</strong>
                 <div class="aging-party-actions">
@@ -326,6 +326,7 @@ export class OutstandingManager {
                     <span class="aging-title">${tt(isPayable ? 'ui.outstanding.payables_by_age' : RECEIVABLE_TITLE[this.dueFilter()] || 'ui.outstanding.receivables_by_age')}</span>
                     <strong class="aging-total">${esc(formatINR(aging.total))}</strong>
                 </div>
+                <div class="aging-overdue">${tt('ui.outstanding.overdue_total')} <strong class="aging-overdue-amount">${esc(formatINR(aging.overdue))}</strong></div>
                 <div class="aging-buckets">${buckets}</div>
                 ${this.agingBucket ? `<div class="aging-filter-note">${tt('ui.outstanding.one_age_group')}</div>` : ''}
                 ${chaseHtml}

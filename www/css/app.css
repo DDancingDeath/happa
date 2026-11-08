@@ -4050,6 +4050,13 @@ body.dark-mode .party-due-line.party-due-old {
     color: var(--on-danger-soft);
 }
 
+/* OVERDUE (OD-08): the part of the total on bills more than 30 days old */
+.aging-overdue {
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    margin: -4px 0 8px;
+}
+
 .aging-buckets {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
