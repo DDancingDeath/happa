@@ -13,7 +13,12 @@
           "package_name": "com.happa"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "000000000000-cidummywebclient.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "ci-dummy-not-a-real-api-key"

@@ -270,7 +270,7 @@ describe('shared / printed text follows the app language', () => {
 
 describe('Hindi mode: no English UI words', () => {
     // Brand names, units, file types and the technical rule keys an owner types on App health.
-    const ALLOWED = new Set(['Bahi', 'happa', 'WhatsApp', 'UPI', 'GPay', 'AI', 'kg', 'KB', 'MB', 'CSV', 'PDF', 'JSON', 'English',
+    const ALLOWED = new Set(['Bahi', 'happa', 'WhatsApp', 'Google', 'UPI', 'GPay', 'AI', 'kg', 'KB', 'MB', 'CSV', 'PDF', 'JSON', 'English',
         'Android', 'Chrome', 'Edge', 'iPhone', 'iPad', 'Safari', 'Files', 'am', 'pm', 'v',
         'billChecksBlocking', 'telemetryOnly', 'false', 'auto', 'rollback']);
     const userData = ['Ram Traders', 'Mahua', 'Suresh'];

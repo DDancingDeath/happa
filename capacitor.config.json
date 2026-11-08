@@ -14,5 +14,11 @@
     "allowMixedContent": false,
     "captureInput": true,
     "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "FirebaseAuthentication": {
+      "skipNativeAuth": true,
+      "providers": ["google.com"]
+    }
   }
 }

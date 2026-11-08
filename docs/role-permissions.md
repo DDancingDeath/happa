@@ -663,7 +663,10 @@ not checked one by one (rules can't loop over map keys), so a member can still c
 - **Own profile writes**: registration writes only `name`, `email` (the signed-in account's own, any case), `role: 'staff'`, `status: 'pending'`
   and the server `createdAt`; afterwards a person changes only their `name` (Settings › account). Their
   phones (#124) are in `deviceLog/{uid}`, which only they write and only they and the owner read.
-- **Lost phone**: Admin › Users › Reset password. Changing the password ends every other sign-in of that
+- **Google sign-in** (off until set up, [google-sign-in.md](google-sign-in.md)): a new Google account gets the same
+  pending profile as a registration (Google's name and email) and waits for the owner; nothing is approved by
+  the app. An email that already has a password stays the same account (same uid, profile and role).
+- **Lost phone**: Admin › Users › Reset password (a Google-only person has no password: Remove, then Restore). Changing the password ends every other sign-in of that
   account within an hour (Firebase revokes its sessions). To stop the lost phone at once, Remove the person
   first, then Restore and approve them after the reset.
 - Admin › Clear Data › Users still deletes profiles (a fresh start); those people can register again.
