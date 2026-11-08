@@ -7,7 +7,7 @@ Part of the [owner guide](../owner-guide.md) (one file per page). Hindi: [outsta
 | Purchase dues per party (O1) | Sum of the due on that supplier's purchases. |
 | Sale dues per party (O2) | Sum of the due on that customer's sales. Sales shows **All** (retail and wholesale), **Retail** or **Wholesale**; in All each bill has a Retail / Wholesale tag. Wholesale › Outstanding still lists the wholesale dues too. |
 | Payables / receivables totals (O3, O4) | Sum over all parties. The All total is the same as "To receive" on Money › Worth. |
-| Overdue (> 30 days) (O5) | The part of that total on bills **more than 30 days old** (the 31–60, 61–90 and 90+ groups; a bill with no date counts). One meaning everywhere (OVERDUE, owner decision OD-08): Sales › All is the same ₹ as Insights "owe you … overdue", Purchases as "You owe … overdue" and Today's Pay suppliers "of which overdue", Retail as Today's Collect udhaar "of which overdue" (Collect wholesale dues follows the Wholesale page's own list). |
+| Overdue (> 30 days) (O5) | The part of that total on bills **more than 30 days old** (the 31–60, 61–90 and 90+ groups; a bill with no date counts). One meaning everywhere (OVERDUE, owner decision, 8 Nov 2026): Sales › All is the same ₹ as Insights "owe you … overdue", Purchases as "You owe … overdue" and Today's Pay suppliers "of which overdue", Retail as Today's Collect udhaar "of which overdue" (Collect wholesale dues follows the Wholesale page's own list). |
 | "₹Y overdue" on a party (O6) | That party's part on overdue bills, next to its whole due. "Over 90 days" marks a party whose oldest due is more than 90 days old. |
 
 Recording a payment (DUE-CHECK): cash and online in whole rupees, never more than

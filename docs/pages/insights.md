@@ -15,6 +15,6 @@ sold-below-cost cards are for that period; overdue dues and stock-up are for now
 | Sold below cost (I8) | Sales whose value was below their cost. |
 | Stock up before the season (I9) | Busy month within 8 weeks and stock that won't last until then + 4 weeks. |
 | What you bought (I11) | Per item: kg and **Bought for**, the purchase value after labour, paid or not. The suppliers table uses the same "Bought for". |
-| Overdue parties (I10) | Parties with bills **more than 30 days old** still owing, and the ₹ on those bills only (OVERDUE, owner decision OD-08); the same ₹ as "Overdue (> 30 days)" on Outstanding. |
+| Overdue parties (I10) | Parties with bills **more than 30 days old** still owing, and the ₹ on those bills only (OVERDUE, owner decision, 8 Nov 2026); the same ₹ as "Overdue (> 30 days)" on Outstanding. |
 | Top-5 share (I12) | The five biggest parties' share of the period's total. |
 | Trends, Product traffic (RT, PT) | Rates and kg per week or month from bills and the Rates page. |
