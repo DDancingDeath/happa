@@ -1060,7 +1060,7 @@ export default {
     'ui.today.labour_col_packets': "Packets",
     'ui.today.labour_col_deducted': "Deducted",
     'ui.today.labour_total': "Total",
-    'ui.today.labour_note': "Deducted is the labour ticked on each bill (heavy packets × rate). Paid to labourers is today's business expenses of type Labour (also Labor, Labourers, मजदूरी). The estimate to pay is today's total kg ÷ package weight, rounded up, × the same rate. Deducted and paid differ when labour was unticked on a bill, when packets were light, or when the labourers were paid more or less than the bills deducted.",
+    'ui.today.labour_note': "Deducted is the labour ticked on each bill (heavy packets × rate). Paid to labourers is today's business expenses of type Labour (also Labor, Labourers, or the Hindi word for labour). The estimate to pay is today's total kg ÷ package weight, rounded up, × the same rate. Deducted and paid differ when labour was unticked on a bill, when packets were light, or when the labourers were paid more or less than the bills deducted.",
     'ui.today.net_inflow': "Net Inflow:",
     'ui.today.net_outflow': "Net Outflow:",
     'ui.today.no_purchases_today': "No purchases today",

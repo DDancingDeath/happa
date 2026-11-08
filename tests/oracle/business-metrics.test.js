@@ -13,8 +13,9 @@ import {
     moneySummary, itemSummary, partySummary, purchaseItems, billCount, outstandingTotals,
     periodRange, comparisonRanges, change, netWorth, seasonIndex, lowProfitItems, belowCostSales,
     biggestChange, overdueParties, stoppedComing, expenseCategories, profitPerDay, stockUpItems, recordTime,
-    stepDayOrWeek, drawerTerm
+    stepDayOrWeek, drawerTerm, labourPaidIn
 } from '../../www/js/utils/business-metrics.js';
+import { labourPaidGap } from '../../www/js/utils/labour.js';
 import { INSIGHTS_DEFAULTS, insightsSettings } from '../../www/js/utils/insights-config.js';
 
 const FIX = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../fixtures/calculations/shop-month.json'), 'utf8'));
@@ -76,6 +77,20 @@ describe('hand-worked example (docs/calculations.md, Worked example)', () => {
         const M18 = Object.values(kgByDay).reduce((a, kg) => a + Math.ceil(kg / 35 - 1e-9) * 6, 0);
         expect(M18).toBeGreaterThan(0);
         expect(labourToPayByDay(bills, settings, b => toLocalISODate(new Date(O.timeOf(b.timestamp ?? b.date)))).amount).toBe(M18);
+    });
+
+    test('labour paid (OD-03 step 1): M20 = October\'s business Labour expenses = 350 over 2, M21 = M20 − M7 = 344 more paid', () => {
+        const expenses = [...data.expenses,
+            { type: 'Labor', amount: 300, category: 'business', date: '2026-10-21' },
+            { type: 'labour charges', amount: 50, category: 'business', date: '2026-10-02' },
+            { type: 'Labor', amount: 70, category: 'personal', date: '2026-10-21' },
+            { type: 'Labour', amount: 90, category: 'business', date: '2026-09-29' }];
+        const M20 = labourPaidIn(expenses, OCT.from, OCT.to);
+        expect(M20).toEqual({ amount: 350, count: 2 });
+        expect(M20).toEqual(O.labourPaid({ ...data, expenses }, [OCT.from, OCT.to]));
+        const M7 = moneySummary({ ...input, expenses }, OCT).M7;
+        expect(labourPaidGap(M20.amount, M7)).toEqual({ difference: 344, amount: 344, kind: 'more' });
+        expect(labourPaidIn(data.expenses, ALL.from, ALL.to)).toEqual({ amount: 0, count: 0 });
     });
 
     test('O3 / O4 with counts (#220: cleared bills left out, dueAmount-only bills in)', () => {
