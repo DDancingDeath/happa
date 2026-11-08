@@ -453,3 +453,18 @@ select:focus, input:focus {
 .voice-warn {
   color: var(--on-warning-soft);
 }
+
+/* Save with a line not added to the bill (BF-PENDING): three choices, wrapping on a phone */
+.pending-line-dialog .modal-footer {
+  flex-wrap: wrap;
+}
+
+.pending-line-dialog .modal-footer .modal-btn {
+  flex: 1 1 auto;
+}
+
+.pending-line-discard {
+  background: var(--card-bg);
+  color: var(--danger-color);
+  border: 1px solid var(--danger-color);
+}

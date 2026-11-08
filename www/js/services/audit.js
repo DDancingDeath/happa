@@ -72,19 +72,29 @@ export class AuditService {
         LOGOUT: 'LOGOUT'
     };
 
+    /**
+     * One audit entry as stored (the repository adds serverTime). Also written inside a
+     * payment's own transaction, so the payment and its entry land together (D-3).
+     * @param {string} action
+     * @param {Object|string} [details]
+     * @returns {Object}
+     */
+    static entry(action, details = {}) {
+        const user = typeof firebase !== 'undefined' ? firebase.auth?.()?.currentUser : null;
+        return {
+            action,
+            userId: user?.uid || AppState.currentUser?.uid || 'unknown',
+            userName: String(AppState.userName || 'Unknown User').slice(0, 200),
+            userRole: String(AppState.userRole || 'unknown').slice(0, 32),
+            details: typeof details === 'string' ? { message: details } : details,
+            timestamp: Date.now(),
+            date: new Date().toISOString()
+        };
+    }
+
     static async log(action, details = {}) {
         try {
-            const user = firebase.auth().currentUser;
-            
-            const auditEntry = {
-                action,
-                userId: user?.uid || 'unknown',
-                userName: String(AppState.userName || 'Unknown User').slice(0, 200),
-                userRole: String(AppState.userRole || 'unknown').slice(0, 32),
-                details: typeof details === 'string' ? { message: details } : details,
-                timestamp: Date.now(),
-                date: new Date().toISOString()
-            };
+            const auditEntry = this.entry(action, details);
             
             // Fire-and-forget: the entry is queued locally (offline persistence)
             // and synced in the background, so callers never wait on the network.
