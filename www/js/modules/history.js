@@ -30,7 +30,7 @@ import { accessFor, canDeleteBillWith, canVoidBillWith, historyCutoff, withinBil
 import { askReason, editsRowHtml, renderEditsList, setBillActions, voidedBannerHtml } from '../ui/bill-status.js';
 import { voidBlocker } from '../utils/bill-edits.js';
 import { buildReprintPayload, buildBillShareText } from '../utils/bill-share.js';
-import { billTimes } from '../utils/clock-skew.js';
+import { billTimes, refusedForClock } from '../utils/clock-skew.js';
 import { todayLocalISO } from '../utils/dates.js';
 import { paymentBreakdown } from '../utils/due-payments.js';
 import { whatsAppShareUrl } from '../utils/release-info.js';
@@ -754,22 +754,25 @@ export class HistoryManager {
     static async voidBill(type, bill, reason) {
         try {
             UIManager.showLoading();
-            await FirebaseService.voidBill(BILL_COLLECTION[type], bill, reason);
-            AuditService.log(AuditService.ACTIONS.VOID_BILL, {
-                billId: bill.id != null ? String(bill.id) : null,
-                billNumber: bill.billNumber || 'N/A',
-                billType: type,
-                amount: billTotal(bill),
-                customer: bill.customerName || 'N/A',
-                reason
-            }).catch(e => console.warn('Audit log failed:', e));
+            // The audit entry lands with the void (D-3)
+            await FirebaseService.voidBill(BILL_COLLECTION[type], bill, reason, {
+                audit: AuditService.entry(AuditService.ACTIONS.VOID_BILL, {
+                    billId: bill.id != null ? String(bill.id) : null,
+                    billNumber: bill.billNumber || 'N/A',
+                    billType: type,
+                    amount: billTotal(bill),
+                    customer: bill.customerName || 'N/A',
+                    reason
+                })
+            });
             this.afterBillRemoved();
             UIManager.hideLoading();
             UIManager.showToast(t('msg.void.done'));
         } catch (error) {
             console.error('Error voiding bill:', error);
             UIManager.hideLoading();
-            const key = error?.code === 'has-payments' ? 'msg.void.has_payments'
+            const key = await refusedForClock(error) ? 'msg.common.phone_clock_wrong_save'
+                : error?.code === 'has-payments' ? 'msg.void.has_payments'
                 : error?.code === 'already-voided' ? 'msg.void.already'
                     : (error?.code === 'unavailable' || (typeof navigator !== 'undefined' && navigator.onLine === false)) ? 'msg.void.needs_internet'
                         : 'msg.void.failed';
@@ -814,13 +817,14 @@ export class HistoryManager {
         const { bill, type } = current;
         try {
             UIManager.showLoading();
-            await FirebaseService.deleteVoidedBill(BILL_COLLECTION[type], bill);
-            AuditService.log(type === 'purchase' ? AuditService.ACTIONS.DELETE_BILL : AuditService.ACTIONS.DELETE_SALE, {
-                billNumber: bill.billNumber || 'N/A',
-                amount: billTotal(bill),
-                customer: bill.customerName || 'N/A',
-                voided: true
-            }).catch(e => console.warn('Audit log failed:', e));
+            await FirebaseService.deleteVoidedBill(BILL_COLLECTION[type], bill, {
+                audit: AuditService.entry(type === 'purchase' ? AuditService.ACTIONS.DELETE_BILL : AuditService.ACTIONS.DELETE_SALE, {
+                    billNumber: bill.billNumber || 'N/A',
+                    amount: billTotal(bill),
+                    customer: bill.customerName || 'N/A',
+                    voided: true
+                })
+            });
             this.afterBillRemoved();
             UIManager.hideLoading();
             UIManager.showToast(t('msg.void.deleted'));
@@ -828,7 +832,8 @@ export class HistoryManager {
             console.error('Error deleting bill:', error);
             UIManager.hideLoading();
             // Refused by the rules (only the owner deletes, and only a voided bill: #75)
-            UIManager.showToast(t(error?.code === 'permission-denied' ? 'msg.void.delete_refused' : 'msg.history.failed_delete_bill'));
+            UIManager.showToast(t(await refusedForClock(error) ? 'msg.common.phone_clock_wrong_save'
+                : error?.code === 'permission-denied' ? 'msg.void.delete_refused' : 'msg.history.failed_delete_bill'));
         }
     }
 

@@ -161,7 +161,7 @@ same period.
 | F1 | Sales | Σ BILL-TOTAL of wholesale + retail sales in the period; count. Optionally "of which still due": Σ BILL-DUE of those bills. |
 | F2 | Cost of goods sold | Σ COGS of the period's sale lines. |
 | F3 | Business expenses | Σ business expenses (EXP-KIND) in the period. |
-| F4 | Profit on goods sold | F1 − F2 − F3 − bad debts. This is **the** profit: Reports (R3) and Analytics (A4, the profit trend) show the same number (owner decision #36, 2026-10-25: "general profit should be profit − business expense"). Bad debts = dues to receive written off in the period (counted on the write-off date; a legacy "mark as cleared" without a write-off entry is not counted). |
+| F4 | Profit on goods sold | F1 − F2 − F3 − bad debts. This is **the** profit: Reports (R3) and Analytics (A4, the profit trend) show the same number (owner decision #36, 2026-10-25: "general profit should be profit − business expense"). Bad debts = dues to receive written off in the period (counted on the write-off date; a legacy "mark as cleared" without a write-off entry is not counted; since OD-14 the rules refuse such a write, the owner's included). |
 | F5 | Personal expenses | Σ personal expenses in the period, shown separately and **not** taken off F4 (owner decision #36); a separate "after personal expenses" line shows F4 − F5. |
 | F6 | Stock value now | Σ over items with quantity > 0 of quantity × AVG-COST, after every record. Same number as Finance → Assets "Stock value" and the Stock page total. |
 | F7 | Cash flow | Money in − money out in the period. In: BILL-AT-SAVE of the period's sales + DUE-PAYs received in the period. Out: BILL-AT-SAVE of the period's purchases + DUE-PAYs paid in the period + all expenses (business and personal). Withdrawals are not included. |
@@ -396,7 +396,7 @@ and close on the figure of the home page:
 | M2 | Cost of goods sold | Σ COGS of the period's sale lines. Same as F2. |
 | M3 | Gross profit | M1 − M2; "profit per ₹100 sold" = M3 ÷ M1 × 100. |
 | M4 | Business expenses | Σ business expenses (EXP-KIND), by category (the expense `type`; untagged ones are their own row). Same as F3. |
-| M5 | Bad debts | Dues to receive written off in the period, on the write-off date (as in F4). |
+| M5 | Bad debts | Dues to receive written off in the period, on the write-off date (as in F4): Σ `amount` of the bills' `payments[]` entries with `kind: 'writeOff'` (sales; a purchase written off is not a bad debt). A write-off is the only way a due to receive goes down without money or a recorded bill edit (OD-13, owner decision 2026-11-08): **Write off as bad debt** on Outstanding / Wholesale › Outstanding, or Mark as cleared › "Write off as bad debt", with a reason; the rules refuse a due zeroed any other way, the owner's included (OD-14). It stays on the bill (bill details, "Written off") and in the party's statement (ST3). |
 | M6 | Profit | M3 − M4 − M5. **The** profit (#36); same as F4. "—" with a caveat while the cost of goods sold isn't known. |
 | M7 | Labour on purchases | Σ labour on the period's purchases = T-LAB-1 over the period (`labourSummary()`). Each bill's labour is read by `billLabour()` (`laborCharges`, older bills `labour`) everywhere: Spending, its breakdown, Statements, month snapshots, items and parties. **Not** subtracted from profit (owner decision 2026-10-26). Shown on Money › Spending with M18. |
 | M8 | Personal expenses | Σ expenses tagged personal. Same as F5. |

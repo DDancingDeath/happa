@@ -120,6 +120,24 @@ describe('void (#75)', () => {
         expect(fake.raw('retailSales/r1/edits').size).toBe(0);
         expect(FirebaseService.voidedBills('retailSales')).toEqual([]);
     });
+
+    test('D-3: an edit, a void and a delete write their audit entry in their own commit; a refused one writes neither', async () => {
+        await open();
+        const audit = (action) => ({ action, userId: 'u1', details: { billNumber: 'R1' }, timestamp: NOW, date: 'd' });
+        const entries = () => [...fake.raw('auditLogs').values()].map(e => e.action);
+        await expect(FirebaseService.updateRetailSale({ ...retail('r1'), total: 90 }, { audit: audit('EDIT_SALE') })).rejects.toMatchObject({ code: 'reason-required' });
+        await expect(FirebaseService.voidBill('retailSales', retail('r1'), 'no', { audit: audit('VOID_BILL') })).rejects.toMatchObject({ code: 'reason-required' });
+        await expect(FirebaseService.deleteVoidedBill('retailSales', retail('r1'), { audit: audit('DELETE_SALE') })).rejects.toMatchObject({ code: 'not-voided' });
+        expect(entries()).toEqual([]);
+        await FirebaseService.updateRetailSale({ ...retail('r1'), customerName: 'Ramesh K' }, { reason: 'Spelling', audit: audit('EDIT_SALE') });
+        await settle();
+        await FirebaseService.voidBill('retailSales', retail('r1'), 'Entered twice', { audit: audit('VOID_BILL') });
+        await settle();
+        await FirebaseService.deleteVoidedBill('retailSales', FirebaseService.voidedBills('retailSales')[0], { audit: audit('DELETE_SALE') });
+        await settle();
+        expect(entries()).toEqual(['EDIT_SALE', 'VOID_BILL', 'DELETE_SALE']);
+        expect([...fake.raw('auditLogs').values()].every(e => e.serverTime === NOW)).toBe(true);
+    });
 });
 
 describe('edit records (#121)', () => {

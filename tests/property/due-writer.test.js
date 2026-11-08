@@ -10,7 +10,7 @@ jest.mock('../../www/js/firebase/repos/bill-payments.js', () => ({
     updateBillInTransaction: jest.fn(),
     updateBillsInTransaction: jest.fn()
 }));
-jest.mock('../../www/js/services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}), ACTIONS: {} } }));
+jest.mock('../../www/js/services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}), entry: jest.fn((action, details) => ({ action, details })), ACTIONS: {} } }));
 
 import fc from 'fast-check';
 import { withCanonicalDue } from '../../www/js/firebase/repos/bill-due.js';
