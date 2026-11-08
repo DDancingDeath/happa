@@ -178,6 +178,9 @@ The version lives in four places that must agree: `www/changelog.json` (top entr
    APK, verifies its signing certificate and package id, and creates the GitHub Release "happa v<ver>" (marked latest)
    with notes from `www/changelog.json` and two assets: `happa.apk` (stable name used by
    `releases/latest/download/happa.apk`, the app and the download page) and `happa-v<ver>.apk`.
+   A release-candidate tag `v<ver>-rc<n>` (same commit) is published the same way, also marked latest.
+   The APK's versionCode comes from the tag (`scripts/android-version-code.js`, e.g. 1.0.0-rc11 → 10000011,
+   1.0.0 → 10000999) and its versionName is the tag without `v`; `androidVersionCode` only applies to local builds.
    Tag builds also run `npm run check:happa-config` (no placeholders left in `happa.config.json`).
    The web app still deploys on merge to `main` as before.
 

@@ -10,7 +10,8 @@ release, v1.0.0, also follows [happa-go-live.md](happa-go-live.md)):
 
 1. Merge the release to `main` **after shop hours**: the website updates at the merge.
 2. Tag a release candidate `v<x.y.z>-rc<n>` from that commit. It builds the signed
-   APK as a prerelease that the update banner and `/download` never offer.
+   APK and publishes it as a normal release marked latest, so the update banner and
+   `/download` offer it to every phone: tag it after shop hours too.
 3. Run sections 1–5 and 7 below with the RC's `happa.apk`.
 4. All good: tag `v<x.y.z>` on the same commit, after shop hours (section 8).
 5. Section 6 (blocking old versions) only later, once every phone has the new APK.
