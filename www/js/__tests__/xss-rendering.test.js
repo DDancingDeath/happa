@@ -112,7 +112,7 @@ describe('history list escapes record values', () => {
         expect(list.textContent).toContain(`#${IMG}`);
         expect(list.textContent).toContain(`${NUM} packets`);
 
-        const span = list.querySelector('.bill-row__no [data-onclick]');
+        const span = list.querySelector('.bill-row[data-onclick]');
         const calls = runHandler(handlerAttr(span));
         expect(calls).toEqual([[`id:${QUOTE_ID}`, 'purchase']]);
     });
@@ -120,7 +120,7 @@ describe('history list escapes record values', () => {
     test('card view: a malicious stored type cannot break out of viewBill()', () => {
         AppState.purchaseHistory = [maliciousBill({ type: "purchase');window.__pwned=1;//" })];
         HistoryManager.renderHistory('purchase');
-        const span = document.querySelector('#historyList span[data-onclick]');
+        const span = document.querySelector('#historyList .bill-row[data-onclick]');
         // History normalises the type by collection (#160), so the stored value never reaches the handler.
         expect(runHandler(handlerAttr(span))).toEqual([[`id:${QUOTE_ID}`, 'purchase']]);
         expect(window.__pwned).toBeUndefined();

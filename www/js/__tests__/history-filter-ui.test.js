@@ -34,7 +34,7 @@ const html = `
       <div id="wrap"><div id="historyList"></div></div>
     </div>`;
 
-const ids = () => [...document.querySelectorAll('#historyList .history-item .bill-row__no [data-onclick]')]
+const ids = () => [...document.querySelectorAll('#historyList .history-item .bill-row__link')]
     .map(s => s.textContent.replace('#', ''));
 
 describe('History filters (#160)', () => {
@@ -64,7 +64,7 @@ describe('History filters (#160)', () => {
         HistoryManager.filterHistory('purchase');
         HistoryManager.setDatePreset('today');
         expect(ids()).toEqual(['P-today']);
-        expect(document.getElementById('historyRangeLabel').textContent).toMatch(/· 1 bill$/);
+        expect(document.getElementById('historyRangeLabel').textContent).toMatch(/· 1 bill · ₹\d/);
 
         document.getElementById('historySearch').value = 'old';
         HistoryManager.refreshHistory();

@@ -103,31 +103,54 @@ export function billItemsText(bill) {
  * @param {Object} opts
  * @param {string} opts.onclick - safe data-onclick call for the bill number (built with Helpers.escapeJsAttr)
  * @param {string} [opts.kind] - 'purchase' | 'retail' | 'wholesale' (colour only)
+ * @param {boolean} [opts.rowTap] - the whole row opens the bill (History), not only its number
+ * @param {boolean} [opts.typeTag] - a Retail / Wholesale tag (History › Sale lists both)
  * @returns {HTMLElement}
  */
-export function buildBillRow(bill, { onclick, kind } = {}) {
+export function buildBillRow(bill, { onclick, kind, rowTap = false, typeTag = false } = {}) {
     const div = document.createElement('div');
     const opening = isOpeningRecord(bill);
     const voided = !isActiveBill(bill);
     const type = kind || bill?.type || 'purchase';
     div.className = `history-item bill-row${opening ? ' is-opening' : ''}${voided ? ' is-voided' : ''}`;
     div.setAttribute('data-type', type);
+    if (rowTap && onclick) {
+        // `onclick` is escaped for markup (escapeJsAttr): parse it as markup, as the link's was
+        const probe = document.createElement('div');
+        probe.innerHTML = `<i data-onclick="${onclick}"></i>`;
+        div.setAttribute('role', 'button');
+        div.setAttribute('tabindex', '0');
+        div.setAttribute('data-onclick', probe.firstElementChild?.getAttribute('data-onclick') || '');
+    }
+    const link = rowTap ? '' : ` role="button" tabindex="0" data-onclick="${onclick || ''}"`;
+    const tag = typeTag ? typeTagHtml(type) : '';
     const number = billNumberOf(bill);
     const party = bill?.customerName ? String(bill.customerName) : '';
     const by = bill?.createdByName || bill?.userName;
     const date = billRowDate(bill);
     const items = billItemsText(bill);
     div.innerHTML = `
-        <span class="bill-row__no" title="#${Helpers.escapeHtml(number)}"><span class="bill-row__link" role="button" tabindex="0" data-onclick="${onclick || ''}">#${Helpers.escapeHtml(number)}</span></span>
+        <span class="bill-row__no" title="#${Helpers.escapeHtml(number)}"><span class="bill-row__link"${link}>#${Helpers.escapeHtml(number)}</span></span>
         <span class="bill-row__party" title="${Helpers.escapeHtml(party)}">${party ? `<strong>${Helpers.escapeHtml(party)}</strong>` : '—'}</span>
         <span class="bill-row__amount">${Helpers.escapeHtml(billListAmountText(bill))}</span>
         <span class="bill-row__meta">
             <span class="bill-row__date">${Helpers.escapeHtml(date.text)}${date.bad ? badDateBadgeHtml() : ''}${by ? `<span class="bill-row__by"> • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(by)}</strong></span>` : ''}</span>
             <span class="bill-row__items history-summary" title="${Helpers.escapeHtml(items)}">${Helpers.escapeHtml(items)}</span>
-            <span class="bill-row__chips history-payment">${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${opening ? '' : SyncStatus.chipHtml(bill?.id)}${voidedChipHtml(bill)}${printStatusChipHtml(bill)}${paymentChipsHtml(bill)}</span>
+            <span class="bill-row__chips history-payment">${tag}${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${opening ? '' : SyncStatus.chipHtml(bill?.id)}${voidedChipHtml(bill)}${printStatusChipHtml(bill)}${paymentChipsHtml(bill)}</span>
         </span>
     `;
     return div;
+}
+
+const TYPE_TAGS = Object.freeze({
+    retail: { key: 'ui.history.tag_retail', cls: 'badge-success' },
+    wholesale: { key: 'ui.history.tag_wholesale', cls: 'badge-info' }
+});
+
+/** Retail / Wholesale tag ('' for other types). */
+function typeTagHtml(type) {
+    const tag = TYPE_TAGS[type];
+    return tag ? `<span class="badge ${tag.cls} bill-type-tag">${L(tag.key)}</span>` : '';
 }
 
 const PRINT_CHIP_KEYS = Object.freeze({
@@ -257,7 +280,7 @@ function tableItemsHtml(bill) {
  * @param {Array<Object>} [opts.openings] - opening records shown as a separate group on top
  * @returns {string} HTML
  */
-export function billTableHtml(bills, { onclickFor, openings = [], voided = [] } = {}) {
+export function billTableHtml(bills, { onclickFor, openings = [], voided = [], typeTags = false } = {}) {
     const row = (bill) => {
         const opening = isOpeningRecord(bill);
         const isVoided = !isActiveBill(bill);
@@ -271,7 +294,7 @@ export function billTableHtml(bills, { onclickFor, openings = [], voided = [] } 
                 <td class="bill-table__amount">${Helpers.escapeHtml(billListAmountText(bill))}</td>
                 <td class="bill-table__date">${Helpers.escapeHtml(date.text)}${date.bad ? badDateBadgeHtml() : ''}${by ? `<div class="bill-table__by">${L('ui.outstanding.by')} ${Helpers.escapeHtml(by)}</div>` : ''}</td>
                 <td class="bill-table__items">${tableItemsHtml(bill)}</td>
-                <td class="bill-table__chips">${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${opening ? '' : SyncStatus.chipHtml(bill?.id)}${voidedChipHtml(bill)}${printStatusChipHtml(bill)}${paymentChipsHtml(bill)}</td>
+                <td class="bill-table__chips">${typeTags ? typeTagHtml(bill?.type) : ''}${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${opening ? '' : SyncStatus.chipHtml(bill?.id)}${voidedChipHtml(bill)}${printStatusChipHtml(bill)}${paymentChipsHtml(bill)}</td>
             </tr>`;
     };
     const group = (list, key) => (list.length ? `

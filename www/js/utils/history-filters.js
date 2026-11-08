@@ -10,6 +10,7 @@
 
 import { toJsDate, parseLocalDate, toLocalISODate } from './dates.js';
 import { t } from '../i18n/index.js';
+import { billTotal, hasBillAmount, sumMoney } from './money.js';
 
 export const HISTORY_TYPES = ['purchase', 'sale'];
 export const HISTORY_PRESETS = ['all', 'today', 'yesterday', 'week', 'month', 'lastMonth', 'custom'];
@@ -118,7 +119,8 @@ export function billTimeMs(bill) {
 
 /**
  * Does a (type-tagged) history bill match the type filter?
- * 'sale' = retail sales (the History Sale tab); 'all' = anything.
+ * 'sale' = retail and wholesale sales (the History Sale tab, V2 O-9; the page
+ * leaves wholesale bills out for a role without Wholesale); 'all' = anything.
  * @param {{type?: string, isPurchase?: boolean}} bill
  * @param {string} type
  * @returns {boolean}
@@ -128,7 +130,7 @@ export function matchesHistoryType(bill, type) {
     const billType = bill.type || (bill.isPurchase ? 'purchase' : '');
     switch (type) {
         case 'purchase': return billType === 'purchase';
-        case 'sale':
+        case 'sale': return billType === 'retail' || billType === 'wholesale';
         case 'retail': return billType === 'retail';
         case 'wholesale': return billType === 'wholesale';
         default: return true;
@@ -228,6 +230,19 @@ export function filterHistoryBills(bills, { type = 'all', range = null, search =
     return (bills || [])
         .filter(b => matchesHistoryType(b, type) && isBillInRange(b, range) && matchesHistorySearch(b, search))
         .sort((a, b) => timeOf(b) - timeOf(a));
+}
+
+/**
+ * H-TOTAL: the ₹ total of the bills a History list shows (the caller passes the
+ * counted ones: no voided bills, no old-app carried dues). Σ BILL-TOTAL;
+ * `unknown` = bills with no amount (not in the total, #80).
+ * @param {Array<Rec>} bills
+ * @returns {{count: number, total: number, unknown: number}}
+ */
+export function historyListTotal(bills) {
+    const list = bills || [];
+    const known = list.filter(b => hasBillAmount(b));
+    return { count: list.length, total: sumMoney(known, billTotal), unknown: list.length - known.length };
 }
 
 /**
