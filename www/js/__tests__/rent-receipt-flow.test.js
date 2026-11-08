@@ -233,6 +233,21 @@ describe('the Record payment form (#157 UX redesign)', () => {
         expect(store.recordPayment).toHaveBeenCalledWith(CHARGE.id, expect.objectContaining({ amount: 2000, ref: 'UPI-1' }), expect.anything());
     });
 
+    test('a month charged while the form was open: an advance on the old latest month is refused, nothing saved (RENT-16)', async () => {
+        store.snapshot.mockReturnValue({ ...SNAP, charges: [old, CHARGE] });
+        const done = _test.pay('L1');
+        await flush();
+        store.snapshot.mockReturnValue({ ...SNAP, charges: [old, CHARGE], leases: [{ ...SNAP.leases[0], chargedThrough: '2999-12' }] });
+        document.getElementById('rentPayAmount').value = '12000';
+        RentalsModule.api.dialogClose(true);
+        await flush();
+        expect(UIManager.showModal).not.toHaveBeenCalled();
+        expect(store.recordPayment).not.toHaveBeenCalled();
+        expect(document.getElementById('rentPayErr').hidden).toBe(false);
+        RentalsModule.api.dialogClose(false);
+        await done;
+    });
+
     test('the Oldest month chip also chooses the oldest month when another month was picked under More', async () => {
         store.snapshot.mockReturnValue({ ...SNAP, charges: [old, CHARGE] });
         const done = _test.pay('L1');

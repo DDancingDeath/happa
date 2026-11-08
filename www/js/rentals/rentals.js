@@ -472,7 +472,7 @@ async function pay(leaseId, typed = null) {
     let parts = [{ id, amount }];
     if (charge && amount > chargeDue(charge)) {
         try {
-            parts = payOldestFirst(dues.charges, amount, snap.leases.find(l => l.id === leaseId)?.chargedThrough);
+            parts = payOldestFirst(dues.charges, amount, store.snapshot().leases.find(l => l.id === leaseId)?.chargedThrough);
         } catch (e) {
             return again(e.message === 'over' ? 'msg.rent.more_than_due' : 'msg.rent.bad_amount');
         }
