@@ -130,6 +130,19 @@ test('a bad row keeps the sheet open at that row; nothing entered keeps it open 
     expect(fake.raw('rent_charges').get(`L2_${M}`).electricity).toBeNull();
 });
 
+test('a blank rate is a bad row, never a ₹0 bill', async () => {
+    const { p } = await openSheet();
+    set('rentMC2', '60');
+    set('rentMR2', '');
+    RentalsModule.api.dialogClose(true);
+    expect(document.getElementById('rentDialog').hidden).toBe(false);
+    expect(document.getElementById('rentMB2').textContent).toMatch(/Check the meter readings/);
+    RentalsModule.api.dialogClose(false);
+    await p;
+    expect(fake.raw('rent_charges').get(`L3_${M}`).electricity).toBeNull();
+    expect(fake.raw('rent_units').get('U3').meterRate).toBe(9);
+});
+
 test('a reading entered on another phone meanwhile is not replaced (a member cannot replace one)', async () => {
     const { p } = await openSheet();
     set('rentMC0', '1300');

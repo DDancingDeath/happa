@@ -49,10 +49,12 @@ function rowHtml(c, r, i) {
 
 const typed = (i) => ({ prev: byId(`rentMP${i}`)?.value ?? '', curr: (byId(`rentMC${i}`)?.value ?? '').trim(), rate: byId(`rentMR${i}`)?.value ?? '' });
 
-/** The bill of row i: null when its reading is empty; throws on a bad reading or rate (RENT-7). */
+/** The bill of row i: null when its reading is empty; throws on a bad reading or rate (RENT-7), also a blank one (never ₹0). */
 function billOf(i) {
     const v = typed(i);
-    return v.curr === '' ? null : meterBill(v);
+    if (v.curr === '') return null;
+    if (String(v.prev).trim() === '' || String(v.rate).trim() === '') throw new Error('reading');
+    return meterBill(v);
 }
 
 /** Every row's preview: units × rate = amount, or what is wrong. */
