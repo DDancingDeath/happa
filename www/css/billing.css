@@ -244,6 +244,13 @@ select:focus, input:focus {
   transition: all var(--transition);
 }
 
+#saleSection .quick-add-btn-inline,
+#saleSection .add-to-bill-btn,
+#wholesale-sales .add-to-bill-btn,
+.items-add-btn {
+  background: var(--btn-success);
+}
+
 .add-to-bill-btn:hover {
   box-shadow: var(--shadow-lg);
 }
