@@ -299,6 +299,10 @@ describe('taps, caveats and checks', () => {
         expect(options.length).toBeGreaterThan(1);
         options.forEach(text => expect(text).not.toMatch(/ui\.finance\./));
         FinanceBreakdownSheet.close();
+        // Gross profit = sales lines and their COGS rows: never "lines in bills" (each line would count twice)
+        document.querySelector('#moneyProfit [data-breakdown="gross"]').click();
+        expect(document.querySelector('#financeBreakdownSheet .fin-sheet-total span').textContent).toMatch(/^Total of \d+ entries$/);
+        FinanceBreakdownSheet.close();
     });
 
     test('FB-COUNT: lines of one bill, of two bills, and rows that are not bill lines', () => {
@@ -309,6 +313,8 @@ describe('taps, caveats and checks', () => {
         expect(billsOfLines([line('a'), line('a', { billType: 'wholesale' })])).toBe(2);
         // a due payment or labour row is not a line: counted as entries
         expect(billsOfLines([line('a'), { billId: 'a', billType: 'purchase', labour: true, amount: -5 }])).toBeNull();
+        // sale lines and their COGS (Gross profit) would count each line twice: entries
+        expect(billsOfLines([line('a', { term: 'sales' }), line('a', { term: 'cogs', amount: -8 })])).toBeNull();
         expect(billsOfLines([])).toBeNull();
         expect(tn('ui.finance.total_lines_one_bill', 1)).toBe('Total of 1 line in 1 bill');
         expect(tn('ui.finance.total_lines_one_bill', 3)).toBe('Total of 3 lines in 1 bill');
