@@ -3,13 +3,13 @@
 exports[`change of unit and move in (RENT-11, RENT-13) Add unit with its tenant: opening meter reading checks, then saved with a pro-rated first month 1`] = `
 {
   "badDay": [
-    "error: Due day must be between 1 and 28",
+    "form: Due day must be between 1 and 28 @rentTDay (More open)",
   ],
   "badRate": [
-    "error: Check the meter readings: current must be at least the previous reading, and the rate 0 or more",
+    "form: Check the meter readings: current must be at least the previous reading, and the rate 0 or more @rentTRate (More open)",
   ],
   "badReading": [
-    "error: Check the meter readings: current must be at least the previous reading, and the rate 0 or more",
+    "form: Check the meter readings: current must be at least the previous reading, and the rate 0 or more @rentTOpen (More open)",
   ],
   "charges": [
     {
@@ -407,7 +407,7 @@ exports[`change of unit and move in (RENT-11, RENT-13) member: start more than 2
   ],
   "newLeases": [],
   "tooOld": [
-    "error: A start date more than 2 days back needs the owner.",
+    "form: A start date more than 2 days back needs the owner. @rentTDate",
   ],
 }
 `;

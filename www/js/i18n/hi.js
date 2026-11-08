@@ -2399,6 +2399,7 @@ export default {
     'ui.rent.let_out': "किराये पर दें",
     'ui.rent.let_unit': "यूनिट किराये पर दें",
     'ui.rent.more_actions': "और काम",
+    'ui.rent.more_tenancy': "और: दूसरा नंबर, तारीख, सालाना बढ़ोतरी, बिजली",
     'ui.rent.more_unit': "और: आकार, मंज़िल",
     'ui.rent.move_out_who': "{name} को {place} से खाली कराएँ",
     'ui.rent.needs_attention': "ध्यान दें",

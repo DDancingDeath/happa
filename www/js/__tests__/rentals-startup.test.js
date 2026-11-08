@@ -49,7 +49,7 @@ const LAZY_BUDGETS = {
     expenses: [['/js/rentals/rent-expense.js', '/js/rentals/rent-expense-store.js'], 12 * 1024],
     'ledger maths': [['/js/rentals/rent-math-ledger.js'], 10 * 1024],
     'agreement and reports': [['/js/rentals/rent-report.js', '/js/rentals/rent-report-store.js', '/js/rentals/rent-math-report.js'], 18 * 1024],
-    'properties page and move-in forms': [['/js/rentals/rent-pages.js'], 24 * 1024],
+    'properties page and move-in forms': [['/js/rentals/rent-pages.js'], 28 * 1024],
     'tenants page and tenant screen': [['/js/rentals/rent-tenants.js'], 24 * 1024],
     'this month in advanced': [['/js/rentals/rent-advanced.js'], 14 * 1024]
 };
