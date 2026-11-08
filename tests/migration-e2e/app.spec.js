@@ -183,14 +183,15 @@ test('migrated owner: original password, carried dues, periods, rates, seasons, 
         expect(multiset(got.map(([no, due]) => `${no}|${amount(due)}`))).toEqual(multiset(wholesaleBills.map(b => `${rowLabel(b)}|${Math.round(b.due)}`)));
     });
 
-    await test.step('History hides them by default', async () => {
+    await test.step('History hides them by default (Sale lists retail and wholesale)', async () => {
         await showTab(page, 'history');
         await page.evaluate(() => window.app.history.filterHistory('sale'));
+        const saleDues = retailBills.length + wholesaleBills.length;
         const toggle = page.locator('#history .opening-toggle-chip');
-        await expect(toggle).toHaveText(`Show dues carried from old app (${retailBills.length})`);
+        await expect(toggle).toHaveText(`Show dues carried from old app (${saleDues})`);
         await expect(page.locator('#historyList .old-app-chip')).toHaveCount(0);
         await toggle.click();
-        await expect(page.locator('#historyList .old-app-chip')).toHaveCount(retailBills.length);
+        await expect(page.locator('#historyList .old-app-chip')).toHaveCount(saleDues);
         await page.locator('#history .opening-toggle-chip').click();
         await expect(page.locator('#historyList .old-app-chip')).toHaveCount(0);
     });
