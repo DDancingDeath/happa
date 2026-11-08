@@ -11,7 +11,7 @@ import { BusinessSwitcher } from './ui/business-switcher.js';
 import { SyncStatus } from './ui/sync-status.js';
 import { startClockCheck } from './ui/clock-banner.js';
 import { installStickyFocus } from './ui/sticky-focus.js';
-import { ThemeManager } from './ui/theme.js';
+import { ThemeManager, CHOICE_AT_LOAD } from './ui/theme.js';
 import { AuthManager } from './auth/authentication.js';
 import { FirebaseService } from './firebase/firestore-service.js';
 import { userProfile, saveOwnSavedRanges } from './firebase/repos/users.js';
@@ -674,7 +674,7 @@ installActions();
 document.addEventListener('DOMContentLoaded', async function() {
     // STEP 1: Login screen and app shell now, pages in the background
     markStartup('dom-ready');
-    ThemeManager.init();
+    ThemeManager.init(CHOICE_AT_LOAD);
     await injectTemplates();
     markStartup('shell');
     

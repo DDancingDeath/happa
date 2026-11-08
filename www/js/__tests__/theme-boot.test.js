@@ -58,6 +58,11 @@ describe('theme boot script (#102)', () => {
         expect(boot({}, { systemDark: true })).toEqual({ theme: 'modern', appearance: 'system', mode: 'dark', darkClass: true });
     });
 
+    test('an install from before the theme engine keeps Light until the user picks', () => {
+        expect(boot({ 'aadhat.itemNamesFollowLang': '1' }, { systemDark: true })).toMatchObject({ appearance: 'light', mode: 'light', darkClass: false });
+        expect(boot({ 'aadhat.itemNamesFollowLang': '1', 'happa.appearance': 'system' }, { systemDark: true })).toMatchObject({ mode: 'dark' });
+    });
+
     test('the old darkMode setting keeps its look: true is Dark, false is Light, whatever the system says', () => {
         expect(boot({ darkMode: 'true' }, { systemDark: false })).toMatchObject({ appearance: 'dark', mode: 'dark', darkClass: true });
         expect(boot({ darkMode: 'false' }, { systemDark: true })).toMatchObject({ appearance: 'light', mode: 'light', darkClass: false });
@@ -96,6 +101,7 @@ describe('theme boot script (#102)', () => {
         [{}, false], [{}, true], [{ darkMode: 'true' }, false], [{ darkMode: 'false' }, true],
         [{ 'happa.appearance': 'dark' }, false], [{ 'happa.appearance': 'light' }, true],
         [{ 'happa.appearance': 'system', darkMode: 'true' }, false], [{ 'happa.appearance': 'system' }, true],
+        [{ 'aadhat.itemNamesFollowLang': '0' }, true], [{ 'aadhat.itemNamesFollowLang': '1', darkMode: 'true' }, false],
     ])('ThemeManager reads %j (system dark: %s) the same way', (keys, systemDark) => {
         const booted = boot(keys, { systemDark });
         const choice = storedChoice(localStorage);

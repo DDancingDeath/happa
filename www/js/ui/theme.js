@@ -15,6 +15,8 @@ export const THEME_KEYS = {
     barLight: 'happa.bar.light',
     barDark: 'happa.bar.dark',
     legacyDark: 'darkMode',
+    // Written on every start since #143, so an install from before the theme engine has it
+    existingInstall: 'aadhat.itemNamesFollowLang',
 };
 
 const BAR_COLOUR = /^#[0-9a-f]{6}$/i;
@@ -25,7 +27,10 @@ export function resolveMode(appearance, kind, systemDark) {
     return appearance === 'system' && systemDark ? 'dark' : 'light';
 }
 
-/** The saved choice; an old `darkMode` setting maps to Dark / Light, no setting to the default. */
+/**
+ * The saved choice. Before one is saved: the old `darkMode` setting maps to Dark / Light, an install
+ * from before the theme engine keeps Light, and a new device gets the default (System).
+ */
 export function storedChoice(store) {
     const get = (k) => { try { return store.getItem(k); } catch { return null; } };
     const theme = themeById(get(THEME_KEYS.theme))?.id || DEFAULT_THEME;
@@ -33,7 +38,8 @@ export function storedChoice(store) {
     const legacy = get(THEME_KEYS.legacyDark);
     let appearance;
     if (saved !== null) appearance = APPEARANCES.includes(saved) ? saved : 'light';
-    else appearance = legacy === 'true' ? 'dark' : legacy === 'false' ? 'light' : DEFAULT_APPEARANCE;
+    else if (legacy === 'true') appearance = 'dark';
+    else appearance = legacy === 'false' || get(THEME_KEYS.existingInstall) !== null ? 'light' : DEFAULT_APPEARANCE;
     return { theme, appearance };
 }
 
@@ -43,14 +49,20 @@ function storage() {
     try { return window.localStorage; } catch { return null; }
 }
 
+/** The choice as the boot script saw it: read when this module loads, before main.js writes its first keys. */
+export const CHOICE_AT_LOAD = (() => { const store = storage(); return store ? storedChoice(store) : null; })();
+
 export const ThemeManager = {
     /** @type {{theme: string, appearance: string}} */
     current: { theme: DEFAULT_THEME, appearance: DEFAULT_APPEARANCE },
     _watching: false,
 
-    init() {
+    /** @param {{theme: string, appearance: string}|null} [choice] defaults to the saved choice now */
+    init(choice) {
         const store = storage();
-        this.current = store ? storedChoice(store) : { ...this.current };
+        this.current = choice || (store ? storedChoice(store) : { ...this.current });
+        // The first start keeps its choice, so a key the app writes later can't change it
+        if (store && store.getItem(THEME_KEYS.appearance) === null) safeSetItem(THEME_KEYS.appearance, this.current.appearance, store);
         const state = this.render(this.current);
         const barKey = state.mode === 'dark' ? THEME_KEYS.barDark : THEME_KEYS.barLight;
         if (store && BAR_COLOUR.test(state.bar) && store.getItem(barKey) !== state.bar) safeSetItem(barKey, state.bar, store);

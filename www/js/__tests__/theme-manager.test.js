@@ -29,11 +29,26 @@ afterEach(() => {
     delete window.matchMedia;
 });
 
-test('a new device starts on System with the default theme and stores nothing but the bar colour', () => {
+test('a new device starts on System with the default theme, and keeps it once the app writes its keys', () => {
     expect(ThemeManager.init()).toEqual({ theme: 'modern', appearance: 'system' });
     expect(attrs()).toEqual(['modern', 'system', 'light']);
-    expect(localStorage.getItem(THEME_KEYS.appearance)).toBeNull();
-    expect(localStorage.getItem(THEME_KEYS.theme)).toBeNull();
+    expect(localStorage.getItem(THEME_KEYS.appearance)).toBe('system');
+    localStorage.setItem(THEME_KEYS.existingInstall, '1');
+    expect(ThemeManager.init().appearance).toBe('system');
+});
+
+test('an install from before the theme engine keeps Light, even with a dark device', () => {
+    mockSystem(true);
+    localStorage.setItem(THEME_KEYS.existingInstall, '1');
+    expect(ThemeManager.init()).toEqual({ theme: 'modern', appearance: 'light' });
+    expect(attrs()[2]).toBe('light');
+    expect(localStorage.getItem(THEME_KEYS.appearance)).toBe('light');
+});
+
+test('init uses the choice read when the module loaded (before main.js wrote its keys)', () => {
+    localStorage.setItem(THEME_KEYS.existingInstall, '1');
+    expect(ThemeManager.init({ theme: 'modern', appearance: 'system' }).appearance).toBe('system');
+    expect(localStorage.getItem(THEME_KEYS.appearance)).toBe('system');
 });
 
 test('System follows the device live, with body.dark-mode', () => {
