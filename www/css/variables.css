@@ -273,6 +273,12 @@
   --text-2xl: 24px;
 }
 
+/* Android app: Roboto has a Medium face, the native emphasis (600 would render as Bold); before html[lang="hi"] so Hindi labels stay 400 */
+html.platform-android {
+  --w-strong: 500;
+  --w-label: 500;
+}
+
 /* Devanagari: larger type, more leading, regular labels (Nirmala UI / Noto Sans Devanagari have no 500 or 600) */
 html[lang="hi"] {
   --w-label: 400;
@@ -593,8 +599,8 @@ input[type="number"],
   align-items: center;
   padding: 4px 10px;
   border-radius: var(--radius-full);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-caption);
+  font-weight: var(--w-strong);
 }
 
 .badge-success {

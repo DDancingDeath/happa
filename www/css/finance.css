@@ -23,12 +23,12 @@
 
 .finance-hero-label {
     font-size: 18px;
-    font-weight: 600;
+    font-weight: var(--w-label);
     display: block;
 }
 
 .finance-hero-period {
-    font-size: 12px;
+    font-size: var(--fs-caption);
     opacity: 0.9;
     background: rgba(255,255,255,0.2);
     padding: 3px 10px;
@@ -38,12 +38,12 @@
 
 .finance-hero-value {
     font-size: 42px;
-    font-weight: 700;
+    font-weight: var(--w-strong);
     margin-top: 8px;
 }
 
 .finance-hero-sub {
-    font-size: 13px;
+    font-size: var(--fs-sm);
     opacity: 0.9;
     margin-top: 4px;
 }
@@ -54,11 +54,11 @@
     border-radius: 8px;
     background: var(--warning-soft);
     color: var(--on-warning-soft);
-    font-size: 13px;
+    font-size: var(--fs-sm);
 }
 
 .breakdown-table .breakdown-note td {
-    font-size: 12px;
+    font-size: var(--fs-caption);
     color: var(--text-muted);
     padding-top: 4px;
 }
@@ -97,20 +97,20 @@
 }
 
 .finance-stat-icon {
-    font-size: 28px;
+    font-size: var(--fs-display);
     margin-bottom: 8px;
 }
 
 .finance-stat-label {
-    font-size: 13px;
+    font-size: var(--fs-sm);
     color: var(--text-muted);
-    font-weight: 500;
+    font-weight: var(--w-regular);
     margin-bottom: 4px;
 }
 
 .finance-stat-value {
     font-size: 22px;
-    font-weight: 700;
+    font-weight: var(--w-strong);
     color: var(--text-primary);
 }
 
@@ -142,13 +142,13 @@
 
 .amount-positive {
     color: var(--success-color);
-    font-weight: 700;
+    font-weight: var(--w-strong);
     font-size: 18px;
 }
 
 .amount-negative {
     color: var(--danger-color);
-    font-weight: 700;
+    font-weight: var(--w-strong);
     font-size: 18px;
 }
 
@@ -163,7 +163,7 @@
 .card-header h3 {
     margin: 0;
     font-size: 16px;
-    font-weight: 600;
+    font-weight: var(--w-strong);
 }
 
 /* ==================== BREAKDOWN TABLE ==================== */
@@ -179,7 +179,7 @@
 
 .breakdown-table td:last-child {
     text-align: right;
-    font-weight: 600;
+    font-weight: var(--w-strong);
 }
 
 .breakdown-table .breakdown-subtotal {
@@ -246,23 +246,23 @@
 }
 
 .asset-icon {
-    font-size: 28px;
+    font-size: var(--fs-display);
 }
 
 .asset-name {
-    font-weight: 600;
+    font-weight: var(--w-strong);
     color: var(--text-primary);
-    font-size: 15px;
+    font-size: var(--fs-body);
 }
 
 .asset-desc {
-    font-size: 12px;
+    font-size: var(--fs-caption);
     color: var(--text-muted);
     margin-top: 2px;
 }
 
 .asset-amount {
-    font-weight: 700;
+    font-weight: var(--w-strong);
     font-size: 18px;
 }
 
@@ -282,7 +282,7 @@
 }
 
 .quick-add-label {
-    font-size: 13px;
+    font-size: var(--fs-sm);
     color: var(--text-muted);
     margin-bottom: 12px;
 }
@@ -299,7 +299,7 @@
     border: 2px solid var(--border-color);
     border-radius: var(--radius);
     font-size: 14px;
-    font-weight: 500;
+    font-weight: var(--w-regular);
     cursor: pointer;
     transition: all var(--transition);
 }
@@ -388,13 +388,13 @@
 }
 
 .withdrawal-person {
-    font-weight: 600;
+    font-weight: var(--w-strong);
     color: var(--text-primary);
-    font-size: 15px;
+    font-size: var(--fs-body);
 }
 
 .withdrawal-purpose {
-    font-size: 13px;
+    font-size: var(--fs-sm);
     color: var(--text-muted);
 }
 
@@ -404,7 +404,7 @@
 }
 
 .withdrawal-amount {
-    font-weight: 700;
+    font-weight: var(--w-strong);
     font-size: 18px;
     color: var(--danger-color);
 }
@@ -486,7 +486,7 @@
 .form-group label {
     display: block;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: var(--w-regular);
     margin-bottom: 6px;
     color: var(--text-primary);
 }
@@ -496,7 +496,7 @@
     padding: 13px 15px;
     border: 1px solid var(--border-strong);
     border-radius: var(--radius);
-    font-size: 15px;
+    font-size: var(--fs-body);
     transition: all var(--transition);
     background: var(--card-bg);
     box-sizing: border-box;
@@ -512,8 +512,8 @@
 .btn {
     padding: 12px 24px;
     border-radius: var(--radius);
-    font-size: 15px;
-    font-weight: 600;
+    font-size: var(--fs-body);
+    font-weight: var(--w-strong);
     cursor: pointer;
     transition: all var(--transition);
     border: none;
@@ -562,7 +562,7 @@
 
 /* ==================== CARD BREAKDOWN SHEET (#215) ==================== */
 .finance-tap-hint {
-    font-size: 12px;
+    font-size: var(--fs-caption);
     color: var(--text-muted);
     margin: 0 0 8px;
 }
@@ -620,11 +620,11 @@ tr.finance-tappable td:first-child::after {
 
 .fin-sheet-title h3 {
     margin: 0;
-    font-size: 17px;
+    font-size: var(--fs-lead);
 }
 
 .fin-sheet-title span {
-    font-size: 12px;
+    font-size: var(--fs-caption);
     color: var(--text-muted);
 }
 
@@ -641,13 +641,13 @@ tr.finance-tappable td:first-child::after {
 
 .fin-sheet-value {
     font-size: 26px;
-    font-weight: 700;
+    font-weight: var(--w-strong);
     padding: 0 16px;
 }
 
 .fin-sheet-formula {
     padding: 8px 16px;
-    font-size: 13px;
+    font-size: var(--fs-sm);
     line-height: 2;
 }
 
@@ -656,7 +656,7 @@ tr.finance-tappable td:first-child::after {
     background: var(--light-bg);
     border-radius: 14px;
     padding: 2px 10px;
-    font-size: 13px;
+    font-size: var(--fs-sm);
     cursor: pointer;
 }
 
@@ -699,19 +699,19 @@ tr.finance-tappable td:first-child::after {
 }
 
 .fin-row-title {
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--fs-sm);
+    font-weight: var(--w-strong);
     overflow-wrap: anywhere;
 }
 
 .fin-row-sub {
-    font-size: 12px;
+    font-size: var(--fs-caption);
     color: var(--text-muted);
     overflow-wrap: anywhere;
 }
 
 .fin-row-amt {
-    font-weight: 600;
+    font-weight: var(--w-strong);
     white-space: nowrap;
 }
 
@@ -753,7 +753,7 @@ tr.finance-tappable td:first-child::after {
 
 .finance-cash-note {
     margin-top: 8px;
-    font-size: 12px;
+    font-size: var(--fs-caption);
     color: var(--text-muted);
 }
 

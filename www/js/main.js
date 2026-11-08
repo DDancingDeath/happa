@@ -64,7 +64,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261108af-rc-releases-latest';
+const BUILD_ID = '20261108ag-type-tokens';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -670,6 +670,9 @@ async function initializeUserData() {
 // Initialize app on DOM ready
 // data-on* attributes (delegated handlers, #89) work from the first template on
 installActions();
+
+// Before the templates go in, so their text never changes weight (variables.css: --w-strong)
+if (window.Capacitor?.getPlatform?.() === 'android') document.documentElement.classList.add('platform-android');
 
 document.addEventListener('DOMContentLoaded', async function() {
     // STEP 1: Login screen and app shell now, pages in the background

@@ -42,9 +42,9 @@
 }
 
 .auth-header h1 {
-  font-size: 28px;
+  font-size: var(--fs-display);
   margin-bottom: 8px;
-  font-weight: 700;
+  font-weight: var(--w-strong);
 }
 
 .auth-header p {
@@ -64,7 +64,7 @@
   background: none;
   border: none;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: var(--w-label);
   color: var(--text-secondary);
   cursor: pointer;
   transition: all var(--transition);
@@ -105,7 +105,7 @@
 .form-group label {
   display: block;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--w-label);
   color: var(--text-primary);
   margin-bottom: 8px;
 }
@@ -146,7 +146,7 @@
   height: 44px;
   border: none;
   background: transparent;
-  font-size: 20px;
+  font-size: var(--fs-title);
   cursor: pointer;
   opacity: 0.6;
 }
@@ -159,7 +159,7 @@
   width: 100%;
   padding: 14px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   color: white;
   background: var(--primary-gradient);
   border: none;
@@ -191,7 +191,7 @@
   padding: 10px 14px;
   border-radius: var(--radius);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   line-height: 1.4;
   color: var(--on-danger-soft);
   background: var(--danger-soft);
@@ -225,7 +225,7 @@
 .auth-link a {
   color: var(--primary-color);
   text-decoration: none;
-  font-weight: 600;
+  font-weight: var(--w-strong);
 }
 
 .auth-link a:hover {
@@ -242,8 +242,8 @@
   border: none;
   border-radius: var(--radius);
   color: var(--primary-color);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--fs-body);
+  font-weight: var(--w-strong);
   cursor: pointer;
 }
 
@@ -266,7 +266,7 @@
   align-items: center;
   gap: 8px;
   padding: 0 24px 20px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
@@ -274,14 +274,14 @@
   background: none;
   border: none;
   padding: 4px 6px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   cursor: pointer;
 }
 
 .auth-lang-link[aria-pressed="true"] {
   color: var(--primary-color);
-  font-weight: 600;
+  font-weight: var(--w-strong);
 }
 
 .hidden {

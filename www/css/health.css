@@ -1,18 +1,18 @@
 /* ==================== APP HEALTH / TEST IN PRODUCTION (#217) ==================== */
 
 .health-page { padding: 16px; }
-.health-title { margin: 0 0 6px; font-size: 20px; }
-.health-muted { color: var(--text-secondary); font-size: 13px; }
+.health-title { margin: 0 0 6px; font-size: var(--fs-title); }
+.health-muted { color: var(--text-secondary); font-size: var(--fs-sm); }
 .health-empty { color: var(--text-secondary); padding: 10px; text-align: center; font-size: 14px; }
 .health-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
 .health-card { margin-bottom: 12px; }
 .health-card h3 { margin: 0 0 8px; font-size: 16px; }
 .health-scroll { overflow-x: auto; }
-.health-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.health-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
 .health-table th, .health-table td { padding: 6px 8px; border-bottom: 1px solid var(--border-color); text-align: left; white-space: nowrap; }
-.health-table thead th { font-weight: 600; color: var(--text-secondary); background: var(--surface-muted); }
-.health-rate { font-weight: 700; text-align: center !important; }
-.health-rate small { display: block; font-weight: 400; font-size: 10px; color: var(--text-secondary); }
+.health-table thead th { font-weight: var(--w-label); color: var(--text-secondary); background: var(--surface-muted); }
+.health-rate { font-weight: var(--w-strong); text-align: center !important; }
+.health-rate small { display: block; font-weight: var(--w-regular); font-size: 10px; color: var(--text-secondary); }
 .health-ok { background: var(--success-soft); color: var(--on-success-soft); }
 .health-near { background: var(--warning-soft); color: var(--on-warning-soft); }
 .health-bad { background: var(--danger-soft); color: var(--on-danger-soft); }
@@ -22,11 +22,11 @@
 .health-list li { margin: 3px 0; overflow-wrap: anywhere; }
 .health-count { color: var(--text-secondary); }
 .health-failures { display: flex; flex-direction: column; gap: 6px; }
-.health-failure { padding: 8px 10px; border: 1px solid var(--border-color); border-left: 4px solid #b91c1c; border-radius: 8px; font-size: 13px; overflow-wrap: anywhere; }
-.health-policies { width: 100%; box-sizing: border-box; font-family: monospace; font-size: 12px; margin: 6px 0; }
-.health-policy-effect { font-size: 13px; margin: 6px 0; padding: 8px 10px; border-radius: 8px; background: var(--warning-soft); color: var(--on-warning-soft); border: 1px solid var(--warning-border); }
+.health-failure { padding: 8px 10px; border: 1px solid var(--border-color); border-left: 4px solid #b91c1c; border-radius: 8px; font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.health-policies { width: 100%; box-sizing: border-box; font-family: monospace; font-size: var(--fs-caption); margin: 6px 0; }
+.health-policy-effect { font-size: var(--fs-sm); margin: 6px 0; padding: 8px 10px; border-radius: 8px; background: var(--warning-soft); color: var(--on-warning-soft); border: 1px solid var(--warning-border); }
 
 /* Today: red banner when a check is below its target */
 .tip-health-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
     margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; background: var(--danger-soft); color: var(--on-danger-soft); border: 1px solid var(--danger-border); font-size: 14px; }
-.tip-health-banner-text { flex: 1 1 200px; font-weight: 600; }
+.tip-health-banner-text { flex: 1 1 200px; font-weight: var(--w-strong); }

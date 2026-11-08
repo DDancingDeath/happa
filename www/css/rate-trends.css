@@ -1,56 +1,56 @@
 /* ==================== RATE TRENDS (#65) ==================== */
 
 .rt-page { padding: 16px; }
-.rt-title { margin: 0 0 12px; font-size: 20px; }
+.rt-title { margin: 0 0 12px; font-size: var(--fs-title); }
 .rt-card { margin-bottom: 12px; }
-.rt-card h3 { margin: 0 0 8px; font-size: 15px; }
+.rt-card h3 { margin: 0 0 8px; font-size: var(--fs-body); }
 .rt-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .rt-card-head h3 { margin: 0; }
-.rt-card-head select { width: auto; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: 13px; }
+.rt-card-head select { width: auto; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: var(--fs-sm); }
 .rt-sub { margin-top: 12px !important; }
-.rt-muted { color: var(--text-secondary); font-size: 12px; margin-top: 6px; }
+.rt-muted { color: var(--text-secondary); font-size: var(--fs-caption); margin-top: 6px; }
 .rt-empty { color: var(--text-secondary); padding: 12px; text-align: center; font-size: 14px; }
 .rt-note { font-size: 14px; line-height: 1.45; }
 .rt-ok { font-size: 14px; line-height: 1.45; color: var(--on-success-soft); }
-.rt-warn { font-size: 13px; line-height: 1.45; color: var(--on-warning-soft); background: var(--warning-soft); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
+.rt-warn { font-size: var(--fs-sm); line-height: 1.45; color: var(--on-warning-soft); background: var(--warning-soft); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
 .rt-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
 .rt-actions .btn { white-space: normal; text-align: left; }
-.rt-budget { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+.rt-budget { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--fs-caption); color: var(--text-secondary); margin-top: 6px; }
 .rt-budget select { width: auto; padding: 4px 6px; border: 1px solid var(--border-strong); border-radius: 6px; }
 
 .rt-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
-.rt-controls label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-secondary); min-width: 0; }
+.rt-controls label { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-caption); color: var(--text-secondary); min-width: 0; }
 .rt-controls select { padding: 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: 14px; width: 100%; min-width: 0; box-sizing: border-box; }
 
 .rt-outlook { border-left: 4px solid var(--border-strong); border-radius: 8px; background: var(--surface-muted); padding: 10px; margin-bottom: 8px; }
 .rt-outlook-up { border-left-color: #b91c1c; background: var(--danger-soft); }
 .rt-outlook-down { border-left-color: #059669; background: var(--success-soft); }
 .rt-outlook-flat { border-left-color: var(--border-strong); }
-.rt-outlook-head { font-weight: 600; font-size: 14px; }
-.rt-outlook-meta { font-size: 12px; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.rt-outlook-head { font-weight: var(--w-strong); font-size: 14px; }
+.rt-outlook-meta { font-size: var(--fs-caption); margin-top: 4px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .rt-arrow { font-size: 16px; }
-.rt-conf { padding: 2px 8px; border-radius: 999px; font-weight: 600; background: var(--seg-bg); }
+.rt-conf { padding: 2px 8px; border-radius: 999px; font-weight: var(--w-strong); background: var(--seg-bg); }
 .rt-conf-high { background: var(--success-soft); color: var(--on-success-soft); }
 .rt-conf-medium { background: var(--warning-soft); color: var(--on-warning-soft); }
 .rt-conf-low { background: var(--surface-muted); color: var(--text-secondary); }
 
 .rt-chart-wrap { width: 100%; }
 .rt-chart-wrap canvas { width: 100%; display: block; }
-.rt-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; font-size: 12px; }
+.rt-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; font-size: var(--fs-caption); }
 .rt-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
 
 .rt-table-wrap { overflow-x: auto; }
-.rt-table { border-collapse: collapse; width: 100%; font-size: 12px; }
+.rt-table { border-collapse: collapse; width: 100%; font-size: var(--fs-caption); }
 .rt-table th, .rt-table td { border: 1px solid var(--border-color); padding: 6px; text-align: right; white-space: nowrap; }
-.rt-table th { font-weight: 600; font-size: 11px; text-align: center; }
-.rt-table td:first-child { text-align: left; font-weight: 600; }
+.rt-table th { font-weight: var(--w-label); font-size: 11px; text-align: center; }
+.rt-table td:first-child { text-align: left; font-weight: var(--w-strong); }
 .rt-neg { color: var(--on-danger-soft); }
 
-.rt-history { margin: 0; padding-left: 18px; font-size: 13px; }
+.rt-history { margin: 0; padding-left: 18px; font-size: var(--fs-sm); }
 .rt-history li { margin: 3px 0; }
 
 .rt-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
-.rt-tab { flex: 1; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--card-bg); font-size: 14px; font-weight: 600; color: var(--text-secondary); cursor: pointer; }
+.rt-tab { flex: 1; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--card-bg); font-size: 14px; font-weight: var(--w-label); color: var(--text-secondary); cursor: pointer; }
 .rt-tab.active { background: var(--btn-primary); border-color: var(--btn-primary); color: #fff; }
 .rt-line { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--text-secondary); margin-right: 4px; vertical-align: middle; }
 .rt-line-dashed { border-top-style: dashed; }
@@ -58,5 +58,5 @@
 .rt-src { font-size: 11px; color: var(--text-secondary); text-align: left !important; }
 .rt-click { cursor: pointer; }
 .rt-selected td { background: var(--info-soft); }
-.rt-week td { background: var(--surface-muted); font-weight: 600; }
-.rt-total td { font-weight: 700; border-top: 2px solid var(--border-strong); }
+.rt-week td { background: var(--surface-muted); font-weight: var(--w-strong); }
+.rt-total td { font-weight: var(--w-strong); border-top: 2px solid var(--border-strong); }

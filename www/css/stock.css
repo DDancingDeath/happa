@@ -17,7 +17,7 @@
   display: flex;
   justify-content: space-between;
   margin-bottom: 10px;
-  font-weight: 700;
+  font-weight: var(--w-strong);
   font-size: 18px;
   color: var(--text-primary);
 }
@@ -53,7 +53,7 @@
 }
 
 .stock-low-card__title {
-  font-weight: 700;
+  font-weight: var(--w-strong);
   color: var(--on-warning-soft);
   margin-bottom: 6px;
 }
@@ -70,12 +70,12 @@
   padding: 6px 0;
   min-height: 32px;
   color: var(--on-info-soft);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 
 .stock-adj-note {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin-top: 4px;
 }
@@ -101,7 +101,7 @@
 
 .stock-count-row__now {
   display: block;
-  font-size: 12px;
+  font-size: var(--fs-caption);
   color: var(--text-secondary);
 }
 
@@ -126,15 +126,15 @@
 
 .stock-row__name {
   grid-area: name;
-  font-weight: 600;
-  font-size: 15px;
+  font-weight: var(--w-strong);
+  font-size: var(--fs-body);
   overflow-wrap: anywhere;
 }
 
 .stock-row__qty {
   grid-area: qty;
-  font-size: 17px;
-  font-weight: 700;
+  font-size: var(--fs-lead);
+  font-weight: var(--w-strong);
   color: var(--on-success-soft);
   text-align: right;
   white-space: nowrap;
@@ -147,7 +147,7 @@ body.dark-mode .stock-row__qty {
 .stock-row__rate,
 .stock-row__note,
 .stock-row__value {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
@@ -192,17 +192,17 @@ body.dark-mode .stock-row__qty {
 }
 
 .stock-summary__label {
-  font-size: 12px;
+  font-size: var(--fs-caption);
   color: var(--text-secondary);
 }
 
 .stock-summary__value {
   font-size: 18px;
-  font-weight: 700;
+  font-weight: var(--w-strong);
   color: var(--text-primary);
   white-space: nowrap;
 }
 
 /* Stock search box (was its inline style) and its focus ring, which was inline onfocus / onblur (#89) */
-#stockSearchInput { width: 100%; padding: 14px; border: 2px solid var(--border-color); border-radius: 10px; font-size: 15px; transition: all 0.2s; }
+#stockSearchInput { width: 100%; padding: 14px; border: 2px solid var(--border-color); border-radius: 10px; font-size: var(--fs-body); transition: all 0.2s; }
 #stockSearchInput:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
