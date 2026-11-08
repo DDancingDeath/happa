@@ -26,7 +26,7 @@ import {
 } from './rent-views.js';
 import {
     PAYMENT_MODES, normalizeRentSettings, monthKey, monthLabel, monthsToCharge, chargeDue, leaseDues,
-    buildRentReminderText, elecMode, dateLabel, payOldestFirst, payAmount, applyPayment, expenseTotals
+    buildRentReminderText, elecMode, dateLabel, payOldestFirst, payAmount, applyPayment, expenseTotals, receivedIn, monthState
 } from './rent-math.js';
 
 const PAGES = ['rent', 'tenants', 'properties', 'reports'];
@@ -109,7 +109,9 @@ function scheduleRender() {
 
 function onData(key, error) {
     state.loaded.add(key);
-    if (error) state.errors.add(key); else state.errors.delete(key);
+    // RENT-20's listener failing only blanks that figure ("—"), not the page or Today's reminders.
+    if (key === 'monthPaid') state.paidError = !!error;
+    else if (error) state.errors.add(key); else state.errors.delete(key);
     if (['leases', 'tenants', 'units'].includes(key)) void maybeCharge();
     scheduleRender();
 }
@@ -290,6 +292,7 @@ function renderMonth(d, ix, rows) {
     const summary = `<div class="rent-summary">
         <div class="rent-name">${et('ui.rent.collected_of', { collected: formatINR(sum.collected), expected: formatINR(sum.expected) })}</div>
         ${sum.expected > 0 ? `<progress class="rent-progress" max="${esc(sum.expected)}" value="${esc(sum.collected)}" aria-label="${et('ui.rent.collected')}"></progress>` : ''}
+        <div class="rent-sub" data-rent-received>${et('ui.rent.received_month')}: ${receivedText(d)}</div>
         <div class="rent-sub">${et('ui.rent.outstanding')}: ${money(sum.due)}</div>
     </div>`;
     const list = shown.map(a => collectRow(a, ix, lang)).join('')
@@ -302,6 +305,23 @@ function renderMonth(d, ix, rows) {
         <h3 class="rent-section-title">${et('ui.rent.to_collect', { n: owe.length })}${owe.some(a => a.late)
             ? ` <button type="button" class="filter-btn${state.onlyLate ? ' active" aria-pressed="true"' : '" aria-pressed="false"'} data-onclick="rentals.onlyLate()">${et('ui.rent.status_late')}</button>` : ''}</h3>
         <div class="rent-list">${list}</div>${paidList}${vacant}${payAny}`;
+}
+
+/** RENT-20 once its listener has answered complete; null ("—") until then, or when it failed or was cut at its limit. */
+function received(d) {
+    return state.loaded.has('monthPaid') && !state.paidError && !store.paidTruncated?.() ? receivedIn(d.paidCharges, state.month) : null;
+}
+
+const receivedText = (d) => { const r = received(d); return r === null ? '—' : money(r); };
+
+/** RENT-21: this month's rent of one tenant: paid, part paid (₹X of ₹Y) or due. */
+function monthStateLine(a) {
+    const m = a.ended ? null : monthState(a.current);
+    if (!m) return '';
+    const text = m.status === 'paid' ? t('ui.rent.month_paid')
+        : m.status === 'partial' ? t('ui.rent.month_part', { paid: formatINR(m.paid), amount: formatINR(m.amount) })
+            : t('ui.rent.month_due', { amount: formatINR(m.due) });
+    return `<div class="rent-sub" data-rent-month-state="${esc(m.status)}">${esc(text)}</div>`;
 }
 
 /** Needs attention: REM-2 and REM-4 as Today and the bell show them (utils/reminders.js), from this visit's data. */
@@ -344,6 +364,7 @@ function collectRow(a, ix, lang) {
             <div class="rent-sub">${esc(placeOf(ix, a.unitId, a.unitLabel || ''))}</div></div>
             <div class="rent-row-right">${a.dues.total > 0 ? `<div class="rent-due">${money(a.dues.total)}</div>` : ''}</div></div>
         <div class="rent-sub">${months ? `${esc(months)} · ` : ''}${status}</div>
+        ${monthStateLine(a)}
         ${a.current?.adv > 0 ? `<div class="rent-sub">${et('ui.rent.adv_next', { amount: formatINR(a.current.adv) })}</div>` : ''}
         ${acts || meter ? `<div class="rent-actions">${acts}${meter}</div>` : ''}
     </div>`;
@@ -648,7 +669,7 @@ const unitCtx = () => ({
     defaults, headerName, tenantSectionHtml: fromPages('tenantSectionHtml'), readTenantSection: fromPages('readTenantSection'), checkTenantSection: fromPages('checkTenantSection'),
     elecFieldsHtml: fromPages('elecFieldsHtml'), saveRent: fromPages('saveRent'), refreshLinkNames: fromPages('refreshLinkNames'), back,
     saveMoveIn: (...a) => whileMoving(() => fromPages('saveMoveIn')(...a)), isManager: isManager(), isOwner: isOwner(), canWrite: canWrite(), month: state.month,
-    state, typeLabel, elecTag, sinceText, receiptsBtn, payBtns, badge, render, unitUi, depUi, linkUi: (fn, ...a) => lazyUi('./rent-link.js', fn, ...a), unitMod, unitCtx, auditWarn
+    state, received, typeLabel, elecTag, sinceText, receiptsBtn, payBtns, badge, render, unitUi, depUi, linkUi: (fn, ...a) => lazyUi('./rent-link.js', fn, ...a), unitMod, unitCtx, auditWarn
 });
 
 /** Runs function `fn` of a lazy file (rent-unit.js / rent-link.js) with what it needs from here. */
@@ -720,6 +741,7 @@ export const RentalsModule = {
             state.month = monthKey();
             state.loaded.clear();
             state.errors.clear();
+            state.paidError = false;
             state.charged.clear();
             store.attach(state.month, onData);
         }

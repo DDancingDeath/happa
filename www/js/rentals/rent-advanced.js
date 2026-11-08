@@ -44,15 +44,16 @@ function rowBadge(r) {
         : c.badge('due', 'ui.rent.status_due');
 }
 
-/** RENT-9 cards; with this month's expenses (RENT-17) also the net (RENT-18). */
-function totalsCards(sum, exp) {
+/** RENT-9 cards; with this month's expenses (RENT-17) also the net (RENT-18); with `rec` RENT-20 (null: not loaded, "—"). */
+function totalsCards(sum, exp, rec) {
     return [
         ['ui.rent.expected', sum.expected],
         ['ui.rent.collected', sum.collected],
+        ...(rec === undefined ? [] : [['ui.rent.received_month', rec]]),
         ['ui.rent.pending_month', sum.pending],
         ['ui.rent.outstanding', sum.due],
         ...(exp === undefined ? [] : [['ui.rent.exp_month', exp], ['ui.rent.net_month', netOf(sum.collected, exp)]])
-    ].map(([k, v]) => `<div class="rent-card"><div class="rent-card-label">${et(k)}</div><div class="rent-card-value">${money(v)}</div></div>`).join('');
+    ].map(([k, v]) => `<div class="rent-card"><div class="rent-card-label">${et(k)}</div><div class="rent-card-value">${v === null ? '—' : money(v)}</div></div>`).join('');
 }
 
 /** "6 flats · 3 commercial" in the chosen language. */
@@ -92,7 +93,7 @@ function renderPropertyView(d, ix, rows) {
         </button>`).join('');
     const empty = `<p class="rent-empty">${et('ui.rent.no_properties')}</p>`
         + (c.canWrite ? btn(' rent-btn-primary', 'page', `'properties'`, 'ui.rent.add_property') : '');
-    return `<div class="rent-cards">${totalsCards(summarize(rows), ex.total)}</div>
+    return `<div class="rent-cards">${totalsCards(summarize(rows), ex.total, c.received(d))}</div>
         ${cards || empty}`;
 }
 

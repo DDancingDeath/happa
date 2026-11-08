@@ -191,6 +191,31 @@ export function rentTotals(charges, month = '') {
     return { expected: round2(expected), collected: round2(collected), pending: round2(Math.max(0, expected - collected)), due: round2(due) };
 }
 
+/**
+ * RENT-20: rent money received in `month`: Σ amount + advance of each payment dated in it, each
+ * charge once; a month paid from an advance or from the deposit is not new money.
+ */
+export function receivedIn(charges, month) {
+    const seen = new Set();
+    let total = 0;
+    for (const c of charges || []) {
+        if (!c || (c.id && seen.has(c.id))) continue;
+        seen.add(c.id);
+        for (const p of c.payments || []) {
+            if (p?.mode === 'advance' || p?.mode === 'deposit' || String(p?.date || '').slice(0, 7) !== month) continue;
+            total += (Number(p.amount) || 0) + (Number(p.adv) || 0);
+        }
+    }
+    return round2(total);
+}
+
+/** RENT-21: a tenant's month from its charge: paid, part paid (paid of amount) or due; null without one. */
+export function monthState(charge) {
+    if (!charge) return null;
+    const { status, due } = chargeStatus(charge);
+    return { status, paid: round2(Number(charge.paid) || 0), amount: round2(Number(charge.amount) || 0), due };
+}
+
 /** RENT-12: receipt amounts of payment `e` on charge `ch` as written (balance = due after it; adv = RENT-16 carried). */
 export const receiptAmounts = (ch, e) => ({ months: [ch.month], rent: ch.rent, elec: ch.electricity || null, total: ch.amount, paid: e.amount, balance: chargeDue(ch), ...(e.adv > 0 ? { adv: e.adv } : {}) });
 
