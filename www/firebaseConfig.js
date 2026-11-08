@@ -76,7 +76,18 @@ const firebaseConfig = {
   "appId": "1:516108799937:web:a4e3fdbff054b9cc07a940",
   "measurementId": "G-1514HNS14K"
 };
+const googleSignInWeb = false;
 // </happa-config>
+
+// --- auth-domain (Google sign-in, docs/google-sign-in.md; unit-tested by google-signin.test.js) ---
+// On Firebase Hosting the auth helper (/__/auth/) is served by the site itself. With Google
+// sign-in on, the popup / redirect then stays on this origin: browsers that partition
+// third-party storage break a redirect through <project>.firebaseapp.com. Localhost and the
+// APK (which signs in natively) keep the configured authDomain.
+const authDomainFor = (hostname, configured, googleWeb) =>
+  (googleWeb && /\.(web\.app|firebaseapp\.com)$/i.test(hostname) ? hostname.toLowerCase() : configured);
+// --- end auth-domain ---
+firebaseConfig.authDomain = authDomainFor(window.location.hostname, firebaseConfig.authDomain, googleSignInWeb);
 
 // Expose environment globally
 window.APP_ENV = APP_ENV;

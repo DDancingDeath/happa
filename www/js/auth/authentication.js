@@ -37,7 +37,50 @@ function loginWaitText(ms) {
     return 'minutes' in p ? t('msg.auth.wait_minutes', p) : t('msg.auth.wait_seconds', p);
 }
 
-const FORM_IDS = { login: 'loginForm', register: 'registerForm', reset: 'resetForm' };
+const FORM_IDS = { login: 'loginForm', register: 'registerForm', reset: 'resetForm', googleLink: 'googleLinkForm' };
+
+/**
+ * Whether "Continue with Google" is offered here (docs/google-sign-in.md): 'native' in the
+ * Android app when switched on and the APK has the plugin with its Firebase config, 'web' in a
+ * browser when switched on, else null. Both are off in happa.config.json until the owner's
+ * console steps are done. Local E2E against the emulators may switch the web one on with
+ * ?emulator=1&google=1 (localhost only).
+ * @returns {'native'|'web'|null}
+ */
+export function googleSignInMode(win = window, identity = APP_IDENTITY) {
+    const flags = identity.googleSignIn || {};
+    const cap = win.Capacitor;
+    if (cap?.isNativePlatform?.()) {
+        return flags.android === true && cap.isPluginAvailable?.('FirebaseAuthentication') ? 'native' : null;
+    }
+    if (flags.web === true) return 'web';
+    const loc = win.location;
+    const q = new URLSearchParams(loc?.search || '');
+    const local = ['localhost', '127.0.0.1'].includes(loc?.hostname) && /^https?:$/.test(loc?.protocol || '');
+    return local && q.get('emulator') === '1' && q.get('google') === '1' ? 'web' : null;
+}
+
+/** Set just before the web fallback's full-page redirect to Google (per tab). */
+export const GOOGLE_REDIRECT_KEY = 'happa.googleRedirect';
+const GOOGLE_REDIRECT_MAX_MS = 15 * 60 * 1000;
+
+export function markGoogleRedirect(now = Date.now()) {
+    try { sessionStorage.setItem(GOOGLE_REDIRECT_KEY, String(now)); } catch (_) { /* the redirect result then waits for a sign-in */ }
+}
+
+export function clearGoogleRedirect() {
+    try { sessionStorage.removeItem(GOOGLE_REDIRECT_KEY); } catch (_) { /* nothing stored */ }
+}
+
+export function googleRedirectPending(now = Date.now()) {
+    let at = NaN;
+    try { at = Number(sessionStorage.getItem(GOOGLE_REDIRECT_KEY)); } catch (_) { return false; }
+    if (!(at > 0) || now - at > GOOGLE_REDIRECT_MAX_MS || now < at) {
+        clearGoogleRedirect();
+        return false;
+    }
+    return true;
+}
 
 const NETWORK = 'msg.auth.err_network';
 const NOT_ALLOWED = 'msg.auth.err_operation_not_allowed';
@@ -95,7 +138,7 @@ function authErrorMessage(error, flow) {
 
 const AuthManager = {
     authFlowInProgress: false,
-    busy: { login: false, register: false, reset: false },
+    busy: { login: false, register: false, reset: false, googleLink: false },
 
     /**
      * Writes `text` into the card's inline message area (above its button).
@@ -264,6 +307,150 @@ const AuthManager = {
         Object.entries(FORM_IDS).forEach(([form, id]) => {
             document.getElementById(id)?.addEventListener('input', () => this.clearMessage(form));
         });
+        this.initGoogleSignIn();
+    },
+
+    /**
+     * After Firebase signed the person in (password, Google, or Google linked to a password):
+     * the profile decides. No profile yet: a pending one is made (the owner approves it, never
+     * the app) and the person is signed out. Pending / rejected / removed: signed out with the
+     * reason. Approved: the app starts.
+     * @param {Object} user - the Firebase user
+     * @param {{email: string, name?: string, form?: string, createdKey?: string, createdKind?: string}} opts
+     *   form: the card that shows the result; createdKey / createdKind: the text when a profile was made
+     * @returns {Promise<'created'|'pending'|'rejected'|'disabled'|'signed-in'>}
+     */
+    async completeSignIn(user, { email, name = '', form = 'login', createdKey = 'msg.common.account_pending_approval_wait_admin', createdKind = 'info' }) {
+        const profile = userProfile(user.uid);
+        let userDoc = await profile.read();
+
+        if (!userDoc.exists) {
+            // No profile: a new Google account, or an interrupted registration. Create the pending
+            // profile so the person isn't stuck between "please register" and "email already in use".
+            const created = await this.createPendingProfile(user, name, email);
+            if (created) {
+                await firebase.auth().signOut();
+                this.showMessage(form, t(createdKey), createdKind);
+                return 'created';
+            }
+            // The profile exists on the server; the first read came from a stale cache.
+            userDoc = await profile.read({ source: 'server' });
+        }
+
+        if (userDoc.data.status === 'pending') {
+            // Re-check the server so a stale cached copy can't hide a recent approval
+            userDoc = await profile.read({ source: 'server' }).catch(() => userDoc);
+        }
+
+        const userData = userDoc.data;
+
+        if (userData.status === 'pending') {
+            await firebase.auth().signOut();
+            this.showMessage(form, t('msg.common.account_pending_approval_wait_admin'), 'info');
+            return 'pending';
+        }
+
+        if (userData.status === 'rejected' || userData.status === 'disabled') {
+            await firebase.auth().signOut();
+            this.showMessage(form, t(userData.status === 'disabled' ? 'msg.common.account_removed_contact_owner' : 'msg.common.account_has_been_rejected_contact'));
+            return userData.status;
+        }
+
+        AppState.currentUser = user;
+        AppState.userRole = userData.role || 'staff';
+        AppState.userName = userData.name || 'User';
+
+        UIManager.showToast(t('msg.auth.login_successful'));
+        this.hidePasswords();
+
+        // Hide auth screen and initialize app
+        document.getElementById('authScreen').style.display = 'none';
+
+        // Initialize the app
+        if (window.initializeApp) {
+            await window.initializeApp();
+        }
+        return 'signed-in';
+    },
+
+    /**
+     * One password try that shares the Login card's wrong-password backoff, for linking Google to an
+     * account that already has a password.
+     * @returns {Promise<{credential?: Object, message?: string}>} the credential, or the text to show
+     */
+    async passwordTry(email, password) {
+        const wait = loginWaitMs(readBackoff(), Date.now());
+        if (wait > 0) return { message: loginWaitText(wait) };
+        try {
+            const credential = await firebase.auth().signInWithEmailAndPassword(email, password);
+            clearBackoff();
+            return { credential };
+        } catch (error) {
+            const backoff = afterLoginFailure(readBackoff(), Date.now(), error?.code);
+            safeSetItem(BACKOFF_KEY, JSON.stringify(backoff));
+            const after = loginWaitMs(backoff, Date.now());
+            return { message: after > 0 ? `${authErrorMessage(error, 'login')} ${loginWaitText(after)}` : authErrorMessage(error, 'login') };
+        }
+    },
+
+    // ---- Google sign-in (docs/google-sign-in.md): the code is in google-signin.js, loaded only when on ----
+
+    /** The loaded google-signin.js (null until import() finished). */
+    google: null,
+    googleLoading: null,
+
+    loadGoogle() {
+        if (!this.googleLoading) {
+            this.googleLoading = import('./google-signin.js')
+                .then((m) => { this.google = m.GoogleSignIn; return this.google; })
+                .catch((e) => { this.googleLoading = null; throw e; });
+        }
+        return this.googleLoading;
+    },
+
+    /** Shows "Continue with Google" when it is switched on; its code loads now, so a tap can open the popup at once. */
+    initGoogleSignIn() {
+        const box = document.getElementById('googleSignIn');
+        if (!box || !googleSignInMode()) return Promise.resolve(false);
+        return this.loadGoogle()
+            .then(() => { box.hidden = false; return true; })
+            .catch((e) => { console.warn('Google sign-in not loaded:', e?.message || e); return false; });
+    },
+
+    signInWithGoogle() {
+        const mode = googleSignInMode();
+        if (!mode) return Promise.resolve();
+        // Loaded with the button: start() opens the popup in this tap (no await before it)
+        if (this.google) return this.google.start(this, mode);
+        return this.loadGoogle().then((g) => g.start(this, mode), () => this.showMessage('google', t('msg.auth.err_network')));
+    },
+
+    linkGoogle() {
+        return this.google ? this.google.submitLink(this) : Promise.resolve();
+    },
+
+    cancelGoogleLink() {
+        this.google?.cancelLink(this);
+    },
+
+    /**
+     * The web fallback signs in with a full-page redirect: the page comes back signed in.
+     * Finish that sign-in (profile check, approval) before the app starts on it.
+     * Call before onAuthStateChanged is registered. @returns {boolean} true when a redirect is finishing
+     */
+    resumeGoogleRedirect() {
+        if (googleSignInMode() !== 'web' || !googleRedirectPending()) return false;
+        this.authFlowInProgress = true;
+        this.loadGoogle()
+            .then((g) => g.completeRedirect(this))
+            .catch(async (e) => {
+                console.warn('Google sign-in not finished:', e?.message || e);
+                clearGoogleRedirect();
+                await firebase.auth().signOut().catch(() => {});
+                this.authFlowInProgress = false;
+                this.showMessage('google', t('msg.auth.google_failed'));
+            });
+        return true;
     },
 
     // Handle login
@@ -307,58 +494,7 @@ const AuthManager = {
         try {
             const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
             clearBackoff();
-            
-            const userId = userCredential.user.uid;
-            const profile = userProfile(userId);
-            let userDoc = await profile.read();
-            
-            if (!userDoc.exists) {
-                // Orphaned auth account (interrupted registration): create the pending profile
-                // so the user isn't stuck between "please register" and "email already in use".
-                const created = await this.createPendingProfile(userCredential.user, '', email);
-                if (created) {
-                    await firebase.auth().signOut();
-                    this.showMessage('login', t('msg.common.account_pending_approval_wait_admin'), 'info');
-                    return;
-                }
-                // The profile exists on the server; the first read came from a stale cache.
-                userDoc = await profile.read({ source: 'server' });
-            }
-            
-            if (userDoc.data.status === 'pending') {
-                // Re-check the server so a stale cached copy can't hide a recent approval
-                userDoc = await profile.read({ source: 'server' }).catch(() => userDoc);
-            }
-            
-            const userData = userDoc.data;
-            
-            if (userData.status === 'pending') {
-                await firebase.auth().signOut();
-                this.showMessage('login', t('msg.common.account_pending_approval_wait_admin'), 'info');
-                return;
-            }
-            
-            if (userData.status === 'rejected' || userData.status === 'disabled') {
-                await firebase.auth().signOut();
-                this.showMessage('login', t(userData.status === 'disabled' ? 'msg.common.account_removed_contact_owner' : 'msg.common.account_has_been_rejected_contact'));
-                return;
-            }
-            
-            AppState.currentUser = userCredential.user;
-            AppState.userRole = userData.role || 'staff';
-            AppState.userName = userData.name || 'User';
-            
-            UIManager.showToast(t('msg.auth.login_successful'));
-            this.hidePasswords();
-            
-            // Hide auth screen and initialize app
-            document.getElementById('authScreen').style.display = 'none';
-            
-            // Initialize the app
-            if (window.initializeApp) {
-                await window.initializeApp();
-            }
-            
+            await this.completeSignIn(userCredential.user, { email });
         } catch (error) {
             console.error('Login error:', error?.code, error?.message);
             const backoff = afterLoginFailure(readBackoff(), Date.now(), error?.code);

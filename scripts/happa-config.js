@@ -50,6 +50,7 @@ function derive(raw) {
         appId: fb.appId
     };
     if (fb.measurementId) webConfig.measurementId = fb.measurementId;
+    const google = raw.googleSignIn || {};
     return {
         appName: raw.appName,
         appNameHi: raw.appNameHi,
@@ -67,6 +68,8 @@ function derive(raw) {
         downloadPageHost: `${siteHost}/download`,
         apkDownloadUrl: `https://github.com/${raw.githubRepo}/releases/latest/download/${apkFile}`,
         latestReleaseApi: `https://api.github.com/repos/${raw.githubRepo}/releases/latest`,
+        // Off until the owner has done the console steps (docs/google-sign-in.md)
+        googleSignIn: { web: google.web === true, android: google.android === true },
         webConfig
     };
 }
@@ -99,6 +102,11 @@ function configProblems(raw) {
     if (RETIRED_PACKAGES.includes(d.androidPackage)) errors.push(`androidPackage "${d.androidPackage}" is the old app's id`);
     if (raw.ownerConfirmed !== true) {
         errors.push('ownerConfirmed is not true: the owner must confirm androidPackage and appNameHi (they cannot change after phones install v1.0.0)');
+    }
+    if (raw.googleSignIn !== undefined) {
+        const g = raw.googleSignIn;
+        const ok = g && typeof g === 'object' && Object.keys(g).every((k) => ['web', 'android'].includes(k) && typeof g[k] === 'boolean');
+        if (!ok) errors.push('googleSignIn must be { "web": true|false, "android": true|false }');
     }
     return errors;
 }
@@ -145,7 +153,8 @@ function identityModule(d) {
         downloadPageUrl: d.downloadPageUrl,
         apkFile: d.apkFile,
         apkDownloadUrl: d.apkDownloadUrl,
-        latestReleaseApi: d.latestReleaseApi
+        latestReleaseApi: d.latestReleaseApi,
+        googleSignIn: d.googleSignIn
     };
     return '// Generated from happa.config.json by `npm run apply:happa-config`. Do not edit by hand.\n' +
         `export const APP_IDENTITY = Object.freeze(${JSON.stringify(identity, null, 4)});\n`;
@@ -177,6 +186,20 @@ function redirectHosting(site, d) {
         ],
         headers: [{ source: '**', headers: REDIRECT_SECURITY_HEADERS.map((h) => ({ ...h })) }]
     };
+}
+
+/**
+ * The app site's CSP frame-src: Firebase Auth frames <authDomain>/__/auth/iframe. That is the
+ * project's firebaseapp.com domain, or the site itself ('self') when Google sign-in runs on
+ * Hosting (firebaseConfig.js, docs/google-sign-in.md).
+ */
+function withAuthFrameSrc(headers, d) {
+    const frameSrc = `frame-src 'self' https://${d.webConfig.authDomain}`;
+    return (headers || []).map((entry) => (entry.source !== '**' ? entry : {
+        ...entry,
+        headers: entry.headers.map((h) => (h.key !== 'Content-Security-Policy' ? h
+            : { ...h, value: replaceOrThrow(h.value, /frame-src [^;]*/, frameSrc, 'frame-src in the app CSP') }))
+    }));
 }
 
 // Never served (the redirect wins); Hosting just needs a non-empty public folder.
@@ -230,6 +253,7 @@ const TARGETS = [
             const entries = Array.isArray(json.hosting) ? json.hosting : [json.hosting];
             const settings = { ...(entries.find((h) => h.public === APP_PUBLIC) || entries[0]) };
             delete settings.site;
+            settings.headers = withAuthFrameSrc(settings.headers, d);
             const hosting = [{ site: d.hostingSite, ...settings }, ...d.redirectSites.map((s) => redirectHosting(s, d))];
             json.hosting = hosting.length === 1 ? hosting[0] : hosting;
             return JSON.stringify(json, null, 2) + '\n';
@@ -263,7 +287,7 @@ const TARGETS = [
     {
         file: 'www/firebaseConfig.js',
         write: (t, d) => replaceOrThrow(t, /(\/\/ <happa-config>\n)[\s\S]*?(\/\/ <\/happa-config>)/,
-            `$1const firebaseConfig = ${JSON.stringify(d.webConfig, null, 2)};\n$2`, 'happa-config block in firebaseConfig.js')
+            `$1const firebaseConfig = ${JSON.stringify(d.webConfig, null, 2)};\nconst googleSignInWeb = ${d.googleSignIn.web};\n$2`, 'happa-config block in firebaseConfig.js')
     },
     { file: 'www/js/config/app-identity.js', write: (_, d) => identityModule(d) },
     { file: 'www/index.html', write: (t, d) => replaceOrThrow(t, /<title>[^<]*<\/title>/, `<title>${escapeHtml(d.appName)}</title>`, '<title>') },

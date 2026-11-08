@@ -20,6 +20,10 @@
       "launchShowDuration": 2000,
       "backgroundColor": "#2196F3",
       "showSpinner": false
+    },
+    "FirebaseAuthentication": {
+      "skipNativeAuth": true,
+      "providers": ["google.com"]
     }
   }
 }

@@ -5,6 +5,10 @@
   "apkName": "happa",
   "githubRepo": "DDancingDeath/happa",
   "ownerConfirmed": true,
+  "googleSignIn": {
+    "web": false,
+    "android": false
+  },
   "firebase": {
     "projectId": "happa-bfc07",
     "hostingSite": "myhappa",
