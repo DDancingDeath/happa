@@ -46,6 +46,7 @@ const state = {
     loaded: new Set(),
     errors: new Set(),
     charging: false,
+    moving: 0,
     lazyFailed: false,
     mode: 'simple',
     onlyLate: false,
@@ -115,7 +116,7 @@ function onData(key, error) {
 
 /** Creates this month's (and missed months') charges for active leases, once per visit. */
 async function maybeCharge() {
-    if (state.charging || !['leases', 'tenants', 'units'].every(k => state.loaded.has(k))) return;
+    if (state.charging || state.moving || !['leases', 'tenants', 'units'].every(k => state.loaded.has(k))) return;
     const d = store.snapshot();
     const todo = d.leases.filter(l => !l._pending && !state.charged.has(l.id) && monthsToCharge(l, state.month).length);
     if (!todo.length) return;
@@ -629,11 +630,22 @@ const lazyCall = (name, fn) => (...args) => (lazyMods[name] ? lazyMods[name][fn]
 }));
 const pg = (fn) => lazyCall('pages', fn);
 const fromPages = (fn) => (...args) => lazyMods.pages[fn](unitCtx(), ...args);
+
+/** A move-in or change of unit charges its new lease itself: the visit's charge pass waits, so one path writes each month. */
+async function whileMoving(fn) {
+    state.moving++;
+    try {
+        return await fn();
+    } finally {
+        state.moving--;
+        void maybeCharge();
+    }
+}
 const unitCtx = () => ({
     esc, js, val, dialog, closeDialog: () => dialogResolve?.(false), index, placeOf, linkPlace, linkFor, findLease, knownType, typeWord,
     defaults, headerName, tenantSectionHtml: fromPages('tenantSectionHtml'), readTenantSection: fromPages('readTenantSection'),
     elecFieldsHtml: fromPages('elecFieldsHtml'), saveRent: fromPages('saveRent'), refreshLinkNames: fromPages('refreshLinkNames'), back,
-    saveMoveIn: fromPages('saveMoveIn'), isManager: isManager(), isOwner: isOwner(), canWrite: canWrite(), month: state.month,
+    saveMoveIn: (...a) => whileMoving(() => fromPages('saveMoveIn')(...a)), isManager: isManager(), isOwner: isOwner(), canWrite: canWrite(), month: state.month,
     state, typeLabel, elecTag, sinceText, receiptsBtn, payBtns, badge, render, unitUi, depUi, linkUi: (fn, ...a) => lazyUi('./rent-link.js', fn, ...a), unitMod, unitCtx, auditWarn
 });
 
