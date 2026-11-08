@@ -96,6 +96,10 @@
   --seg-on: var(--surface);
   --toast-bg: #1d1d24;
   --toast-ink: #f4f4f7;
+  --toast-pos: #4ade9b;
+  --toast-neg: #fb7185;
+  --toast-warn: #fbbf24;
+  --toast-info: #a5a6fb;
   --btn-primary-bg: var(--accent);
   --btn-primary-ink: var(--on-accent);
   --btn-primary-shadow: var(--highlight), var(--e1);

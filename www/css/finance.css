@@ -209,12 +209,6 @@
     padding: 16px 0;
 }
 
-.empty-state {
-    text-align: center;
-    color: var(--text-muted);
-    padding: 32px;
-    font-size: 14px;
-}
 
 /* ==================== ASSET LIST ==================== */
 .asset-list {
@@ -377,7 +371,6 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -386,13 +379,10 @@
 }
 
 .modal-content {
-    background: var(--card-bg);
-    border-radius: var(--radius-lg);
     width: 100%;
     max-width: 400px;
     max-height: 90vh;
     overflow-y: auto;
-    box-shadow: var(--shadow-lg);
 }
 
 .modal-header {

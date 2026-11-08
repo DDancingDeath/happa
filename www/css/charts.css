@@ -151,9 +151,6 @@ html {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(15, 23, 42, 0.55);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   z-index: 20000;
   display: flex;
   align-items: center;
@@ -170,9 +167,6 @@ html {
 }
 
 .modal-box {
-  background: var(--card-bg);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-xl);
   max-width: 450px;
   width: 90vw;
   max-height: 90vh;
@@ -240,44 +234,9 @@ body:has(.tab.sale-theme.active) .modal-overlay .modal-header {
 }
 
 .modal-btn {
-  padding: 12px 24px;
-  border: none;
-  border-radius: var(--radius);
-  font-size: var(--fs-body);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-  transition: all var(--transition);
   min-width: 80px;
 }
 
-.modal-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow);
-}
-
-.modal-btn:active {
-  transform: scale(0.95);
-}
-
-.modal-btn-cancel {
-  background: var(--card-bg);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-strong);
-}
-
-.modal-btn-cancel:hover {
-  background: var(--light-bg);
-}
-
-.modal-btn-confirm {
-  background: var(--btn-primary);
-  color: white;
-  box-shadow: var(--shadow-sm);
-}
-
-.modal-btn-confirm:hover {
-  box-shadow: var(--shadow);
-}
 
 body:has(.tab.purchase-theme.active) .modal-btn-confirm {
   background: var(--btn-primary);
