@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 import en from '../i18n/en.js';
 import hi from '../i18n/hi.js';
+import { GROUPS, groupOptions } from '../utils/finance-breakdown.js';
 import {
     t, tn, formatMessage, loadLang, setLang, getLang, applyTranslations, resetLangForTests,
     LANG_STORAGE_KEY, LEGACY_WHATS_NEW_LANG_KEY, LANG_CHANGE_EVENT
@@ -57,6 +58,14 @@ describe('i18n catalogues', () => {
 
     it('has no empty values', () => {
         expect(Object.keys(en).filter(k => !en[k] || !hi[k])).toEqual([]);
+    });
+
+    it('keys built at run time from a known list exist in both catalogues (O-10: raw group keys on the drill-down)', () => {
+        const families = { 'ui.finance.group_': GROUPS };
+        const missing = Object.entries(families).flatMap(([prefix, ids]) => ids.map(id => prefix + id))
+            .filter(k => !(k in en) || !(k in hi));
+        expect(missing).toEqual([]);
+        expect(groupOptions([{ itemKey: 'rice', party: 'Ram', t: 1, term: 'a' }, { term: 'b' }])).toEqual(GROUPS);
     });
 
     it('never says "staff" (English) or "स्टाफ" (Hindi)', () => {

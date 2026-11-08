@@ -17,8 +17,6 @@ const ALLOWED = {
     'firebase/core/realtime.js flushPendingWork': 'tab-shown render flush; catches stock errors itself',
     'main.js updateDraftCount': 'draft badge refresh; has its own try/catch',
     'main.js editBill': 'editBillDetails handler; editBill() catches and toasts its own errors',
-    'modules/purchase.js addToBill': 'no awaits inside, runs synchronously before editBillItem continues',
-    'modules/retail-sale.js addToSalesBill': 'no awaits inside, runs synchronously',
     'modules/settings.js connectToPrinter': 'has its own try/catch with a user toast',
     'modules/stock.js renderStock': 'UI refresh; has its own try/catch',
     'modules/stock.js renderAdjustmentHistory': 'UI refresh; has its own try/catch',

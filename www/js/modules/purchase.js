@@ -12,11 +12,12 @@ import { PrinterService } from '../services/printer.js';
 import { Helpers } from '../utils/helpers.js';
 import { KEPT_SERVER_PAYMENT_KEY, normalizeLabourSettings, paymentSplitMessage, formatRate, formatRupees, formatKg } from '../utils/money.js';
 import {
-    autoLabour, buildPaymentSplit, computeLine, computePurchaseTotals, draftLineSum, editSplitFor, paidOnScreen, payableOnScreen,
+    autoLabour, bagChecks, buildPaymentSplit, computeLine, computePurchaseTotals, draftLineSum, editSplitFor, paidOnScreen, payableOnScreen,
     paymentSplit, pendingLine, prefillPayment, restInDue, shownAmount, sumWeights, validatePaymentSplit
 } from '../utils/calc/billing.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
 import { settlePendingLine } from '../ui/pending-line.js';
+import { checkBagWeight, checkLineRate, confirmLineBags, keptBagChecks } from '../ui/rate-check.js';
 import { t, tn } from '../i18n/index.js';
 import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
@@ -41,6 +42,10 @@ let billItems = [];
  * @private
  */
 let weights = [];
+/** Confirms of heavy bags among the weights (BF-BAGCHECK), moved onto the line at Add to bill. */
+let weightChecks = [];
+/** The line taken back into the entry boxes to edit (its rate confirm is kept if put back unchanged). */
+let editedLine = null;
 
 /**
  * Id (and bill number, once issued) of the bill being entered. Created with the
@@ -85,8 +90,12 @@ const PurchaseManager = {
             UIManager.showToast(t('msg.common.enter_valid_weight'));
             return;
         }
+        // One bag above 100 kg: confirm first (BF-BAGCHECK)
+        const bag = await checkBagWeight(weight, 'bag', 'newWeight');
+        if (!bag.ok) return;
         
         weights.push(weight);
+        if (bag.record) weightChecks.push(bag.record);
         weightInput.value = '';
         weightInput.focus();
         
@@ -139,6 +148,7 @@ const PurchaseManager = {
      */
     removeWeight(index) {
         weights.splice(index, 1);
+        weightChecks = bagChecks(weights, weightChecks).confirmed;
         this.renderWeights();
         if (this.billingManager) this.billingManager.triggerAutoSave();
         UIManager.hapticFeedback();
@@ -149,6 +159,7 @@ const PurchaseManager = {
      */
     clearWeights() {
         weights = [];
+        weightChecks = [];
         this.renderWeights();
         if (this.billingManager) this.billingManager.triggerAutoSave();
         UIManager.hapticFeedback();
@@ -184,7 +195,11 @@ const PurchaseManager = {
         // If there's a weight typed in the input but not added, add it first
         const pendingWeight = parseFloat(weightInput?.value);
         if (pendingWeight && pendingWeight > 0) {
+            // One bag above 100 kg: confirm first (BF-BAGCHECK)
+            const bag = await checkBagWeight(pendingWeight, 'bag', 'newWeight');
+            if (!bag.ok) return;
             weights.push(pendingWeight);
+            if (bag.record) weightChecks.push(bag.record);
             weightInput.value = '';
             this.renderWeights();
         }
@@ -201,10 +216,18 @@ const PurchaseManager = {
         }
         this.ensurePendingBill();
         
-        const { qty, total } = computeLine({ rate, weights });
+        const lineWeights = [...weights];
+        const { qty, total } = computeLine({ rate, weights: lineWeights });
+        // A heavy bag not confirmed yet (e.g. weights of a restored bill) is asked now
+        const bags = await confirmLineBags(lineWeights, weightChecks, 'bag', 'newWeight');
+        weightChecks = bags.kept;
+        if (!bags.ok) return;
         
         // Bill lines keep the catalogue name; Hindi is only for display (#143, Reports group by item).
         const displayName = lineLabel(item);
+        // ≥ 5× or ≤ ⅕ of today's rate: confirm first (BF-RATECHECK, OD-02)
+        const { ok, rateCheck } = await checkLineRate({ kind: 'purchase', item, label: displayName, rate, qty, rateInputId: 'billRate', keptLines: this.keptLines() });
+        if (!ok) return;
         
         billItems.push({
             itemId: item.id,
@@ -212,12 +235,16 @@ const PurchaseManager = {
             rate,
             qty,
             total,
-            weights: [...weights],
+            weights: lineWeights,
+            ...(rateCheck ? { rateCheck } : {}),
+            ...(bags.weightCheck.length ? { weightCheck: bags.weightCheck } : {}),
             timestamp: Date.now()
         });
         
         // Clear inputs
         weights = [];
+        weightChecks = [];
+        editedLine = null;
         this.renderWeights();
         this.renderBill();
         if (this.billingManager) this.billingManager.triggerAutoSave();
@@ -330,12 +357,14 @@ const PurchaseManager = {
      * Edit a bill item
      * @param {number} index - Index of item to edit
      */
-    editBillItem(index) {
+    async editBillItem(index) {
         const currentItem = Helpers.getInputText('billItem');
         const currentRate = Helpers.getInputNumber('billRate');
         
         if (currentItem && currentRate && weights.length > 0) {
-            this.addToBill(true);
+            await this.addToBill(true);
+            // The typed line was not added (e.g. "Fix rate"): finish it before opening another
+            if (weights.length > 0) return;
         }
         
         const item = billItems[index];
@@ -356,6 +385,8 @@ const PurchaseManager = {
         }
         
         weights = item.weights || [];
+        weightChecks = keptBagChecks(weights, item.weightCheck);
+        editedLine = item;
         this.renderWeights();
         
         if (this.billingManager) this.billingManager.triggerAutoSave();
@@ -700,7 +731,9 @@ const PurchaseManager = {
             // Clear bill
             pendingBill = null;
             billItems = [];
+            editedLine = null;
             weights = [];
+            weightChecks = [];
             this.renderBill();
             this.renderWeights();
             
@@ -777,6 +810,7 @@ const PurchaseManager = {
             },
             discard: () => {
                 weights = [];
+                weightChecks = [];
                 const weightInput = document.getElementById('newWeight');
                 if (weightInput) weightInput.value = '';
                 this.renderWeights();
@@ -811,7 +845,9 @@ const PurchaseManager = {
     clearBill() {
         pendingBill = null;
         billItems = [];
+        editedLine = null;
         weights = [];
+        weightChecks = [];
         this.renderBill();
         this.renderWeights();
         this.resetForm();
@@ -846,6 +882,12 @@ const PurchaseManager = {
      * Id/bill number of the bill being entered, created on first use (#70)
      * @returns {{id: string, billNumber: (string|null)}}
      */
+    /** Lines whose rate confirm is kept when put back unchanged: the saved bill being edited, the line taken back to edit. */
+    keptLines() {
+        const bill = this.billingManager?.editingBillIndex !== undefined ? this.billingManager.getEditingBill?.() : null;
+        return [...(Array.isArray(bill?.items) ? bill.items : []), ...(editedLine ? [editedLine] : [])];
+    },
+
     /**
      * The bill as the check engine sees it (utils/bill-checks.js).
      * @returns {Object}
@@ -926,6 +968,7 @@ const PurchaseManager = {
      */
     setWeights(w) {
         weights = w || [];
+        weightChecks = bagChecks(weights, weightChecks).confirmed;
     }
 };
 

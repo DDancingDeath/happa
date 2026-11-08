@@ -1,6 +1,6 @@
 /**
  * @fileoverview Oracle tests for the bill forms (docs/calculations.md BF-KG,
- * BF-LINE, BF-TOTAL, BF-LAB, BF-PAYABLE, BF-PENDING, WS-PROFIT, WS-MARGIN): the purchase,
+ * BF-LINE, BF-TOTAL, BF-LAB, BF-PAYABLE, BF-PENDING, BF-RATECHECK, BF-BAGCHECK, WS-PROFIT, WS-MARGIN): the purchase,
  * retail and wholesale forms show what the independent oracle computes, and
  * utils/calc/billing.js agrees with the oracle on generated bills.
  */
@@ -8,7 +8,7 @@ import fc from 'fast-check';
 import * as O from './oracle.js';
 import {
     autoLabour, autoSaveSummary, computeLine, computePurchaseTotals, computeRetailTotals, nextBillNumberHint,
-    payableOnScreen, pendingLine, restoreFigures, wholesaleLiveProfit
+    bagWeightGuess, extremeRate, heavyBag, payableOnScreen, pendingLine, rateCheckFigures, restoreFigures, todaysRates, wholesaleLiveProfit
 } from '../../www/js/utils/calc/billing.js';
 import { PurchaseManager } from '../../www/js/modules/purchase.js';
 import { RetailSaleManager } from '../../www/js/modules/retail-sale.js';
@@ -285,5 +285,68 @@ describe('BF-RECOVER, BF-RESTORE, BF-NO (#117, #93)', () => {
             const want = 'P20261101-' + String((seqs.length ? Math.max(...seqs) : 0) + 1).padStart(3, '0');
             expect(nextBillNumberHint('P', bills, now)).toBe(want);
         }), { seed: 117, numRuns: RUNS });
+    });
+});
+
+describe('BF-RATECHECK, BF-BAGCHECK: the billing confirms (OD-02; bag weight, 8 Nov 2026)', () => {
+    const paise = fc.integer({ min: 1, max: 2_000_000 }).map(p => p / 100);
+    const kg = fc.integer({ min: 1, max: 500_000 }).map(g => g / 1000);
+
+    test('extreme rate: asked exactly when the oracle asks, against the same today\'s rate, with the same two amounts', () => {
+        fc.assert(fc.property(fc.array(paise, { maxLength: 4 }), paise, kg, (listed, rate, qty) => {
+            const want = O.rateCheckOracle({ rate, qty, listed });
+            const hit = extremeRate(rate, todaysRates({ saleRates: listed }, 'retail'));
+            if (!want) {
+                expect(hit).toBeNull();
+                return;
+            }
+            expect(hit.todayRate).toBe(want.todayRate);
+            expect(rateCheckFigures({ rate, qty, todayRate: hit.todayRate })).toEqual({ amount: want.amount, todayAmount: want.todayAmount });
+        }), { seed: 1108, numRuns: RUNS });
+    });
+
+    test.each([
+        [260, 15, [26], { todayRate: 26, amount: 3900, todayAmount: 390 }],
+        [130, 15, [26], { todayRate: 26, amount: 1950, todayAmount: 390 }],
+        [129.99, 15, [26], null],
+        [5.2, 15, [26], { todayRate: 26, amount: 78, todayAmount: 390 }],
+        [5.21, 15, [26], null],
+        [260, 15, [], null],
+        ['', 15, [26], null],
+        [0, 15, [26], null]
+    ])('rate %p × %p kg against %p', (rate, qty, listed, want) => {
+        expect(O.rateCheckOracle({ rate, qty, listed })).toEqual(want);
+        const hit = extremeRate(rate, listed);
+        expect(hit && { todayRate: hit.todayRate, ...rateCheckFigures({ rate, qty, todayRate: hit.todayRate }) }).toEqual(want);
+    });
+
+    test.each([[100, false], [100.01, true], [485, true], ['', false], [null, false], [0, false]])('bag of %p kg asked: %p', (w, asked) => {
+        expect(O.bagCheckOracle(w).asked).toBe(asked);
+        expect(heavyBag(w)).toBe(asked);
+    });
+
+    test('bag weight: asked and suggested as the oracle, any weight to the gram', () => {
+        fc.assert(fc.property(fc.integer({ min: 0, max: 1_000_000 }).map(g => g / 1000), (w) => {
+            const want = O.bagCheckOracle(w);
+            expect(heavyBag(w)).toBe(want.asked);
+            if (want.asked) expect(bagWeightGuess(w)).toBe(want.guess);
+        }), { seed: 1109, numRuns: RUNS });
+    });
+
+    test('the retail form\'s confirm shows the oracle\'s figures', async () => {
+        document.body.innerHTML = `<select id="saleItem"><option value="0">Rice</option><option value="1">Wheat</option></select>
+            <input id="saleRate"><input id="saleWeight"><table id="saleTable"><tbody></tbody></table><span id="saleTotal"></span>`;
+        setVal('saleItem', 1);
+        setVal('saleRate', 140);
+        setVal('saleWeight', 12.4);
+        const adding = RetailSaleManager.addToSalesBill();
+        const want = O.rateCheckOracle({ rate: 140, qty: 12.4, listed: AppState.items[1].saleRates });
+        for (let i = 0; i < 20 && !document.querySelector('.rate-check-dialog'); i++) await Promise.resolve();
+        const dialog = document.querySelector('.rate-check-dialog');
+        expect(dialog.querySelector('#rateCheckMessage').textContent)
+            .toBe(`Wheat 12.4 kg × ₹140.00 = ₹${want.amount.toLocaleString('en-IN')}. Today's rate ₹28.00 would give ₹${want.todayAmount}.`);
+        dialog.querySelector('[data-choice="fix"]').click();
+        await adding;
+        expect(RetailSaleManager.getSaleItems()).toEqual([]);
     });
 });

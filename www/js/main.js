@@ -11,6 +11,7 @@ import { BusinessSwitcher } from './ui/business-switcher.js';
 import { SyncStatus } from './ui/sync-status.js';
 import { startClockCheck } from './ui/clock-banner.js';
 import { installStickyFocus } from './ui/sticky-focus.js';
+import { ThemeManager, CHOICE_AT_LOAD } from './ui/theme.js';
 import { AuthManager } from './auth/authentication.js';
 import { FirebaseService } from './firebase/firestore-service.js';
 import { userProfile, saveOwnSavedRanges } from './firebase/repos/users.js';
@@ -63,7 +64,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261108r-rent-meter-readings';
+const BUILD_ID = '20261108x-rent-meter-readings';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -673,6 +674,7 @@ installActions();
 document.addEventListener('DOMContentLoaded', async function() {
     // STEP 1: Login screen and app shell now, pages in the background
     markStartup('dom-ready');
+    ThemeManager.init(CHOICE_AT_LOAD);
     await injectTemplates();
     markStartup('shell');
     
@@ -1380,7 +1382,7 @@ window.app = {
         saveCheckThresholds: () => SettingsManager.saveCheckThresholds(),
         saveRentals: () => SettingsManager.saveRentals(),
         openOpeningStock: () => SettingsManager.openOpeningStock(),
-        toggleDarkMode: () => SettingsManager.toggleDarkMode(),
+        setAppearance: (appearance) => SettingsManager.setAppearance(appearance),
         clearAllData: () => SettingsManager.clearAllData(),
         toggleBluetoothPrinter: () => SettingsManager.toggleBluetoothPrinter(),
         togglePrintPreview: () => SettingsManager.togglePrintPreview(),

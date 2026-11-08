@@ -20,6 +20,8 @@ import {
     bannerText, buildCheckContext, canOverride, evaluateBill, saveGate, toFlags, toOverrides
 } from '../utils/bill-checks.js';
 import { hidePartyDue, renderPartyDue } from './party-due-line.js';
+import { confirmLineRates } from './rate-check.js';
+import { lineItemIdentity } from '../utils/item-catalog.js';
 import { getLang, t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
 import { AUTO_ROLLBACK_REASON } from '../tip/scenarios/bill-save.js';
@@ -355,7 +357,7 @@ export const BillChecksUI = {
         }
         lastIssues[kind] = issues;
         if (sectionOf(kind)) renderIssues(kind, issues);
-        const { blocks, hardBlocks, warns } = saveGate(issues);
+        const { hardBlocks } = saveGate(issues);
         const stop = { ok: false, flags: [], overrides: [] };
         const by = AppState.currentUser?.uid || 'unknown';
 
@@ -364,6 +366,33 @@ export const BillChecksUI = {
             focusIssue(kind, hardBlocks[0]);
             return stop;
         }
+
+        // BF-RATECHECK: an extreme rate not confirmed at Add to bill is asked now, with "Fix rate" first
+        let rateDraft = null;
+        try {
+            const base = forms[kind]?.getDraft?.();
+            rateDraft = base ? { ...base, ...(draftOverrides || {}) } : null;
+        } catch (error) {
+            console.error('Rate check failed:', error);
+        }
+        if (rateDraft) {
+            const rates = await confirmLineRates(rateDraft);
+            if (!rates.ok) {
+                showLine(kind, /** @type {number} */ (rates.index));
+                return stop;
+            }
+            if (rates.confirmed) {
+                try {
+                    issues = evaluate(kind, draftOverrides);
+                } catch (error) {
+                    console.error('Bill checks failed:', error);
+                    return stop;
+                }
+                lastIssues[kind] = issues;
+                if (sectionOf(kind)) renderIssues(kind, issues);
+            }
+        }
+        const { blocks, warns } = saveGate(issues);
 
         let overrides = [];
         // Auto rollback (#217): only someone who may override anyway (owner/manager)
@@ -410,6 +439,16 @@ function focusIssue(kind, issue) {
     const id = cfg?.fields?.[issue.field]?.inputs?.[0];
     const el = id ? byId(id) : null;
     if (el && typeof el.focus === 'function') el.focus();
+}
+
+/** "Fix rate" at Save: point at the bill line to correct. */
+function showLine(kind, index) {
+    const cfg = forms[kind];
+    const row = cfg ? itemRows(cfg)[index] : null;
+    row?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    const line = cfg?.getDraft?.()?.items?.[index];
+    const name = line ? lineItemIdentity(line, AppState.items, AppState.settings?.showHindi).label : '';
+    UIManager.showToast(t('msg.rate_check.fix_line', { item: name || '' }), 'warning');
 }
 
 /**

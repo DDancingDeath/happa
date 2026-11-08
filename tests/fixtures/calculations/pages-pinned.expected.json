@@ -261,7 +261,7 @@
       "insightsItemsTakeaway": "Mustard earned the most profit (₹921).Wheat sold well but earned only ₹11.6 per ₹100.",
       "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearMustard₹5,914₹92115.6▲ 2%Wheat₹7,704₹89211.6▲ 89%Rice₹3,582₹63217.6▲ 15%Gram₹3,524₹46013.1▼ 49%Maize₹2,395₹45519▲ 172%",
       "insightsSplit": "Retail₹17,501 · 76%Wholesale₹5,618 · 24%",
-      "insightsBoughtTable": "ItemkgPaidMustard61₹3,532Rice92₹3,208",
+      "insightsBoughtTable": "ItemkgBought forMustard61₹3,532Rice92₹3,208",
       "insightsChecks": "✓ Items and parties add up to Money's sales"
     },
     "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearMustard₹5,914₹92115.6▲ 2%Rice₹3,582₹63217.6▲ 15%Gram₹3,524₹46013.1▼ 49%Maize₹2,395₹45519▲ 172%Wheat₹2,086₹37718.1▲ 2%",
@@ -276,14 +276,14 @@
       "insightsItemsTakeaway": "Mustard earned the most profit (₹921).",
       "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearMustard₹5,914₹92115.6▲ 2%Rice₹3,582₹63217.6▲ 15%Gram₹3,524₹46013.1▼ 49%Maize₹2,395₹45519▲ 172%Wheat₹2,086₹37718.1▲ 2%",
       "insightsSplit": "Retail₹17,501 · 76%Wholesale₹5,618 · 24%",
-      "insightsBoughtTable": "ItemkgPaidMustard61₹3,532Rice92₹3,208",
+      "insightsBoughtTable": "ItemkgBought forMustard61₹3,532Rice92₹3,208",
       "insightsPartiesTakeaway": "Top 5 customers gave 85% of sales.",
       "insightsCustomersTable": "PartySalesBillsLast billSita₹7,980424 JanMohan₹3,999218 JanShyam Lal₹2,808215 JanKamla Devi₹2,499230 JanGupta Traders₹2,360212 Janराम लाल₹1,633227 JanRavi₹1,215121 JanSharma Stores₹625122 Jan",
       "insightsStopped": "Every regular buyer came recently.",
       "insightsChecks": "✓ Items and parties add up to Money's sales"
     },
     "suppliers": {
-      "table": "PartyPaidBillsLast billMohan₹6,740221 Jan",
+      "table": "PartyBought forBillsLast billMohan₹6,740221 Jan",
       "takeaway": "Top 5 suppliers got 100% of what you paid."
     },
     "seasons": {
@@ -328,7 +328,7 @@
       "insightsItemsTakeaway": "Mustard earned the most profit (₹1,645).",
       "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearMustard₹20,710₹1,6458▲ 313%Rice₹5,788₹69011.9▲ 254%Gram₹3,886₹59815.4▲ 87%Maize₹6,117₹5749.4▲ 199%Wheat₹1,399₹19614▼ 68%",
       "insightsSplit": "Retail₹9,665 · 26%Wholesale₹28,235 · 74%",
-      "insightsBoughtTable": "ItemkgPaidMustard681₹35,507Gram86₹4,331Maize53₹922",
+      "insightsBoughtTable": "ItemkgBought forMustard681₹35,507Gram86₹4,331Maize53₹922",
       "insightsChecks": "✓ Items and parties add up to Money's sales"
     },
     "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearGram₹3,886₹59815.4▲ 87%Maize₹2,157₹35416.4▲ 6%Rice₹1,238₹25620.7▼ 24%Wheat₹1,399₹19614▼ 55%Mustard₹985₹18318.6▼ 80%",
@@ -343,14 +343,14 @@
       "insightsItemsTakeaway": "Gram earned the most profit (₹598).",
       "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹3,886₹59815.4▲ 87%Maize₹2,157₹35416.4▲ 6%Rice₹1,238₹25620.7▼ 24%Wheat₹1,399₹19614▼ 55%Mustard₹985₹18318.6▼ 80%",
       "insightsSplit": "Retail₹9,665 · 26%Wholesale₹28,235 · 74%",
-      "insightsBoughtTable": "ItemkgPaidMustard681₹35,507Gram86₹4,331Maize53₹922",
+      "insightsBoughtTable": "ItemkgBought forMustard681₹35,507Gram86₹4,331Maize53₹922",
       "insightsPartiesTakeaway": "Top 5 customers gave 88% of sales.",
       "insightsCustomersTable": "PartySalesBillsLast billMohan₹12,976326 FebRavi₹8,531328 FebKamla Devi₹5,531216 Febराम लाल₹3,960119 FebSharma Stores₹2,37125 FebSita₹2,227329 FebShyam Lal₹1,351122 FebGupta Traders₹953223 Feb",
       "insightsStopped": "Every regular buyer came recently.",
       "insightsChecks": "✓ Items and parties add up to Money's sales"
     },
     "suppliers": {
-      "table": "PartyPaidBillsLast billराम लाल₹22,14614 FebSharma Stores₹13,36111 FebGupta Traders₹4,331116 FebMohan₹92212 Feb",
+      "table": "PartyBought forBillsLast billराम लाल₹22,14614 FebSharma Stores₹13,36111 FebGupta Traders₹4,331116 FebMohan₹92212 Feb",
       "takeaway": "Top 5 suppliers got 100% of what you paid."
     },
     "seasons": {
@@ -395,7 +395,7 @@
       "insightsItemsTakeaway": "Gram earned the most profit (₹1,128).Mustard sold well but earned only ₹10.9 per ₹100.",
       "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹8,166₹1,12813.8▲ 36%Mustard₹8,873₹96310.9▲ 143%Rice₹4,242₹49611.7▲ 130%Wheat₹1,826₹31517.2▼ 56%Maize₹1,870₹28915.5▲ 50%",
       "insightsSplit": "Retail₹17,718 · 71%Wholesale₹7,259 · 29%",
-      "insightsBoughtTable": "ItemkgPaidMustard1590₹85,450Gram1262₹60,122Maize92₹1,874",
+      "insightsBoughtTable": "ItemkgBought forMustard1,590₹85,450Gram1,262₹60,122Maize92₹1,874",
       "insightsChecks": "✓ Items and parties add up to Money's sales"
     },
     "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearGram₹5,922₹94616▼ 2%Mustard₹3,858₹61716▲ 6%Rice₹4,242₹49611.7▲ 130%Wheat₹1,826₹31517.2▲ 59%Maize₹1,870₹28915.5▲ 50%",
@@ -410,14 +410,14 @@
       "insightsItemsTakeaway": "Gram earned the most profit (₹946).",
       "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹5,922₹94616▼ 2%Mustard₹3,858₹61716▲ 6%Rice₹4,242₹49611.7▲ 130%Wheat₹1,826₹31517.2▲ 59%Maize₹1,870₹28915.5▲ 50%",
       "insightsSplit": "Retail₹17,718 · 71%Wholesale₹7,259 · 29%",
-      "insightsBoughtTable": "ItemkgPaidMustard1590₹85,450Gram1262₹60,122Maize92₹1,874",
+      "insightsBoughtTable": "ItemkgBought forMustard1,590₹85,450Gram1,262₹60,122Maize92₹1,874",
       "insightsPartiesTakeaway": "Top 5 customers gave 89% of sales.",
       "insightsCustomersTable": "PartySalesBillsLast billSharma Stores₹7,983431 MarKamla Devi₹5,338530 Marराम लाल₹4,889421 MarShyam Lal₹2,124329 MarRavi₹2,000115 MarSita₹1,068222 MarMohan₹1,035117 MarGupta Traders₹540119 Mar",
       "insightsStopped": "Every regular buyer came recently.",
       "insightsChecks": "✓ Items and parties add up to Money's sales"
     },
     "suppliers": {
-      "table": "PartyPaidBillsLast billSharma Stores₹61,458327 MarMohan₹26,989223 MarGupta Traders₹25,93515 Marराम लाल₹18,13713 MarShyam Lal₹14,927130 Mar",
+      "table": "PartyBought forBillsLast billSharma Stores₹61,458327 MarMohan₹26,989223 MarGupta Traders₹25,93515 Marराम लाल₹18,13713 MarShyam Lal₹14,927130 Mar",
       "takeaway": "Top 5 suppliers got 100% of what you paid."
     },
     "seasons": {
@@ -884,7 +884,7 @@
       "moneyPurchases": "₹40,760 · 4 bills",
       "moneyNetCash": "-₹15,854",
       "moneyCashCompare": "▲ 22% vs Jan · ▲ 84% vs Feb 2027",
-      "moneyCashTakeaway": "₹15,854 more went out than came in.Biggest outflow: paying for purchases (₹40,760).Money in is below profit because ₹1,797 of these sales is still owed to you.",
+      "moneyCashTakeaway": "₹15,854 more went out than came in.Biggest outflow: paying for purchases (₹40,760).",
       "moneyIn": "₹37,056",
       "moneyInSplit": "cash ₹29,274 · online ₹7,782",
       "moneyOut": "₹52,910",
@@ -944,7 +944,7 @@
       "moneyPurchases": "₹1,47,446 · 8 bills",
       "moneyNetCash": "-₹1,18,222",
       "moneyCashCompare": "▼ 4% vs Feb · ▲ 5% vs Mar 2026",
-      "moneyCashTakeaway": "₹1,18,222 more went out than came in.Biggest outflow: paying for purchases (₹1,11,206).Money in is below profit because ₹4,877 of these sales is still owed to you.",
+      "moneyCashTakeaway": "₹1,18,222 more went out than came in.Biggest outflow: paying for purchases (₹1,11,206).",
       "moneyIn": "₹22,020",
       "moneyInSplit": "cash ₹13,520 · online ₹8,500",
       "moneyOut": "₹1,40,242",

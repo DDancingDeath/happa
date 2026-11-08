@@ -75,7 +75,9 @@ function htmlColours(html) {
     return n;
 }
 
-function jsColours(src) {
+/** Block comments and whole-line // comments don't count (issue numbers such as #143 look like hex). */
+function jsColours(source) {
+    const src = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     return count(src, HEX) + count(src, FUNC) + count(src, NAMED_AFTER_PROP);
 }
 
@@ -171,6 +173,7 @@ describe('hard-coded colours (design tokens only)', () => {
         ["el.style.color = '#b91c1c'; q('#billDate');", 1],
         ['`<span style="color: white; background: rgb(1, 2, 3)">`', 2],
         ["const label = 'white rice'; document.querySelector('#saleSection');", 0],
+        ['/** Since #143: #fff */\n// fixed in #126\nconst c = "#fff";', 1],
     ])('jsColours(%s) = %i', (src, n) => {
         expect(jsColours(src)).toBe(n);
     });
