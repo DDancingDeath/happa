@@ -6,7 +6,6 @@
 [data-theme] {
   color-scheme: light;
   --bg: #f7f7f9;
-  --page-bg: var(--bg);
   --surface: #ffffff;
   --surface-2: #f1f1f4;
   --surface-3: #e8e8ed;
@@ -25,8 +24,6 @@
   --accent-line: #c9cdfb;
   --on-accent: #ffffff;
 
-  --mode-purchase: var(--accent);
-  --mode-purchase-soft: var(--accent-soft);
   --mode-sale: #047857;
   --mode-sale-soft: #e7f6ef;
   --on-mode-sale: #ffffff;
@@ -127,11 +124,14 @@ body.dark-mode {
   --focus: 0 0 0 3px rgba(124, 120, 248, 0.4);
 }
 
-/* Layer 2 and the old names: re-declared on every themed element so they follow its layer-1 values */
+/* Every token defined with var() (layer 2, the old names): re-declared on each themed element, so it follows that element's layer-1 values */
 :root,
 [data-theme],
 [data-mode],
 body.dark-mode {
+  --page-bg: var(--bg);
+  --mode-purchase: var(--accent);
+  --mode-purchase-soft: var(--accent-soft);
   --panel-bg: var(--surface);
   --panel-border: var(--line);
   --panel-shadow: none;
@@ -181,7 +181,7 @@ body.dark-mode {
   --info-dark: var(--info);
   --on-info-soft: var(--info);
   --info-border: var(--info-line);
-  --purchase-color: var(--mode-purchase);
+  --purchase-color: var(--accent-text);
   --purchase-light: var(--mode-purchase-soft);
   --purchase-dark: var(--accent-text);
   --sale-color: var(--positive);

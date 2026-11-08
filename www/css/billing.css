@@ -245,7 +245,9 @@ select:focus, input:focus {
 }
 
 #saleSection .quick-add-btn-inline,
-#saleSection .add-to-bill-btn {
+#saleSection .add-to-bill-btn,
+#wholesale-sales .add-to-bill-btn,
+.items-add-btn {
   background: var(--btn-success);
 }
 
