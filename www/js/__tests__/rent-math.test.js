@@ -164,6 +164,12 @@ describe('electricity sub-meter (RENT-7)', () => {
         expect(() => meterBill({ prev: 150, curr: 100, rate: 8 })).toThrow('reading');
         expect(() => meterBill({ prev: 0, curr: 10, rate: -1 })).toThrow('reading');
         expect(() => meterBill({ prev: 'x', curr: 10, rate: 1 })).toThrow('reading');
+        // A blank field is missing, not 0 (a blank rate would save a ₹0 bill and fix the unit's rate at 0).
+        expect(() => meterBill({ prev: 0, curr: 10, rate: '' })).toThrow('reading');
+        expect(() => meterBill({ prev: ' ', curr: 10, rate: 8 })).toThrow('reading');
+        expect(() => meterBill({ prev: 0, curr: '', rate: 8 })).toThrow('reading');
+        expect(() => meterBill({ prev: 0, curr: 10, rate: null })).toThrow('reading');
+        expect(meterBill({ prev: '0', curr: '10', rate: '0' })).toMatchObject({ units: 10, amount: 0 });
     });
 
     test('charge = rent + electricity; replacing a reading keeps the rent; never below what is paid', () => {
