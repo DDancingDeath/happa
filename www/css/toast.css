@@ -2,41 +2,17 @@
   position: fixed;
   bottom: 80px;
   left: 50%;
-  transform: translateX(-50%) translateY(100px);
-  background: #1e293b;
-  color: white;
-  padding: 14px 28px;
-  border-radius: var(--radius-full);
-  font-size: 14px;
-  font-weight: var(--w-strong);
-  box-shadow: var(--shadow-xl);
   z-index: 100000;
   opacity: 0;
-  transition: all var(--transition-slow);
   pointer-events: none;
   max-width: 85%;
   text-align: center;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.1);
 }
 
 .toast.show {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
 }
 
-.toast.success {
-  background: #047857;
-}
-
-.toast.error {
-  background: #b91c1c;
-}
-
-.toast.warning {
-  background: #92400e;
-}
 
 /* Offline / waiting-to-sync pill (#70), between the menu button and the bell */
 .sync-pill {
