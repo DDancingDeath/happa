@@ -143,6 +143,25 @@ test('a blank rate is a bad row, never a ₹0 bill', async () => {
     expect(fake.raw('rent_units').get('U3').meterRate).toBe(9);
 });
 
+test('the single ⚡ reading: a blank rate saves nothing (never a ₹0 bill, the unit rate kept)', async () => {
+    rentalsRole.mockReturnValue('manager');
+    try {
+        body().innerHTML = '';
+        const p = RentalsModule.api.meter('L3');
+        for (let i = 0; i < 100 && !document.getElementById('rentMeterCurr'); i++) await flush();
+        set('rentMeterCurr', '60');
+        set('rentMeterRate', '');
+        RentalsModule.api.dialogClose(true);
+        await p;
+        await fake.settle();
+        expect(UIManager.showToast).toHaveBeenCalledWith(expect.stringMatching(/Check the meter readings/), 'error');
+        expect(fake.raw('rent_charges').get(`L3_${M}`)).toMatchObject({ amount: 5000, electricity: null });
+        expect(fake.raw('rent_units').get('U3')).toMatchObject({ lastReading: 50, meterRate: 9 });
+    } finally {
+        rentalsRole.mockReturnValue('member');
+    }
+});
+
 test('a reading entered on another phone meanwhile is not replaced (a member cannot replace one)', async () => {
     const { p } = await openSheet();
     set('rentMC0', '1300');

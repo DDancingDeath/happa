@@ -335,17 +335,18 @@ export function increaseDue(lease, month, today = new Date()) {
 }
 
 const okNum = (v) => Number.isFinite(v) && v >= 0;
+const blank = (v) => v == null || String(v).trim() === '';
 
 /**
  * Electricity from a sub-meter reading (RENT-7): units = current − previous,
  * amount = units × rate per unit, whole rupees (#129).
- * @throws {Error} 'reading' when a number is missing/negative or current < previous
+ * @throws {Error} 'reading' when a number is missing (a blank field is not 0)/negative or current < previous
  */
 export function meterBill({ prev, curr, rate }) {
     const p = Number(prev);
     const c = Number(curr);
     const r = Number(rate);
-    if (![p, c, r].every(okNum) || c < p) throw new Error('reading');
+    if ([prev, curr, rate].some(blank) || ![p, c, r].every(okNum) || c < p) throw new Error('reading');
     const units = round2(c - p);
     return { prev: p, curr: c, rate: r, units, amount: meterAmount(units, r) };
 }
