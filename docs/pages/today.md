@@ -12,7 +12,7 @@ Today's figures, from today's bills, expenses and cash sessions.
 | Cash / online paid (T8, T9) | Paid at save on today's purchases + today's expenses + due payments paid today. |
 | Total in, total out, net (T10–T12) | In = cash + online received; out = cash + online paid; net = in − out. |
 | Due received / paid (T13, T14) | Due payments received / paid today. |
-| Due to receive / pay (T15, T16) | What today's own sales / purchases still owe. The all-time totals are on Outstanding. |
+| New udhaar today, new to pay today (T15, T16) | What today's own sales / purchases still owe (not the total dues). The all-time totals are on Outstanding. |
 | Items (T17) | Today's bill lines by item: kg, value, average rate (value ÷ kg). |
 | By bill type, Today's bills (T18, T19) | Each type's total split into cash, online, paid later today, written off and still due; these add up to the total. |
 | Labour: deducted from farmers (T-LAB-1) | Sum of the labour on today's purchase bills. |

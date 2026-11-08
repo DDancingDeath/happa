@@ -189,9 +189,10 @@ export function savedDifference(counted, expected) {
 }
 
 /**
- * The status card of today's drawer. Open day: opening, cash in (opening +
- * deposits + sales + due received), cash out (purchases + due paid +
- * expenses) and what should be in the drawer. Closed day: deposits, cash
+ * The status card of today's drawer. Open day: opening, cash added (C6, its
+ * own line), cash in (C1 + C4: the same money as Today's T6, never the
+ * opening; V2 O-11), cash out (purchases + due paid + expenses) and what should
+ * be in the drawer (opening + cash added + cash in − cash out). Closed day: deposits, cash
  * purchases, cash sales, others (expenses + due paid), expected (C7), counted
  * and the difference (C8). Plain addition, as shown. A closed day shows what it
  * was closed with (its stored `transactions`, `expectedBalance`, `difference`,
@@ -212,14 +213,15 @@ export function drawerStatus(session, transactions) {
     const duePaid = tx.duePaid || 0;
     const others = totalExpenses + duePaid;
     const expected = closed ? (Number(session.expectedBalance) || 0) : expectedCash(session, tx);
-    const totalCashIn = opening + cashAdded + sales + dueReceived;
+    const cashIn = round2(sales + dueReceived);
+    const totalCashIn = opening + cashAdded + cashIn;
     const totalCashOut = purchases + duePaid + totalExpenses;
     const availableCash = totalCashIn - totalCashOut;
     const actual = session.closingBalance || 0;
     const diff = closed ? (Number(session.difference) || 0) : difference(actual, expected);
     return {
         opening, cashAdded, purchases, sales, dueReceived, duePaid, totalExpenses, others,
-        expected, totalCashIn, totalCashOut, availableCash,
+        expected, cashIn, totalCashIn, totalCashOut, availableCash,
         actual, diff, diffLevel: differenceBand(diff).level
     };
 }
@@ -300,8 +302,8 @@ export function openingCheck(lastClosing, opening) {
 }
 
 /**
- * Figures of one day's details: cash in with the opening, cash in without it,
- * cash out and expected (C7) from the transactions given (the saved snapshot,
+ * Figures of one day's details: opening + cash added + cash in, cash in (C1 +
+ * C4, as on the status card), cash out and expected (C7) from the transactions given (the saved snapshot,
  * or today's live totals), and the colour bands of the saved difference and of
  * counted − expected balance.
  * @param {Rec} session
@@ -315,7 +317,7 @@ export function sessionDetail(session, transactions, uncounted) {
     return {
         totals,
         totalCashIn,
-        cashIn: totalCashIn - (session.openingBalance || 0),
+        cashIn: round2((transactions?.cashSales || 0) + (transactions?.dueReceived || 0)),
         totalCashOut: totals.cashOut,
         countedLevel: differenceBand(counted).level
     };
