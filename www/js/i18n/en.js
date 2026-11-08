@@ -1504,6 +1504,7 @@ export default {
     'ui.bill.note': "Note",
     'ui.bill.items': "Items",
     'ui.bill.total': "Total",
+    'ui.bill.subtotal': "Subtotal",
     'ui.bill.labour': "Labour",
     'ui.bill.payable': "Payable",
     'ui.bill.paid': "Paid",
