@@ -58,6 +58,7 @@
   --e3: 0 2px 6px rgba(16, 16, 29, 0.08), 0 24px 48px -12px rgba(16, 16, 29, 0.24);
   --highlight: inset 0 1px 0 rgba(255, 255, 255, 0.18);
   --focus: 0 0 0 3px rgba(79, 70, 229, 0.24);
+  --state-hover: rgba(16, 16, 29, 0.05);
 
   /* System faces only (the CSP has no font origin); Devanagari faces before the generic family */
   --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Noto Sans", "Helvetica Neue", Arial, "Noto Sans Devanagari", "Nirmala UI", sans-serif;
@@ -216,6 +217,7 @@
     --e3: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 24px 56px -12px rgba(0, 0, 0, 0.75);
     --highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14);
     --focus: 0 0 0 3px rgba(124, 120, 248, 0.4);
+    --state-hover: rgba(255, 255, 255, 0.06);
     --seg-on: var(--surface-3);
     --toast-bg: #2a2a32;
   }
@@ -675,6 +677,470 @@ input[type="number"],
   fill: currentColor;
   stroke: none;
 }
+
+/* ---- css/forms.css ---- */
+/* Controls (redesign 2.5a, DIRECTION 3.6): buttons, kbd, fields, select, checkbox and switch,
+   segmented control, tabs, chips and tags. Layer 3: tokens only.
+   The older class names listed beside each new one are kept as hooks (JS, E2E) and share its look. */
+
+/* ---------- Button: .btn + -primary / -secondary (default) / -tonal / -ghost / -danger, -sm, -icon ---------- */
+.btn,
+.save-btn,
+.print-btn,
+.draft-btn,
+.add-to-bill-btn,
+.quick-add-btn-inline,
+.split-rest-btn,
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background-color: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: var(--fs-body);
+  font-weight: var(--w-strong);
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast),
+    color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn-primary,
+.save-btn,
+.add-to-bill-btn,
+.quick-add-btn-inline {
+  border-color: transparent;
+  background-color: var(--btn-primary-bg);
+  color: var(--btn-primary-ink);
+  box-shadow: var(--btn-primary-shadow);
+}
+
+.btn-tonal,
+.print-btn {
+  border-color: transparent;
+  background-color: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.btn-ghost {
+  border-color: transparent;
+  background-color: transparent;
+  color: var(--accent-text);
+}
+
+.btn-danger,
+.btn.danger {
+  border-color: transparent;
+  background-color: var(--btn-danger-bg);
+  color: var(--on-accent);
+}
+
+.btn-success {
+  border-color: var(--positive-line);
+  background-color: var(--positive-soft);
+  color: var(--positive);
+}
+
+.btn-sm,
+.split-rest-btn {
+  padding: 0 12px;
+  font-size: var(--fs-sm);
+}
+
+.btn-sm {
+  min-height: 32px;
+}
+
+.btn-icon {
+  width: 44px;
+  padding: 0;
+}
+
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+
+/* Hover is a veil over any variant's colour, so mode colours (purchase / sale / cash) keep theirs */
+.btn:hover:not(:disabled),
+.save-btn:hover:not(:disabled),
+.print-btn:hover:not(:disabled),
+.draft-btn:hover:not(:disabled),
+.add-to-bill-btn:hover:not(:disabled),
+.quick-add-btn-inline:hover:not(:disabled),
+.split-rest-btn:hover:not(:disabled),
+.filter-btn:hover:not(:disabled):not(.active) {
+  background-image: linear-gradient(var(--state-hover), var(--state-hover));
+}
+
+.btn:active:not(:disabled),
+.save-btn:active:not(:disabled),
+.print-btn:active:not(:disabled),
+.draft-btn:active:not(:disabled),
+.add-to-bill-btn:active:not(:disabled),
+.quick-add-btn-inline:active:not(:disabled),
+.split-rest-btn:active:not(:disabled),
+.filter-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn:focus-visible,
+.save-btn:focus-visible,
+.print-btn:focus-visible,
+.draft-btn:focus-visible,
+.add-to-bill-btn:focus-visible,
+.quick-add-btn-inline:focus-visible,
+.split-rest-btn:focus-visible,
+.filter-btn:focus-visible,
+.sub-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"],
+.save-btn:disabled,
+.print-btn:disabled,
+.draft-btn:disabled,
+.add-to-bill-btn:disabled,
+.quick-add-btn-inline:disabled,
+.split-rest-btn:disabled,
+.filter-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Busy: the double-tap lock (runExclusive) sets aria-busy while a save runs */
+.btn[aria-busy="true"],
+.save-btn[aria-busy="true"],
+.print-btn[aria-busy="true"],
+.add-to-bill-btn[aria-busy="true"] {
+  cursor: progress;
+}
+
+.btn[aria-busy="true"]::after,
+.save-btn[aria-busy="true"]::after,
+.print-btn[aria-busy="true"]::after,
+.add-to-bill-btn[aria-busy="true"]::after {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: btn-spin 0.8s linear infinite;
+}
+
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn[aria-busy="true"]::after,
+  .save-btn[aria-busy="true"]::after,
+  .print-btn[aria-busy="true"]::after,
+  .add-to-bill-btn[aria-busy="true"]::after {
+    animation: none;
+  }
+}
+
+/* ---------- Kbd hint ---------- */
+kbd,
+.kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-family: inherit;
+  font-size: var(--fs-caption);
+  font-weight: var(--w-strong);
+  line-height: 1.4;
+}
+
+/* ---------- Field: .field > label + .input (prefix / suffix in .adorn) ---------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field > label {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
+}
+
+.input,
+select,
+input[type="number"],
+input[type="text"] {
+  width: 100%;
+  padding: 13px 15px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius);
+  background-color: var(--input-bg);
+  color: var(--ink);
+  font-size: var(--fs-body);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.input:focus,
+select:focus,
+input:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+.input[aria-invalid="true"] {
+  border-color: var(--negative);
+}
+
+/* Native select drawn as an input with a chevron (two gradient halves, so it follows the theme) */
+.input:is(select):not([multiple]):not([size]),
+select:not([multiple]):not([size]) {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 36px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ink-3) 50%),
+    linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+  background-position: calc(100% - 19px) 50%, calc(100% - 14px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.adorn {
+  display: flex;
+  align-items: stretch;
+}
+
+.adorn > .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.adorn > .adorn-pre,
+.adorn > .adorn-post {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--input-border);
+  background: var(--surface-2);
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+
+.adorn > .adorn-pre {
+  border-right: none;
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.adorn > .adorn-post {
+  border-left: none;
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.adorn > .adorn-pre + .input {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.adorn > .input:has(+ .adorn-post) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* ---------- Checkbox and switch ---------- */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
+}
+
+input[type="checkbox"].switch,
+.labor-input-row .checkbox-label input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: none;
+  width: 36px;
+  height: 22px;
+  margin: 0;
+  border-radius: var(--r-full);
+  background: radial-gradient(circle at 11px 50%, var(--surface) 8px, transparent 8.5px), var(--ink-3);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+input[type="checkbox"].switch:checked,
+.labor-input-row .checkbox-label input[type="checkbox"]:checked {
+  background: radial-gradient(circle at 25px 50%, var(--on-accent) 8px, transparent 8.5px), var(--accent);
+}
+
+input[type="checkbox"].switch:focus-visible,
+.labor-input-row .checkbox-label input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+/* ---------- Segmented control: .seg (old: .filter-buttons > .filter-btn) ---------- */
+.seg,
+.filter-buttons {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: calc(var(--radius) + 2px);
+  background: var(--seg-track);
+}
+
+.seg > button,
+.filter-buttons .filter-btn {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--radius);
+  background-color: transparent;
+  box-shadow: none;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
+}
+
+.seg > .on,
+.seg > [aria-pressed="true"],
+.seg > [aria-selected="true"],
+.filter-buttons .filter-btn.active {
+  background-color: var(--seg-on);
+  color: var(--ink);
+  box-shadow: var(--e1);
+}
+
+.seg > button:focus-visible,
+.filter-buttons .filter-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+/* Mode dot: purchase / sale segments show the mode colour */
+.filter-buttons .filter-btn.active.filter-purchase::before,
+.filter-buttons .filter-btn.active.filter-sale::before,
+#purchaseModeBtn.active::before,
+#saleModeBtn.active::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mode-purchase);
+}
+
+.filter-buttons .filter-btn.active.filter-sale::before,
+#saleModeBtn.active::before {
+  background: var(--mode-sale);
+}
+
+/* These set display, which would otherwise beat the hidden attribute */
+:is(.btn, .save-btn, .print-btn, .draft-btn, .add-to-bill-btn, .quick-add-btn-inline, .split-rest-btn, .filter-btn)[hidden],
+.seg[hidden],
+.filter-buttons[hidden],
+.tabs[hidden],
+.sub-tabs[hidden] {
+  display: none;
+}
+
+/* ---------- Tabs: .tabs (old: .sub-tabs > .sub-tab), underline with a 2 px ink indicator ---------- */
+.tabs,
+.sub-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  background: none;
+}
+
+.tabs > button,
+.sub-tab {
+  min-height: 44px;
+  padding: 0 12px;
+  margin-bottom: -1px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--ink-2);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.tabs > button:hover,
+.sub-tab:hover {
+  color: var(--ink);
+}
+
+.tabs > .on,
+.tabs > [aria-selected="true"],
+.sub-tab.active {
+  border-bottom-color: var(--ink);
+  color: var(--ink);
+}
+
+/* ---------- Chips (old: .filter-buttons-secondary .filter-btn; a lone .filter-btn.active) and tags ---------- */
+.chip,
+.filter-buttons-secondary .filter-btn {
+  min-height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-chip);
+  background-color: var(--surface);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
+}
+
+.filter-buttons-secondary .filter-btn {
+  min-height: 44px;
+}
+
+.chip.on,
+.chip[aria-pressed="true"],
+.filter-buttons-secondary .filter-btn.active,
+.filter-btn.active {
+  border-color: var(--ink);
+  background-color: var(--ink);
+  color: var(--bg);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--fs-caption);
+  font-weight: var(--w-strong);
+}
+
+.tag.pos { background: var(--positive-soft); color: var(--positive); }
+.tag.neg { background: var(--negative-soft); color: var(--negative); }
+.tag.warn { background: var(--warning-soft); color: var(--warning); }
+.tag.info { background: var(--info-soft); color: var(--info); }
 
 /* ---- css/auth.css ---- */
 .auth-screen {
@@ -1498,36 +1964,13 @@ body.typing .bottom-nav {
 
 /* Sub-tab navigation style */
 .sub-tabs {
-  display: flex;
-  gap: 0;
   margin-bottom: 20px;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--seg-bg);
 }
 
 .sub-tab {
   flex: 1;
-  padding: 14px 20px;
-  font-size: 14px;
-  font-weight: var(--w-label);
-  border: none;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: background var(--transition), color var(--transition), box-shadow var(--transition);
 }
 
-.sub-tab:hover {
-  color: var(--text-primary);
-}
-
-.sub-tab.active {
-  background: var(--seg-active);
-  color: var(--on-primary-soft);
-  box-shadow: inset 0 0 0 3px var(--seg-bg);
-}
 
 
 /* Emoji inside gradient-text headings keep their own colours (ui/heading-emoji.js) */
@@ -1678,17 +2121,8 @@ body.typing .bottom-nav {
 
 /* ---- css/buttons.css ---- */
 .draft-btn {
-  padding: 13px 18px;
-  border-radius: var(--radius);
-  font-size: 14px;
-  font-weight: var(--w-strong);
-  cursor: pointer;
-  transition: all var(--transition);
   flex: 1;
   min-width: 80px;
-  border: 1px solid var(--border-strong);
-  background: var(--card-bg);
-  color: var(--text-primary);
 }
 
 .draft-save-btn {
@@ -1708,14 +2142,6 @@ body.typing .bottom-nav {
   color: var(--on-danger-soft);
 }
 
-.draft-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow);
-}
-
-.draft-btn:active {
-  transform: scale(0.98);
-}
 
 .bill-totals {
   background: var(--card-bg);
@@ -1892,16 +2318,6 @@ body.typing .bottom-nav {
   font-size: var(--fs-body);
 }
 
-.split-rest-btn {
-  padding: 6px 10px;
-  font-size: 14px;
-  font-weight: var(--w-strong);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  background: var(--card-bg);
-  color: var(--text-primary);
-  cursor: pointer;
-}
 
 .payment-row.payment-excess strong {
   color: var(--danger-color) !important;
@@ -1911,16 +2327,6 @@ body.typing .bottom-nav {
 /* -------------------- SAVE BUTTON -------------------- */
 .save-btn {
   flex: 1;
-  background: var(--btn-primary);
-  color: #fff;
-  border: none;
-  padding: 14px;
-  border-radius: var(--radius-md);
-  font-size: 16px;
-  font-weight: var(--w-strong);
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.2s;
 }
 
 .save-purchase-btn {
@@ -1937,23 +2343,9 @@ body.typing .bottom-nav {
   background: var(--btn-danger);
 }
 
-.save-btn:active {
-  transform: scale(0.98);
-}
-
 /* -------------------- PRINT BUTTON -------------------- */
 .print-btn {
   flex: 1;
-  background: var(--primary-soft);
-  color: var(--on-primary-soft);
-  border: none;
-  padding: 14px;
-  border-radius: var(--radius-md);
-  font-size: 16px;
-  font-weight: var(--w-strong);
-  cursor: pointer;
-  box-shadow: inset 0 0 0 1px var(--primary-border);
-  transition: all 0.2s;
 }
 
 .print-purchase-btn {
@@ -1966,9 +2358,6 @@ body.typing .bottom-nav {
   box-shadow: inset 0 0 0 1px var(--success-border);
 }
 
-.print-btn:active {
-  transform: scale(0.98);
-}
 
 /* Tap targets (#68): page toggles, primary buttons and list actions are at least 44 px tall */
 .btn,
@@ -2439,17 +2828,7 @@ input[type="number"] {
 }
 
 .quick-add-btn-inline {
-  background: var(--btn-primary);
-  color: white;
-  border: none;
-  padding: 12px 18px;
-  border-radius: var(--radius);
-  font-size: 14px;
-  font-weight: var(--w-strong);
-  cursor: pointer;
   white-space: nowrap;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition);
 }
 
 .tab.purchase-theme .quick-add-btn-inline {
@@ -2460,13 +2839,6 @@ input[type="number"] {
   background: var(--btn-success);
 }
 
-.quick-add-btn-inline:hover {
-  box-shadow: var(--shadow);
-}
-
-.quick-add-btn-inline:active {
-  transform: scale(0.98);
-}
 
 label {
   display: block;
@@ -2477,16 +2849,6 @@ label {
   color: var(--text-primary);
 }
 
-select, input[type="number"], input[type="text"] {
-  width: 100%;
-  padding: 13px 15px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  font-size: var(--fs-body);
-  background: var(--card-bg);
-  color: var(--text-primary);
-  transition: all var(--transition);
-}
 
 /* Remove spinner arrows from all number inputs */
 input[type="number"]::-webkit-outer-spin-button,
@@ -2499,11 +2861,6 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
-select:focus, input:focus {
-  border-color: var(--primary-color);
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
 
 .weight-input-row {
   display: flex;
@@ -2516,27 +2873,6 @@ select:focus, input:focus {
   flex: 1;
 }
 
-.quick-add-btn {
-  background: var(--btn-primary);
-  color: white;
-  border: none;
-  padding: 14px 20px;
-  border-radius: var(--radius-md);
-  font-size: 16px;
-  font-weight: var(--w-strong);
-  cursor: pointer;
-  white-space: nowrap;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition);
-}
-
-.quick-add-btn:hover {
-  box-shadow: var(--shadow);
-}
-
-.quick-add-btn:active {
-  transform: scale(0.98);
-}
 
 .weights-compact {
   margin: 12px 0;
@@ -2622,17 +2958,7 @@ select:focus, input:focus {
 
 .add-to-bill-btn {
   width: 100%;
-  background: var(--btn-primary);
-  color: white;
-  border: none;
-  padding: 16px;
-  border-radius: var(--radius-md);
-  font-size: 16px;
-  font-weight: var(--w-strong);
-  cursor: pointer;
   margin: 16px 0;
-  box-shadow: var(--shadow);
-  transition: all var(--transition);
 }
 
 #saleSection .quick-add-btn-inline,
@@ -2642,13 +2968,6 @@ select:focus, input:focus {
   background: var(--btn-success);
 }
 
-.add-to-bill-btn:hover {
-  box-shadow: var(--shadow-lg);
-}
-
-.add-to-bill-btn:active {
-  transform: scale(0.98);
-}
 
 /* -------------------- BILLING THEME -------------------- */
 .tab.purchase-theme {
@@ -3511,11 +3830,11 @@ body.dark-mode .party-due-line.party-due-old {
 #historyDatePreset {
   flex: 1 1 180px;
   min-width: 0;
-  padding: 10px 12px;
+  padding: 10px 36px 10px 12px;
   border: 2px solid var(--border-color);
   border-radius: 8px;
   font-size: var(--fs-body);
-  background: var(--card-bg);
+  background-color: var(--card-bg);
 }
 
 .history-custom-range {
@@ -5570,92 +5889,11 @@ body.dark-mode .stock-row__qty {
   border: 1px solid var(--border-color);
 }
 
-.filter-buttons {
-  display: flex;
-  gap: 0;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--seg-bg);
-}
-
 .filter-btn {
-  background: var(--card-bg);
-  border: 1px solid var(--border-strong);
-  color: var(--text-primary);
-  padding: 11px 15px;
-  border-radius: var(--radius);
-  font-size: 14px;
-  font-weight: var(--w-label);
-  cursor: pointer;
-  transition: background var(--transition), color var(--transition), border-color var(--transition);
   flex: 1;
   min-width: 80px;
-}
-
-.filter-buttons .filter-btn {
-  background: transparent;
-  border: none;
-  padding: 12px 16px;
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-}
-
-.filter-btn:hover:not(.active) {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
-.filter-btn.active {
-  background: var(--primary-gradient);
-  color: white;
-  border-color: transparent;
-}
-
-.filter-buttons .filter-btn.active {
-  color: white;
-  box-shadow: inset 0 0 0 3px var(--seg-bg);
-}
-
-.filter-btn.filter-purchase.active {
-  background: var(--btn-primary);
-  border-color: transparent;
-  color: white;
-}
-
-.filter-btn.filter-sale.active {
-  background: var(--btn-success);
-  border-color: transparent;
-  color: white;
-}
-
-.filter-btn:active {
-  transform: scale(0.98);
-}
-
-/* Secondary filter style (for period filters inside cards) */
-.filter-buttons-secondary {
-  display: flex;
-  background: none;
-  overflow: visible;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.filter-buttons-secondary .filter-btn {
-  flex: 0 1 auto;
-  min-width: 60px;
-  padding: 8px 12px;
   font-size: var(--fs-sm);
-  border-radius: var(--radius-full);
-  border: 1px solid var(--border-strong);
-  background: var(--card-bg);
-  color: var(--text-primary);
-}
-
-.filter-buttons-secondary .filter-btn.active {
-  background: var(--primary-gradient);
-  color: white;
-  border-color: transparent;
+  font-weight: var(--w-label);
 }
 
 /* ---- css/charts.css ---- */
@@ -7561,45 +7799,6 @@ body.dark-mode .today-cash-prompt {
     gap: 8px;
 }
 
-.quick-add-btn {
-    padding: 10px 16px;
-    background: var(--light-bg);
-    border: 2px solid var(--border-color);
-    border-radius: var(--radius);
-    font-size: 14px;
-    font-weight: var(--w-regular);
-    cursor: pointer;
-    transition: all var(--transition);
-}
-
-.quick-add-btn:hover {
-    background: var(--primary-gradient);
-    color: white;
-    border-color: transparent;
-}
-
-/* ==================== ICON BUTTON ==================== */
-.btn-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: var(--radius-full);
-    border: none;
-    background: var(--primary-gradient);
-    color: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    transition: all var(--transition);
-    box-shadow: var(--shadow-sm);
-}
-
-.btn-icon:hover {
-    transform: scale(1.1);
-    box-shadow: var(--shadow);
-}
-
 /* ==================== ICON PICKER ==================== */
 .icon-picker {
     display: flex;
@@ -7774,58 +7973,6 @@ body.dark-mode .today-cash-prompt {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: var(--focus-ring);
-}
-
-/* ==================== BUTTON STYLES ==================== */
-.btn {
-    padding: 12px 24px;
-    border-radius: var(--radius);
-    font-size: var(--fs-body);
-    font-weight: var(--w-strong);
-    cursor: pointer;
-    transition: all var(--transition);
-    border: none;
-}
-
-.btn-primary {
-    background: var(--btn-primary);
-    color: white;
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-}
-
-.btn-secondary {
-    background: var(--card-bg);
-    color: var(--text-primary);
-    border: none;
-    box-shadow: inset 0 0 0 1px var(--border-strong);
-}
-
-.btn-secondary:hover {
-    background: var(--surface-muted);
-}
-
-.btn-success {
-    background: var(--success-soft);
-    color: var(--on-success-soft);
-    box-shadow: inset 0 0 0 1px var(--success-border);
-}
-
-.btn-danger {
-    background: var(--btn-danger);
-    color: white;
-}
-
-.btn-danger:hover {
-    opacity: 0.9;
-}
-
-.btn-block {
-    width: 100%;
-    display: block;
 }
 
 /* ==================== CARD BREAKDOWN SHEET (#215) ==================== */
@@ -8939,12 +9086,6 @@ body.dark-mode .notif-panel-actions {
   /* rentals.css (loaded later) caps the phone width; desktop pages are full width */
   .tab.rentals-tab {
     max-width: none;
-  }
-
-  /* Top-of-page segmented toggles (Purchase | Sale etc.) span the content
-     width (no max-width) and match Today's .sub-tabs bar height. */
-  .tab > .filter-buttons:first-child > .filter-btn {
-    padding: 14px 20px;
   }
 
   /* ---------- Billing: entry left, sticky bill summary right ---------- */

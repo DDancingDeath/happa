@@ -56,6 +56,7 @@
   --e3: 0 2px 6px rgba(16, 16, 29, 0.08), 0 24px 48px -12px rgba(16, 16, 29, 0.24);
   --highlight: inset 0 1px 0 rgba(255, 255, 255, 0.18);
   --focus: 0 0 0 3px rgba(79, 70, 229, 0.24);
+  --state-hover: rgba(16, 16, 29, 0.05);
 
   /* System faces only (the CSP has no font origin); Devanagari faces before the generic family */
   --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Noto Sans", "Helvetica Neue", Arial, "Noto Sans Devanagari", "Nirmala UI", sans-serif;
@@ -214,6 +215,7 @@
     --e3: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 24px 56px -12px rgba(0, 0, 0, 0.75);
     --highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14);
     --focus: 0 0 0 3px rgba(124, 120, 248, 0.4);
+    --state-hover: rgba(255, 255, 255, 0.06);
     --seg-on: var(--surface-3);
     --toast-bg: #2a2a32;
   }
