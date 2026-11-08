@@ -111,6 +111,10 @@ describe('History tabs: Purchase | Sale (retail + wholesale)', () => {
         expect(row.getAttribute('role')).toBe('button');
         expect(row.getAttribute('data-onclick')).toMatch(/^history\.viewBill\('id:W1', 'wholesale'\)$/);
         expect(row.querySelectorAll('[data-onclick]')).toHaveLength(0);
+        HistoryManager.toggleView();
+        expect([...document.querySelectorAll('#historyList .bill-table__row .bill-type-tag')].map(s => s.textContent))
+            .toEqual(['Wholesale', 'Retail', 'Wholesale']);
+        HistoryManager.toggleView();
     });
 
     test('old "wholesale" links and saved filters open Wholesale › History', () => {

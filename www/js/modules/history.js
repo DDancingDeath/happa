@@ -1145,6 +1145,7 @@ export class HistoryManager {
         container.innerHTML = billTableHtml(bills, {
             openings: this.pageOpenings,
             voided: this.pageVoided,
+            typeTags: type === 'sale',
             onclickFor: (bill) => `history.viewBill('${billRef(bill)}', '${Helpers.escapeJsAttr(bill.type)}')`
         });
     }

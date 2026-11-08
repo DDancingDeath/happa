@@ -68,7 +68,7 @@ www/js/modules/diagnostics.js: typeLabels[error.type] || Helpers.escapeHtml(erro
 www/js/modules/health.js: html (sink)
 www/js/modules/history.js: (toMoney(item.total) ?? toMoney(item.amount)) === null ? '—' : formatAmount(toMoney(item.total) ?? toMoney(item.amount), { exact: true }) ← formatAmount(toMoney(item.total) ?? toMoney(item.amount), { exact: true })
 www/js/modules/history.js: bg
-www/js/modules/history.js: billTableHtml(bills, { openings: this.pageOpenings, voided: this.pageVoided, onclickFor: (bill) => `history.viewBill('${billRef(bill)}', '${ (sink)
+www/js/modules/history.js: billTableHtml(bills, { openings: this.pageOpenings, voided: this.pageVoided, typeTags: type === 'sale', onclickFor: (bill) => `history.viewB (sink)
 www/js/modules/history.js: editsRowHtml(bill, 'history.showEdits()')
 www/js/modules/history.js: fg
 www/js/modules/history.js: known ? formatRupees(billLineTotal(bill, true)) : UNKNOWN_AMOUNT ← UNKNOWN_AMOUNT
@@ -441,12 +441,13 @@ www/js/rentals/rentals.js: lazyMods.pages.renderTenants(unitCtx(), d) (sink)
 www/js/rentals/rentals.js: m
 www/js/services/exporter.js: html
 www/js/ui/bill-highlight.js: ICON.block ← ICON = { block: '⛔', warn: '⚠️' }
-www/js/ui/bill-row.js: TYPE_TAGS[type].cls ← TYPE_TAGS = Object.freeze({ retail: { key: 'ui.history.tag_retail', cls: 'badge-success' }, 
 www/js/ui/bill-row.js: link ← onclick
+www/js/ui/bill-row.js: onclick
 www/js/ui/bill-row.js: onclickFor(bill)
 www/js/ui/bill-row.js: opening ? '' : SyncStatus.chipHtml(bill?.id) ← SyncStatus.chipHtml(bill?.id)
 www/js/ui/bill-row.js: opening ? '' : SyncStatus.chipHtml(bill?.id) ← SyncStatus.chipHtml(bill?.id)
 www/js/ui/bill-row.js: st.s ← st = printStatusOf(bill)
+www/js/ui/bill-row.js: tag.cls ← tag = TYPE_TAGS[type]
 www/js/ui/bill-status.js: REASON_MAX
 www/js/ui/bill-status.js: onclick
 www/js/ui/finance-breakdown-sheet.js: g (markup via opt)
