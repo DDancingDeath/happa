@@ -636,7 +636,7 @@ export const MoneyManager = {
     renderCash({ m, prev, ly, b, labels, r }) {
         this.text('moneyNetCash', money(m.M14));
         this.html('moneyCashCompare', compareHtml([vsItem(m.M14, prev?.M14, labels.prev), vsItem(m.M14, ly?.M14, labels.ly), vsB(m.M14, b?.M14, labels)]));
-        this.html('moneyCashTakeaway', takeawayHtml(cashTakeaways({ net: m.M14, out: m.M13, profit: this.can('profit') ? m.M6.total : null, salesDue: m.M1.due })));
+        this.html('moneyCashTakeaway', takeawayHtml(cashTakeaways({ net: m.M14, out: m.M13 })));
         this.html('moneyCashCaveats', this.caveatsHtml(m, ['M12', 'M14']));
         this.text('moneyIn', money(m.M12.total));
         this.text('moneyOut', money(m.M13.total));

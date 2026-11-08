@@ -29,7 +29,8 @@ when it is not connected).
 | Personal expenses, withdrawals (M8, M9) | Shown apart from profit. |
 | Expenses per ₹100 of sales (M19) | Spending says so when business expenses are more than ₹10 for every ₹100 of sales (personal expenses not counted). |
 | Kept in business (M10) | Profit − personal expenses − withdrawals. |
-| Money in / out / net (M12–M14) | Paid at save + due payments, and expenses; cash and online. |
+| Money in / out / net (M12–M14) | Paid at save + due payments, and expenses; cash and online. The sentence under it says which way the money went and the biggest outflow; it does not guess why net money in differs from profit. |
+| Breakdown count (FB-COUNT) | Tap a figure: the list ends with "Total of 168 lines in 136 bills" when every row is a bill line, else "Total of N entries". Group the rows by item, party, day or part of the sum. |
 | Net worth (M15) | Stock value + to receive + other accounts + counted drawer cash − to pay. Other accounts (bank, savings, loans) are the same on all your phones, in whole rupees; you and managers with Money add or remove them. Members don't see bank balances: their net worth leaves them out and says so. The drawer cash (C9) counts only when the cash was counted in the last 30 days; while it is loading, when it could not be loaded, or with no count in 30 days it shows "—" with the reason, and net worth leaves it out and says so. |
 | Purchases (M16) | Sum of purchase bill totals (after labour). |
 | Stock movement check (M17) | Opening stock value + purchases − cost of goods sold ± corrections = closing value. |
