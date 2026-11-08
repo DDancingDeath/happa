@@ -17,7 +17,8 @@ import {
 } from '../utils/month-snapshots.js';
 import { profitTakeaways, cashTakeaways, spendingTakeaways, worthTakeaways } from '../utils/takeaways.js';
 import { setInsightsContext, resetInsightsContextForTests, getInsightsContext, contextMonth } from '../utils/insights-context.js';
-import { t, setLang } from '../i18n/index.js';
+import { t, tn, setLang } from '../i18n/index.js';
+import { billsOfLines } from '../utils/finance-breakdown.js';
 import { formatAmount } from '../utils/money.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 
@@ -184,8 +185,9 @@ describe('comparisons and takeaways', () => {
     });
 
     test('cash, spending and worth takeaways', () => {
+        // O-3: no "money in is below profit because … is still owed" sentence, whatever the dues
         expect(cashTakeaways({ net: -1574, out: { atPurchase: 1274, duePaid: 400, expenses: 250 }, profit: 100, salesDue: 250 }).map(x => x.key))
-            .toEqual(['ui.tk.cash_out', 'ui.tk.biggest_out_purchases', 'ui.tk.gut_dues']);
+            .toEqual(['ui.tk.cash_out', 'ui.tk.biggest_out_purchases']);
         expect(spendingTakeaways({ business: 670, vsLastYear: { pct: 8, dir: 'up' }, topCategory: 'rent', withdrawn: 2000, kept: -3170, personal: 1080, show: { profit: true, personal: true } }).map(x => x.key))
             .toEqual(['ui.tk.expenses_up', 'ui.tk.kept_negative']);
         expect(worthTakeaways({ worth: null }).map(x => x.key)).toEqual(['ui.tk.worth_unknown']);
@@ -280,6 +282,36 @@ describe('taps, caveats and checks', () => {
         expect(open).toHaveBeenCalledWith('sales', expect.any(Object));
         const summary = open.mock.calls[0][1].getSummary();
         expect(rupee(summary.sales.total)).toBe(shown('moneySales'));
+    });
+
+    test('the sales breakdown counts its lines in the period\'s bills (FB-COUNT = M1 bill count) and names every grouping', () => {
+        const open = jest.spyOn(FinanceBreakdownSheet, 'open');
+        MoneyManager.init('profit');
+        document.querySelector('#moneyProfit [data-breakdown="sales"]').click();
+        expect(open).toHaveBeenCalled();
+        const w = O.metrics(data, OCT);
+        const total = document.querySelector('#financeBreakdownSheet .fin-sheet-total span').textContent;
+        const m = total.match(/^Total of (\d+) lines in (\d+) bills$/);
+        expect(m).not.toBeNull();
+        expect(Number(m[2])).toBe(w.M1_saleCount);
+        expect(Number(m[1])).toBeGreaterThanOrEqual(w.M1_saleCount);
+        const options = [...document.querySelectorAll('#financeBreakdownSheet [data-action="group"] option')].map(o => o.textContent);
+        expect(options.length).toBeGreaterThan(1);
+        options.forEach(text => expect(text).not.toMatch(/ui\.finance\./));
+        FinanceBreakdownSheet.close();
+    });
+
+    test('FB-COUNT: lines of one bill, of two bills, and rows that are not bill lines', () => {
+        const line = (billId, extra = {}) => ({ billId, billType: 'retail', itemKey: 'rice', amount: 10, ...extra });
+        expect(billsOfLines([line('a'), line('a', { itemKey: '', rest: true })])).toBe(1);
+        expect(billsOfLines([line('a'), line('b'), line('b')])).toBe(2);
+        // same id, different bill types = two bills
+        expect(billsOfLines([line('a'), line('a', { billType: 'wholesale' })])).toBe(2);
+        // a due payment or labour row is not a line: counted as entries
+        expect(billsOfLines([line('a'), { billId: 'a', billType: 'purchase', labour: true, amount: -5 }])).toBeNull();
+        expect(billsOfLines([])).toBeNull();
+        expect(tn('ui.finance.total_lines_one_bill', 1)).toBe('Total of 1 line in 1 bill');
+        expect(tn('ui.finance.total_lines_one_bill', 3)).toBe('Total of 3 lines in 1 bill');
     });
 
     test('profit shows "—" and says why when the cost is not known', () => {
@@ -767,9 +799,9 @@ describe('what each role sees (Roles & access)', () => {
         expect(lines[0]).toMatch(/for every ₹100 of sales/);
         expect(spendText()).not.toMatch(/personal|profit/i);
     });
-    test('without profit the cash takeaway does not compare with the profit', () => {
+    test('the cash takeaway never compares with the profit (O-3), for the owner or without profit', () => {
         MoneyManager.init('cash');
-        expect(document.getElementById('moneyCashTakeaway').textContent).toMatch(/below profit/);
+        expect(document.getElementById('moneyCashTakeaway').textContent).not.toMatch(/profit|still owed/i);
         asMember({ profit: false });
         MoneyManager.render();
         expect(document.getElementById('moneyCashTakeaway').textContent).not.toMatch(/profit/i);
