@@ -279,7 +279,7 @@
   align-items: center;
   gap: 12px;
   margin: 0 0 16px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
@@ -303,8 +303,8 @@
   border: 1px solid var(--google-btn-line);
   border-radius: 4px;
   font-family: var(--font-sans);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
   letter-spacing: 0.25px;
   cursor: pointer;
 }
@@ -331,7 +331,7 @@
 
 .auth-google-hint {
   margin-bottom: 16px;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
   overflow-wrap: anywhere;
 }
