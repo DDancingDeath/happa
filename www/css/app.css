@@ -221,6 +221,21 @@
   }
 }
 
+/* "Continue with Google" button: Google's own light and dark button colours (its branding guidelines) */
+:root {
+  --google-btn-bg: #ffffff;
+  --google-btn-line: #747775;
+  --google-btn-ink: #1f1f1f;
+}
+
+@media screen {
+  [data-mode="dark"] {
+    --google-btn-bg: #131314;
+    --google-btn-line: #8e918f;
+    --google-btn-ink: #e3e3e3;
+  }
+}
+
 /* Layout, type scale, density and motion: the same in every theme */
 :root {
   --w-label: 600;
@@ -634,13 +649,16 @@ input[type="number"],
   height: 100%;
   background: var(--light-bg);
   display: flex;
-  align-items: center;
+  /* Centred while it fits; scrolls from the top when it doesn't (Google's link form on a phone) */
+  align-items: flex-start;
   justify-content: center;
+  overflow-y: auto;
   z-index: 10000;
   padding: 20px;
 }
 
 .auth-container {
+  margin: auto 0;
   background: var(--card-bg);
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-color);
@@ -885,6 +903,80 @@ input[type="number"],
 
 .auth-reset-form[hidden] {
   display: none;
+}
+
+/* "Continue with Google" (docs/google-sign-in.md): Google's sign-in button guidelines (its
+   light / dark colours, the multicolour G, "Continue with Google"); 44 px tall for touch. */
+.auth-google {
+  padding: 0 24px 24px;
+}
+
+.auth-google[hidden],
+.auth-google-link[hidden],
+.google-btn[hidden] {
+  display: none;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--border-color);
+}
+
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  background: var(--google-btn-bg);
+  color: var(--google-btn-ink);
+  border: 1px solid var(--google-btn-line);
+  border-radius: 4px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
+  letter-spacing: 0.25px;
+  cursor: pointer;
+}
+
+.google-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.google-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.google-btn-logo {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.auth-google-link {
+  margin-top: 8px;
+}
+
+.auth-google-hint {
+  margin-bottom: 16px;
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
 }
 
 /* Language choice before signing in */

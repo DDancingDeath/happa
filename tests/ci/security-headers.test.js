@@ -207,11 +207,12 @@ describe('app site CSP (enforced, #89)', () => {
         expect(csp['style-src']).toEqual(["'self'", "'unsafe-inline'"]);
     });
 
-    test("frame-src is only Firebase Auth's iframe on the project's authDomain", () => {
+    test("frame-src is only Firebase Auth's iframe: the project's authDomain, or the site itself with Google sign-in on Hosting", () => {
         // On phones the compat Auth SDK loads gapi and frames <authDomain>/__/auth/iframe at start-up.
+        // With Google sign-in on, Hosting serves that helper on the site itself ('self'; firebaseConfig.js).
         const config = fs.readFileSync(path.join(ROOT, 'www', 'firebaseConfig.js'), 'utf8');
         const authDomain = config.match(/"authDomain":\s*"([^"]+)"/)[1];
-        expect(csp['frame-src']).toEqual([`https://${authDomain}`]);
+        expect(csp['frame-src']).toEqual(["'self'", `https://${authDomain}`]);
     });
 
     test('connect-src allows the Firebase APIs the SDK calls and the release check', () => {

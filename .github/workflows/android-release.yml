@@ -170,17 +170,18 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      # Crash reports (#122): the Firebase Android app's config, when the owner has added it
-      # (docs/error-reporting.md). Without it the APK builds the same way, with no Crashlytics.
+      # Crash reports (#122) and Google sign-in (docs/google-sign-in.md): the Firebase Android app's
+      # config, when the owner has added it (docs/error-reporting.md). Without it the APK builds the
+      # same way, with no Crashlytics and no Google sign-in (that plugin then doesn't start).
       - name: Add google-services.json (if configured)
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
             printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
-            echo "google-services.json added: crash reports can be switched on in the app."
+            echo "google-services.json added: crash reports can be switched on in the app; Google sign-in can start."
           else
-            echo "No GOOGLE_SERVICES_JSON secret: the APK has no crash reporting."
+            echo "No GOOGLE_SERVICES_JSON secret: the APK has no crash reporting and no Google sign-in."
           fi
 
       - name: Build debug APK (build-only)
@@ -330,7 +331,10 @@ jobs:
 
       - name: Build with the dummy Firebase config
         run: |
-          cp tests/fixtures/google-services.dummy.json android/app/google-services.json
+          # Its package must be the APK's (happa.config.json), or the google-services plugin stops the build
+          pkg="$(node scripts/happa-config.js get androidPackage)"
+          jq --arg p "$pkg" '.client[0].client_info.android_client_info.package_name = $p' \
+            tests/fixtures/google-services.dummy.json > android/app/google-services.json
           cd android
           ./gradlew assembleDebug --no-daemon --stacktrace
 
@@ -352,6 +356,13 @@ jobs:
           res_without="$("$aapt2" dump resources "$without")"
           if grep -Eq "google_app_id|$build_id" <<< "$res_without"; then
             echo "::error::the build without google-services.json has a Firebase app id or Crashlytics build id"; exit 1
+          fi
+          # Google sign-in (docs/google-sign-in.md): the native picker asks for the project's web client,
+          # which google-services writes over the plugin's placeholder default_web_client_id
+          if ! grep -A2 'string/default_web_client_id' <<< "$res" | grep -q 'cidummywebclient'; then
+            echo "::error::default_web_client_id is not the config's web client: Google sign-in could not start"
+            grep -A2 'string/default_web_client_id' <<< "$res" || true
+            exit 1
           fi
           mb() { awk -v b="$(stat -c %s "$1")" 'BEGIN { printf "%.2f MB (%d bytes)", b / 1000000, b }'; }
           app_perms="$(grep -o 'uses-permission android:name="[^"]*"' android/app/src/main/AndroidManifest.xml | sed 's/.*name="//; s/"$//' | sort -u)"
