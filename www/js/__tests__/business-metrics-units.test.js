@@ -438,7 +438,7 @@ describe('Stopped coming (I3): stoppedComingCheck', () => {
 });
 
 describe('I10: overdueParties', () => {
-    test('parties with a due older than 30 days: count, total, oldest', () => {
+    test('parties with a due older than 30 days (an undated one counts, OD-08): count, total on those bills, oldest', () => {
         const bills = [
             { customerName: 'Asha', timestamp: d(2026, 8, 14, 18), payment: { due: 100 } },
             { customerName: 'asha ', timestamp: d(2026, 8, 1, 9), payment: { due: 50 } },
@@ -446,7 +446,7 @@ describe('I10: overdueParties', () => {
             { customerName: 'Paid', timestamp: d(2026, 5, 1), payment: { due: 0 } },
             { customerName: 'Undated', payment: { due: 40 } }
         ];
-        expect(overdueParties(bills, NOW)).toEqual({ parties: 1, total: 150, oldestDays: 44 });
+        expect(overdueParties(bills, NOW)).toEqual({ parties: 2, total: 190, oldestDays: 44 });
         expect(overdueParties(undefined, NOW)).toEqual({ parties: 0, total: 0, oldestDays: 0 });
     });
 });

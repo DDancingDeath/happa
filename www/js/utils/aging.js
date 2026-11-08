@@ -10,11 +10,14 @@
 import { openingAmount, outstandingDue, readPayment, round2 } from './money.js';
 import { billDateOf } from './history-filters.js';
 
-/** Days after which a due counts as "long overdue" (badge). */
+/** OVERDUE (OD-08): a bill with a due is overdue when it is more than this many days old. */
+export const OVERDUE_DAYS = 30;
+
+/** Days after which a party's oldest due gets the "Over 90 days" badge. */
 export const LONG_OVERDUE_DAYS = 90;
 
 export const AGING_BUCKETS = [
-    { key: '0-30', label: '0–30', max: 30 },
+    { key: '0-30', label: '0–30', max: OVERDUE_DAYS },
     { key: '31-60', label: '31–60', max: 60 },
     { key: '61-90', label: '61–90', max: 90 },
     { key: '90+', label: '90+', max: Infinity }
@@ -152,7 +155,7 @@ function billPhone(bill) {
 }
 
 /**
- * @typedef {{key: string, name: string, phone: string, total: number, oldestDays: ?number, bucket: number, longOverdue: boolean,
+ * @typedef {{key: string, name: string, phone: string, total: number, overdue: number, oldestDays: ?number, bucket: number, longOverdue: boolean,
  *   bills: Array<{id: *, billNumber: string, date: ?Date, days: ?number, bucket: number, due: number}>}} AgingParty
  */
 
@@ -161,7 +164,7 @@ function billPhone(bill) {
  * @param {Array<Rec>} bills Bills of ONE kind (receivables or payables)
  * @param {{today?: Date}} [opts]
  * @returns {{
- *   total: number, count: number,
+ *   total: number, count: number, overdue: number, overdueCount: number,
  *   buckets: Array<{key: string, label: string, total: number, count: number}>,
  *   parties: Array<AgingParty>
  * }}
@@ -172,6 +175,8 @@ export function buildAging(bills, { today = new Date() } = {}) {
     const byKey = new Map();
     let total = 0;
     let count = 0;
+    let overdue = 0;
+    let overdueCount = 0;
 
     (bills || []).forEach(bill => {
         // BILL-DUE: 0 for cleared and voided bills (#75)
@@ -185,12 +190,17 @@ export function buildAging(bills, { today = new Date() } = {}) {
         buckets[bucket].count++;
         total = round2(total + due);
         count++;
+        const late = bucket > 0;
+        if (late) {
+            overdue = round2(overdue + due);
+            overdueCount++;
+        }
 
         const rawName = String(bill.customerName ?? '').trim().replace(/\s+/g, ' ');
         const key = normalizePartyName(rawName);
         let party = byKey.get(key);
         if (!party) {
-            party = { key, name: rawName, phone: '', total: 0, oldestDays: 0, bucket: 0, longOverdue: false, bills: [], _latest: -Infinity, _names: new Map() };
+            party = { key, name: rawName, phone: '', total: 0, overdue: 0, oldestDays: 0, bucket: 0, longOverdue: false, bills: [], _latest: -Infinity, _names: new Map() };
             byKey.set(key, party);
         }
         // Most used spelling is the display name (pickPartyName); newest bill decides the phone
@@ -206,6 +216,7 @@ export function buildAging(bills, { today = new Date() } = {}) {
             party.phone = billPhone(bill);
         }
         party.total = round2(party.total + due);
+        if (late) party.overdue = round2(party.overdue + due);
         party.bills.push({ id: bill.id, billNumber: String(bill.billNumber || ''), date, days, bucket, due });
     });
 
@@ -222,7 +233,7 @@ export function buildAging(bills, { today = new Date() } = {}) {
         return p;
     }));
 
-    return { total, count, buckets, parties };
+    return { total, count, overdue, overdueCount, buckets, parties };
 }
 
 /** Age used for sorting: unknown counts as oldest. */
@@ -253,7 +264,7 @@ export function sortParties(parties, by = 'amount') {
 }
 
 /**
- * Who to chase first: parties whose oldest due is older than 30 days, oldest
+ * Who to chase first: parties with an OVERDUE bill (oldest due older than 30 days), oldest
  * bucket first, then the biggest amount.
  * @param {Array<Rec>} parties
  * @param {number} [limit=5]

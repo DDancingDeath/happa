@@ -9,7 +9,7 @@
 
 /**
  * @typedef {{monthMode: 'calendar'|'last30', yearStartMonth: number, labourInCost: boolean, netWorthTerms: ReadonlyArray<string>,
- *   overdueDays: number, lowMarginPer100: number, lowMarginMinSales: number, stoppedComingDays: number, seasonBusy: number,
+ *   lowMarginPer100: number, lowMarginMinSales: number, stoppedComingDays: number, seasonBusy: number,
  *   seasonQuiet: number, sameWithinPct: number, expenseNudgePer100: number}} InsightsConfig
  */
 
@@ -23,8 +23,6 @@ export const INSIGHTS_DEFAULTS = Object.freeze({
     labourInCost: false,
     /** #39: what net worth adds up (payables are always taken off). */
     netWorthTerms: Object.freeze(['stock', 'receivable', 'accounts', 'drawer']),
-    /** A party is overdue when its oldest open bill is older than this (days). */
-    overdueDays: 30,
     /** An item is "low profit" under this much profit per ₹100 of sales… */
     lowMarginPer100: 3,
     /** …when it sold at least this much in the period (₹). */
@@ -58,7 +56,6 @@ export function insightsSettings(raw = {}) {
         yearStartMonth: Math.min(11, Math.max(0, Math.trunc(num(r.yearStartMonth, d.yearStartMonth)))),
         labourInCost: r.labourInCost === true,
         netWorthTerms: Object.freeze([...terms]),
-        overdueDays: Math.max(1, num(r.overdueDays, d.overdueDays)),
         lowMarginPer100: num(r.lowMarginPer100, d.lowMarginPer100),
         lowMarginMinSales: Math.max(0, num(r.lowMarginMinSales, d.lowMarginMinSales)),
         stoppedComingDays: Math.max(1, num(r.stoppedComingDays, d.stoppedComingDays)),

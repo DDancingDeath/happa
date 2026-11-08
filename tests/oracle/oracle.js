@@ -728,8 +728,9 @@ export function weeklySoldKg(data, nowMs) {
 }
 
 /**
- * I10 overdue parties: parties with an open BILL-DUE on a bill more than `days`
- * local days old (bill day by its stock time), OPENING records included.
+ * OVERDUE (OD-08) / I10: parties with an open BILL-DUE on a bill more than 30 local days
+ * old (bill day by its stock time), OPENING records included; a bill with no date counts
+ * (Outstanding's oldest bucket) but has no age. Total = Σ due on those bills only.
  * @returns {{parties: number, total: number, oldestDays: number}}
  */
 export function overdue(bills, nowMs, days = 30) {
@@ -739,13 +740,13 @@ export function overdue(bills, nowMs, days = 30) {
     let oldest = 0;
     (bills || []).forEach(b => {
         const due = openDue(b);
+        if (!(due > 0.005)) return;
         const t = eventTimeOf(b);
-        if (!(due > 0.005) || !Number.isFinite(t)) return;
-        const age = Math.round((today - dayRange(t)[0]) / 86400000);
-        if (age <= days) return;
+        const age = Number.isFinite(t) ? Math.round((today - dayRange(t)[0]) / 86400000) : null;
+        if (age !== null && age <= days) return;
         parties.add(partyKey(b.customerName));
         total += due;
-        oldest = Math.max(oldest, age);
+        if (age !== null) oldest = Math.max(oldest, age);
     });
     return { parties: parties.size, total: r2(total), oldestDays: oldest };
 }
