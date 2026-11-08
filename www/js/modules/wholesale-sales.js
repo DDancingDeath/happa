@@ -9,6 +9,7 @@ import { Helpers } from '../utils/helpers.js';
 import { computeShortfallsFrom, approxStockNote } from '../utils/stock-check.js';
 import { normalizeThresholds, stockCreditFor } from '../utils/bill-checks.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
+import { settlePendingLine } from '../ui/pending-line.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import {
     isFullHistoryLoaded, historyLoadedFrom, formatWindowDate, rangeStatus, retryRange, applyRangeState, renderStaleHistoryHint
@@ -35,14 +36,12 @@ import {
     formatAmount, formatKg, formatRate, formatRupees
 } from '../utils/money.js';
 import {
-    buildPaymentSplit, computeLine, computeWholesaleTotals, draftLineSum, paidOnScreen, paymentSplit, prefillPayment,
-    restInDue, shownAmount, typedAmount, validateDuePayment, validatePaymentSplit, wholesaleLiveProfit
+    buildPaymentSplit, computeLine, computeWholesaleTotals, draftLineSum, paidOnScreen, paymentSplit, pendingLine, prefillPayment,
+    restInDue, shownAmount, typedAmount, validatePaymentSplit, wholesaleLiveProfit
 } from '../utils/calc/billing.js';
 
 /** Wholesale bills shown under the entry form (the rest are in Wholesale › History). */
 const RECENT_SALES = 5;
-
-const PAYMENT_TOLERANCE = 0.01;
 
 /** Buttons disabled while a wholesale save/print is in flight */
 const WHOLESALE_BUTTONS = '[data-onclick*="wholesaleSales.completeSale"], [data-onclick*="wholesaleSales.printWholesaleSale"]';
@@ -424,6 +423,7 @@ export class WholesaleSalesManager {
     // Unguarded save; callers must hold the 'wholesale' lock.
     // options.onWriteIssued(saleData) is called as soon as the write is issued.
     static async _completeSale(options = {}) {
+        if (!(await this.settleEntryLine())) return undefined;
         if (wholesaleSaleItems.length === 0) {
             UIManager.showToast(t('msg.wholesale.add_items_bill'));
             return;
@@ -551,9 +551,7 @@ export class WholesaleSalesManager {
             // this dropdown. The item detail fields were cleared above so no stale
             // per-item stock is shown in the meantime.
             
-            if (FirebaseService.keptServerPayment(saleData)) UIManager.showToast(t(KEPT_SERVER_PAYMENT_KEY));
-            else if (FirebaseService.savedOnPhoneOnly(saleData)) UIManager.showToast(t(SAVED_ON_PHONE_KEY));
-            else UIManager.showToast(t('msg.wholesale.sale_completed_successfully'));
+            UIManager.showToast(this.savedText(saleData));
             UIManager.hapticFeedback();
             return saleData;
         } catch (error) {
@@ -564,28 +562,78 @@ export class WholesaleSalesManager {
 
     static async printWholesaleSale() {
         if (Helpers.isBusy('wholesale')) return;
-        if (wholesaleSaleItems.length === 0) {
+        if (wholesaleSaleItems.length === 0 && this.entryLineEmpty()) {
             UIManager.showToast(t('msg.wholesale.no_items_print'));
             return;
         }
         
         let printPromise = null;
+        const report = {};
         try {
             // Print the exact sale being saved, as soon as its write is issued
             const savedSale = await Helpers.runExclusive('wholesale', WHOLESALE_BUTTONS, () => this._completeSale({
-                onWriteIssued: (sale) => { printPromise = PrinterService.printWholesaleSale(sale); }
+                onWriteIssued: (sale) => { printPromise = PrinterService.printWholesaleSale(sale, report); }
             }));
             
             if (!printPromise) return;
             const printed = await printPromise;
-            
-            if (savedSale && printed === true) {
-                UIManager.showToast(FirebaseService.savedOnPhoneOnly(savedSale) ? t(SAVED_ON_PHONE_KEY) : t('msg.common.sale_saved_printed'));
-            }
+            if (!savedSale) return;
+            PrinterService.showSavePrintStatus({
+                printed, report, savedText: this.savedText(savedSale),
+                printedText: FirebaseService.savedOnPhoneOnly(savedSale) ? t(SAVED_ON_PHONE_KEY) : t('msg.common.sale_saved_printed')
+            });
         } catch (error) {
             console.error('Print error:', error);
             UIManager.showToast(t('msg.common.error_2', { value: error?.message || error }));
         }
+    }
+
+    /** What the save toast says for a saved sale (also the first half of the print status). */
+    static savedText(sale) {
+        if (FirebaseService.keptServerPayment(sale)) return t(KEPT_SERVER_PAYMENT_KEY);
+        if (FirebaseService.savedOnPhoneOnly(sale)) return t(SAVED_ON_PHONE_KEY);
+        return t('msg.wholesale.sale_completed_successfully');
+    }
+
+    /** The entry boxes as BF-PENDING reads them. */
+    static entryLine() {
+        const itemName = Helpers.getInputText('sellItem');
+        const item = itemName ? AppState.items.find(i => i.name === itemName) : null;
+        return {
+            item,
+            entry: {
+                itemChosen: !!item,
+                rateText: document.getElementById('sellRate')?.value,
+                qtyText: document.getElementById('sellQuantity')?.value
+            }
+        };
+    }
+
+    static entryLineEmpty() {
+        return pendingLine(this.entryLine().entry).state === 'empty';
+    }
+
+    /**
+     * A line typed but not added to the sale is never dropped silently (BF-PENDING):
+     * the user adds or discards it, or goes back to it.
+     * @returns {Promise<boolean>} true when the save may go on
+     */
+    static async settleEntryLine() {
+        const { item, entry } = this.entryLine();
+        return settlePendingLine({
+            entry,
+            label: item ? lineItemIdentity({ itemId: item.id, name: item.name }, AppState.items, AppState.settings.showHindi).label : '',
+            inputs: { item: 'sellItem', rate: 'sellRate', qty: 'sellQuantity' },
+            add: async () => {
+                const before = wholesaleSaleItems.length;
+                await this.addToWholesaleBill();
+                return wholesaleSaleItems.length > before;
+            },
+            discard: () => {
+                const qty = document.getElementById('sellQuantity');
+                if (qty) qty.value = '';
+            }
+        });
     }
 
     static shareViaWhatsApp() {
@@ -652,60 +700,20 @@ export class WholesaleSalesManager {
     }
 
     static async recordPayment(saleId) {
-        return Helpers.runExclusive('due-payment', '[data-record-payment], [data-mark-cleared]', () => this._recordPayment(saleId));
-    }
-
-    static async _recordPayment(saleId) {
-        const salesHistory = AppState.salesHistory;
-        const sale = salesHistory.find(s => s.id == saleId);
+        const sale = (AppState.salesHistory || []).find(s => s.id == saleId);
         if (!sale) {
             UIManager.showToast(t('msg.wholesale.error_sale_not_found'));
             return;
         }
-        
-        const paymentInput = document.getElementById(`payment_${saleId}`);
-        const check = validateDuePayment(paymentInput?.value, 0, readPayment(sale).due, PAYMENT_TOLERANCE);
-        if (!check.ok) {
-            UIManager.showToast(t(check.error === 'exceeds-due' ? 'msg.common.payment_amount_exceeds_outstanding_amount' : 'msg.common.enter_valid_payment_amount'));
-            return;
-        }
-        const paymentAmount = check.total;
-        
-        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-            UIManager.showToast(t('msg.common.internet_required_record_payment'));
-            return;
-        }
-        
-        const payment = {
-            id: OutstandingManager.paymentEntryId(paymentInput, paymentAmount),
-            amount: paymentAmount,
-            date: Helpers.getCurrentDateTime(),
-            recordedBy: AppState.userName || (AppState.currentUser ? AppState.currentUser.email : 'Unknown')
-        };
-        
-        try {
-            // Same server-side transaction as the Due screen, so a payment recorded
-            // concurrently on another device is never overwritten by a full-document write
-            const written = await OutstandingManager.applyPaymentTransaction('wholesale', sale, paymentAmount, payment);
-            Object.assign(sale, written);
-            
-            OutstandingManager.clearPaymentEntryId(paymentInput);
-            if (paymentInput) paymentInput.value = '';
-            this.renderSalesOutstanding();
-            this.renderSalesHistory();
-            window.app?.outstanding?.renderDue?.();
-            UIManager.showToast(t('msg.wholesale.payment_recorded', { paymentAmount: formatAmount(paymentAmount, { exact: true }) }));
-        } catch (error) {
-            console.error('Error recording payment:', error);
-            if (error && error.code === 'exceeds-due') {
-                UIManager.showToast(t('msg.common.payment_amount_exceeds_outstanding_amount_2', { due: formatAmount(error.due, { exact: true }) }));
-                this.renderSalesOutstanding();
-            } else if (OutstandingManager.isOfflineError(error)) {
-                UIManager.showToast(t('msg.common.internet_required_record_payment'));
-            } else {
-                UIManager.showToast(await OutstandingManager.paymentRefusedText(error));
-            }
-        }
+
+        // The Due screen's one payment path (#98), with its lock: same transaction, retry id kept
+        // until the payment is known to be recorded (D-1), audit entry in the same commit (D-3)
+        const value = document.getElementById(`payment_${saleId}`)?.value;
+        const ok = await OutstandingManager.recordDuePayment({ billType: 'wholesale', billId: sale.id, cash: Number(value) || 0, online: 0 });
+        if (!ok) return;
+        this.renderSalesOutstanding();
+        this.renderSalesHistory();
+        window.app?.outstanding?.renderDue?.();
     }
 
     static async markSaleAsCleared(saleId) {
@@ -714,6 +722,11 @@ export class WholesaleSalesManager {
         // Same honest clearing as Outstanding (#104): received in cash/online, or written off with a reason
         const cleared = await OutstandingManager.markAsCleared(saleId, 'wholesale');
         if (cleared) this.renderSalesHistory();
+    }
+
+    /** "Write off as bad debt" (OD-13), the Due screen's action. */
+    static async writeOffSale(saleId) {
+        if (await OutstandingManager.writeOffDue(saleId, 'wholesale')) this.renderSalesHistory();
     }
 
     /** One payment from a party spread over their bills, oldest first (#152). */
@@ -768,7 +781,7 @@ export class WholesaleSalesManager {
             UIManager.showToast(t('msg.outstanding.choose_how_due_was_settled'));
             return;
         }
-        await Helpers.runExclusive('due-payment', '[data-record-payment], [data-mark-cleared], [data-complete-all]',
+        await Helpers.runExclusive('due-payment', '[data-record-payment], [data-mark-cleared], [data-write-off], [data-complete-all]',
             () => this._completeAllDue(String(name).trim(), bills, method, chosen.map(x => x.due)));
     }
 
@@ -787,7 +800,7 @@ export class WholesaleSalesManager {
         let result;
         const entryIds = this.settleEntryIds(name, method, bills);
         try {
-            result = await OutstandingManager.settleAllDues('wholesale', bills, method, confirmed, entryIds);
+            result = await OutstandingManager.settleAllDues('wholesale', bills, method, confirmed, entryIds, { name });
         } catch (error) {
             console.error('Complete all due failed:', error);
             // A definite refusal forgets the ids; any other error may have reached the server: a retry reuses them
@@ -818,14 +831,6 @@ export class WholesaleSalesManager {
             return;
         }
         settled.forEach(s => Object.assign(s.bill, s.fields));
-        AuditService.log(AuditService.ACTIONS.UPDATE_PAYMENT, {
-            bulk: true,
-            transactionType: 'wholesale',
-            customer: name,
-            method,
-            paymentAmount: total,
-            billNumbers: settled.map(s => s.bill.billNumber || String(s.bill.id)).join(', ').slice(0, 900)
-        }).catch(e => console.warn('Audit log failed:', e));
         UIManager.showToast(t('msg.wholesale.complete_all_due_done', { count: settled.length, total: Helpers.formatCurrency(total) }));
         UIManager.hapticFeedback('light');
         // Saved: a screen that fails to redraw must not look like a failed payment
@@ -934,6 +939,7 @@ export class WholesaleSalesManager {
                                 <input type="checkbox" data-mark-cleared id="clear_${Helpers.escapeHtml(sale.id)}" data-onchange="wholesaleSales.markSaleAsCleared('${Helpers.escapeJsAttr(sale.id)}')" style="margin-right: 8px; transform: scale(1.2);" />
                                 <label for="clear_${Helpers.escapeHtml(sale.id)}" style="cursor: pointer; font-weight: 500;">${L('ui.wholesale.mark_as_cleared')}</label>
                             </div>
+                            <button type="button" data-write-off data-onclick="wholesaleSales.writeOffSale('${Helpers.escapeJsAttr(sale.id)}')" style="margin-top: 8px; padding: 6px 12px; background: transparent; color: var(--danger-color); border: 1px solid var(--danger-color); border-radius: 4px; cursor: pointer; font-weight: 500;">${L('ui.outstanding.write_off_bad_debt')}</button>
                             ${this.canCompleteAllDue() && sale.customerName && !party ? `<button type="button" data-complete-all data-onclick="wholesaleSales.completeAllDue('${Helpers.escapeJsAttr(sale.customerName)}')" style="margin-top: 8px; padding: 6px 12px; background: #fff; color: #15803d; border: 1px solid #15803d; border-radius: 4px; cursor: pointer; font-weight: 500;">${L('ui.wholesale.complete_all_due_party', { party: sale.customerName })}</button>` : ''}
                         </div>
                     </div>

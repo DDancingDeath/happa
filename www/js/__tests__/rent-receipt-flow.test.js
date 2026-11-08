@@ -176,3 +176,88 @@ test('declining the split saves nothing', async () => {
     await done;
     expect(store.recordPayment).not.toHaveBeenCalled();
 });
+
+describe('the Record payment form (#157 UX redesign)', () => {
+    const PREV = '2000-01';
+    const old = { ...CHARGE, id: `L1_${PREV}`, month: PREV, rent: 5000, amount: 5000, paid: 1000 };
+    const body = () => document.getElementById('rentDialogBody');
+    const chips = () => [...body().querySelectorAll('.rent-chip')];
+
+    test('keeps the field ids; chips fill the oldest month or everything due; the mode buttons fill the hidden mode', async () => {
+        store.snapshot.mockReturnValue({ ...SNAP, charges: [old, CHARGE] });
+        UIManager.showModal.mockResolvedValue(true);
+        store.recordPayment.mockResolvedValueOnce({ amount: 4000, paid: 5000, open: false, receipt: RECEIPT })
+            .mockResolvedValueOnce({ amount: 5000, paid: 5000, open: false, receipt: RECEIPT });
+        const done = _test.pay('L1');
+        await flush();
+        ['rentPayCharge', 'rentPayAmount', 'rentPayMode', 'rentPayRef', 'rentPayDate'].forEach(id => expect(document.getElementById(id)).not.toBeNull());
+        expect(body().querySelector('h3').textContent).toBe('Record payment · Ram Kumar');
+        expect(document.getElementById('rentPayAmount').value).toBe('4000');
+        expect(chips().map(c => c.textContent)).toEqual(['Oldest month ₹4,000', 'All due ₹9,000']);
+        expect(document.getElementById('rentPayAdv').hidden).toBe(true);
+        RentalsModule.api.fillAmount(chips()[1]);
+        expect(document.getElementById('rentPayAmount').value).toBe('9000');
+        expect(document.getElementById('rentPayAdv').hidden).toBe(false);
+        RentalsModule.api.payMode(body().querySelector('[data-mode="upi"]'));
+        expect(document.getElementById('rentPayMode').value).toBe('upi');
+        expect(body().querySelector('[data-mode="upi"]').getAttribute('aria-pressed')).toBe('true');
+        expect(body().querySelector('[data-mode="cash"]').getAttribute('aria-pressed')).toBe('false');
+        RentalsModule.api.dialogClose(true);
+        await done;
+        await flush();
+        // All due goes through the same oldest-first split and confirm (RENT-5).
+        expect(UIManager.showModal.mock.calls[0][0]).toContain('Jan 2000: ₹4,000');
+        expect(store.recordPayment.mock.calls.map(c => [c[0], c[1].amount, c[1].mode])).toEqual([[old.id, 4000, 'upi'], [CHARGE.id, 5000, 'upi']]);
+    });
+
+    test('a refused amount keeps the form open with the message under the amount, and saves nothing', async () => {
+        const done = _test.pay('L1');
+        await flush();
+        document.getElementById('rentPayAmount').value = '0';
+        document.getElementById('rentPayRef').value = 'UPI-1';
+        RentalsModule.api.dialogClose(true);
+        await flush();
+        expect(store.recordPayment).not.toHaveBeenCalled();
+        expect(UIManager.showToast).toHaveBeenCalledWith('Enter a valid amount', 'error');
+        const err = document.getElementById('rentPayErr');
+        expect(err.hidden).toBe(false);
+        expect(err.textContent).toBe('Enter a valid amount');
+        expect(document.getElementById('rentPayRef').value).toBe('UPI-1');
+        expect(body().querySelector('details.rent-more').open).toBe(true);
+        document.getElementById('rentPayAmount').value = '2000';
+        RentalsModule.api.payHint();
+        expect(err.hidden).toBe(true);
+        RentalsModule.api.dialogClose(true);
+        await done;
+        await flush();
+        expect(store.recordPayment).toHaveBeenCalledWith(CHARGE.id, expect.objectContaining({ amount: 2000, ref: 'UPI-1' }), expect.anything());
+    });
+
+    test('a month charged while the form was open: an advance on the old latest month is refused, nothing saved (RENT-16)', async () => {
+        store.snapshot.mockReturnValue({ ...SNAP, charges: [old, CHARGE] });
+        const done = _test.pay('L1');
+        await flush();
+        store.snapshot.mockReturnValue({ ...SNAP, charges: [old, CHARGE], leases: [{ ...SNAP.leases[0], chargedThrough: '2999-12' }] });
+        document.getElementById('rentPayAmount').value = '12000';
+        RentalsModule.api.dialogClose(true);
+        await flush();
+        expect(UIManager.showModal).not.toHaveBeenCalled();
+        expect(store.recordPayment).not.toHaveBeenCalled();
+        expect(document.getElementById('rentPayErr').hidden).toBe(false);
+        RentalsModule.api.dialogClose(false);
+        await done;
+    });
+
+    test('the Oldest month chip also chooses the oldest month when another month was picked under More', async () => {
+        store.snapshot.mockReturnValue({ ...SNAP, charges: [old, CHARGE] });
+        const done = _test.pay('L1');
+        await flush();
+        document.getElementById('rentPayCharge').value = CHARGE.id;
+        RentalsModule.api.fillAmount(chips()[0]);
+        expect(document.getElementById('rentPayCharge').value).toBe(old.id);
+        RentalsModule.api.dialogClose(true);
+        await done;
+        await flush();
+        expect(store.recordPayment.mock.calls.map(c => [c[0], c[1].amount])).toEqual([[old.id, 4000]]);
+    });
+});

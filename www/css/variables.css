@@ -1,103 +1,272 @@
-/* Design tokens. Colours that carry text keep WCAG AA (4.5:1) on --card-bg and --light-bg in both themes. */
-:root {
-  --primary-color: #4f46e5;
-  --primary-dark: #4338ca;
-  --primary-light: #818cf8;
-  --primary-soft: #eef2ff;
-  --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-  --focus-ring: 0 0 0 3px rgba(79, 70, 229, 0.25);
+/* Design tokens ("Bahi", docs: redesign DIRECTION.md §3). Components read only layers 1 and 2:
+   1. semantic colours, elevation and focus, set by every theme (Modern Minimal is the default);
+   2. component tokens (shape, materials, type roles) derived from layer 1.
+   Text colours keep WCAG AA (4.5:1) on --surface, --bg and --surface-2 in both modes. */
+:root,
+[data-theme] {
+  color-scheme: light;
+  --bg: #f7f7f9;
+  --surface: #ffffff;
+  --surface-2: #f1f1f4;
+  --surface-3: #e8e8ed;
+  --line: #e6e6eb;
+  --line-strong: #d4d4dc;
+  --ink: #16161d;
+  --ink-2: #4a4a56;
+  --ink-3: #686875;
+  --ink-placeholder: #737380;
+  --scrim: rgba(16, 16, 24, 0.32);
 
-  --success-color: #047857;
-  --success-light: #d1fae5;
-  --success-dark: #065f46;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  /* Deep fill for hero cards: their translucent white text keeps AA in both modes */
+  --accent-strong: #4338ca;
+  --accent-text: #4338ca;
+  --accent-soft: #eef0ff;
+  --accent-line: #c9cdfb;
+  --on-accent: #ffffff;
 
-  --danger-color: #b91c1c;
-  --danger-light: #fee2e2;
-  --danger-dark: #991b1b;
+  --mode-sale: #047857;
+  --mode-sale-soft: #e7f6ef;
+  --on-mode-sale: #ffffff;
+  --mode-wholesale: #6d28d9;
+  --mode-wholesale-soft: #f3effe;
+  --mode-rentals: #0e7490;
+  --mode-rentals-soft: #e5f5f8;
 
-  --warning-color: #f59e0b;
-  --warning-light: #fef3c7;
-  --warning-dark: #92400e;
-
-  --info-color: #2563eb;
-  --info-light: #dbeafe;
-  --info-dark: #1d4ed8;
-
-  --purchase-color: #4f46e5;
-  --purchase-light: #eef2ff;
-  --purchase-dark: #4338ca;
-
-  --sale-color: #047857;
-  --sale-light: #ecfdf5;
-  --sale-dark: #065f46;
-
-  --dark-color: #1e293b;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #475569;
-
-  --light-bg: #f4f6fa;
-  --white: #ffffff;
-  --card-bg: #ffffff;
-  --input-bg: #ffffff;
-  --seg-bg: #e9edf3;
-  --seg-active: #ffffff;
-
-  --border-color: #e2e8f0;
-  --border-light: #f1f5f9;
-  --border-strong: #cbd5e1;
-
-  --surface-muted: #f8fafc;
-  --btn-primary: #4f46e5;
-  --btn-success: #047857;
-  --btn-danger: #b91c1c;
-  --wholesale-color: #7c3aed;
-  --wholesale-soft: #f5f3ff;
-  --on-primary-soft: #3730a3;
-  --primary-border: #c7d2fe;
-  --success-soft: #ecfdf5;
-  --on-success-soft: #065f46;
-  --success-border: #a7f3d0;
-  --warning-soft: #fffbeb;
-  --on-warning-soft: #92400e;
-  --warning-border: #fcd34d;
+  --positive: #047857;
+  --positive-soft: #e7f6ef;
+  --positive-line: #a8dcc4;
+  --negative: #be123c;
+  --negative-soft: #fff0f2;
+  --negative-line: #f5b5c2;
+  --negative-fill: #be123c;
+  --warning: #b45309;
+  --warning-soft: #fff6e5;
+  --warning-line: #f3d08a;
+  --warning-dot: #f59e0b;
+  --info: #0369a1;
+  --info-soft: #eaf5fc;
+  --info-line: #b3d9ef;
   --caution-soft: #ffedd5;
   --on-caution-soft: #9a3412;
-  --danger-soft: #fef2f2;
-  --on-danger-soft: #991b1b;
-  --danger-border: #fca5a5;
-  --info-soft: #eff6ff;
-  --on-info-soft: #1e40af;
-  --info-border: #bfdbfe;
 
-  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
-  --shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 10px 20px -4px rgba(15, 23, 42, 0.08);
-  --shadow-lg: 0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.08);
-  --shadow-xl: 0 20px 40px -8px rgba(15, 23, 42, 0.22);
+  --e1: 0 1px 2px rgba(16, 16, 29, 0.06);
+  --e2: 0 1px 2px rgba(16, 16, 29, 0.06), 0 6px 16px -4px rgba(16, 16, 29, 0.12);
+  --e3: 0 2px 6px rgba(16, 16, 29, 0.08), 0 24px 48px -12px rgba(16, 16, 29, 0.24);
+  --highlight: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  --focus: 0 0 0 3px rgba(79, 70, 229, 0.24);
 
-  --transition-fast: 0.12s ease;
-  --transition: 0.18s ease;
-  --transition-slow: 0.28s ease;
+  /* System faces only (the CSP has no font origin); Devanagari faces before the generic family */
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Noto Sans", "Helvetica Neue", Arial, "Noto Sans Devanagari", "Nirmala UI", sans-serif;
+  --font-display: var(--font-ui);
+  --font-num: var(--font-ui);
+  --font-hero: var(--font-display);
+  --w-regular: 400;
+  --w-strong: 600;
+  --w-display: 600;
+  --tracking-display: -0.02em;
 
-  --radius-sm: 6px;
-  --radius: 10px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-full: 9999px;
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-control: 8px;
+  --r-panel: 12px;
+  --r-chip: 999px;
+  --r-sheet: 16px;
+  --r-full: 999px;
+  --rule-style: solid;
+}
 
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 12px;
-  --space-lg: 16px;
-  --space-xl: 20px;
-  --space-2xl: 24px;
-  --space-3xl: 32px;
+[data-mode="dark"],
+body.dark-mode {
+  color-scheme: dark;
+  --bg: #0d0d10;
+  --surface: #15151a;
+  --surface-2: #1c1c22;
+  --surface-3: #24242b;
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.12);
+  --ink: #ececf1;
+  --ink-2: #a8a8b5;
+  --ink-3: #8c8c99;
+  --ink-placeholder: #80808d;
+  --scrim: rgba(0, 0, 0, 0.56);
 
-  /* System fonts only (the CSP allows no font origin): Latin as before, then Devanagari fonts for Hindi glyphs */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans Devanagari', 'Nirmala UI', system-ui, sans-serif;
+  --accent: #5b54e8;
+  --accent-hover: #6a64ee;
+  --accent-text: #a5a6fb;
+  --accent-soft: rgba(124, 120, 248, 0.14);
+  --accent-line: rgba(124, 120, 248, 0.36);
+
+  --mode-sale: #057a55;
+  --mode-sale-soft: rgba(74, 222, 155, 0.12);
+  --mode-wholesale: #7039df;
+  --mode-wholesale-soft: rgba(196, 176, 253, 0.12);
+  --mode-rentals-soft: rgba(92, 200, 222, 0.12);
+
+  --positive: #4ade9b;
+  --positive-soft: rgba(74, 222, 155, 0.12);
+  --positive-line: rgba(74, 222, 155, 0.36);
+  --negative: #fb7185;
+  --negative-soft: rgba(251, 113, 133, 0.12);
+  --negative-line: rgba(251, 113, 133, 0.36);
+  --warning: #fbbf24;
+  --warning-soft: rgba(251, 191, 36, 0.12);
+  --warning-line: rgba(251, 191, 36, 0.36);
+  --info: #7dd3fc;
+  --info-soft: rgba(125, 211, 252, 0.12);
+  --info-line: rgba(125, 211, 252, 0.36);
+  --caution-soft: rgba(251, 146, 60, 0.14);
+  --on-caution-soft: #fdba74;
+
+  --e1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --e2: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 8px 24px -6px rgba(0, 0, 0, 0.6);
+  --e3: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 24px 56px -12px rgba(0, 0, 0, 0.75);
+  --highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --focus: 0 0 0 3px rgba(124, 120, 248, 0.4);
+}
+
+/* Every token defined with var() (layer 2, the old names): re-declared on each themed element, so it follows that element's layer-1 values */
+:root,
+[data-theme],
+[data-mode],
+body.dark-mode {
+  --page-bg: var(--bg);
+  --mode-purchase: var(--accent);
+  --mode-purchase-soft: var(--accent-soft);
+  --panel-bg: var(--surface);
+  --panel-border: var(--line);
+  --panel-shadow: none;
+  --input-bg: var(--surface);
+  --input-border: var(--line-strong);
+  --bar-bg: var(--surface);
+  --bar-border: var(--line);
+  --seg-track: var(--surface-2);
+  --seg-on: var(--surface);
+  --toast-bg: #1d1d24;
+  --toast-ink: #f4f4f7;
+  --btn-primary-bg: var(--accent);
+  --btn-primary-ink: var(--on-accent);
+  --btn-primary-shadow: var(--highlight), var(--e1);
+  --btn-sale-bg: var(--mode-sale);
+  --btn-sale-ink: var(--on-mode-sale);
+  --btn-danger-bg: var(--negative-fill);
+
+  /* Old names (32 stylesheets and script-written styles use them); new code uses the tokens above */
+  --primary-color: var(--accent-text);
+  --primary-dark: var(--accent-hover);
+  --primary-light: var(--accent-text);
+  --primary-soft: var(--accent-soft);
+  --primary-gradient: var(--accent-strong);
+  --primary-border: var(--accent-line);
+  --on-primary-soft: var(--accent-text);
+  --focus-ring: var(--focus);
+  --success-color: var(--positive);
+  --success-light: var(--positive-soft);
+  --success-dark: var(--positive);
+  --success-soft: var(--positive-soft);
+  --on-success-soft: var(--positive);
+  --success-border: var(--positive-line);
+  --danger-color: var(--negative);
+  --danger-light: var(--negative-soft);
+  --danger-dark: var(--negative);
+  --danger-soft: var(--negative-soft);
+  --on-danger-soft: var(--negative);
+  --danger-border: var(--negative-line);
+  --warning-color: var(--warning-dot);
+  --warning-light: var(--warning-soft);
+  --warning-dark: var(--warning);
+  --on-warning-soft: var(--warning);
+  --warning-border: var(--warning-line);
+  --info-color: var(--info);
+  --info-light: var(--info-soft);
+  --info-dark: var(--info);
+  --on-info-soft: var(--info);
+  --info-border: var(--info-line);
+  --purchase-color: var(--accent-text);
+  --purchase-light: var(--mode-purchase-soft);
+  --purchase-dark: var(--accent-text);
+  --sale-color: var(--positive);
+  --sale-light: var(--mode-sale-soft);
+  --sale-dark: var(--positive);
+  --wholesale-color: var(--mode-wholesale);
+  --wholesale-soft: var(--mode-wholesale-soft);
+  --dark-color: var(--ink);
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-2);
+  --text-muted: var(--ink-3);
+  --light-bg: var(--bg);
+  --white: var(--surface);
+  --card-bg: var(--panel-bg);
+  --seg-bg: var(--seg-track);
+  --seg-active: var(--seg-on);
+  --border-color: var(--line);
+  --border-light: var(--line);
+  --border-strong: var(--line-strong);
+  --surface-muted: var(--surface-2);
+  --btn-primary: var(--btn-primary-bg);
+  --btn-success: var(--btn-sale-bg);
+  --btn-danger: var(--btn-danger-bg);
+  --shadow-xs: var(--e1);
+  --shadow-sm: var(--e1);
+  --shadow: var(--e1);
+  --shadow-md: var(--e2);
+  --shadow-lg: var(--e3);
+  --shadow-xl: var(--e3);
+  --font-sans: var(--font-ui);
+}
+
+[data-mode="dark"],
+body.dark-mode {
+  --seg-on: var(--surface-3);
+  --toast-bg: #2a2a32;
+}
+
+/* Layout, type scale, density and motion: the same in every theme */
+:root {
+  --w-label: 600;
+  --fs-caption: 12px;
+  --fs-sm: 13px;
+  --fs-body: 15px;
+  --fs-lead: 17px;
+  --fs-title: 20px;
+  --fs-display: 28px;
+  --fs-hero: 34px;
+  --lh-body: 1.45;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --gutter: 16px;
+  --section-gap: 24px;
+  --row-h: 56px;
+  --control-h: 44px;
+  --control-h-sm: 32px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 280ms;
+
+  --transition-fast: var(--dur-1) var(--ease);
+  --transition: var(--dur-2) var(--ease);
+  --transition-slow: var(--dur-3) var(--ease);
+  --radius-sm: var(--r-sm);
+  --radius: var(--r-control);
+  --radius-md: var(--r-panel);
+  --radius-lg: var(--r-panel);
+  --radius-xl: var(--r-sheet);
+  --radius-full: var(--r-full);
+  --space-xs: var(--sp-1);
+  --space-sm: var(--sp-2);
+  --space-md: var(--sp-3);
+  --space-lg: var(--sp-4);
+  --space-xl: var(--sp-5);
+  --space-2xl: var(--sp-6);
+  --space-3xl: var(--sp-8);
   --text-xs: 12px;
   --text-sm: 13px;
   --text-base: 14px;
@@ -107,82 +276,17 @@
   --text-2xl: 24px;
 }
 
+/* Devanagari: larger type, more leading, regular labels (Nirmala UI / Noto Sans Devanagari have no 500 or 600) */
+html[lang="hi"] {
+  --w-label: 400;
+  --fs-sm: 14px;
+  --fs-body: 16px;
+  --lh-body: 1.6;
+}
+
 body.dark-mode {
-  --primary-color: #818cf8;
-  --primary-dark: #667eea;
-  --primary-light: #a5b4fc;
-  --primary-soft: rgba(129, 140, 248, 0.16);
-  --focus-ring: 0 0 0 3px rgba(129, 140, 248, 0.4);
-
-  --success-color: #34d399;
-  --success-light: #064e3b;
-  --success-dark: #10b981;
-
-  --danger-color: #f87171;
-  --danger-light: #7f1d1d;
-  --danger-dark: #ef4444;
-
-  --warning-color: #fbbf24;
-  --warning-light: #78350f;
-  --warning-dark: #f59e0b;
-
-  --info-color: #60a5fa;
-  --info-light: #1e3a5f;
-  --info-dark: #3b82f6;
-
-  --purchase-color: #818cf8;
-  --purchase-light: rgba(129, 140, 248, 0.16);
-  --purchase-dark: #a5b4fc;
-
-  --sale-color: #34d399;
-  --sale-light: rgba(52, 211, 153, 0.14);
-  --sale-dark: #6ee7b7;
-  --wholesale-soft: rgba(167, 139, 250, 0.16);
-
-  --dark-color: #f1f5f9;
-  --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
-
-  --light-bg: #0f172a;
-  --white: #1e293b;
-  --card-bg: #1e293b;
-  --input-bg: #0f172a;
-  --seg-bg: #172033;
-  --seg-active: #334155;
-
-  --border-color: #334155;
-  --border-light: #1e293b;
-  --border-strong: #475569;
-
-  --surface-muted: #172033;
-  --on-primary-soft: #c7d2fe;
-  --primary-border: rgba(129, 140, 248, 0.4);
-  --success-soft: rgba(52, 211, 153, 0.14);
-  --on-success-soft: #6ee7b7;
-  --success-border: rgba(52, 211, 153, 0.4);
-  --warning-soft: rgba(251, 191, 36, 0.14);
-  --on-warning-soft: #fcd34d;
-  --warning-border: rgba(251, 191, 36, 0.4);
-  --caution-soft: rgba(251, 146, 60, 0.16);
-  --on-caution-soft: #fdba74;
-  --danger-soft: rgba(248, 113, 113, 0.15);
-  --on-danger-soft: #fca5a5;
-  --danger-border: rgba(248, 113, 113, 0.4);
-  --info-soft: rgba(96, 165, 250, 0.14);
-  --on-info-soft: #93c5fd;
-  --info-border: rgba(96, 165, 250, 0.4);
-
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.45);
-  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.55);
-
   background: var(--light-bg);
   color: var(--text-primary);
-  color-scheme: dark;
 }
 
 body.dark-mode .item-card,
@@ -207,7 +311,7 @@ body.dark-mode textarea {
   border-color: var(--border-strong);
 }
 
-/* White text on the shared dark-indigo gradient (var(--white) is dark in this theme) */
+/* White text on the accent hero (var(--white) is dark in this theme) */
 body.dark-mode .ins-hero,
 body.dark-mode .ins-hero .ins-cmp {
   color: #fff;
@@ -484,67 +588,6 @@ input[type="number"],
 
 .modern-card:hover {
   box-shadow: var(--shadow-md);
-}
-
-/* Modern Button Base */
-.modern-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  padding: var(--space-md) var(--space-lg);
-  border-radius: var(--radius);
-  font-size: 14px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: all var(--transition);
-  text-decoration: none;
-}
-
-.modern-btn:active {
-  transform: scale(0.98);
-}
-
-.modern-btn-primary {
-  background: var(--primary-gradient);
-  color: white;
-  box-shadow: var(--shadow-sm);
-}
-
-.modern-btn-primary:hover {
-  box-shadow: var(--shadow);
-}
-
-.modern-btn-success {
-  background: linear-gradient(135deg, var(--success-color), var(--success-dark));
-  color: white;
-  box-shadow: var(--shadow-sm);
-}
-
-.modern-btn-danger {
-  background: linear-gradient(135deg, var(--danger-color), var(--danger-dark));
-  color: white;
-  box-shadow: var(--shadow-sm);
-}
-
-.modern-btn-outline {
-  background: transparent;
-  color: var(--primary-color);
-  border: 2px solid var(--primary-color);
-}
-
-.modern-btn-outline:hover {
-  background: var(--primary-color);
-  color: white;
-}
-
-/* Gradient Text Utility */
-.gradient-text {
-  background: var(--primary-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 /* Status Badge Utilities */

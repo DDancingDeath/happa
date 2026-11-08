@@ -5,7 +5,7 @@
  * (so the probe really sees them) and only after the app-shown timing mark.
  */
 const { test, expect, login } = require('./support/app');
-const { addProperty, openProperty } = require('./support/rentals');
+const { addProperty, openProperty, tenancyMore } = require('./support/rentals');
 
 const RENT_RE = /(?<![a-z])rent_(properties|units|tenants|leases|charges)/;
 const RENTALS_FILE = /\/js\/rentals\/|\/templates\/rentals\.html|\/css\/rentals\.css/;
@@ -17,6 +17,9 @@ test('start-up loads no rentals code and reads no rent_* data; opening Rentals d
         const body = r.postData() || '';
         if (RENT_RE.test(decodeURIComponent(r.url())) || RENT_RE.test(safeDecode(body))) seen.rentRequests.push(r.url());
     });
+    // Start-up alone fills about 250 resource-timing entries, Chrome's default buffer:
+    // without room, the Rentals file read below would have no entry.
+    await page.addInitScript(() => performance.setResourceTimingBufferSize(5000));
     // An old saved choice must not open Rentals: the app always starts on Shop.
     await page.addInitScript(() => localStorage.setItem('happa.business', 'rentals'));
     await login(page, 'owner');
@@ -77,6 +80,7 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     // Units are grouped by property (optgroup), so the option is just the unit.
     await page.selectOption('#rentLeaseUnit', { label: `Shop G${stamp}` });
     await expect(page.locator('#rentTDate')).toHaveValue(/\d{4}-\d{2}-\d{2}/);
+    await tenancyMore(page);
     await page.selectOption('#rentTElec', 'meter');
     await page.click('#rentDialog .rent-btn-primary');
     await expect(row).toContainText(`G${stamp}`);

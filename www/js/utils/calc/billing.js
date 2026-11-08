@@ -110,6 +110,29 @@ export function computeLine({ rate, weights, qty }) {
 }
 
 /**
+ * BF-PENDING: the line still in the entry boxes when Save / Print is pressed. The
+ * item picker always has an item and the rate box is filled from it (and both stay
+ * after "Add to Bill" on a purchase or wholesale bill), so only a weight typed or a
+ * packet chip starts a line.
+ * @param {{itemChosen: boolean, rateText?: (string|number|null), qtyText?: (string|number|null), chips?: number[]}} entry
+ * @returns {{state: ('empty'|'incomplete'|'complete'), missing: (null|'item'|'rate'|'qty'), rate: number, qty: number, total: number}}
+ */
+export function pendingLine({ itemChosen, rateText, qtyText, chips = [] }) {
+    const typed = (/** @type {*} */ v) => v !== null && v !== undefined && String(v).trim() !== '';
+    const weights = Array.isArray(chips) ? chips : [];
+    const qtyTyped = typed(qtyText);
+    if (!qtyTyped && weights.length === 0) return { state: 'empty', missing: null, rate: 0, qty: 0, total: 0 };
+    const rate = typed(rateText) ? parseFloat(String(rateText)) : NaN;
+    const qty = qtyTyped ? parseFloat(String(qtyText)) : NaN;
+    const missing = !itemChosen ? 'item'
+        : !(rate > 0) ? 'rate'
+            : (qtyTyped && !(qty > 0)) ? 'qty' : null;
+    if (missing) return { state: 'incomplete', missing, rate: 0, qty: 0, total: 0 };
+    const line = computeLine({ rate, weights: qtyTyped ? [...weights, qty] : [...weights] });
+    return { state: 'complete', missing: null, rate, qty: line.qty, total: line.total };
+}
+
+/**
  * BF-KG: the packet weights to put back when a retail line is edited: its own
  * weights, else its kg split evenly over its packets, else its kg as one packet.
  * @param {{qty: number, packets?: number, weights?: number[]}} line
@@ -611,6 +634,7 @@ export function checkAllocation(dues, parts, amount, tolerance = 0.01) {
 export const BILLING_SPEC = Object.freeze({
     sumWeights: 'BF-KG',
     computeLine: 'BF-KG, BF-LINE',
+    pendingLine: 'BF-PENDING',
     weightsForEdit: 'BF-KG',
     draftLineSum: 'BF-TOTAL',
     computePurchaseTotals: 'BF-TOTAL, BF-LAB, BF-PAYABLE',

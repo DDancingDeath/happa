@@ -18,7 +18,7 @@ permission ids keep `shop`.
 
 | Stored value | Shown as | Configurable | Notes |
 |---|---|---|---|
-| `owner` | Owner / मालिक | no | Always sees and does everything; no edit window. |
+| `owner` | Owner / मालिक | no | Always sees and does everything; no edit window. Every change still keeps its record, enforced by the rules (OD-14, see "The owner's own changes"). |
 | `manager` | Manager / मैनेजर | yes | The spec's "admin". The name stays `manager`. |
 | `staff` | Member / सदस्य | yes | The stored value stays `staff` (rules, profiles); the UI never says "staff". |
 
@@ -177,7 +177,7 @@ function withinBillWindowFor(usersCol, role) {
 }
 canFullyEditBill = (manager || creator) && withinBillWindowFor && createdAt unchanged
 voidOk           = owner || (creator && withinBillWindowFor)   // + the void shape (#75)
-canDeleteBill    = owner
+canDeleteBill    = owner && voided   // OD-14: void first, for everyone
 ```
 
 - The clock is the bill's **server** `createdAt` (from #226 / #87): `saveBill()` writes
@@ -191,7 +191,8 @@ canDeleteBill    = owner
   deleted only by the owner. Backfilling a legacy `timestamp` (still allowed for ordering) does not
   unlock them, and nobody but the owner can add a `createdAt`.
 - Payment bookkeeping (`bookkeepingOnly` + `paymentEditOk`) is not time-limited.
-- Money on bills (#65), for everyone but the owner:
+- Money on bills (#65), for everyone but the owner (since OD-14 the payment, write-off and clearing
+  checks below hold for the owner too; only the split check on creates and full edits does not):
   - **Creates and full edits** (`changedMoneyOk`): payment amounts (`payment.cash|online|due|writtenOff|total`,
     `cashPayment`, `onlinePayment`, `dueAmount`) are numbers ≥ 0 in whole paise (no NaN or Infinity),
     totals are finite numbers, and cash + online + written off + due is at most the bill total + ₹1
@@ -235,11 +236,12 @@ document is billed once per request; limit 10 docs per single write, 20 per batc
 | Bill create / payment / clear | profile, `settings/app` (clientVersion gate) | none |
 | Non-owner full bill edit | profile, `settings/app` (+ its edit record, created in the same batch, #121) | the edit record write: 1 more write, rules check it with `getAfter` on the bill (same doc) |
 | Non-owner bill void | profile, `settings/app` | none (one update, like an edit) |
-| Bill delete (owner only since #75) | profile | none |
-| Owner writes | profile | none (owner short-circuits) |
+| Bill delete (owner only since #75, voided bills only since OD-14) | profile | none (`voided` is on the bill being deleted) |
+| Owner bill writes | profile, `settings/app` (clientVersion gate) | the same record checks as everyone (OD-14), without the edit-window lookup |
+| Owner writes elsewhere | profile | none (owner short-circuits) |
 | Reads | profile (+ `settings/app` for withdrawals) | see "Server-side read rules" |
 
-The edit-window branch is only evaluated after `isOwnerIn` fails, so the owner never pays for it.
+The edit-window lookup (`withinBillWindowFor`) is skipped for the owner, so the owner never pays for it.
 
 ## Voided expenses (#99)
 
@@ -294,8 +296,10 @@ greyed with a "Voided" chip and the reason, and its details show who voided it, 
 - **Final.** A voided bill never changes again, for anyone, the owner included: no un-void, edit,
   payment or second void (rules: the first check of `billUpdateAs`; the app's edit and payment
   transactions refuse it too). A mistaken void is fixed by entering the bill again.
-- **Delete for good: owner only.** Rules allow only the owner to delete a bill (Clear Data on `dev_`
-  data, repairs); on the live data Admin › Clear Data offers only drafts, auto-saves and item
+- **Delete for good: owner only, voided bills only.** Rules allow only the owner to delete a bill, and
+  only once it is voided (OD-14, owner decision 8 Nov 2026), so a bill with payments (which can't be
+  voided) is never deleted. Admin › Clear Data never offers bills, not even on `dev_` data ("Bills can't be
+  deleted here. Void a wrong bill…"); on the live data it offers only drafts, auto-saves and item
   frequency (an allow-list, `LIVE_CLEARABLE_COLLECTIONS`: a new collection is never offered),
   never bills, cash, expenses, stock adjustments, withdrawals, items or users. It deletes
   nothing until its JSON backup download (or share) was started and the owner ticked
@@ -327,14 +331,35 @@ the bill lists.
   logged fields, at least one of them really changed, every changed one is there, and each `before`
   / `after` equals the bill's stored value before and after the write (the item list compared whole,
   line for line; a record with no real change, a made-up "before" or a hidden date change is
-  refused). Never updated; deleted only by the owner once the bill is gone. A non-owner change to a
-  logged field without its record is refused, so every such edit has one; the owner's repairs may
-  skip it (but need clientVersion ≥ 4). A full edit never touches `payments` / `paidAt` (those
+  refused). Never updated; deleted only by the owner once the bill is gone. A change to a
+  logged field without its record is refused, the owner's too (OD-14), so every such edit has one. A full edit never touches `payments` / `paidAt` (those
   change only as bookkeeping, one appended entry at a time), so nobody can empty `payments[]` to get
   round the void check. Approved users read the records (same as bills). `by` is the verified
   editor; `byName` is the display name the phone sends, like a bill's `createdByName`.
 - A retried new bill whose first, unconfirmed save already reached the server and that was changed
   since is recorded as an edit too, with the reason "Changed before the first save was confirmed".
+
+**The owner's own changes (OD-13, OD-14; owner decisions 8 Nov 2026).** The rules hold the owner to
+the same records as everyone, only without the edit window: a total, the items, a party, a date or a
+due changes only with its edit record; a due goes down only by a recorded payment (a `payments[]`
+entry), an explicit **Write off as bad debt** (a write-off entry with a reason: Money counts it as a bad
+debt, M5, and it stays on the bill and in the customer's statement) or a recorded bill edit; `cleared` /
+`openDue` follow the due (`clearFieldsOk`); `payments[]` is append-only; a bill is deleted only once
+voided. The owner may still change the notes, a bill's creator (`userId`) and `createdAt` without a
+record, and the owner's full edits skip the split check (old bills keep legacy money shapes) but never
+change the legacy `due`, `amountPaid` or `openingBalance`. Each app path writes its audit entry in
+the same transaction or batch as the change (D-3): edit (`EDIT_BILL` / `EDIT_SALE`), void, delete,
+payment, write-off (`CLEAR_DUE`, id `wo_<entry id>`) and Complete all due. A refused edit says so
+plainly ("Not saved: the server refused this change…", or "Your phone's time is wrong…" when the
+audit entry's phone time is over 10 minutes ahead), never the raw error. Every app version that
+can edit bills (`clientVersion` ≥ 4) already writes these records, so no app version needed a bump.
+
+**Write off as bad debt** (Outstanding and Wholesale › Outstanding, on bills to receive): asks for a
+reason and shows the amount ("Write off ₹495 as bad debt": it will not be received, stays on the bill and
+the customer's history, and Money counts it as a loss). The same write-off is the third choice of **Mark
+as cleared** ("Write off as bad debt — will not be received"; on purchases "Write off — will not be paid").
+Everyone who records payments may do it (it is bookkeeping, as before); a write-off by anyone is in the
+audit log and the anomaly scan's write-off rule.
 - Old apps (#75): a void, an edit and every write of a figure built from bills (stock checkpoint
   and its rebuild lease, `monthStats`, `rateStats`) need `clientVersion` ≥ 4 (`voidAwareBill`); the
   figures also carry `writtenAt` = the server time of that write (`voidAwareWriter`), so a merge

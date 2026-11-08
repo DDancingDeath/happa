@@ -158,6 +158,12 @@ In order:
   `www/styles.css` (cascade order; a new stylesheet is added there). Commit the
   rebuilt `app.css` with your change: `check:sw` and `load-perf.test.js` fail
   while it is out of date. The joined files are not precached on their own.
+- **Colours come from design tokens** (`www/css/variables.css`: semantic `--bg`, `--surface`,
+  `--ink`, `--accent`, `--positive`…, component tokens, and the old names such as
+  `--primary-color` as aliases), so every theme and dark mode restyle them. A hard-coded colour
+  (hex, `rgb()`, a colour name) in `www/css`, a template's `style=` / `<style>` or `www/js` fails
+  `tests/ci/colour-guard.test.js` (per-file baseline `tests/colour-baseline.json`, which may only
+  go down: `COLOUR_BASELINE=lower npx jest colour-guard`). Print and receipt output is exempt.
 - **Date strings**: bills mix ISO-8601 and `DD/MM/YYYY`. Use
   `www/js/utils/dates.js` (`parseAnyBillDate`, `todayLocalISO`,
   `parseLocalDate`) or `Helpers.parseDate()` — never raw
@@ -241,7 +247,9 @@ In order:
   answer within 3 s it is saved like offline (`saveBill`, `BILL_CREATE_WAIT_MS`), and later first saves
   skip the transaction until the server is heard again (at most 2 minutes).
   A write the app retries itself keeps a client-made id (bills: `pendingBill`,
-  due payments: the payment entry `id`).
+  due payments: the payment entry `id`, owned by `services/payment-intents.js` per bill, amounts
+  and action until the payment is known to be recorded, never by an input that a redraw replaces;
+  a payment whose answer is lost is looked up on the server, never reported as "try again", D-1).
 - **Saved / offline (#70, #153)**: never show "Saved" for a write this phone refused.
   Failure toasts use `saveFailedText()` and localStorage writes `safeSetItem()`
   (`utils/storage-full.js`: "Save failed — storage full"); a new bill stored while
@@ -706,7 +714,7 @@ mirrors this in `utils/role-access.js` (`canEditBillWith` / `canVoidBillWith`).
 
 **Void, never delete; every edit keeps a record (#75, #121).** A bill is voided
 (`voided`, `voidedAt`, `voidedBy`, `voidReason`; `FirebaseService.voidBill`), not
-deleted: only the owner deletes bills (the app offers it only for a voided bill).
+deleted: only the owner deletes bills, and the rules allow it only for a voided bill (OD-14).
 Whether a bill counts anywhere is one predicate, `isActiveBill()` in
 `utils/money.js`: FirebaseService keeps voided bills out of AppState's bill
 lists (History gets them from `FirebaseService.voidedBills()`), and every
@@ -715,9 +723,18 @@ calculation that reads bills checks it too (`activeBills()` / `activityBills()`,
 while the bill has later payments; a voided bill never changes again. Every
 change to a bill's items, money or party writes `<bills>/{id}/edits/{n}`
 (before/after of the changed fields, the editor, a required reason) in the same
-transaction (`updateBillChecked(collKey, record, { reason })`); records are read
+transaction (`updateBillChecked(collKey, record, { reason, audit })`); records are read
 only from the bill details (`loadBillEdits`). Details: docs/role-permissions.md
 "Void and edit records".
+
+**The owner keeps records too (OD-13, OD-14).** The rules hold the owner to the
+same trail as everyone (no edit window): a total, items or due change only with
+an edit record, a `payments[]` entry (payment, or a write-off = bad debt, M5) or a
+void; never zero a due by setting `cleared` / `openDue` / `payment.due` alone. A
+new money path on bills must write one of these, and its audit entry in the same
+transaction or batch (`AuditService.entry` + `setAuditEntry` in repos, or the
+`audit` that `updateBill(s)InTransaction` takes), not a separate `AuditService.log`
+after it (D-3).
 
 **Expenses are voided too (#99).** No edit or delete in place: `FirebaseService.voidExpense`
 (reason required; a personal expense leaves `personalExpenseDays` in the same write), and

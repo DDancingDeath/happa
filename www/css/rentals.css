@@ -19,7 +19,7 @@
 .rent-kind { font-size: 12px; font-weight: 500; background: var(--surface-muted); color: var(--text-secondary); border-radius: 10px; padding: 2px 8px; margin-left: 6px; }
 .rent-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .rent-btn { border: 1px solid var(--border-color); background: var(--surface-muted); color: inherit; border-radius: 8px; padding: 8px 12px; font-size: 14px; cursor: pointer; }
-.rent-btn-primary { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
+.rent-btn-primary { background: var(--btn-primary); border-color: var(--btn-primary); color: #fff; }
 .rent-btn-wa { background: var(--success-soft); border-color: var(--success-soft); color: var(--on-success-soft); }
 .rent-btn-small { padding: 4px 8px; font-size: 12px; }
 .rent-badge { display: inline-block; border-radius: 10px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
@@ -56,6 +56,7 @@ body.dark-mode .rent-row, body.dark-mode .rent-dialog-box { background: #1a202c;
 
 /* Tenant section in Add unit / Move in, electricity tag */
 .rent-check { display: flex; gap: 8px; align-items: center; font-size: 14px; margin-top: 10px; }
+.rent-tenant-section .rent-field-error { color: var(--danger-color); font-size: 13px; margin: 4px 0 0; }
 .rent-occupied-toggle { font-weight: 600; margin-top: 14px; }
 .rent-tenant-section { border-top: 1px solid var(--border-color); margin-top: 10px; padding-top: 4px; }
 .rent-tag { display: inline-block; font-size: 12px; background: var(--warning-soft); color: var(--on-warning-soft); border-radius: 10px; padding: 1px 7px; }
@@ -81,6 +82,14 @@ button.rent-attn-row { cursor: pointer; }
 .rent-more summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
 .rent-sticky { position: sticky; bottom: 12px; margin-top: 16px; }
 .rent-btn-block { width: 100%; padding: 12px; font-size: 16px; }
+.rent-btn-danger { background: transparent; border-color: var(--danger-border); color: var(--danger-color); }
+
+/* Record payment (#157 UX redesign) */
+.rent-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.rent-chip { border: 1px solid var(--border-color); background: var(--surface-muted); color: inherit; border-radius: var(--radius-full); padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.rent-seg-wide { display: flex; margin-top: 6px; }
+.rent-seg-wide .rent-seg-btn { flex: 1; padding: 8px 6px; }
+.rent-field-error { color: var(--danger-color); font-size: 13px; margin: 4px 0 0; }
 
 /* Tenants list and the tenant's screen (#157 UX redesign) */
 .rent-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }

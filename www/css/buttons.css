@@ -248,8 +248,14 @@
   background: var(--btn-primary);
 }
 
-.save-sale-btn {
+.save-sale-btn,
+.save-btn[data-cash-save="open"],
+.save-btn[data-cash-save="entry"] {
   background: var(--btn-success);
+}
+
+.save-btn[data-cash-save="close"] {
+  background: var(--btn-danger);
 }
 
 .save-btn:active {
@@ -286,6 +292,8 @@
 }
 
 /* Tap targets (#68): page toggles, primary buttons and list actions are at least 44 px tall */
+.btn,
+.lang-switch-btn,
 .filter-btn,
 .sub-tab,
 .save-btn,

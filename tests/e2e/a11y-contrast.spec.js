@@ -23,6 +23,9 @@ test.beforeEach(async () => {
 for (const lang of ['en', 'hi']) {
     test(`text contrast is at least WCAG AA on the main pages (${lang})`, async ({ page, problems }) => {
         test.setTimeout(240000);
+        // Contrast is a property of the still screen: with reduced motion (variables.css) a toast is
+        // either shown or gone, never measured mid-fade against the page (a flake on Today, #toast ~1:1)
+        await page.emulateMedia({ reducedMotion: 'reduce' });
         await login(page, 'owner');
         await page.evaluate((l) => window.app.i18n.setLang(l), lang);
         const found = [];

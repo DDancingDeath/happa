@@ -21,6 +21,7 @@ import { TIME_MS, AUTO_SAVE_DELAY } from '../utils/constants.js';
 import { PurchaseManager } from './purchase.js';
 import { RetailSaleManager } from './retail-sale.js';
 import { t } from '../i18n/index.js';
+import { refusedForClock } from '../utils/clock-skew.js';
 import { isStorageFullError, saveFailedText, STORAGE_FULL_KEY, SAVED_ON_PHONE_KEY } from '../utils/storage-full.js';
 import { accessFor, canEditBillWith } from '../utils/role-access.js';
 import { billEditChanges, hasEditChanges } from '../utils/bill-edits.js';
@@ -184,6 +185,16 @@ const BillingManager = {
     },
 
     // -------------------- MODE SWITCHING --------------------
+
+    /**
+     * Billing opened from the menu / bottom bar (D-5): starts on Purchase synchronously,
+     * so a mode the user taps right after is never switched back by a late timer.
+     * A bill being edited keeps its own mode.
+     */
+    startFromNav() {
+        if (this.editingBillIndex !== undefined) return;
+        this.switchMode('purchase', { currentTarget: document.getElementById('purchaseModeBtn') });
+    },
 
     /**
      * Switch between purchase and sale modes
@@ -1652,13 +1663,6 @@ const BillingManager = {
             this.prepareBillDates();
             
             window.app.nav.showTab('billing');
-            // Switch to sale mode for retail sales
-            setTimeout(() => {
-                const saleBtn = document.getElementById('saleModeBtn');
-                if (saleBtn) {
-                    window.app.billing.switchMode('sale', { currentTarget: saleBtn });
-                }
-            }, 100);
             UIManager.showToast(t('msg.billing.editing_sale_modify_save'));
         }
     },
@@ -1766,16 +1770,18 @@ const BillingManager = {
                 const reason = await askEditReason(bill, updatedBill);
                 if (reason === null) return undefined;
                 FirebaseService.withLoadedPaymentSignature(updatedBill, this.editingBillPaymentSig);
-                await commitBillEdit(FirebaseService.updatePurchase(updatedBill, { reason }));
+                // The audit entry lands with the edit and its edit record (D-3)
+                await commitBillEdit(FirebaseService.updatePurchase(updatedBill, {
+                    reason,
+                    audit: AuditService.entry(AuditService.ACTIONS.EDIT_BILL, {
+                        billNumber: updatedBill.billNumber || 'N/A',
+                        amount: billTotal,
+                        supplier: customerName
+                    })
+                }));
                 if (typeof options.onWriteIssued === 'function') options.onWriteIssued(updatedBill);
                 const savedIndex = findBillIndex(AppState.purchaseHistory, bill.id, currentIndex);
                 if (savedIndex !== -1) AppState.purchaseHistory[savedIndex] = updatedBill;
-                
-                AuditService.log(AuditService.ACTIONS.EDIT_BILL, {
-                    billNumber: updatedBill.billNumber || 'N/A',
-                    amount: billTotal,
-                    supplier: customerName
-                }).catch(e => console.warn('Audit log failed:', e));
                 
                 this._refreshAfterEdit();
                 
@@ -1824,18 +1830,19 @@ const BillingManager = {
                 const reason = await askEditReason(bill, updatedSale);
                 if (reason === null) return undefined;
                 FirebaseService.withLoadedPaymentSignature(updatedSale, this.editingBillPaymentSig);
-                await commitBillEdit(FirebaseService.updateRetailSale(updatedSale, { reason }));
+                await commitBillEdit(FirebaseService.updateRetailSale(updatedSale, {
+                    reason,
+                    audit: AuditService.entry(AuditService.ACTIONS.EDIT_SALE, {
+                        billNumber: updatedSale.billNumber || 'N/A',
+                        amount: salesTotal,
+                        customer: saleCustomer
+                    })
+                }));
                 if (typeof options.onWriteIssued === 'function') options.onWriteIssued(updatedSale);
                 const saleIndex = AppState.retailSalesHistory.findIndex(s => s.id === bill.id);
                 if (saleIndex !== -1) {
                     AppState.retailSalesHistory[saleIndex] = updatedSale;
                 }
-                
-                AuditService.log(AuditService.ACTIONS.EDIT_SALE, {
-                    billNumber: updatedSale.billNumber || 'N/A',
-                    amount: salesTotal,
-                    customer: saleCustomer
-                }).catch(e => console.warn('Audit log failed:', e));
                 
                 this._refreshAfterEdit();
                 
@@ -1868,6 +1875,12 @@ const BillingManager = {
             }
             if (error?.code === 'unavailable' || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
                 UIManager.showToast(t(EDIT_OFFLINE_KEY));
+                return undefined;
+            }
+            // Refused by the rules (a wrong phone clock fails the audit entry's time; else an edit
+            // without its record, OD-14): never the raw message
+            if (error?.code === 'permission-denied') {
+                UIManager.showToast(t(await refusedForClock(error) ? 'msg.common.phone_clock_wrong_save' : 'msg.billing.edit_refused'), 'error');
                 return undefined;
             }
             UIManager.showToast(t('msg.billing.failed_update_bill', { message: error.message }));

@@ -10,7 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import { buildPlan } from '../../../tools/migrate/lib/plan.js';
 import {
-    applyBundle, checkTarget, resumeCursor, newCursor, planRun, targetColl, validateBundle
+    applyBundle, checkTarget, profileWrite, resumeCursor, newCursor, planRun, targetColl, validateBundle
 } from '../../../tools/migrate/lib/apply.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 
@@ -67,6 +67,11 @@ describe('apply: safety', () => {
         expect(fake.raw('items').size).toBe(0);
         const bad = { ...bundle, writes: [...bundle.writes, { group: 'copy:x', coll: 'dev_x', id: '1', data: {} }] };
         await expect(applyBundle({ bundle: bad, cursor: newCursor(bad, PROJECT), dryRun: true })).rejects.toThrow(/--dev/);
+        ['rent_settings', 'dev_rent_units'].forEach(coll => [false, true].forEach(dev => expect(() => targetColl(coll, dev)).toThrow(/Rentals/)));
+        const rent = { ...bundle, writes: [...bundle.writes, { group: 'copy:rent', coll: 'rent_settings', id: 'default', data: {} }] };
+        await expect(applyBundle({ bundle: rent, cursor: newCursor(rent, PROJECT), dryRun: true })).rejects.toThrow(/rent_settings/);
+        const audit = { ...bundle, writes: [...bundle.writes, { group: 'copy:auditLogs', coll: 'auditLogs', id: 'a1', data: { action: 'RENT_PAYMENT' } }] };
+        await expect(applyBundle({ bundle: audit, cursor: newCursor(audit, PROJECT), dryRun: true })).rejects.toThrow(/RENT_\* audit entry/);
     });
 
     test('a bundle is required', () => {
@@ -121,6 +126,53 @@ describe('apply: writes', () => {
         expect(resumeCursor(saved, other, PROJECT, { restart: true }).next).toBe(0);
     });
 
+    test('a profile replaces Happa\'s; rentRole comes from Happa only', async () => {
+        const bundle = makeBundle();
+        bundle.writes.find(w => w.coll === 'users' && w.id === 'uid-member').data.rentRole = 'manager';
+        const fake = createFakeFirestore();
+        fake.seed('users', [
+            { id: 'uid-owner', role: 'staff', rentRole: 'member', lastSeenAt: 5 },
+            { id: 'uid-member', role: 'owner', rentRole: null },
+            { id: 'rent-helper', role: 'none', rentRole: 'member', name: 'Rentals helper' }
+        ]);
+        const lines = [];
+        await run(fake, bundle, newCursor(bundle, PROJECT), { log: (l) => lines.push(l) });
+        const users = fake.raw('users');
+        expect(users.get('uid-owner')).toMatchObject({ role: 'owner', email: 'owner@example.test', rentRole: 'member' });
+        expect('lastSeenAt' in users.get('uid-owner')).toBe(false);
+        expect(users.get('uid-member')).toMatchObject({ role: 'manager', rentRole: null });
+        expect(users.get('rent-helper')).toEqual({ role: 'none', rentRole: 'member', name: 'Rentals helper' });
+        expect(lines.join('\n')).toMatch(/Kept Happa's rentRole on 2 profiles/);
+
+        // After a wipe (no Happa profile): the old app's rentRole is never carried.
+        const fresh = createFakeFirestore();
+        const freshLines = [];
+        await run(fresh, bundle, newCursor(bundle, PROJECT), { log: (l) => freshLines.push(l) });
+        expect('rentRole' in fresh.raw('users').get('uid-member')).toBe(false);
+        expect(freshLines.join('\n')).toMatch(/Left out the old app's rentRole on 1 profiles/);
+    });
+
+    test('a removal in the old app carries over; a helper approved in Happa but pending in the old app keeps Rentals only', () => {
+        expect(profileWrite({ name: 'X', status: 'disabled' }, { role: 'manager', status: 'approved', rentRole: 'member' }))
+            .toMatchObject({ data: { name: 'X', status: 'disabled' }, kept: [], approval: false });
+        expect(profileWrite({ status: 'rejected', rentRole: 'member' }, { rentRole: 'member' }).data).toEqual({ status: 'rejected' });
+        expect(profileWrite({ role: 'staff', status: 'approved' }, { role: 'owner', rentRole: 'member' }))
+            .toMatchObject({ data: { role: 'staff', status: 'approved', rentRole: 'member' }, kept: ['rentRole'] });
+        expect(profileWrite({ role: 'staff', rentRole: 'manager' }, { role: 'staff' })).toMatchObject({ data: { role: 'staff' }, dropped: ['rentRole'] });
+        expect(profileWrite({ role: 'staff', rentRole: 'manager' }, undefined).data).toEqual({ role: 'staff' });
+
+        const pending = { name: 'P', role: 'staff', status: 'pending', createdAt: 5 };
+        expect(profileWrite(pending, { role: 'none', status: 'active', rentRole: 'member', approvedAt: 7, approvedBy: 'o' }))
+            .toEqual({ data: { name: 'P', role: 'none', status: 'active', createdAt: 5, rentRole: 'member', approvedAt: 7, approvedBy: 'o' }, kept: ['rentRole'], dropped: [], approval: true });
+        expect(profileWrite(pending, { status: 'approved', rentRole: 'member', approvedAt: FakeTimestamp.fromMillis(9) }).data)
+            .toMatchObject({ name: 'P', role: 'none', status: 'approved', rentRole: 'member' });
+        // removed in the old app (profile deleted), then re-created as pending by a sign-in: the rehearsal's older approval is not kept
+        expect(profileWrite({ role: 'staff', status: 'pending', createdAt: 9 }, { role: 'manager', status: 'active', rentRole: 'member', approvedAt: 1 }))
+            .toMatchObject({ data: { role: 'staff', status: 'pending', createdAt: 9, rentRole: 'member' }, approval: false });
+        expect(profileWrite({ ...pending, createdAt: undefined }, { status: 'active', rentRole: 'member', approvedAt: 7 }).approval).toBe(false);
+        expect(profileWrite(pending, { status: 'active', rentRole: 'member' }).approval).toBe(false);
+        expect(profileWrite(pending, { role: 'staff', status: 'pending', rentRole: 'member', approvedAt: 7 })).toMatchObject({ data: { ...pending, rentRole: 'member' }, approval: false });
+        expect(profileWrite(pending, { role: 'staff', status: 'active', rentRole: null, approvedAt: 7 })).toMatchObject({ data: { ...pending, rentRole: null }, approval: false });    });
     test('a rerun keeps opening balances already paid in the new app and removes ones no longer due', async () => {
         const backup = load();
         const bundle = makeBundle(backup);
