@@ -159,6 +159,18 @@ describe('This month in Simple', () => {
         expect(root.querySelector('.rent-filters, .rent-prop-card')).toBeNull();
     });
 
+    test('its listener failing blanks only Received this month: no page notice, the rest renders', async () => {
+        _test.state.paidError = true;
+        try {
+            const root = await show('simple');
+            expect(root.querySelector('[data-rent-received]').textContent).toBe('Received this month: —');
+            expect(root.textContent).toContain("This month's rent: ₹10,000 paid of ₹20,000");
+            expect(document.getElementById('rentalsNotice').hidden).toBe(true);
+        } finally {
+            _test.state.paidError = false;
+        }
+    });
+
     test('Received this month waits for its listener ("—"), and Hindi', async () => {
         _test.state.loaded.delete('monthPaid');
         document.body.innerHTML = '<div id="rentals" class="tab active"><div id="rentalsNotice"></div><div id="rentalsBody"></div></div>';

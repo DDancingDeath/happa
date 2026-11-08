@@ -7,7 +7,7 @@ Separate from the shop: rent money never counts in shop figures.
 | On screen | How it is worked out |
 |---|---|
 | Rent this month, this month's rent paid, still due (RENT-1 to RENT-3) | This month's charges, what was paid on them, and the difference. A payment for an older month is not in "this month's rent paid". |
-| Received this month (RENT-20) | All rent money that came in this month, for any month (arrears and advance too); a month paid from an advance or from the deposit is not new money. Shown in Simple and as a card in Advanced. |
+| Received this month (RENT-20) | All rent money that came in this month, for any month (arrears and advance too); a month paid from an advance or from the deposit is not new money. Shown in Simple and as a card in Advanced › Property wise. |
 | A tenant's month (RENT-21) | Under each tenant on This month: "paid", "part paid, ₹X of ₹Y" or "₹Y due" for this month's rent. |
 | Total due (RENT-4) | What every month up to now still owes, moved-out tenants included. |
 | Per tenant (RENT-5) | A month is Late after its due day (default the 10th), Part paid when partly paid. |

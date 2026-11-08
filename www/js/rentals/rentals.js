@@ -109,7 +109,9 @@ function scheduleRender() {
 
 function onData(key, error) {
     state.loaded.add(key);
-    if (error) state.errors.add(key); else state.errors.delete(key);
+    // RENT-20's listener failing only blanks that figure ("—"), not the page or Today's reminders.
+    if (key === 'monthPaid') state.paidError = !!error;
+    else if (error) state.errors.add(key); else state.errors.delete(key);
     if (['leases', 'tenants', 'units'].includes(key)) void maybeCharge();
     scheduleRender();
 }
@@ -305,10 +307,12 @@ function renderMonth(d, ix, rows) {
         <div class="rent-list">${list}</div>${paidList}${vacant}${payAny}`;
 }
 
-/** RENT-20 once its listener has answered; "—" until then or when it failed. */
-function receivedText(d) {
-    return state.loaded.has('monthPaid') && !state.errors.has('monthPaid') ? money(receivedIn(d.paidCharges, state.month)) : '—';
+/** RENT-20 once its listener has answered complete; null ("—") until then, or when it failed or was cut at its limit. */
+function received(d) {
+    return state.loaded.has('monthPaid') && !state.paidError && !store.paidTruncated?.() ? receivedIn(d.paidCharges, state.month) : null;
 }
+
+const receivedText = (d) => { const r = received(d); return r === null ? '—' : money(r); };
 
 /** RENT-21: this month's rent of one tenant: paid, part paid (₹X of ₹Y) or due. */
 function monthStateLine(a) {
@@ -665,7 +669,7 @@ const unitCtx = () => ({
     defaults, headerName, tenantSectionHtml: fromPages('tenantSectionHtml'), readTenantSection: fromPages('readTenantSection'), checkTenantSection: fromPages('checkTenantSection'),
     elecFieldsHtml: fromPages('elecFieldsHtml'), saveRent: fromPages('saveRent'), refreshLinkNames: fromPages('refreshLinkNames'), back,
     saveMoveIn: (...a) => whileMoving(() => fromPages('saveMoveIn')(...a)), isManager: isManager(), isOwner: isOwner(), canWrite: canWrite(), month: state.month,
-    state, typeLabel, elecTag, sinceText, receiptsBtn, payBtns, badge, render, unitUi, depUi, linkUi: (fn, ...a) => lazyUi('./rent-link.js', fn, ...a), unitMod, unitCtx, auditWarn
+    state, received, typeLabel, elecTag, sinceText, receiptsBtn, payBtns, badge, render, unitUi, depUi, linkUi: (fn, ...a) => lazyUi('./rent-link.js', fn, ...a), unitMod, unitCtx, auditWarn
 });
 
 /** Runs function `fn` of a lazy file (rent-unit.js / rent-link.js) with what it needs from here. */
@@ -737,6 +741,7 @@ export const RentalsModule = {
             state.month = monthKey();
             state.loaded.clear();
             state.errors.clear();
+            state.paidError = false;
             state.charged.clear();
             store.attach(state.month, onData);
         }

@@ -89,8 +89,9 @@ export function detach() {
 
 export const isAttached = () => unsubs.length > 0;
 
-/** Listeners that hit their limit (more data exists than is shown). */
-export const truncatedKeys = () => [...truncated];
+/** Listeners that hit their limit (more data exists than is shown); RENT-20's own listener is reported by paidTruncated. */
+export const truncatedKeys = () => [...truncated].filter(k => k !== 'monthPaid');
+export const paidTruncated = () => truncated.has('monthPaid');
 
 /** Current data as plain arrays; charges from both listeners merged by id. */
 export function snapshot() {

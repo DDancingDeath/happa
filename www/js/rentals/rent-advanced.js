@@ -9,7 +9,7 @@ import { formatINR } from '../utils/due-reminder.js';
 import { t, getLang } from '../i18n/index.js';
 import * as store from './rent-store.js';
 import { UNIT_TYPES, unitRows, summarize, propertySummaries, groupByType, filterRows, typedPlace, tenantRows } from './rent-views.js';
-import { monthLabel, chargeStatus, chargeDue, leaseDues, increaseDue, elecMode, expenseTotals, netOf, receivedIn } from './rent-math.js';
+import { monthLabel, chargeStatus, chargeDue, leaseDues, increaseDue, elecMode, expenseTotals, netOf } from './rent-math.js';
 
 const esc = (v) => Helpers.escapeHtml(v);
 const js = (v) => Helpers.escapeJsAttr(v);
@@ -93,8 +93,7 @@ function renderPropertyView(d, ix, rows) {
         </button>`).join('');
     const empty = `<p class="rent-empty">${et('ui.rent.no_properties')}</p>`
         + (c.canWrite ? btn(' rent-btn-primary', 'page', `'properties'`, 'ui.rent.add_property') : '');
-    const rec = c.state.loaded.has('monthPaid') && !c.state.errors.has('monthPaid') ? receivedIn(d.paidCharges, c.state.month) : null;
-    return `<div class="rent-cards">${totalsCards(summarize(rows), ex.total, rec)}</div>
+    return `<div class="rent-cards">${totalsCards(summarize(rows), ex.total, c.received(d))}</div>
         ${cards || empty}`;
 }
 
