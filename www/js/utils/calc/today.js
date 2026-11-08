@@ -17,7 +17,7 @@ import { billDayTime } from './cash.js';
 export const TODAY_SPEC = Object.freeze({
     purchases: 'T1', purchaseCount: 'T1',
     sales: 'T2', saleCount: 'T2',
-    labour: 'T3, T-LAB-1, T-LAB-2, T-LAB-3',
+    labour: 'T3, T-LAB-1, T-LAB-2, T-LAB-3, T-LAB-4, T-LAB-5',
     businessExpenses: 'T4', businessExpenseCount: 'T4',
     personalExpenses: 'T5', personalExpenseCount: 'T5',
     expenses: 'T8, T9', expensesCash: 'T8', expensesOnline: 'T9',

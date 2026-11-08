@@ -285,7 +285,7 @@ export function labourDay(data, nowMs, { laborRate = 6, labourPackageKg = 35 } =
 }
 
 /** LABOUR-EXP (OD-03 step 1): wages to labourers, by the first word of the expense type (any case, nukta ignored). */
-const LABOUR_WORDS = new Set(['labour', 'labor', 'labours', 'labors', 'labourer', 'laborer', 'labourers', 'laborers', 'मजदूरी']);
+const LABOUR_WORDS = new Set(['labour', 'labor', 'labours', 'labors', 'labourer', 'laborer', 'labourers', 'laborers', 'मजदूरी', 'लेबर']);
 const isLabourExpense = (e) => !isPersonal(e)
     && LABOUR_WORDS.has(String(e.type ?? '').normalize('NFC').replace(/\u093C/g, '').trim().toLowerCase().split(/[^\p{L}\p{M}]+/u)[0]);
 

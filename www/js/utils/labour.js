@@ -146,9 +146,9 @@ export function periodLabourGap(toPay, deducted) {
 
 /**
  * LABOUR-EXP: an expense type that means wages paid to labourers, until OD-09's fixed list: "Labour",
- * "Labor" (the form's suggestion), "Labourers", "Labour charges", "मजदूरी"; any case and spacing.
+ * "Labor" (the form's suggestion), "Labourers", "Labour charges", "मजदूरी", "लेबर"; any case and spacing.
  */
-const LABOUR_TYPE = /^(?:labou?r(?:er)?s?|मज\u093C?दूरी)(?![\p{L}\p{M}])/u;
+const LABOUR_TYPE = /^(?:labou?r(?:er)?s?|मज\u093C?दूरी|लेबर)(?![\p{L}\p{M}])/u;
 
 /**
  * LABOUR-EXP: a business expense (EXP-KIND) whose type is a labour wage.
@@ -162,16 +162,17 @@ export function isLabourExpense(e) {
 
 /**
  * T-LAB-4 / M20: paid to labourers = Σ amount of the LABOUR-EXP expenses among these (voided ones never count).
- * Callers pass the day's (T4) or period's (M4) expenses.
+ * Callers pass the day's (T4) or period's (M4) expenses, and that figure's reading of `amount`.
  * @param {?Array<Expense>|undefined} expenses
+ * @param {(e: Expense) => number} [amountOf] T4's by default
  * @returns {{amount: number, count: number}}
  */
-export function labourPaid(expenses) {
+export function labourPaid(expenses, amountOf = e => Number(e?.amount) || 0) {
     let amount = 0;
     let count = 0;
     activeExpenses(expenses).forEach(e => {
         if (!isLabourExpense(e)) return;
-        amount += Number(e?.amount) || 0;
+        amount += amountOf(e);
         count += 1;
     });
     return { amount: round2(amount), count };

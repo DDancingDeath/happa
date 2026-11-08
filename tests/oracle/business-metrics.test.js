@@ -91,6 +91,9 @@ describe('hand-worked example (docs/calculations.md, Worked example)', () => {
         const M7 = moneySummary({ ...input, expenses }, OCT).M7;
         expect(labourPaidGap(M20.amount, M7)).toEqual({ difference: 344, amount: 344, kind: 'more' });
         expect(labourPaidIn(data.expenses, ALL.from, ALL.to)).toEqual({ amount: 0, count: 0 });
+        const odd = [{ type: 'लेबर', amount: '1,500', category: 'business', date: '2026-10-21' }];
+        expect(labourPaidIn(odd, OCT.from, OCT.to)).toEqual({ amount: 1, count: 1 });
+        expect(moneySummary({ ...input, expenses: odd }, OCT).M4.total).toBe(1);
     });
 
     test('O3 / O4 with counts (#220: cleared bills left out, dueAmount-only bills in)', () => {

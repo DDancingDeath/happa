@@ -68,7 +68,7 @@ describe('Today Labour card == oracle', () => {
 describe('OD-03 step 1: paid to labourers (T-LAB-4 / M20) and paid − deducted (T-LAB-5 / M21) == oracle', () => {
     const DAY = '2026-10-21';
     const at = O.timeOf(`${DAY}T10:00:00`);
-    const TYPES = ['Labour', 'labor', ' LABOUR  charges', 'Labourers', 'labour-loading', 'मजदूरी', 'मज\u093Cदूरी', 'Laboratory', 'Tea', 'Salary', '', 'personal', 'Labor 2'];
+    const TYPES = ['Labour', 'labor', ' LABOUR  charges', 'Labourers', 'labour-loading', 'मजदूरी', 'मज\u093Cदूरी', 'लेबर', 'लेबर चार्ज', 'लेबरी', 'Laboratory', 'Tea', 'Salary', '', 'personal', 'Labor 2'];
     const expense = fc.record({
         type: fc.constantFrom(...TYPES), amount: fc.integer({ min: 0, max: 500000 }).map(x => x / 100),
         category: fc.constantFrom(undefined, 'business', 'personal', 'Personal'), voided: fc.boolean(),

@@ -481,7 +481,7 @@ function businessExpensesIn(expenses, from, to) {
  * @returns {{amount: number, count: number}}
  */
 export function labourPaidIn(expenses, from, to) {
-    return labourPaid(businessExpensesIn(expenses, from, to));
+    return labourPaid(businessExpensesIn(expenses, from, to), e => parseFloat(String(e?.amount)) || 0);
 }
 
 /**
