@@ -136,11 +136,13 @@ describe('History detail actions', () => {
 });
 
 describe('receipt totals come from the shared money functions (BILL-TOTAL, BILL-PAY, BILL-DUE)', () => {
-    function totals(bill) {
+    function totals(bill, lang) {
         const drawn = [];
         const ctx = { fillText: (txt) => drawn.push(txt), measureText: () => ({ width: 50 }), font: '', fillStyle: '', textAlign: '' };
         const config = { width: 384, padding: { left: 10 }, spacing: { line: 24 }, fonts: { body: { size: 20 }, total: { size: 24 } } };
-        new BluetoothPrinterManager()._drawTotalsSection(ctx, bill, config, {}, 0);
+        const manager = new BluetoothPrinterManager();
+        manager._receipt = lang ? { lang } : null;
+        manager._drawTotalsSection(ctx, bill, config, {}, 0);
         return drawn;
     }
 
@@ -148,19 +150,21 @@ describe('receipt totals come from the shared money functions (BILL-TOTAL, BILL-
         const bill = { ...WHOLESALE, cashPayment: 1000, payment: { cash: 0, online: 1500, due: 2500 } };
         expect(totals(bill)).toEqual(['Total:', '₹4,000', 'Total received:', '₹1,500', 'Due:', '₹2,500']);
     });
-    test('the lines total (BILL-LINES) prints only when it differs from the payable as printed, or labour comes between', () => {
-        const count = (bill) => totals(bill).filter((s) => s === 'Total:').length;
-        expect(count(WHOLESALE)).toBe(1);
-        expect(count({ ...WHOLESALE, billTotal: 4000.4 })).toBe(1);
+    test('the lines total (BILL-LINES) prints as "Subtotal" only when it differs from the payable as printed, or labour comes between', () => {
+        const labels = (bill, lang) => totals(bill, lang).filter((s) => /:$/.test(s) && !/₹/.test(s));
+        expect(labels(WHOLESALE)).toEqual(['Total:', 'Total received:', 'Due:']);
+        expect(labels({ ...WHOLESALE, billTotal: 4000.4 })).not.toContain('Subtotal:');
         const adjusted = { ...WHOLESALE, billTotal: 4200, grandTotal: 4000 };
-        expect(totals(adjusted).slice(0, 4)).toEqual(['Total:', '₹4,200', 'Total:', '₹4,000']);
-        expect(count(PURCHASE)).toBe(2);
-        expect(count({ ...PURCHASE, laborCharges: 0, grandTotal: 1000, amountPayable: 1000 })).toBe(1);
+        expect(totals(adjusted).slice(0, 4)).toEqual(['Subtotal:', '₹4,200', 'Total:', '₹4,000']);
+        expect(labels(PURCHASE).slice(0, 3)).toEqual(['Subtotal:', 'Labour:', 'Total:']);
+        expect(labels({ ...PURCHASE, laborCharges: 0, grandTotal: 1000, amountPayable: 1000 })).not.toContain('Subtotal:');
+        expect(totals(PURCHASE, 'hi').slice(0, 2)).toEqual(['उप-योग:', '₹1,000']);
+        expect(totals(PURCHASE, 'hi')).toContain('कुल:');
     });
     test('a cleared bill prints no due; a legacy purchase prints its BILL-TOTAL as payable', () => {
         expect(totals({ ...WHOLESALE, cleared: true })).not.toContain('Due:');
         const legacy = { isPurchase: true, billTotal: 1000, total: 970, laborCharges: 30, items: [], cashPayment: 970, dueAmount: 0 };
-        expect(totals(legacy)).toEqual(['Total:', '₹1,000', 'Labour:', '₹30', 'Total:', '₹970', 'Total paid:', '₹970']);
+        expect(totals(legacy)).toEqual(['Subtotal:', '₹1,000', 'Labour:', '₹30', 'Total:', '₹970', 'Total paid:', '₹970']);
         expect(buildBillShareText(legacy, 'purchase')).toContain('*Payable: ₹970*');
     });
 
@@ -169,10 +173,10 @@ describe('receipt totals come from the shared money functions (BILL-TOTAL, BILL-
         expect(totals({ ...zero, saleTotal: 50, total: 70 }).slice(0, 2)).toEqual(['Total:', '₹0']);
         expect(buildBillShareText({ ...zero, total: 70 }, 'purchase')).toContain('*Total: ₹0*');
         const noLines = { isPurchase: true, grandTotal: 950, laborCharges: 50, items: [], payment: { cash: 950, online: 0, due: 0 } };
-        expect(totals(noLines).slice(0, 4)).toEqual(['Total:', '₹1,000', 'Labour:', '₹50']);
+        expect(totals(noLines).slice(0, 4)).toEqual(['Subtotal:', '₹1,000', 'Labour:', '₹50']);
         expect(buildBillShareText(noLines, 'purchase')).toContain('*Total: ₹1,000*');
         expect(buildBillShareText(noLines, 'purchase')).toContain('*Payable: ₹950*');
         const oldLabour = { isPurchase: true, grandTotal: 950, labour: 30, items: [], payment: { cash: 950, online: 0, due: 0 } };
-        expect(totals(oldLabour).slice(0, 6)).toEqual(['Total:', '₹980', 'Labour:', '₹30', 'Total:', '₹950']);
+        expect(totals(oldLabour).slice(0, 6)).toEqual(['Subtotal:', '₹980', 'Labour:', '₹30', 'Total:', '₹950']);
     });
 });

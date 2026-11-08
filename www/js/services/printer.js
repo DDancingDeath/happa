@@ -564,7 +564,7 @@ class BluetoothPrinterManager {
         // printed only when it differs from the payable as printed, or labour comes between them (BILL-LINES)
         const showSubtotal = labour > 0 || formatRupees(subtotal) !== formatRupees(amountPayable);
         if (showSubtotal) {
-            ctx.fillText(`${this._t('ui.bill.total')}:`, config.padding.left, y);
+            ctx.fillText(`${this._t('ui.bill.subtotal')}:`, config.padding.left, y);
             const totalText = formatRupees(subtotal);
             const totalWidth = ctx.measureText(totalText).width;
             ctx.fillText(totalText, config.width - totalWidth - config.padding.left, y);
