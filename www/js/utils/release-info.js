@@ -12,16 +12,29 @@ export const APK_DOWNLOAD_URL = APP_IDENTITY.apkDownloadUrl;
 export const LATEST_RELEASE_API = APP_IDENTITY.latestReleaseApi;
 export const UPDATE_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
 
-const SEMVER_RE = /^v?(\d+)\.(\d+)(?:\.(\d+))?$/;
+const SEMVER_RE = /^v?(\d+)\.(\d+)(?:\.(\d+))?(?:-rc(\d+))?$/;
 
 /**
- * Parses "1.3.0", "v1.3" etc. into [major, minor, patch]; null when not a plain release version.
+ * Parses "1.3.0", "v1.3", "v1.3.0-rc2" etc. into [major, minor, patch, rc]; rc is Infinity
+ * for a final release (it sorts above its release candidates). Null for anything else.
  * @param {*} text
  * @returns {?number[]}
  */
 export function parseVersion(text) {
     const m = SEMVER_RE.exec(String(text ?? '').trim());
-    return m ? [Number(m[1]), Number(m[2]), Number(m[3] || 0)] : null;
+    return m ? [Number(m[1]), Number(m[2]), Number(m[3] || 0), m[4] === undefined ? Infinity : Number(m[4])] : null;
+}
+
+/**
+ * "1.3.0" or "1.3.0-rc2" (no "v"); null when not a version.
+ * @param {*} text
+ * @returns {?string}
+ */
+export function formatVersion(text) {
+    const v = parseVersion(text);
+    if (!v) return null;
+    const base = v.slice(0, 3).join('.');
+    return v[3] === Infinity ? base : `${base}-rc${v[3]}`;
 }
 
 /**
@@ -34,7 +47,7 @@ export function compareVersions(a, b) {
     const pa = parseVersion(a);
     const pb = parseVersion(b);
     if (!pa || !pb) return null;
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
         if (pa[i] !== pb[i]) return pa[i] > pb[i] ? 1 : -1;
     }
     return 0;
@@ -148,15 +161,14 @@ export function shouldCheckForUpdate(lastCheckMs, nowMs, intervalMs = UPDATE_CHE
 
 /**
  * Version string (without "v") to offer in the update banner, or null.
- * @param {*} appVersion
+ * @param {*} appVersion the installed APK's versionName (release tag without "v")
  * @param {*} latestTag
  * @param {*} dismissedVersion
  * @returns {?string}
  */
 export function updateToOffer(appVersion, latestTag, dismissedVersion) {
-    const latest = parseVersion(latestTag);
-    if (!latest || compareVersions(latestTag, appVersion) !== 1) return null;
-    const version = latest.join('.');
+    const version = formatVersion(latestTag);
+    if (!version || compareVersions(latestTag, appVersion) !== 1) return null;
     if (dismissedVersion && compareVersions(dismissedVersion, version) === 0) return null;
     return version;
 }

@@ -288,11 +288,11 @@ so the APK has the feature PRs in it and the data is already in place.
 
 **Release candidate first (optional).** A tag `v1.0.0-rc1` (on a commit whose
 `package.json` version is `1.0.0`) runs the same build, signing and certificate
-checks but publishes **"happa v1.0.0-rc1"** as a *prerelease* that is never
-marked latest, with `happa.apk` and `happa-v1.0.0-rc1.apk`. The update banner and
-`/download` read `releases/latest`, so they don't offer it; testers install it
-from the release page. It has the same version code as v1.0.0, so the final APK
-installs over it.
+checks and publishes **"happa v1.0.0-rc1"** as a normal release marked latest,
+with `happa.apk` and `happa-v1.0.0-rc1.apk`. The update banner and `/download`
+read `releases/latest`, so they offer it to every phone. The versionCode comes
+from the tag (`1.0.0-rcN` → 10000000 + N, `1.0.0` → 10000999), so each RC and
+then the final APK install over the one before.
 
 Side effect: happa v1.0.0 becomes the repo's *latest* release. The old app's
 download page link (`releases/latest/download/AadhatManagement.apk`) then stops
