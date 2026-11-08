@@ -17,6 +17,9 @@ test('start-up loads no rentals code and reads no rent_* data; opening Rentals d
         const body = r.postData() || '';
         if (RENT_RE.test(decodeURIComponent(r.url())) || RENT_RE.test(safeDecode(body))) seen.rentRequests.push(r.url());
     });
+    // Start-up alone fills about 250 resource-timing entries, Chrome's default buffer:
+    // without room, the Rentals file read below would have no entry.
+    await page.addInitScript(() => performance.setResourceTimingBufferSize(5000));
     // An old saved choice must not open Rentals: the app always starts on Shop.
     await page.addInitScript(() => localStorage.setItem('happa.business', 'rentals'));
     await login(page, 'owner');
