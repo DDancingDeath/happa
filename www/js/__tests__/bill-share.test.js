@@ -146,7 +146,16 @@ describe('receipt totals come from the shared money functions (BILL-TOTAL, BILL-
 
     test('payment.cash 0 wins over a stale top-level cashPayment', () => {
         const bill = { ...WHOLESALE, cashPayment: 1000, payment: { cash: 0, online: 1500, due: 2500 } };
-        expect(totals(bill).slice(4)).toEqual(['Total received:', '₹1,500', 'Due:', '₹2,500']);
+        expect(totals(bill)).toEqual(['Total:', '₹4,000', 'Total received:', '₹1,500', 'Due:', '₹2,500']);
+    });
+    test('the lines total (BILL-LINES) prints only when it differs from the payable as printed, or labour comes between', () => {
+        const count = (bill) => totals(bill).filter((s) => s === 'Total:').length;
+        expect(count(WHOLESALE)).toBe(1);
+        expect(count({ ...WHOLESALE, billTotal: 4000.4 })).toBe(1);
+        const adjusted = { ...WHOLESALE, billTotal: 4200, grandTotal: 4000 };
+        expect(totals(adjusted).slice(0, 4)).toEqual(['Total:', '₹4,200', 'Total:', '₹4,000']);
+        expect(count(PURCHASE)).toBe(2);
+        expect(count({ ...PURCHASE, laborCharges: 0, grandTotal: 1000, amountPayable: 1000 })).toBe(1);
     });
     test('a cleared bill prints no due; a legacy purchase prints its BILL-TOTAL as payable', () => {
         expect(totals({ ...WHOLESALE, cleared: true })).not.toContain('Due:');

@@ -27,6 +27,7 @@ const REF_V4_MASK5 = ['111111100011000000000000001111111', '10000010111111101100
 const rows = (qr) => qr.modules.map(r => r.map(b => (b ? '1' : '0')).join(''));
 
 let drawn;
+let placed;
 let rects;
 let images;
 let pixel;
@@ -40,7 +41,7 @@ function fakeContext(canvas) {
         textAlign: 'left',
         scale: () => {},
         fillRect: (x, y, w, h) => rects.push([x, y, w, h]),
-        fillText: (s) => drawn.push(String(s)),
+        fillText: (s, x, y) => { drawn.push(String(s)); placed.push([String(s), x, y]); },
         drawImage: (img) => images.push(img),
         measureText: (s) => ({ width: String(s).length * 9 }),
         createImageData: (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }),
@@ -60,6 +61,7 @@ const bill = {
 
 beforeEach(() => {
     drawn = [];
+    placed = [];
     rects = [];
     images = [];
     pixel = 255;
@@ -156,9 +158,63 @@ describe('the printed bill', () => {
         expect(shared.height).toBe(Math.max(...sharedMark.map(([, y]) => y)) + 1 + 4);
     });
 
-    test('a bill longer than the render canvas never reads rows past its end', () => {
+    test('a long bill grows the canvas: totals, QR and the mark are never cut off, on 58 and 80 mm', () => {
         const items = Array.from({ length: 120 }, () => ({ ...bill.items[0] }));
-        expect(PrinterService.manager._renderBillCanvas({ ...bill, items }, 384, {}).height).toBe(2600);
+        const long = { ...bill, items, payment: { cash: 100, online: 0, due: 100 } };
+        for (const dots of [384, 576]) {
+            drawn = [];
+            rects = [];
+            const { canvas, height } = PrinterService.manager._renderBillCanvas(long, dots, { qr: true });
+            const markBottom = Math.max(...rects.filter(([, , , h]) => h === 1).map(([, y]) => y)) + 1;
+            expect(markBottom).toBeGreaterThan(2600);
+            expect(drawn).toEqual(expect.arrayContaining(['Total paid:', 'Due:', '₹100']));
+            expect(height).toBe(Math.ceil((markBottom + 4) * dots / 384));
+            expect(canvas.height).toBeGreaterThanOrEqual(height);
+        }
+    });
+
+    test('a raster taller than one print block goes as several GS v 0 blocks covering every row', () => {
+        const items = Array.from({ length: 150 }, () => ({ ...bill.items[0] }));
+        const { height } = PrinterService.manager._renderBillCanvas({ ...bill, items }, 384, {});
+        const bytes = PrinterService.manager.billBytes({ ...bill, items }, 384, {});
+        const blocks = [];
+        for (let i = 0; i + 8 <= bytes.length; i++) {
+            if (bytes[i] === 0x1D && bytes[i + 1] === 0x76 && bytes[i + 2] === 0x30) {
+                blocks.push(bytes[i + 6] | (bytes[i + 7] << 8));
+                i += 7 + (bytes[i + 4] | (bytes[i + 5] << 8)) * (bytes[i + 6] | (bytes[i + 7] << 8));
+            }
+        }
+        expect(height).toBeGreaterThan(2600);
+        expect(blocks.length).toBe(Math.ceil(height / 2600));
+        expect(blocks.every((rows) => rows <= 2600)).toBe(true);
+        expect(blocks.reduce((a, b) => a + b, 0)).toBe(height);
+    });
+
+    test('item columns fit the paper: numbers right-aligned under their headers, long names cut to fit', () => {
+        AppState.items = [{ id: 'i1', name: 'Basmati rice premium long grain' }];
+        const wide = { ...bill, items: [{ itemId: 'i1', name: 'Basmati rice premium long grain', qty: 1250.5, rate: 1234.75, total: 1544124 }] };
+        placed = [];
+        PrinterService.manager._renderBillCanvas(wide, 384, {});
+        const at = (s) => placed.find(([t]) => t === s);
+        const rightOf = ([s, x]) => x + s.length * 9;
+        for (const [headKey, value] of [['Rate(₹)', '1234.75'], ['Qty(kg)', '1,250.5'], ['Total(₹)', '1544124']]) {
+            expect(rightOf(at(value))).toBe(rightOf(at(headKey)));
+            expect(rightOf(at(headKey))).toBeLessThanOrEqual(384);
+        }
+        const name = placed.find(([t]) => 'Basmati rice premium long grain'.startsWith(t) && t.length > 3);
+        expect(name[0].length).toBeLessThan('Basmati rice premium long grain'.length);
+        expect(rightOf(name)).toBeLessThan(at('1234.75')[1]);
+    });
+
+    test('the shop details line and the Receipt title do not overlap', () => {
+        const saved = AppState.settings;
+        AppState.settings = { shopName: 'Sharma Traders', businessDetails: 'Main Bazar, Kota' };
+        render({});
+        const details = placed.find(([t]) => t === 'Main Bazar, Kota');
+        const title = placed.find(([t]) => t === 'Receipt');
+        // baselines at least one title height apart: the 16 px line's descent clears the 26 px title's ascent
+        expect(title[2] - details[2]).toBeGreaterThanOrEqual(26);
+        AppState.settings = saved;
     });
 
     test('a long footer wraps instead of running off the paper', () => {
