@@ -15,7 +15,8 @@ and is wrapped in **Capacitor** for Android distribution.
 
 - **Owner**: `DDancingDeath` (https://github.com/DDancingDeath/happa; the old repo
   https://github.com/DDancingDeath/AadhatManagementApp is kept as is and still holds the existing issues)
-- **App**: **Happa** (Android `com.happa`; displayed as lowercase "happa" in English and Hindi). Its name, Android
+- **App**: **Bahi** by the brand **happa** (#375; Android `com.happa`, unchanged so installs update in place; the app
+  name is "Bahi" in English and Hindi, the brand is always lowercase "happa"). Its name, Android
   package, Firebase project and site all come from `happa.config.json`
   (`npm run apply:happa-config` writes them everywhere, `npm run check:happa-config`
   is the release gate; go-live steps in `docs/happa-go-live.md`).

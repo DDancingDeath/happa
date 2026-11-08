@@ -84,7 +84,7 @@ describe('owner guide (#148)', () => {
     });
 
     test('the Hindi guide is in Hindi: Latin only for codes, units and product names', () => {
-        const ALLOWED = new Set(['happa', 'kg', 'WhatsApp', 'CSV', 'PDF', 'Excel', 'R']);
+        const ALLOWED = new Set(['Bahi', 'happa', 'kg', 'WhatsApp', 'CSV', 'PDF', 'Excel', 'R']);
         const prose = hi
             .replace(/\[[^\]]*\]\([^)]*\)/g, '')
             .replace(/`[^`]*`/g, '')
