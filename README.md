@@ -28,3 +28,14 @@ Rentals data seeded: Gupta Bhawan, Ram (1A, ₹4,000) paid ₹8,000 today for th
 - `p1-5/rent-simple-{before,after}-en.png` (+ `after-hi`): "Collected ₹7,000 of ₹15,000" → "This month's rent: ₹7,000 paid of ₹15,000" (same number) and new "Received this month: ₹15,000" (8,000 + 2,000 + 5,000).
 - `p1-5/rent-simple-tenants-{before,after}-en.png` (+ `after-hi`): each tenant's month: Ram "₹4,000 due", Sita "part paid, ₹2,000 of ₹6,000", Om "paid".
 - `p1-5/rent-advanced-{before,after}-en.png` (+ `after-hi`): card "Collected this month" → "This month's rent paid" ₹7,000; new card "Received this month" ₹15,000; property line "₹7,000 paid".
+
+## OD-03 step 1: labour deducted · paid to labourers · difference (`od03/`)
+
+Seed (E2E emulator, today): the usual bills plus a purchase with ₹240 labour deducted, and three business expenses: `Labor` ₹300, `labour charges` ₹50, `Tea` ₹40.
+
+| Screen | Before | After (en) | After (hi) |
+|---|---|---|---|
+| Today › Labour card | [before](od03/today-labour-before-en.png) | [after](od03/today-labour-after-en.png) | [hi](od03/today-labour-after-hi.png) |
+| Money › Spending › Labour | [before](od03/money-labour-before-en.png) | [after](od03/money-labour-after-en.png) | [hi](od03/money-labour-after-hi.png) |
+
+After: Paid to labourers ₹350 (2 expenses; Tea is not labour), "₹110 more paid than deducted" (350 − 240). "To pay labour" is now labelled "(estimate)"; its figures are unchanged (₹684 today, ₹702 this month).
