@@ -625,6 +625,42 @@ input[type="number"],
   color: var(--info-dark);
 }
 
+/* ---- css/icons.css ---- */
+/* Line icons (redesign 2.4, DIRECTION 3.5): 24 grid, 1.75 stroke, currentColor. Sprite in templates/navigation.html */
+.icon-sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.i {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  vertical-align: middle;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.i-sm {
+  width: 16px;
+  height: 16px;
+}
+
+.i-lg {
+  width: 24px;
+  height: 24px;
+}
+
+.i-fill {
+  fill: currentColor;
+  stroke: none;
+}
+
 /* ---- css/auth.css ---- */
 .auth-screen {
   position: fixed;
@@ -1099,10 +1135,11 @@ body {
 }
 
 .nav-icon {
-  font-size: var(--fs-title);
+  display: inline-flex;
+  justify-content: center;
+  flex: none;
   margin-right: 14px;
   width: 28px;
-  text-align: center;
 }
 
 /* Business switcher (#149): the menu shows only the current business's pages */
@@ -1169,8 +1206,7 @@ body {
 }
 
 .bottom-nav-icon {
-  font-size: var(--fs-title);
-  line-height: 1;
+  display: inline-flex;
   padding: 3px 16px;
   border-radius: var(--radius-full);
   transition: background var(--transition);
@@ -8182,8 +8218,7 @@ body.dark-mode .app-sheet-fallback {
 }
 
 .notif-bell-icon {
-  font-size: var(--fs-title);
-  line-height: 1;
+  display: inline-flex;
 }
 
 .notif-bell.notif-error .notif-bell-icon {
@@ -8776,7 +8811,6 @@ body.dark-mode .notif-panel-actions {
   }
 
   .nav-icon {
-    font-size: 18px;
     margin-right: 10px;
   }
 

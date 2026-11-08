@@ -18,8 +18,7 @@
 }
 
 .notif-bell-icon {
-  font-size: var(--fs-title);
-  line-height: 1;
+  display: inline-flex;
 }
 
 .notif-bell.notif-error .notif-bell-icon {

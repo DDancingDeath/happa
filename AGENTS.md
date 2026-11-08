@@ -172,6 +172,9 @@ In order:
   `--w-regular|label|strong` (400/600 only; labels go regular in Hindi, `--w-strong` is 500 on the Android app).
   A new raw `font-size` / `font-weight` fails `tests/ci/type-guard.test.js` (baseline `tests/type-baseline.json`,
   `TYPE_BASELINE=lower`). Off-scale sizes still raw are counted there; print CSS is exempt.
+- **Icons are line icons, not emoji**: `<svg class="i" aria-hidden="true" focusable="false"><use href="#i-name"/></svg>`
+  (`i-sm` 16, default 20, `i-lg` 24; `currentColor`). The symbols are the sprite at the top of
+  `templates/navigation.html`; `tests/ci/icon-sprite.test.js` checks every `#i-*` exists and the sprite size.
 - **Date strings**: bills mix ISO-8601 and `DD/MM/YYYY`. Use
   `www/js/utils/dates.js` (`parseAnyBillDate`, `todayLocalISO`,
   `parseLocalDate`) or `Helpers.parseDate()` — never raw
