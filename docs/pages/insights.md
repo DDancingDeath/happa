@@ -14,6 +14,7 @@ sold-below-cost cards are for that period; overdue dues and stock-up are for now
 | Low-profit items (I7) | Sales of ₹5,000 or more with under ₹3 profit per ₹100, or a loss. |
 | Sold below cost (I8) | Sales whose value was below their cost. |
 | Stock up before the season (I9) | Busy month within 8 weeks and stock that won't last until then + 4 weeks. |
+| What you bought (I11) | Per item: kg and **Bought for**, the purchase value after labour, paid or not. The suppliers table uses the same "Bought for". |
 | Overdue parties (I10) | Dues older than 30 days. |
 | Top-5 share (I12) | The five biggest parties' share of the period's total. |
 | Trends, Product traffic (RT, PT) | Rates and kg per week or month from bills and the Rates page. |

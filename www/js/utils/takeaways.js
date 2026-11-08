@@ -48,19 +48,18 @@ export function profitTakeaways({ profit, vsLastYear, vsPrevious, lastYearLabel,
 }
 
 /**
- * Cash (M14): which way the money went, and the biggest outflow.
- * @param {{net: number, out: Rec, salesDue?: number, profit?: ?number}} a salesDue: M1 "of which still due"
+ * Cash (M14): which way the money went, and the biggest outflow. No "why it
+ * differs from profit" sentence until a reconciliation built from the data is
+ * specified (V2 O-3: one cause presented as the reason was false).
+ * @param {{net: number, out: Rec}} a
  * @returns {Takeaway[]}
  */
-export function cashTakeaways({ net, out, profit, salesDue }) {
+export function cashTakeaways({ net, out }) {
     /** @type {Takeaway[]} */
     const res = [{ key: net >= 0 ? 'ui.tk.cash_in' : 'ui.tk.cash_out', params: { amount: Math.abs(Math.round(net)) } }];
     const parts = [['purchases', out.atPurchase], ['dues_paid', out.duePaid], ['expenses', out.expenses]].filter(([, v]) => v > 0)
         .sort((a, b) => b[1] - a[1]);
     if (parts.length) res.push({ key: `ui.tk.biggest_out_${parts[0][0]}`, params: { amount: Math.round(parts[0][1]) } });
-    if (profit !== null && profit !== undefined && /** @type {number} */ (salesDue) > 0 && net < profit) {
-        res.push({ key: 'ui.tk.gut_dues', params: { amount: Math.round(/** @type {number} */ (salesDue)) }, link: 'due' });
-    }
     return res;
 }
 

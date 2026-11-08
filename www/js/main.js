@@ -63,7 +63,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261108n-rate-check';
+const BUILD_ID = '20261108s-rate-check';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -1157,6 +1157,7 @@ window.app = {
         renderOutstanding: () => WholesaleSalesManager.renderSalesOutstanding(),
         recordPayment: (saleId) => WholesaleSalesManager.recordPayment(saleId),
         markSaleAsCleared: (saleId) => WholesaleSalesManager.markSaleAsCleared(saleId),
+        writeOffSale: (saleId) => WholesaleSalesManager.writeOffSale(saleId),
         completeAllDue: (name) => WholesaleSalesManager.completeAllDue(name),
         receiveFromParty: (name) => WholesaleSalesManager.receiveFromParty(name),
         reprintSale: (index) => WholesaleSalesManager.reprintSale(index),
@@ -1213,6 +1214,7 @@ window.app = {
         searchOutstanding: () => OutstandingManager.searchOutstanding(),
         recordPayment: (txnId, txnType) => OutstandingManager.recordPayment(txnId, txnType),
         markAsCleared: (txnId, txnType) => OutstandingManager.markAsCleared(txnId, txnType),
+        writeOffDue: (txnId, txnType) => OutstandingManager.writeOffDue(txnId, txnType),
         showDetails: (txnId, txnType) => OutstandingManager.showDetails(txnId, txnType),
         setAgingBucket: (key) => OutstandingManager.setAgingBucket(key),
         setAgingSort: (by) => OutstandingManager.setAgingSort(by),

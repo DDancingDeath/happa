@@ -16,7 +16,7 @@ import {
 import { noteStockWrite } from '../core/stock-checkpoint.js';
 import { isActiveBill } from '../../utils/money.js';
 import { getWithRetry } from '../core/reads.js';
-import { billEditsRef, keepEditCount, keepStoredCreatedAt } from './bill-fields.js';
+import { billEditsRef, keepEditCount, keepStoredCreatedAt, newAuditId, setAuditEntry } from './bill-fields.js';
 import { withCanonicalDue } from './bill-due.js';
 
 /**
@@ -26,16 +26,18 @@ import { withCanonicalDue } from './bill-due.js';
  * A change to a recorded field (bill-edits EDIT_FIELDS or the items) also
  * writes its edit record `edits/{n}` in the same transaction (#121): the
  * changed fields before/after, the editor and `reason` (required then).
- * A voided bill is never changed (#75).
+ * A voided bill is never changed (#75). `audit` (AuditService.entry data): its audit entry,
+ * written by the same transaction (D-3).
  * @private
  */
-export async function updateBillChecked(collKey, record, { reason = null } = {}) {
+export async function updateBillChecked(collKey, record, { reason = null, audit = null } = {}) {
     if (!record.id) throw new Error('Bill ID is required for update');
     const previous = findRecord(collKey, record.id);
     prepareStockRecord(collKey, record, false);
     const base = record[LOADED_PAYMENT] ?? previous?.[LOADED_PAYMENT] ?? null;
     const ref = getDb().collection(col(collKey)).doc(String(record.id));
     const why = cleanReason(reason);
+    const entry = audit ? { id: newAuditId(), data: audit } : null;
     await getDb().runTransaction(async tx => {
         const snap = await tx.get(ref);
         const stored = snap.exists ? snap.data() : null;
@@ -59,11 +61,13 @@ export async function updateBillChecked(collKey, record, { reason = null } = {})
             tx.set(billEditsRef(ref).doc(String(n)), editRecord({
                 n, at: serverCreatedAt(), by: AppState.currentUser?.uid || null, byName: AppState.userName, reason: why, changes
             }));
+            setAuditEntry(tx, entry);
             return;
         }
         if (stored) keepEditCount(record, stored);
         else delete record.editCount;
         tx.set(ref, record);
+        setAuditEntry(tx, entry);
     });
     // The server now holds exactly this record: later edits must compare against it.
     record[LOADED_PAYMENT] = paymentSignature(record);
@@ -89,15 +93,16 @@ export async function deleteBill(collKey, id) {
  * so stock, month snapshots and the checkpoint are marked as for a delete.
  * Refused (code) when it is already voided ('already-voided') or has payments
  * recorded after it was saved ('has-payments', bill-edits.voidBlocker).
- * Needs a connection.
+ * Needs a connection. `audit`: its audit entry, written by the same transaction (D-3).
  * @private
  */
-export async function voidBillDoc(collKey, bill, reason) {
+export async function voidBillDoc(collKey, bill, reason, { audit = null } = {}) {
     const why = cleanReason(reason);
     if (!why) throw Object.assign(new Error('A reason is needed to void a bill'), { code: 'reason-required' });
     const docId = docIdOf(bill);
     const previous = findRecord(collKey, docId);
     const ref = getDb().collection(col(collKey)).doc(String(docId));
+    const entry = audit ? { id: newAuditId(), data: audit } : null;
     const fields = {
         voided: true,
         voidedAt: serverCreatedAt(),
@@ -119,6 +124,7 @@ export async function voidBillDoc(collKey, bill, reason) {
                 { code: blocked === 'voided' ? 'already-voided' : 'has-payments' });
         }
         tx.update(ref, fields);
+        setAuditEntry(tx, entry);
     });
     const voided = { id: docId, ...stored, ...fields, voidedAt: Date.now() };
     noteStockWrite(collKey, previous, voided, { oldUnknown: true });
@@ -128,11 +134,12 @@ export async function voidBillDoc(collKey, bill, reason) {
 }
 
 /**
- * Deletes a voided bill for good, with its edit records (owner only in the
- * rules; test data and mistakes). It counted in nothing, so no figure changes.
+ * Deletes a voided bill for good, with its edit records (owner only, and only a voided bill,
+ * in the rules too; test data and mistakes). It counted in nothing, so no figure changes.
+ * `audit`: its audit entry, in the same batch (D-3).
  * @private
  */
-export async function deleteVoidedBillDoc(collKey, bill) {
+export async function deleteVoidedBillDoc(collKey, bill, { audit = null } = {}) {
     if (isActiveBill(bill)) throw Object.assign(new Error('Only a voided bill can be deleted'), { code: 'not-voided' });
     const docId = docIdOf(bill);
     const ref = getDb().collection(col(collKey)).doc(String(docId));
@@ -142,6 +149,7 @@ export async function deleteVoidedBillDoc(collKey, bill) {
         edits.docs.forEach(d => batch.delete(d.ref));
     }
     batch.delete(ref);
+    setAuditEntry(batch, audit ? { id: newAuditId(), data: audit } : null);
     await batch.commit();
     noteLocalRecordWrite(collKey, docId, null);
 }
@@ -256,20 +264,22 @@ export const billEditMethods = {
      * @param {'purchases'|'retailSales'|'wholesaleSales'} collKey
      * @param {Object} bill
      * @param {string} reason 3–300 characters
+     * @param {{audit?: Object}} [options] - `audit`: its audit entry (AuditService.entry), same transaction
      * @returns {Promise<Object>} the voided bill
      */
-    async voidBill(collKey, bill, reason) {
+    async voidBill(collKey, bill, reason, options) {
         if (!HISTORY_SPEC[collKey]?.dues) throw new Error(`Unknown bill collection: ${collKey}`);
-        return voidBillDoc(collKey, bill, reason);
+        return voidBillDoc(collKey, bill, reason, options);
     },
 
     /**
      * Owner only: deletes a voided bill for good, with its edit records.
      * @param {'purchases'|'retailSales'|'wholesaleSales'} collKey
      * @param {Object} bill a voided bill
+     * @param {{audit?: Object}} [options] - `audit`: its audit entry (AuditService.entry), same batch
      */
-    async deleteVoidedBill(collKey, bill) {
+    async deleteVoidedBill(collKey, bill, options) {
         if (!HISTORY_SPEC[collKey]?.dues) throw new Error(`Unknown bill collection: ${collKey}`);
-        return deleteVoidedBillDoc(collKey, bill);
+        return deleteVoidedBillDoc(collKey, bill, options);
     }
 };

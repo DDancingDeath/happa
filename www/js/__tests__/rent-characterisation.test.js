@@ -132,6 +132,13 @@ async function attach() {
     store.attach(M, (k) => _test.state.loaded.add(k));
     await fake.settle();
 }
+/** A form error shown at its field (the dialog stays open): its text, the focused field and More; then Cancel. */
+const formError = () => {
+    if (document.getElementById('rentDialog').hidden) return null;
+    const out = `${document.getElementById('rentTError').textContent} @${document.activeElement?.id}${document.getElementById('rentTMore')?.open ? ' (More open)' : ''}`;
+    RentalsModule.api.dialogClose(false);
+    return out;
+};
 const toasts = () => UIManager.showToast.mock.calls.map(([m, type]) => `${type}: ${m}`);
 const modals = () => UIManager.showModal.mock.calls.map(([m]) => m);
 const set = (id, v) => { document.getElementById(id).value = v; };
@@ -282,10 +289,11 @@ describe('change of unit and move in (RENT-11, RENT-13)', () => {
         }
         if (typed) Object.entries(typed).forEach(([id, v]) => set(id, v));
         RentalsModule.api.dialogClose(true);
+        const form = formError();
         await p;
         await fake.settle();
         const leases = [...fake.raw('rent_leases').entries()].filter(([id]) => !/^L\d$/.test(id)).map(([, l]) => leaseOut(l));
-        return { ...shown, modals: modals(), toasts: toasts(), oldLease: leaseOut(fake.raw('rent_leases').get(tenant.lease)), newLeases: leases, charges: charges() };
+        return { ...shown, modals: modals(), toasts: form ? [`form: ${form}`] : toasts(), oldLease: leaseOut(fake.raw('rent_leases').get(tenant.lease)), newLeases: leases, charges: charges() };
     }
 
     test('member moves Ram (meter, nothing paid) from 1A to G1 the day before yesterday: both units pro-rated by days of the leap February', async () => {
@@ -356,9 +364,10 @@ describe('change of unit and move in (RENT-11, RENT-13)', () => {
             set('rentTElec', 'meter');
             fill();
             RentalsModule.api.dialogClose(true);
+            const form = formError();
             await p;
             await fake.settle();
-            return toasts();
+            return form ? [`form: ${form}`] : toasts();
         };
         const out = {
             badReading: await addUnit(() => { set('rentTOpen', '-5'); set('rentTRate', '8'); }),

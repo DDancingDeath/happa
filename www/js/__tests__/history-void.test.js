@@ -16,7 +16,7 @@ jest.mock('../firebase/firestore-service.js', () => ({
     }
 }));
 jest.mock('../services/printer.js', () => ({ PrinterService: {} }));
-jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}), ACTIONS: { VOID_BILL: 'VOID_BILL', DELETE_BILL: 'DELETE_BILL', DELETE_SALE: 'DELETE_SALE' } } }));
+jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}), entry: jest.fn((action, details) => ({ action, details })), ACTIONS: { VOID_BILL: 'VOID_BILL', DELETE_BILL: 'DELETE_BILL', DELETE_SALE: 'DELETE_SALE' } } }));
 jest.mock('../ui/infinite-scroll.js', () => ({ attachOlderHistoryScroll: jest.fn() }));
 
 import fs from 'fs';
@@ -116,8 +116,10 @@ describe('voided bills in History (#75)', () => {
         await HistoryManager.viewBill('id:P-void', 'purchase');
         jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
         await HistoryManager.confirmDeleteBill();
-        expect(FirebaseService.deleteVoidedBill).toHaveBeenCalledWith('purchases', VOIDED);
-        expect(AuditService.log).toHaveBeenCalledWith('DELETE_BILL', expect.objectContaining({ billNumber: 'P-void', voided: true }));
+        // its audit entry goes in the delete's own batch (D-3)
+        expect(FirebaseService.deleteVoidedBill).toHaveBeenCalledWith('purchases', VOIDED,
+            { audit: { action: 'DELETE_BILL', details: expect.objectContaining({ billNumber: 'P-void', voided: true }) } });
+        expect(AuditService.log).not.toHaveBeenCalled();
     });
 
     test('a delete the rules refuse says to void instead; other failures stay generic', async () => {
@@ -150,8 +152,10 @@ describe('Void (#75)', () => {
         answerReason('  Entered twice ');
         await HistoryManager.confirmVoidBill();
         await flush();
-        expect(FirebaseService.voidBill).toHaveBeenCalledWith('purchases', AppState.purchaseHistory[0], 'Entered twice');
-        expect(AuditService.log).toHaveBeenCalledWith('VOID_BILL', expect.objectContaining({ billNumber: 'P-1', billType: 'purchase', amount: 500, reason: 'Entered twice' }));
+        // its audit entry goes in the void's own transaction (D-3)
+        expect(FirebaseService.voidBill).toHaveBeenCalledWith('purchases', AppState.purchaseHistory[0], 'Entered twice',
+            { audit: { action: 'VOID_BILL', details: expect.objectContaining({ billNumber: 'P-1', billType: 'purchase', amount: 500, reason: 'Entered twice' }) } });
+        expect(AuditService.log).not.toHaveBeenCalled();
         expect(UIManager.showToast).toHaveBeenCalledWith('Bill voided');
         expect(document.getElementById('billDetailsOverlay').classList.contains('active')).toBe(false);
     });
