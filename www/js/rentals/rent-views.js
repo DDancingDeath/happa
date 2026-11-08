@@ -7,7 +7,7 @@
  */
 
 import { round2 } from '../utils/money.js';
-import { chargeDue, chargeStatus, rentTotals, leaseDues } from './rent-math.js';
+import { chargeDue, chargeStatus, rentTotals, leaseDues, elecMode } from './rent-math.js';
 
 export const UNIT_TYPES = ['flat', 'commercial', 'office', 'godown', 'other'];
 export const MAX_UNIT_AREA = 1000000;
@@ -117,6 +117,13 @@ export function tenantRows({ leases = [], tenants = [], charges = [] }, month, t
         };
     }).sort((a, b) => (b.late - a.late) || String(a.dues.charges[0]?.month || '9').localeCompare(String(b.dues.charges[0]?.month || '9'))
         || (b.dues.total - a.dues.total) || a.name.localeCompare(b.name));
+}
+
+/** REM-7: active tenancies billed by our meter whose month's charge has no reading yet (a count, not money). */
+export function meterPending({ leases = [], charges = [] }, month) {
+    return leases.filter(l => l.status === 'active' && elecMode(l) === 'meter')
+        .map(lease => ({ lease, charge: charges.find(x => x.leaseId === lease.id && x.month === month) }))
+        .filter(x => x.charge && !x.charge.electricity);
 }
 
 /** One tenant's unpaid months over all their tenancies (an old unit after a change too), oldest first; total as RENT-4. */
