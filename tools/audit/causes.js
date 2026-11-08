@@ -88,8 +88,8 @@ export const CAUSES = {
     I8_belowCostLost: onPhone(NEGATIVE_STOCK, 'Sold-below-cost lines (I8) use the cost of goods sold of each line.'),
 
     // ---- migrated state (opening records + synthetic bills)
-    'migrated:T15_dueToReceive': { ...OPENING, cause: `Today "Due to receive" adds the carried due of opening records dated that day. ${OPENING.cause}` },
-    'migrated:T16_dueToPay': { ...OPENING, cause: `Today "Due to pay" adds carried payables dated that day. ${OPENING.cause}` },
+    'migrated:T15_dueToReceive': { ...OPENING, cause: `Today "New udhaar today" (T15) adds the carried due of opening records dated that day. ${OPENING.cause}` },
+    'migrated:T16_dueToPay': { ...OPENING, cause: `Today "New to pay today" (T16) adds carried payables dated that day. ${OPENING.cause}` },
     'migrated:T2_saleCount': { ...OPENING, cause: `Today's bill count includes opening records (₹0 bills). ${OPENING.cause}`, known: SAME_ROOT },
     'migrated:T1_purchaseCount': { ...OPENING, cause: `Today's bill count includes opening records (₹0 bills). ${OPENING.cause}`, known: SAME_ROOT },
     'migrated:R2_saleCount': { ...OPENING, cause: `Reports bill count includes opening records. ${OPENING.cause}`, known: SAME_ROOT },

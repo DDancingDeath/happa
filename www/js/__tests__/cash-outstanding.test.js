@@ -20,6 +20,7 @@ import { sessionTotals, parseCashAmount, isNotCounted, lastCountedSession, autoC
 import fs from 'fs';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 import path from 'path';
+import * as O from '../../../tests/oracle/oracle.js';
 
 const CASH_TEMPLATE = fs.readFileSync(path.join(__dirname, '../../templates/cash-management.html'), 'utf8');
 const setVal = (id, v) => { document.getElementById(id).value = String(v); };
@@ -60,7 +61,7 @@ describe('#69 session totals', () => {
         jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async (h) => { html = h; return true; });
         await CashManagementManager.showSessionDetails('2026-10-20');
         const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-        expect(text).toContain('Total Cash In: ₹4,050');
+        expect(text).toContain('Opening + cash in: ₹4,050');
         expect(text).toContain('Total Cash Out: ₹1,830');
     });
 
@@ -516,6 +517,24 @@ describe('#95 Today shows dues and the hero equals the breakdown (fixture tests/
         expect(t).toEqual(drawer);
         CashManagementManager.todayTransactions = t;
         expect(CashManagementManager.calculateExpectedCash()).toBe(expected);
+    });
+
+    test('O-11: the Cash page "Cash in" is Today\'s "Cash received" (C1 + C4 = T6); opening and cash added are their own lines', () => {
+        DayManager.loadTodayData();
+        const todayCashIn = val('todayCashReceived');
+        const session = { ...CashManagementManager.todaySession, cashDeposits: [{ id: 'd1', amount: 500, timestamp: '2026-10-21T12:00:00.000Z' }] };
+        CashManagementManager.todaySession = session;
+        const tx = CashManagementManager.calculateTransactionsForDate(FIX.day, session);
+        document.body.innerHTML = CASH_TEMPLATE;
+        CashManagementManager.todayTransactions = tx;
+        CashManagementManager.updateStatusCard();
+        const o = O.drawer({ purchases: FIX.purchases, retailSales: FIX.retailSales, wholesaleSales: FIX.wholesaleSales, expenses: FIX.expenses }, session);
+        expect(amount('statusCashIn')).toBe(o.C1_cashSales + o.C4_dueReceived);
+        expect(money(amount('statusCashIn'))).toBe(todayCashIn);
+        expect(amount('statusOpeningBalance')).toBe(1000);
+        expect(document.getElementById('statusCashAddedCard').style.display).toBe('block');
+        expect(amount('statusCashAdded')).toBe(o.C6_deposits);
+        expect(amount('statusAvailable')).toBe(o.C7_expected);
     });
 
     test('recording a due makes Today\'s due figure move immediately', async () => {

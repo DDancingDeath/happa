@@ -564,7 +564,7 @@ export class CashManagementManager {
 
         const {
             opening, cashAdded, purchases, sales, others, expected,
-            totalCashIn, totalCashOut, availableCash, actual, diff, diffLevel
+            cashIn, totalCashOut, availableCash, actual, diff, diffLevel
         } = drawerStatus(this.todaySession, this.todayTransactions);
 
         if (this.todaySession.signedOut) {
@@ -600,7 +600,7 @@ export class CashManagementManager {
             if (statusCashInCard) statusCashInCard.style.display = 'block';
             if (statusCashOutCard) statusCashOutCard.style.display = 'block';
             if (statusAvailableCard) statusAvailableCard.style.display = 'block';
-            if (statusCashAddedCard) statusCashAddedCard.style.display = 'none';
+            if (statusCashAddedCard) statusCashAddedCard.style.display = cashAdded ? 'block' : 'none';
             if (statusBuyCard) statusBuyCard.style.display = 'none';
             if (statusSaleCard) statusSaleCard.style.display = 'none';
             if (statusOthersCard) statusOthersCard.style.display = 'none';
@@ -609,7 +609,8 @@ export class CashManagementManager {
             if (statusDiffCard) statusDiffCard.style.display = 'none';
             
             if (statusOpeningBalance) statusOpeningBalance.textContent = formatRupees(opening, { exact: true });
-            if (statusCashIn) statusCashIn.textContent = formatRupees(totalCashIn, { exact: true });
+            if (statusCashAdded) statusCashAdded.textContent = formatRupees(cashAdded, { exact: true });
+            if (statusCashIn) statusCashIn.textContent = formatRupees(cashIn, { exact: true });
             if (statusCashOut) statusCashOut.textContent = formatRupees(totalCashOut, { exact: true });
             if (statusAvailable) statusAvailable.textContent = formatRupees(availableCash, { exact: true });
         }

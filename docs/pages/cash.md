@@ -11,6 +11,7 @@ Only cash counts here, for one day's cash session.
 | Due received / paid (C4, C5) | Cash part of that day's due payments. |
 | Deposits (C6) | Cash added to the drawer. |
 | Expected cash (C7) | Opening + cash sales + due received + deposits − cash purchases − due paid − expenses. |
+| Today's cash status (C7) | Opening, Cash added (when there is some) and **Cash in** (cash sales + due received, the same as Today's "Cash In") are separate lines; Available = opening + cash added + cash in − cash out. |
 | Difference (C8) | Counted cash − expected: short or extra. Within ₹1 it matches. |
 | Counted cash (C9) | The last counted closing; it is the drawer part of Net worth. |
 | Open for N hours (C10) | When today's cash has been open 14 hours or more, Close cash says so with the time it was opened. |
