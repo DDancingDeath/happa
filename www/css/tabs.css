@@ -55,36 +55,13 @@
 
 /* Sub-tab navigation style */
 .sub-tabs {
-  display: flex;
-  gap: 0;
   margin-bottom: 20px;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--seg-bg);
 }
 
 .sub-tab {
   flex: 1;
-  padding: 14px 20px;
-  font-size: 14px;
-  font-weight: var(--w-label);
-  border: none;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: background var(--transition), color var(--transition), box-shadow var(--transition);
 }
 
-.sub-tab:hover {
-  color: var(--text-primary);
-}
-
-.sub-tab.active {
-  background: var(--seg-active);
-  color: var(--on-primary-soft);
-  box-shadow: inset 0 0 0 3px var(--seg-bg);
-}
 
 
 /* Emoji inside gradient-text headings keep their own colours (ui/heading-emoji.js) */

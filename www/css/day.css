@@ -236,12 +236,6 @@
 }
 
 /* Empty State */
-.empty-state {
-  text-align: center;
-  color: var(--text-muted);
-  padding: 16px;
-  font-style: italic;
-}
 
 /* Item Detail Row */
 .item-detail-row {

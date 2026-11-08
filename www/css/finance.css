@@ -209,12 +209,6 @@
     padding: 16px 0;
 }
 
-.empty-state {
-    text-align: center;
-    color: var(--text-muted);
-    padding: 32px;
-    font-size: 14px;
-}
 
 /* ==================== ASSET LIST ==================== */
 .asset-list {
@@ -291,45 +285,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-}
-
-.quick-add-btn {
-    padding: 10px 16px;
-    background: var(--light-bg);
-    border: 2px solid var(--border-color);
-    border-radius: var(--radius);
-    font-size: 14px;
-    font-weight: var(--w-regular);
-    cursor: pointer;
-    transition: all var(--transition);
-}
-
-.quick-add-btn:hover {
-    background: var(--primary-gradient);
-    color: white;
-    border-color: transparent;
-}
-
-/* ==================== ICON BUTTON ==================== */
-.btn-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: var(--radius-full);
-    border: none;
-    background: var(--primary-gradient);
-    color: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    transition: all var(--transition);
-    box-shadow: var(--shadow-sm);
-}
-
-.btn-icon:hover {
-    transform: scale(1.1);
-    box-shadow: var(--shadow);
 }
 
 /* ==================== ICON PICKER ==================== */
@@ -416,7 +371,6 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -425,13 +379,10 @@
 }
 
 .modal-content {
-    background: var(--card-bg);
-    border-radius: var(--radius-lg);
     width: 100%;
     max-width: 400px;
     max-height: 90vh;
     overflow-y: auto;
-    box-shadow: var(--shadow-lg);
 }
 
 .modal-header {
@@ -506,58 +457,6 @@
     outline: none;
     border-color: var(--primary-color);
     box-shadow: var(--focus-ring);
-}
-
-/* ==================== BUTTON STYLES ==================== */
-.btn {
-    padding: 12px 24px;
-    border-radius: var(--radius);
-    font-size: var(--fs-body);
-    font-weight: var(--w-strong);
-    cursor: pointer;
-    transition: all var(--transition);
-    border: none;
-}
-
-.btn-primary {
-    background: var(--btn-primary);
-    color: white;
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-}
-
-.btn-secondary {
-    background: var(--card-bg);
-    color: var(--text-primary);
-    border: none;
-    box-shadow: inset 0 0 0 1px var(--border-strong);
-}
-
-.btn-secondary:hover {
-    background: var(--surface-muted);
-}
-
-.btn-success {
-    background: var(--success-soft);
-    color: var(--on-success-soft);
-    box-shadow: inset 0 0 0 1px var(--success-border);
-}
-
-.btn-danger {
-    background: var(--btn-danger);
-    color: white;
-}
-
-.btn-danger:hover {
-    opacity: 0.9;
-}
-
-.btn-block {
-    width: 100%;
-    display: block;
 }
 
 /* ==================== CARD BREAKDOWN SHEET (#215) ==================== */
