@@ -1,0 +1,34 @@
+/* Line icons (redesign 2.4, DIRECTION 3.5): 24 grid, 1.75 stroke, currentColor. Sprite in templates/navigation.html */
+.icon-sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.i {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  vertical-align: middle;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.i-sm {
+  width: 16px;
+  height: 16px;
+}
+
+.i-lg {
+  width: 24px;
+  height: 24px;
+}
+
+.i-fill {
+  fill: currentColor;
+  stroke: none;
+}
