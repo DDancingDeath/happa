@@ -441,7 +441,8 @@ www/js/rentals/rentals.js: lazyMods.pages.renderTenants(unitCtx(), d) (sink)
 www/js/rentals/rentals.js: m
 www/js/services/exporter.js: html
 www/js/ui/bill-highlight.js: ICON.block ← ICON = { block: '⛔', warn: '⚠️' }
-www/js/ui/bill-row.js: onclick || '' ← onclick
+www/js/ui/bill-row.js: TYPE_TAGS[type].cls ← TYPE_TAGS = Object.freeze({ retail: { key: 'ui.history.tag_retail', cls: 'badge-success' }, 
+www/js/ui/bill-row.js: link ← onclick
 www/js/ui/bill-row.js: onclickFor(bill)
 www/js/ui/bill-row.js: opening ? '' : SyncStatus.chipHtml(bill?.id) ← SyncStatus.chipHtml(bill?.id)
 www/js/ui/bill-row.js: opening ? '' : SyncStatus.chipHtml(bill?.id) ← SyncStatus.chipHtml(bill?.id)

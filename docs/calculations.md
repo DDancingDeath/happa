@@ -215,6 +215,12 @@ here (#144 plans to redo them). "Projected profit" and the smart-suggestion
 profit lines start from A4 (the month's profit so far, scaled to the whole
 month); the "in loss" suggestion only shows when the month has sales.
 
+## History (`templates/history.html`, `modules/history.js`)
+
+| ID | On screen | Definition |
+|---|---|---|
+| H-TOTAL | "01/09/2026 – 30/09/2026 · 136 bills · ₹4,52,300" under the filters | The tab's bills (Purchase; or Sale = retail **and** wholesale, V2 O-9, wholesale only for a role that may open Wholesale) in the date range and matching the search, the history limit of the role applied: count (with the voided and old-app rows when their toggle is on) and Σ BILL-TOTAL of the bills that count (VOID and OPENING never in the total; a bill with no stored amount is left out and named, "(N without an amount)"). Shown when a date range is chosen or a search is typed. For a date range of loaded bills the Sale total = M1 and the Purchase total = M16. Code: `history-filters.historyListTotal`. |
+
 ## Outstanding (`templates/due.html`, `modules/outstanding.js`)
 
 | ID | On screen | Definition |

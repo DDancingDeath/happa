@@ -20,13 +20,13 @@ import {
 } from '../utils/history-window.js';
 import {
     filterHistoryBills, resolveHistoryRange, normalizeHistoryFilter, formatHistoryRange, billTimeMs,
-    validateCustomRange, olderMonthsToLoad, normalizeHistoryTab, isWholesaleHistoryLink,
+    validateCustomRange, olderMonthsToLoad, normalizeHistoryTab, isWholesaleHistoryLink, historyListTotal,
     HISTORY_FILTER_KEY, HISTORY_TAB_KEY, WIDE_LOAD_MONTHS
 } from '../utils/history-filters.js';
 import { buildBillRow, buildOpeningGroup, addOpeningToggle, addVoidedToggle, billTableHtml, printStatusText, billRowDate, badDateBadgeHtml } from '../ui/bill-row.js';
 import { printStatusOf, recordPrint } from '../utils/print-status.js';
 import { STORAGE_FULL_KEY } from '../utils/storage-full.js';
-import { accessFor, canDeleteBillWith, canVoidBillWith, historyCutoff, withinBillEditWindow } from '../utils/role-access.js';
+import { accessFor, canDeleteBillWith, canOpenPage, canVoidBillWith, historyCutoff, withinBillEditWindow } from '../utils/role-access.js';
 import { askReason, editsRowHtml, renderEditsList, setBillActions, voidedBannerHtml } from '../ui/bill-status.js';
 import { voidBlocker } from '../utils/bill-edits.js';
 import { buildReprintPayload, buildBillShareText } from '../utils/bill-share.js';
@@ -183,9 +183,15 @@ export class HistoryManager {
         window.app?.nav?.showTab?.('wholesale-history');
     }
 
+    /** Wholesale bills are in the Sale tab only for a role that may open Wholesale. */
+    static canSeeWholesale() {
+        const role = AppState.userRole;
+        return !role || canOpenPage('wholesale-sales', role, AppState.settings?.roleAccess);
+    }
+
     /**
-     * Render purchase or (retail) sale bills with date filter, search and paging.
-     * Wholesale bills are on the Wholesale page. Old-app opening records are
+     * Render purchase or sale (retail + wholesale) bills with date filter, search and paging.
+     * Old-app opening records are
      * hidden unless the tab's "Show dues carried from old app" toggle is on.
      * Supports both card and table view modes
      * @param {'purchase'|'sale'} [type] - Tab (defaults to the remembered one;
@@ -229,9 +235,11 @@ export class HistoryManager {
             onRetry: () => { retryRange('history'); this.refreshHistory(); }
         });
         
-        // Purchases or retail sales (wholesale bills are on the Wholesale page)
         const tabBills = type === 'sale'
-            ? billPool('retail').map(s => ({ ...s, type: 'retail', isPurchase: false }))
+            ? [
+                ...billPool('retail').map(s => ({ ...s, type: 'retail', isPurchase: false })),
+                ...(this.canSeeWholesale() ? billPool('wholesale').map(s => ({ ...s, type: 'wholesale', isPurchase: false })) : [])
+            ]
             : billPool('purchase').map(b => ({ ...b, type: 'purchase', isPurchase: true }));
         const cutoff = historyCutoff(AppState.userRole, AppState.settings?.roleAccess);
         const allHistory = tabBills.filter(b => cutoff === null || billTimeMs(b) >= cutoff);
@@ -248,10 +256,9 @@ export class HistoryManager {
         this.openingCount = openings.length;
         this.pageVoided = showVoided ? voided : [];
         this.voidedCount = voided.length;
-        this.updateRangeLabel(range, sortedBills.length + this.pageOpenings.length + this.pageVoided.length);
-        
-        // Check view mode and render accordingly
         this.activeSearch = (searchTerm || '').trim();
+        this.updateRangeLabel(range, sortedBills.length + this.pageOpenings.length + this.pageVoided.length, historyListTotal(sortedBills));
+        
         // Only the first PAGE_SIZE bills go into the DOM; live refreshes keep
         // how many are shown, a new filter/search/view starts over (#24).
         const pageKey = `${type}|${filter.preset}|${range.from}|${range.to}|${this.activeSearch}|${this.viewMode}|${showOpenings}|${showVoided}`;
@@ -343,7 +350,9 @@ export class HistoryManager {
     static buildHistoryCard(bill) {
         return buildBillRow(bill, {
             kind: bill.type,
-            onclick: `history.viewBill('${billRef(bill)}', '${Helpers.escapeJsAttr(bill.type)}')`
+            onclick: `history.viewBill('${billRef(bill)}', '${Helpers.escapeJsAttr(bill.type)}')`,
+            rowTap: true,
+            typeTag: bill.type === 'retail' || bill.type === 'wholesale'
         });
     }
 
@@ -1013,13 +1022,20 @@ export class HistoryManager {
 
     static syncedRangeKey = null;
 
-    /** "01/10/2026 – 22/10/2026 · 12 bills" under the filters. */
-    static updateRangeLabel(range, count) {
+    /**
+     * "01/10/2026 – 22/10/2026 · 12 bills · ₹4,500" under the filters (H-TOTAL: the
+     * counted bills listed; "All dates" without a search shows no line).
+     */
+    static updateRangeLabel(range, count, sum = null) {
         const label = document.getElementById('historyRangeLabel');
         if (!label) return;
         const text = formatHistoryRange(range);
-        label.textContent = text ? `${text} · ${t(count === 1 ? 'ui.outstanding.bills_one' : 'ui.outstanding.bills_many', { count })}` : '';
-        label.hidden = !text;
+        const parts = text || this.activeSearch ? [text, t(count === 1 ? 'ui.outstanding.bills_one' : 'ui.outstanding.bills_many', { count })] : [];
+        if (parts.length && sum && sum.count > 0) {
+            parts.push(sum.unknown > 0 ? t('ui.history.list_total_unknown', { total: formatRupees(sum.total), n: sum.unknown }) : formatRupees(sum.total));
+        }
+        label.textContent = parts.filter(Boolean).join(' · ');
+        label.hidden = !parts.length;
     }
 
     /**

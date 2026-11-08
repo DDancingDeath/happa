@@ -103,32 +103,46 @@ export function billItemsText(bill) {
  * @param {Object} opts
  * @param {string} opts.onclick - safe data-onclick call for the bill number (built with Helpers.escapeJsAttr)
  * @param {string} [opts.kind] - 'purchase' | 'retail' | 'wholesale' (colour only)
+ * @param {boolean} [opts.rowTap] - the whole row opens the bill (History), not only its number
+ * @param {boolean} [opts.typeTag] - a Retail / Wholesale tag (History › Sale lists both)
  * @returns {HTMLElement}
  */
-export function buildBillRow(bill, { onclick, kind } = {}) {
+export function buildBillRow(bill, { onclick, kind, rowTap = false, typeTag = false } = {}) {
     const div = document.createElement('div');
     const opening = isOpeningRecord(bill);
     const voided = !isActiveBill(bill);
     const type = kind || bill?.type || 'purchase';
     div.className = `history-item bill-row${opening ? ' is-opening' : ''}${voided ? ' is-voided' : ''}`;
     div.setAttribute('data-type', type);
+    if (rowTap && onclick) {
+        div.setAttribute('role', 'button');
+        div.setAttribute('tabindex', '0');
+        div.setAttribute('data-onclick', onclick);
+    }
+    const link = rowTap ? '' : ` role="button" tabindex="0" data-onclick="${onclick || ''}"`;
+    const tag = typeTag && TYPE_TAGS[type] ? `<span class="badge ${TYPE_TAGS[type].cls} bill-type-tag">${L(TYPE_TAGS[type].key)}</span>` : '';
     const number = billNumberOf(bill);
     const party = bill?.customerName ? String(bill.customerName) : '';
     const by = bill?.createdByName || bill?.userName;
     const date = billRowDate(bill);
     const items = billItemsText(bill);
     div.innerHTML = `
-        <span class="bill-row__no" title="#${Helpers.escapeHtml(number)}"><span class="bill-row__link" role="button" tabindex="0" data-onclick="${onclick || ''}">#${Helpers.escapeHtml(number)}</span></span>
+        <span class="bill-row__no" title="#${Helpers.escapeHtml(number)}"><span class="bill-row__link"${link}>#${Helpers.escapeHtml(number)}</span></span>
         <span class="bill-row__party" title="${Helpers.escapeHtml(party)}">${party ? `<strong>${Helpers.escapeHtml(party)}</strong>` : '—'}</span>
         <span class="bill-row__amount">${Helpers.escapeHtml(billListAmountText(bill))}</span>
         <span class="bill-row__meta">
             <span class="bill-row__date">${Helpers.escapeHtml(date.text)}${date.bad ? badDateBadgeHtml() : ''}${by ? `<span class="bill-row__by"> • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(by)}</strong></span>` : ''}</span>
             <span class="bill-row__items history-summary" title="${Helpers.escapeHtml(items)}">${Helpers.escapeHtml(items)}</span>
-            <span class="bill-row__chips history-payment">${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${opening ? '' : SyncStatus.chipHtml(bill?.id)}${voidedChipHtml(bill)}${printStatusChipHtml(bill)}${paymentChipsHtml(bill)}</span>
+            <span class="bill-row__chips history-payment">${tag}${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${opening ? '' : SyncStatus.chipHtml(bill?.id)}${voidedChipHtml(bill)}${printStatusChipHtml(bill)}${paymentChipsHtml(bill)}</span>
         </span>
     `;
     return div;
 }
+
+const TYPE_TAGS = Object.freeze({
+    retail: { key: 'ui.history.tag_retail', cls: 'badge-success' },
+    wholesale: { key: 'ui.history.tag_wholesale', cls: 'badge-info' }
+});
 
 const PRINT_CHIP_KEYS = Object.freeze({
     printed: 'ui.print_status.chip_printed',

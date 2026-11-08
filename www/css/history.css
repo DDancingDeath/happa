@@ -357,6 +357,10 @@
   font-size: 15px;
 }
 
+.bill-row[role="button"] {
+  cursor: pointer;
+}
+
 .bill-row__link {
   cursor: pointer;
   text-decoration: underline;
