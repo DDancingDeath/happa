@@ -164,6 +164,10 @@ In order:
   (hex, `rgb()`, a colour name) in `www/css`, a template's `style=` / `<style>` or `www/js` fails
   `tests/ci/colour-guard.test.js` (per-file baseline `tests/colour-baseline.json`, which may only
   go down: `COLOUR_BASELINE=lower npx jest colour-guard`). Print and receipt output is exempt.
+  Light / Dark / System and the visual theme are per device (`js/ui/theme.js` ThemeManager, keys
+  `happa.theme` / `happa.appearance`); `<html>` carries `data-theme`, `data-appearance` and `data-mode`, and CSS keys on
+  `[data-mode="dark"]` (`body.dark-mode` mirrors it). The pre-paint `#themeBoot` reads the same keys; it is data-only, so a new
+  theme never changes it or its CSP hash.
 - **Date strings**: bills mix ISO-8601 and `DD/MM/YYYY`. Use
   `www/js/utils/dates.js` (`parseAnyBillDate`, `todayLocalISO`,
   `parseLocalDate`) or `Helpers.parseDate()` — never raw
