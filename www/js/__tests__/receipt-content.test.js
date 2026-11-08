@@ -137,6 +137,25 @@ describe('the printed bill', () => {
         expect(withBoth.height).toBeGreaterThan(plain.height + 100);
     });
 
+    test('the slip and the shared image end with a small centred "by happa" mark, below the QR (#109)', async () => {
+        const { height } = render({ qr: true });
+        const mark = rects.filter(([, , , h]) => h === 1);
+        const qrBottom = Math.max(...rects.filter(([, , w, h]) => w === h && w > 1 && w < 10).map(([, y, , h]) => y + h));
+        const xs = mark.flatMap(([x, , w]) => [x, x + w]);
+        const ys = mark.map(([, y]) => y);
+        expect(Math.min(...xs)).toBe(Math.round((384 - 87) / 2));
+        expect(Math.max(...xs) - Math.min(...xs)).toBe(87);
+        expect(Math.max(...ys) - Math.min(...ys) + 1).toBe(24);
+        expect(Math.min(...ys)).toBeGreaterThan(qrBottom);
+        expect(height).toBe(Math.max(...ys) + 1 + 4);
+
+        rects = [];
+        const shared = await PrinterService.manager.generateBillCanvas(bill, {});
+        const sharedMark = rects.filter(([, , , h]) => h === 1);
+        expect(sharedMark.length).toBe(mark.length);
+        expect(shared.height).toBe(Math.max(...sharedMark.map(([, y]) => y)) + 1 + 4);
+    });
+
     test('a long footer wraps instead of running off the paper', () => {
         render({ footer: 'word '.repeat(20).trim() });
         const lines = drawn.filter(s => s.startsWith('word'));
