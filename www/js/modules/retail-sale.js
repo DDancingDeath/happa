@@ -215,15 +215,10 @@ const RetailSaleManager = {
         // Bill lines keep the catalogue name; Hindi is only for display (#143, Reports group by item).
         const itemName = lineLabel(item);
         
-        // Packets above 100 kg are confirmed (BF-BAGCHECK); a weight typed with no packets is the line's total kg, not a packet
+        // Packets above 100 kg are confirmed (BF-BAGCHECK), the weight typed with them too;
+        // a weight typed with no packets is the line's total kg, not a packet
         const packetWeights = saleWeights.length > 0 ? allWeights : [];
-        const records = [...saleWeightChecks];
-        if (saleWeights.length > 0 && hasTypedWeight) {
-            const bag = await checkBagWeight(typedWeight, 'packet', 'saleWeight');
-            if (!bag.ok) return;
-            if (bag.record) records.push(bag.record);
-        }
-        const bags = await confirmLineBags(packetWeights, records, 'packet', 'saleWeight');
+        const bags = await confirmLineBags(packetWeights, saleWeightChecks, 'packet', 'saleWeight');
         saleWeightChecks = bags.kept;
         if (!bags.ok) return;
         

@@ -433,6 +433,25 @@ describe('Add to bill on the three forms (OD-02)', () => {
         expect(line.weightCheck).toEqual([expect.objectContaining({ kg: 120, by: 'u2' })]);
     });
 
+    test('retail: a packet typed with the others and confirmed is not asked again after "Fix rate"', async () => {
+        document.body.innerHTML = SALE_DOM;
+        RetailSaleManager.setSaleWeights([20]);
+        setVal('saleItem', 1);
+        setVal('saleRate', 280);
+        setVal('saleWeight', 485);
+        const first = RetailSaleManager.addToSalesBill();
+        expect(await answer('confirm')).toMatch(/^Packet weight 485 kg/);
+        expect(await answer('fix')).toMatch(/^Wheat 505 kg × ₹280\.00/);
+        await first;
+        expect(RetailSaleManager.getSaleItems()).toEqual([]);
+        setVal('saleRate', 28);
+        await RetailSaleManager.addToSalesBill();
+        expect(dialog()).toBeNull();
+        const [line] = RetailSaleManager.getSaleItems();
+        expect(line).toMatchObject({ weights: [20, 485], qty: 505 });
+        expect(line.weightCheck).toEqual([expect.objectContaining({ kg: 485 })]);
+    });
+
     test('Hindi bag confirm: one language, "kg"', async () => {
         setLang('hi');
         try {
