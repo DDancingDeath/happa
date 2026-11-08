@@ -1498,6 +1498,7 @@ export default {
     'ui.bill.note': "नोट",
     'ui.bill.items': "सामान",
     'ui.bill.total': "कुल",
+    'ui.bill.subtotal': "उप-योग",
     'ui.bill.labour': "मजदूरी",
     'ui.bill.payable': "देय",
     'ui.bill.paid': "भुगतान",
