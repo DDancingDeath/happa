@@ -19,6 +19,9 @@ test('start-up loads no rentals code and reads no rent_* data; opening Rentals d
     });
     // An old saved choice must not open Rentals: the app always starts on Shop.
     await page.addInitScript(() => localStorage.setItem('happa.business', 'rentals'));
+    // The app loads about 250 files at start-up, the browser's default resource-timing buffer:
+    // a bigger one keeps the entries of the rentals files loaded afterwards
+    await page.addInitScript(() => performance.setResourceTimingBufferSize(2000));
     await login(page, 'owner');
     await page.waitForTimeout(3000);
 
