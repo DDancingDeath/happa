@@ -18,6 +18,10 @@ const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
 // 01/10/2025 00:00 in India: the app reads a DD/MM/YYYY bill date as the phone's local time.
 const IST_OCT_1 = Date.UTC(2025, 8, 30, 18, 30);
+// "Now" for date-keyed test data, taken once per test by the runner, which never starts a
+// test in the last seconds of an IST day: the data and the rules' request.time agree on the day.
+let testNow = Date.now();
+const istDayAt = (at, offset = 0) => new Date(at + 330 * MIN + offset * DAY).toISOString().slice(0, 10);
 
 // Expected PERMISSION_DENIED errors would otherwise flood the output.
 setLogLevel('silent');
@@ -2731,22 +2735,21 @@ function defineSuite(prefix) {
     const chosen = (on) => ({ personalExpenses: on, personalExpensesChosen: true });
     const personalOn = () => setPersonalAccess({ staff: chosen(true), manager: chosen(true) });
     /** The local (IST) day `offset` days from today, YYYY-MM-DD. */
-    const istDay = (offset = 0) => new Date(Date.now() + 330 * MIN + offset * DAY).toISOString().slice(0, 10);
+    const istDay = (offset = 0) => istDayAt(testNow, offset);
     /** An expense `date` on that day, as en-IN writes it ("5/1/2026, 10:00:00 am"). */
     const onDay = (day) => `${Number(day.slice(8, 10))}/${Number(day.slice(5, 7))}/${day.slice(0, 4)}, 10:00:00 am`;
-    const PDAY = istDay(0);
-    const pexp = (uid, extra = {}) => expense(uid, { category: 'personal', day: PDAY, date: onDay(PDAY), ...extra });
+    const pexp = (uid, extra = {}) => expense(uid, { category: 'personal', day: istDay(0), date: onDay(istDay(0)), ...extra });
     const dayKey = (id, amount) => ({ amounts: { [id]: amount === null ? FieldValue.delete() : amount }, last: id });
 
     t('personal expenses (#98): owner always; managers and members only once the owner turned their switch on', async () => {
         await seedBill(personal, 'p1', pexp('legacyOwner'));
-        await seedBill(personalDays, PDAY, { amounts: { p1: 50 }, last: 'p1' });
+        await seedBill(personalDays, istDay(0), { amounts: { p1: 50 }, last: 'p1' });
         // default off (no Roles & access saved yet)
         await assertSucceeds(as('legacyOwner').collection(personal).get());
         for (const uid of ['manager1', 'staff1', 'legacyStaff']) {
             await assertFails(as(uid).collection(personal).get());
             await assertFails(as(uid).collection(personal).doc('p1').get());
-            await assertSucceeds(as(uid).collection(personalDays).doc(PDAY).get());
+            await assertSucceeds(as(uid).collection(personalDays).doc(istDay(0)).get());
         }
         await assertFails(as('staff1').collection(personal).doc('p0').set(pexp('staff1')));
         // a true saved by an older app (every switch was saved, no mark) is the old default, not a choice
@@ -2765,14 +2768,14 @@ function defineSuite(prefix) {
         await assertSucceeds(as('manager1').collection(personal).get());
         await assertSucceeds(as('legacyOwner').collection(personal).get());
         // the day totals stay readable, so the cash count and Today still add them up
-        await assertSucceeds(as('staff1').collection(personalDays).doc(PDAY).get());
-        await assertFails(as('staff1').collection(personalDays).doc(PDAY).set(dayKey('p1', 50), { merge: true }));
+        await assertSucceeds(as('staff1').collection(personalDays).doc(istDay(0)).get());
+        await assertFails(as('staff1').collection(personalDays).doc(istDay(0)).set(dayKey('p1', 50), { merge: true }));
         await setPersonalAccess({ manager: chosen(false), staff: chosen(true) });
         await assertFails(as('manager1').collection(personal).get());
         await assertSucceeds(as('staff1').collection(personal).get());
         for (const uid of ['pending1', 'rejected1', 'noRole', 'rentOnly', 'ghost']) {
             await assertFails(as(uid).collection(personal).get());
-            await assertFails(as(uid).collection(personalDays).doc(PDAY).get());
+            await assertFails(as(uid).collection(personalDays).doc(istDay(0)).get());
         }
         await assertFails(anon().collection(personal).get());
     });
@@ -2809,7 +2812,7 @@ function defineSuite(prefix) {
     t('personal expenses (#98): a day doc key follows its expense, written in the same batch', async () => {
         await personalOn();
         const db = as('staff1');
-        const D = PDAY;
+        const D = istDay(0);
         const dayDoc = async () => {
             let data;
             await env.withSecurityRulesDisabled(async ctx => { data = (await ctx.firestore().collection(personalDays).doc(D).get()).data(); });
@@ -2916,10 +2919,28 @@ function defineSuite(prefix) {
         await assertFails(c.doc('w12').set(dated('staff1', 0, { date: onDay(istDay(-30)) })));
         await assertFails(c.doc('w13').set(dated('staff1', 0, { date: '2026-01-01' })));
         await assertFails(c.doc('w14').set(dated('staff1', 0, { date: 7 })));
-        const [y, m, d] = PDAY.split('-');
+        const [y, m, d] = istDay(0).split('-');
         await assertSucceeds(c.doc('w15').set(dated('staff1', 0, { date: `${d}/${m}/${y}, 9:05:00 am` })));
         // the owner: no window and no date check (repairs, restores)
         await assertSucceeds(as('legacyOwner').collection(expenses).doc('w16').set(dated('legacyOwner', -40, { date: onDay(istDay(-41)) })));
+    });
+
+    t('expenses (#98, #118): the IST day turns at 18:30 UTC; 11:59 pm and 12:00 am stay on their own day', async () => {
+        const at = (h, m) => Date.UTC(2026, 10, 9, h, m);
+        if (istDayAt(at(18, 29)) !== '2026-11-09' || istDayAt(at(18, 30)) !== '2026-11-10'
+            || istDayAt(at(18, 29), -1) !== '2026-11-08' || istDayAt(at(18, 30), -1) !== '2026-11-09') {
+            throw new Error('the test day key does not follow the rules (UTC + 5:30)');
+        }
+        await personalOn();
+        const [y, m, d] = istDay(0).split('-').map(Number);
+        const c = as('staff1').collection(expenses);
+        await assertSucceeds(c.doc('b1').set(dated('staff1', 0, { date: `${d}/${m}/${y}, 11:59:59 pm` })));
+        await assertSucceeds(c.doc('b2').set(dated('staff1', 0, { date: `${d}/${m}/${y}, 12:00:00 am` })));
+        await assertSucceeds(as('staff1').collection(personal).doc('b3')
+            .set(dated('staff1', 0, { category: 'personal', date: `${d}/${m}/${y}, 11:59:59 pm` })));
+        const prev = istDay(-1);
+        await assertFails(c.doc('b4').set(dated('staff1', 0, { date: onDay(prev).replace('10:00:00 am', '11:59:59 pm') })));
+        await assertFails(c.doc('b5').set(dated('staff1', -1, { date: `${d}/${m}/${y}, 12:00:00 am` })));
     });
 
     t('personal expenses (#118): the day doc flags exactly the expenses paid online', async () => {
@@ -4986,7 +5007,7 @@ function defineReminderSuite(prefix) {
     const reminders = `${prefix}reminders`;
     const t = (name, fn) => test(`[${prefix || 'prod'}] reminders: ${name}`, fn);
     // India's date `n` days from now, as the app writes dueDate.
-    const istDay = (n = 0) => new Date(Date.now() + 330 * MIN + n * DAY).toISOString().slice(0, 10);
+    const istDay = (n = 0) => istDayAt(testNow, n);
     const rem = (uid, extra = {}) => ({ title: 'Collect from Ramesh', dueDate: istDay(0), status: 'open', createdBy: uid, createdAt: serverTimestamp(), ...extra });
     const seed = (id, data) => env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(reminders).doc(id).set(data));
     const open = (extra = {}) => ({ title: 'Pay Gupta', dueDate: istDay(1), status: 'open', createdBy: 'manager1', createdAt: Timestamp.fromMillis(Date.now() - HOUR), ...extra });
@@ -5199,6 +5220,9 @@ async function main() {
     // RULES_TEST_FILTER=<text> runs only the tests whose name contains it (local debugging).
     const only = process.env.RULES_TEST_FILTER || '';
     for (const { name, fn } of tests.filter(x => x.name.includes(only))) {
+        const toIstMidnight = DAY - ((Date.now() + 330 * MIN) % DAY);
+        if (toIstMidnight < 20 * 1000) await new Promise(r => setTimeout(r, toIstMidnight + 1000));
+        testNow = Date.now();
         await env.clearFirestore();
         await seedUsers('users');
         await seedUsers('dev_users');
