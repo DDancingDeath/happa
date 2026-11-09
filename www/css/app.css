@@ -10490,7 +10490,8 @@ body.dark-mode .notif-panel-actions {
     margin-bottom: 4px;
   }
 
-  .bill-col-summary input[type="number"] {
+  .bill-col-summary input[type="number"],
+  #billing .bill-col-summary .bill-money > .input {
     padding-top: 6px;
     padding-bottom: 6px;
   }
