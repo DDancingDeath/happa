@@ -177,7 +177,9 @@ describe('Diagnostics › Status: test error reports (#122)', () => {
         expect(card().dataset.crashReach).toBe('web');
         expect(card().querySelector('[data-errtest="crash"]')).toBeNull();
         expect(card().querySelector('[data-errtest-note]').textContent).toMatch(/only in the Android app/);
+        const errorsBefore = TelemetryService.sessionErrors;
         await DiagnosticsManager.sendTestError();
+        expect(TelemetryService.sessionErrors).toBe(errorsBefore);
         expect(set).toHaveBeenCalledTimes(1);
         const [id, doc] = set.mock.calls[0];
         expect(id.startsWith(`${TEST_ERROR_REF}-`)).toBe(true);
