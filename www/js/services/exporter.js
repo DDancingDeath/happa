@@ -13,7 +13,7 @@ import { t } from '../i18n/index.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 import { SITE_HOST } from '../utils/release-info.js';
 import { exportStamp, exportAuditDetails } from '../utils/export-stamp.js';
-import { ensureXLSX } from '../utils/lazy-scripts.js';
+import { ensureXLSXWriter } from '../utils/lazy-scripts.js';
 
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -101,14 +101,14 @@ export const Exporter = {
     },
 
     /**
-     * Saves sheets as one Excel (.xlsx) file through saveBlob (SheetJS, loaded on demand;
-     * never XLSX.writeFile, whose download the Android app's WebView drops).
+     * Saves sheets as one Excel (.xlsx) file through saveBlob (SheetJS, loaded on demand from our
+     * own origin, so offline too; never XLSX.writeFile, whose download the Android app's WebView drops).
      * @param {Array<{name: string, rows: Array<Array<*>>, widths?: number[]}>} sheets
      * @param {string} filename
      * @returns {Promise<boolean>} as saveBlob
      */
     async saveWorkbook(sheets, filename) {
-        await ensureXLSX();
+        await ensureXLSXWriter();
         const X = window.XLSX;
         const book = X.utils.book_new();
         sheets.forEach(s => {

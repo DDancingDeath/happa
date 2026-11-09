@@ -2,7 +2,7 @@
  * @fileoverview Bills read for an owner's Ask item report (#415): one bill collection, older
  * than the loaded history window, read once when the owner confirms and kept in memory for the
  * session. Never merged into AppState (the pages keep their window); the meter counts these
- * reads as "ask report".
+ * reads as "ask report". Also the item year stats behind an Ask quick figure (no bills read).
  * @module firebase/repos/report-bills
  */
 
@@ -72,5 +72,39 @@ export const reportBillMethods = {
     /** Drops the report bills held in memory (tests). */
     forgetReportBills() {
         S.reportBills.clear();
+        S.reportStats = null;
+    },
+
+    /**
+     * Insights › Seasons' year stats (`rateStats/{itemId}_{YYYY}`) of these catalogue items, for
+     * an Ask quick figure: from the server, kept for the session. Billed reads: 1 for `_meta` once,
+     * then per item not yet held its year docs (min 1).
+     * @param {string[]} itemIds
+     * @returns {Promise<?{docs: Array<Object>, meta: Object}>} null when the history from bills was never built
+     */
+    async reportItemStats(itemIds) {
+        const gen = S.sessionGen;
+        if (S.reportStats?.gen !== gen) S.reportStats = { gen, meta: undefined, items: new Map() };
+        const held = S.reportStats;
+        const fromServer = (snap) => {
+            // The phone's cache may hold only some years: the figure would quietly be too low.
+            if (snap.metadata?.fromCache) throw Object.assign(new Error('Item stats could not be read from the server'), { code: 'unavailable' });
+            return snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        };
+        const byId = (start, end, limit) => tagQuery(getDb().collection(col('rateStats'))
+            .orderBy(firebase.firestore.FieldPath.documentId()).startAt(start).endAt(end).limit(limit), TAG);
+        if (held.meta === undefined) {
+            const [meta] = fromServer(await getWithRetry(a => byId('_meta', '_meta', 1 + a), 'rateStats meta'));
+            held.meta = meta || null;
+        }
+        if (!held.meta?.backfillDone) return null;
+        const ids = [...new Set(itemIds)];
+        await Promise.all(ids.filter(id => !held.items.has(id)).map(async (id) => {
+            // a new limit per attempt: a different query, so a stuck target is not waited on again
+            const docs = fromServer(await getWithRetry(a => byId(`${id}_`, `${id}_\uf8ff`, 40 + a), `rateStats ${id}`));
+            held.items.set(id, docs.filter(d => d.itemId === id && /^\d{4}$/.test(String(d.year || ''))));
+        }));
+        if (gen !== S.sessionGen) return null;
+        return { docs: ids.flatMap(id => held.items.get(id) || []), meta: held.meta };
     }
 };

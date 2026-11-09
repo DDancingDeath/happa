@@ -56,3 +56,42 @@ test('oldest purchase time: one read; only bill collections', async () => {
     expect(await FirebaseService.oldestBillTime('purchases')).toBe(1000);
     await expect(FirebaseService.readReportBills('users', null)).rejects.toThrow('Not a bill collection');
 });
+
+describe('item year stats for an Ask quick figure (ASK-7)', () => {
+    beforeEach(() => {
+        fake.seed('rateStats', [
+            { id: '_meta', backfillDone: true },
+            { id: 'k_2025', itemId: 'k', year: '2025' },
+            { id: 'k_2026', itemId: 'k', year: '2026' },
+            { id: 'k_x_2026', itemId: 'k_x', year: '2026' },
+            { id: 'r_2026', itemId: 'r', year: '2026' }
+        ]);
+    });
+
+    test('the meta doc, then each item\'s years: once per session', async () => {
+        const got = await FirebaseService.reportItemStats(['k', 'r']);
+        expect(got.docs.map(d => d.id)).toEqual(['k_2025', 'k_2026', 'r_2026']);
+        // k's id range also holds item k_x's doc: read (billed) but not counted
+        expect(fake.stats.reads).toBe(1 + 3 + 1);
+        await FirebaseService.reportItemStats(['r', 'k']);
+        expect(fake.stats.reads).toBe(5);
+        await FirebaseService.reportItemStats(['k', 'x']);
+        expect(fake.stats.reads).toBe(6);
+        S.sessionGen++;
+        await FirebaseService.reportItemStats(['k']);
+        expect(fake.stats.reads).toBe(6 + 1 + 3);
+    });
+
+    test('no history from bills built yet: null, after the one meta read', async () => {
+        fake.seed('rateStats', [{ id: '_meta', backfillDone: false }]);
+        expect(await FirebaseService.reportItemStats(['k'])).toBeNull();
+        expect(fake.stats.reads).toBe(1);
+    });
+
+    test('stats only in the phone\'s cache are refused (some years may be missing)', async () => {
+        const cached = { docs: [], metadata: { fromCache: true } };
+        const query = { orderBy: () => query, startAt: () => query, endAt: () => query, limit: () => query, get: async () => cached };
+        global.firebase = { firestore: Object.assign(() => ({ collection: () => query }), { FieldPath: { documentId: () => '__name__' } }) };
+        await expect(FirebaseService.reportItemStats(['k'])).rejects.toMatchObject({ code: 'unavailable' });
+    });
+});

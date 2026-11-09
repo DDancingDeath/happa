@@ -11,9 +11,10 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Exporter } from '../services/exporter.js';
 import { AuditService } from '../services/audit.js';
 import * as meter from '../firebase/firestore-meter.js';
-import { ensureXLSX } from '../utils/lazy-scripts.js';
+import { ensureXLSXWriter } from '../utils/lazy-scripts.js';
+import { setLang } from '../i18n/index.js';
 
-jest.mock('../utils/lazy-scripts.js', () => ({ ensureXLSX: jest.fn(async () => {}) }));
+jest.mock('../utils/lazy-scripts.js', () => ({ ensureXLSX: jest.fn(async () => {}), ensureXLSXWriter: jest.fn(async () => {}) }));
 
 describe('parseQuestion', () => {
     test.each([
@@ -180,6 +181,7 @@ describe('Ask page: item reports (ASK-5)', () => {
         jest.spyOn(FirebaseService, 'reportBillsInMemory').mockImplementation(() => held);
         jest.spyOn(FirebaseService, 'voidedBills').mockReturnValue([]);
         jest.spyOn(FirebaseService, 'readReportBills').mockImplementation(async () => { held = { bills: older, readAt: Date.now() }; return held; });
+        jest.spyOn(FirebaseService, 'reportItemStats').mockResolvedValue(null);
         jest.spyOn(AuditService, 'note').mockImplementation(() => {});
         jest.spyOn(console, 'warn').mockImplementation(() => {});
     });
@@ -264,6 +266,88 @@ describe('Ask page: item reports (ASK-5)', () => {
         expect(answers()).toContain('Older bills as read at');
     });
 
+    test('all time (ASK-7): a quick figure at once from the item stats, no bill read; the bill-by-bill one after the confirm', async () => {
+        jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
+        const months = {
+            'm2026-02': { purchase: { kg: 100, amount: 20000, bills: 1 }, bills: 1 },
+            // months the phone has every bill of come from those bills, never from a stored copy
+            'm2026-10': { purchase: { kg: 5, amount: 1000, bills: 1 }, bills: 1 },
+            'm2026-11': { purchase: { kg: 1, amount: 1, bills: 1 }, bills: 1 }
+        };
+        FirebaseService.reportItemStats.mockResolvedValue({ meta: { backfillDone: true }, docs: [{ id: 'k_2026', itemId: 'k', year: '2026', months }] });
+        await AskManager.ask('lah kitna kharida ab tak');
+        await AskManager.quickPending;
+        expect(FirebaseService.reportItemStats).toHaveBeenCalledWith(['k']);
+        expect(answers()).toContain('Quick figure from Insights › Seasons (kg × rate, before labour; no bills read):');
+        expect(answers()).toContain('Lah Kusmi: 150 kg · average ₹206.67/kg · ₹31,000 (2 bills)');
+        expect(answers()).toContain('not on this phone');
+        expect(answers()).toContain('Load the older bills for them and for Excel.');
+        expect(document.querySelectorAll('#askAnswers .ask-load')).toHaveLength(1);
+        expect(document.querySelectorAll('#askAnswers .ask-xlsx, #askAnswers .ask-csv')).toHaveLength(0);
+        expect(FirebaseService.readReportBills).not.toHaveBeenCalled();
+        await AskManager.loadOlder(AskManager.answers[0].id);
+        expect(answers()).not.toContain('Quick figure');
+        expect(answers()).toContain('Lah Kusmi: 150 kg · average ₹206.67/kg · ₹31,000 (2 bills)');
+        expect(answers()).toContain('After labour: ₹30,910');
+    });
+
+    test('ASK-7: the answer and its Load button do not wait for the item stats; the quick figure is added when they come', async () => {
+        let arrive;
+        FirebaseService.reportItemStats.mockImplementation(() => new Promise((resolve) => { arrive = resolve; }));
+        const stats = { meta: { backfillDone: true }, docs: [{ id: 'k_2026', itemId: 'k', year: '2026', months: { 'm2026-02': { purchase: { kg: 100, amount: 20000, bills: 1 } } } }] };
+        await AskManager.ask('lah kitna kharida ab tak');
+        expect(answers()).toContain('not on this phone');
+        expect(document.querySelectorAll('#askAnswers .ask-load')).toHaveLength(1);
+        expect(answers()).not.toContain('Quick figure');
+        arrive(stats);
+        await AskManager.quickPending;
+        expect(answers()).toContain('Lah Kusmi: 150 kg · average ₹206.67/kg · ₹31,000 (2 bills)');
+        // a quick figure for an answer already replaced (Change) or a person signed out is dropped
+        await AskManager.changeReport(AskManager.answers[0].id, 'range', 'this-year');
+        const replaced = arrive;
+        await AskManager.changeReport(AskManager.answers[0].id, 'range', 'last-year');
+        replaced(stats);
+        await new Promise(r => setTimeout(r, 0));
+        expect(AskManager.answers[0].answer.period.preset).toBe('last-year');
+        expect(answers()).not.toContain('Quick figure');
+        AskManager.reset();
+        arrive(stats);
+        await AskManager.quickPending;
+        expect(document.getElementById('askAnswers').innerHTML).toBe('');
+    });
+
+    test('ASK-7 hi: the quick figure in Hindi, kg as kg', async () => {        await setLang('hi');
+        try {
+            FirebaseService.reportItemStats.mockResolvedValue({ meta: { backfillDone: true }, docs: [{ id: 'k_2026', itemId: 'k', year: '2026', months: { 'm2026-02': { purchase: { kg: 100, amount: 20000, bills: 1 } } } }] });
+            await AskManager.ask('लाह कितना खरीदा अब तक');
+            await AskManager.quickPending;
+            expect(answers()).toContain('कारोबार › मौसम से झटपट आँकड़ा');
+            expect(answers()).toContain('Lah Kusmi: 150 kg · औसत ₹206.67/kg · ₹31,000 (2 बिल)');
+        } finally {
+            await setLang('en');
+        }
+    });
+
+    test('ASK-7 only for kinds named, by kind, with no party, for the owner, before a quota error', async () => {
+        await AskManager.ask('Mohan se lah kitna kharida ab tak');
+        await AskManager.ask('lah kitna kharida ab tak mahine wise');
+        expect(FirebaseService.reportItemStats).not.toHaveBeenCalled();
+        jest.spyOn(meter, 'getQuotaStatus').mockReturnValue({ quota: { count: 1 }, overCap: false });
+        await AskManager.ask('lah kitna kharida ab tak');
+        expect(FirebaseService.reportItemStats).not.toHaveBeenCalled();
+        meter.getQuotaStatus.mockRestore();
+        AppState.userRole = 'manager';
+        await AskManager.ask('lah kitna kharida ab tak');
+        expect(FirebaseService.reportItemStats).not.toHaveBeenCalled();
+        AppState.userRole = 'owner';
+        // the stats can't be read (offline, or never built): the answer is as before
+        FirebaseService.reportItemStats.mockRejectedValueOnce(Object.assign(new Error('offline'), { code: 'unavailable' }));
+        await AskManager.ask('lah kitna kharida ab tak');
+        await AskManager.quickPending;
+        expect(AskManager.answers[0].answer.quick).toBeUndefined();
+        expect(answers()).not.toContain('₹');
+    });
+
     test('after a quota error the older bills are not read', async () => {
         jest.spyOn(meter, 'getQuotaStatus').mockReturnValue({ quota: { count: 1 }, overCap: false });
         const modal = jest.spyOn(UIManager, 'showModal');
@@ -311,7 +395,7 @@ describe('Ask page: item reports (ASK-5)', () => {
         expect(saved.mock.calls[0][1]).toMatch(/_item-report_2026-11-01_.*\.xlsx$/);
         expect(AuditService.note).toHaveBeenLastCalledWith('EXPORT', expect.objectContaining({ exportKind: 'ask', format: 'xlsx', exportStatus: 'done' }));
         delete global.XLSX;
-        ensureXLSX.mockRejectedValueOnce(new Error('offline'));
+        ensureXLSXWriter.mockRejectedValueOnce(new Error('not cached'));
         await AskManager.download(AskManager.answers[0].id, 'xlsx');
         expect(saved.mock.calls[1][1]).toMatch(/\.csv$/);
     });

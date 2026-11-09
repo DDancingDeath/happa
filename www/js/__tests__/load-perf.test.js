@@ -7,8 +7,9 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { check } = require('../../../scripts/check-sw-assets.js');
-import { loadScriptOnce, ensureXLSX, XLSX_URL, XLSX_INTEGRITY } from '../utils/lazy-scripts.js';
+const crypto = require('crypto');
+const { check, readLazyAssets } = require('../../../scripts/check-sw-assets.js');
+import { loadScriptOnce, ensureXLSX, ensureXLSXWriter, XLSX_URL, XLSX_INTEGRITY, XLSX_WRITER_URL, XLSX_WRITER_INTEGRITY } from '../utils/lazy-scripts.js';
 
 const WWW = path.join(__dirname, '..', '..');
 
@@ -151,5 +152,26 @@ describe('loadScriptOnce', () => {
         expect(script.crossOrigin).toBe('anonymous');
         script.onerror();
         p.catch(() => {});
+    });
+
+    test('Excel files are written with our own SheetJS copy (cached by the service worker, so offline); reading still loads the full CDN build', async () => {
+        const file = fs.readFileSync(path.join(WWW, XLSX_WRITER_URL));
+        expect(XLSX_WRITER_INTEGRITY).toBe(`sha384-${crypto.createHash('sha384').update(file).digest('base64')}`);
+        expect(readLazyAssets()).toContain(XLSX_WRITER_URL);
+        const writer = ensureXLSXWriter();
+        const tag = document.head.querySelector(`script[src="${XLSX_WRITER_URL}"]`);
+        expect([tag.integrity, tag.crossOrigin]).toEqual([XLSX_WRITER_INTEGRITY, 'anonymous']);
+        window.XLSX = { writer: true };
+        tag.onload();
+        await expect(writer).resolves.toEqual({ writer: true });
+        const full = ensureXLSX();
+        const cdn = document.head.querySelector(`script[src="${XLSX_URL}"]`);
+        expect(cdn).not.toBeNull();
+        window.XLSX = { full: true };
+        cdn.onload();
+        await expect(full).resolves.toEqual({ full: true });
+        await expect(ensureXLSXWriter()).resolves.toEqual({ full: true });
+        expect(document.head.querySelectorAll('script')).toHaveLength(2);
+        delete window.XLSX;
     });
 });

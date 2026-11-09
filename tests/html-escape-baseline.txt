@@ -35,6 +35,8 @@ www/js/modules/ask.js: a.answer (markup via this.answerHtml .page)
 www/js/modules/ask.js: a.page
 www/js/modules/ask.js: html ← line(t('ui.ask.report_head', { type: t(`ui.ask.type_${a.billType}`), period: thi | line(t('ui.ask.report_party', { name: a.party })) | line(t('ui.ask.report_retail_only')) | line(t('ui.ask.report_all_items')) | line(t('ui.ask.report_kinds', { names: a.kinds.map(named).join(', ') })) | line(t(a.no (concatenated)
 www/js/modules/ask.js: line(t(a.failed ? 'ui.ask.report_load_failed' : 'ui.ask.report_needs_older', { date: formatDay(a.windowFrom, { lang }) })) (concatenated)
+www/js/modules/ask.js: quickHtml ? line(t('ui.ask.quick_exact')) : '' ← line(t('ui.ask.quick_exact')) (concatenated)
+www/js/modules/ask.js: quickHtml ← line(t(a.billType === 'purchase' ? 'ui.ask.quick_head_purchase' : 'ui.ask.quick_ | line(t('ui.ask.report_kind', { name: label(g), ...figures(g.totals), bills: bill | line(t('ui.ask.report_none')) | line(t('ui.ask.quick_total', { name: t('ui.ask.total_kinds'), ...figures(q.total | line(t('ui.ask.q (concatenated)
 www/js/modules/ask.js: this.answerHtml(a.answer, a.id) ← line(t('ui.ask.report_not_allowed')) | line(t('ui.ask.report_head', { type: t(`ui.ask.type_${a.billType}`), period: thi | line(t('ui.ask.report_party', { name: a.party })) | line(t('ui.ask.report_retail_only')) | line(t('ui.ask.report_all_items')) | line(t('ui.ask.report_kinds', { names: a.kinds.
 www/js/modules/ask.js: this.answers (markup via map(a => `<div class="ask-answer"><div class="ask-question">${esc(a.question)}</div>${this.answerHtml(a.answer, a.id)}</div>`) .answer)
 www/js/modules/cash-management.js: SyncStatus.chipHtml(session.id)

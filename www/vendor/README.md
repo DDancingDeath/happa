@@ -27,3 +27,19 @@ files — replace them with a new versioned folder instead.
 2. Update the `<script>` tags (src + integrity) in `index.html` and the
    `STATIC_ASSETS` entries in `service-worker.js`; delete the old folder.
 3. Run `npm run check:sw` and `npm test`.
+
+## SheetJS Community Edition 0.20.1 (`xlsx.mini.min.js`)
+
+| File | Source | SHA-256 |
+|---|---|---|
+| `sheetjs/0.20.1/xlsx.mini.min.js` | `https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.mini.min.js` | `c2721014c290bbfee3b7fcf9998da38372d4d568c0706428d881323d8af0d1c9` |
+
+- The small build (XLSX / CSV only) of the same release Items loads in full from
+  the CDN (`XLSX_URL` in `js/utils/lazy-scripts.js`, whose SRI hash matched the
+  downloaded full build). Excel files saved through `Exporter.saveWorkbook`
+  (Ask item reports) use this copy, so they work offline (#415).
+- In `LAZY_ASSETS` of `service-worker.js` (not precached; install caches it,
+  best effort). `lazy-scripts.js` loads it with `integrity="sha384-…"`
+  (`XLSX_WRITER_INTEGRITY`); `load-perf.test.js` checks it against the file.
+- License: Apache License 2.0, Copyright SheetJS LLC
+  (https://git.sheetjs.com/sheetjs/sheetjs/src/branch/master/LICENSE).
