@@ -114,6 +114,9 @@ const formOf = (data, mode) => data?.[mode] || (data?.mode === mode && !data.pur
 const formHasContent = (form) => !!form && ((form.items || []).length > 0 || (form.weights || []).length > 0
     || !!form.typedWeight || !!form.selectedItem || !!form.rate);
 
+/** Entry boxes whose text means a bill is being entered (what an auto-save keeps besides the lines). */
+const ENTRY_BOX_IDS = ['billItem', 'billRate', 'newWeight', 'customerName', 'saleItem', 'saleRate', 'saleWeight', 'saleCustomerName'];
+
 /** The saved bill an auto-save or a draft was editing (#93), or null when it holds a new bill. */
 function editTargetOf(data) {
     if (!data?.editingBillId) return null;
@@ -931,6 +934,8 @@ const BillingManager = {
     async autoSaveToCloud() {
         try {
             if (!AppState.currentUser) return;
+            const unseen = this.recoveryChecked ? await this.afterRecoveryCheck() : false;
+            if (unseen === null) return;
             
             const mode = this.currentMode;
             const billItems = PurchaseManager.getBillItems();
@@ -947,7 +952,7 @@ const BillingManager = {
                 return;
             }
             // A new bill is being typed: the one on the banner moves to Drafts first
-            this.keepRecoveryAsDrafts();
+            this.keepRecoveryAsDrafts({ unseen });
 
             // A new bill carries its id from its first auto-save, so a restored copy of a bill
             // saved meanwhile is recognised (#93); an edit carries the bill and its version
@@ -1009,8 +1014,10 @@ const BillingManager = {
     async deleteAutoSave() {
         try {
             if (!AppState.currentUser) return;
+            const unseen = this.recoveryChecked ? await this.afterRecoveryCheck() : false;
+            if (unseen === null) return;
             // After a save the save's own toast stays on screen
-            this.keepRecoveryAsDrafts({ quiet: true });
+            this.keepRecoveryAsDrafts({ quiet: true, unseen });
             await BillDrafts.deleteAutoSave(AppState.currentUser.uid);
         } catch (error) {
             if (error.code !== 'not-found') {
@@ -1025,16 +1032,52 @@ const BillingManager = {
      * before picking moves it to Drafts, so it is never lost.
      * @async
      */
-    async checkAutoSave() {
+    checkAutoSave() {
+        const uid = AppState.currentUser?.uid;
+        const check = this.readAutoSave(() => this.recoveryChecked === check && AppState.currentUser?.uid === uid);
+        this.recoveryChecked = check;
+        check.then(() => {
+            if (this.recoveryChecked === check) this.recoveryChecked = null;
+        });
+        return check;
+    },
+
+    /**
+     * Auto-save writes and deletes wait for a start-up check still reading, so the auto-save is
+     * never deleted or overwritten unread (#59: the first screen no longer waits for the check).
+     * Callers only call it while `recoveryChecked` is set (no extra wait otherwise).
+     * @returns {Promise<?boolean>} true (the banner was not on screen before the write), or null when
+     *   the user changed meanwhile (nothing may be written)
+     * @private
+     */
+    async afterRecoveryCheck() {
+        const uid = AppState.currentUser?.uid;
+        let check;
+        while ((check = this.recoveryChecked)) {
+            await check;
+            if (AppState.currentUser?.uid !== uid) return null;
+        }
+        return true;
+    },
+
+    /**
+     * The start-up check; auto-save writes and deletes wait for it (`recoveryChecked`).
+     * @param {function(): boolean} current - false once another check or user replaced this one
+     * @private
+     */
+    async readAutoSave(current) {
         this.setRecovery(null);
         try {
             if (!AppState.currentUser) return;
             
             const autoSaveData = await BillDrafts.getAutoSave(AppState.currentUser.uid);
             
-            if (!autoSaveData) return;
+            if (!autoSaveData || (current && !current())) return;
             
-            this.setRecovery({ ...autoSaveData, userId: autoSaveData.userId || AppState.currentUser.uid });
+            // A bill already being typed (the first screen doesn't wait for this check): the banner
+            // comes too late to be a choice, so typing on keeps this one in Drafts, also an edit
+            this.setRecovery({ ...autoSaveData, userId: autoSaveData.userId || AppState.currentUser.uid },
+                { unseen: this.typingStarted() });
         } catch (error) {
             console.error('Failed to check auto-save:', error);
         }
@@ -1043,9 +1086,16 @@ const BillingManager = {
     /** Auto-save waiting for Restore / Discard on the banner; null when none. */
     pendingRecovery: null,
 
+    /** The banner's auto-save showed up while a bill was already being typed (#59). */
+    recoveryUnseen: false,
+
+    /** The start-up auto-save check while it is still reading (it never rejects); null once done. */
+    recoveryChecked: null,
+
     /** Shows the banner for `data`, or hides it (null). */
-    setRecovery(data) {
+    setRecovery(data, { unseen = false } = {}) {
         this.pendingRecovery = data || null;
+        this.recoveryUnseen = !!data && unseen;
         const banner = document.getElementById('autoSaveBanner');
         if (banner) banner.hidden = !data;
         if (data) this.showRecoveryBanner(data);
@@ -1075,10 +1125,13 @@ const BillingManager = {
      * lines or weights) and hides the banner. The draft writes are queued at once
      * (also offline), before the auto-save is overwritten or deleted.
      */
-    keepRecoveryAsDrafts({ quiet = false } = {}) {
+    keepRecoveryAsDrafts({ quiet = false, unseen: waited = false } = {}) {
+        const unseen = waited || !!this.recoveryUnseen;
         const data = this.takeRecovery();
-        // An unfinished edit of a saved bill is not a new bill: it is dropped, as before
-        if (!data || data.editingBillId) return;
+        // An unfinished edit of a saved bill is not a new bill: it is dropped, as before. One the
+        // banner never offered (typed over during the start-up check) is kept as a draft of that edit.
+        const edit = editTargetOf(data);
+        if (!data || (edit && !unseen)) return;
         const now = Date.now();
         const drafts = ['purchase', 'sale'].map(mode => {
             const form = data[mode] || (data.mode === mode && !data.purchase && !data.sale ? data : null);
@@ -1103,6 +1156,12 @@ const BillingManager = {
             } else {
                 draft.saleTotal = form.saleTotal || 0;
             }
+            // A draft of an edit loads back as that edit, never as a second bill (#93)
+            if (edit && edit.mode === mode) {
+                Object.assign(draft, {
+                    editingBillId: data.editingBillId, editingBillType: edit.billType, editingBase: edit.base, pendingBill: null
+                });
+            }
             return draft;
         }).filter(Boolean);
         if (!drafts.length) return;
@@ -1113,7 +1172,7 @@ const BillingManager = {
                 console.error('Failed to keep the unsaved bill as a draft:', e);
             }
         });
-        if (!quiet) UIManager.showToast(t('msg.billing.unsaved_moved_to_drafts'), 'info');
+        if (!quiet || unseen) UIManager.showToast(t('msg.billing.unsaved_moved_to_drafts'), 'info');
         this.updateDraftCount().catch(e => console.error('Draft count refresh failed:', e));
     },
 
@@ -1167,6 +1226,11 @@ const BillingManager = {
             return;
         }
         if (this.takeRecovery()) await BillDrafts.deleteAutoSave(AppState.currentUser.uid).catch(e => console.error('Failed to delete auto-save:', e));
+    },
+
+    /** Whether a bill is being entered: lines, weights, a bill open for editing or text in the entry boxes. */
+    typingStarted() {
+        return !this.formsFreeForRestore() || ENTRY_BOX_IDS.some(id => !!String(document.getElementById(id)?.value || '').trim());
     },
 
     /** Whether Restore may fill the forms: nothing typed and no bill open for editing. */
@@ -1964,7 +2028,8 @@ on(REFRESH.billingDropdown, () => {
     BillingManager.loadSaleItemsDropdown();
     BillingManager.renderBillNumber();
 });
-on(ITEM_FREQUENCY_CHANGED, () => {
+on(ITEM_FREQUENCY_CHANGED, (data) => {
+    if (data) BillingManager.itemFrequency = { purchase: {}, sale: {}, ...data };
     BillingManager.loadItemsDropdown();
     BillingManager.loadSaleItemsDropdown();
 });
