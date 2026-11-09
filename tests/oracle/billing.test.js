@@ -41,11 +41,11 @@ afterEach(() => {
 });
 
 describe('the forms show the oracle\'s figures', () => {
-    test('purchase: BF-LINE, BF-TOTAL, BF-LAB, BF-PAYABLE (auto and typed paise labour)', async () => {
+    test('purchase: BF-LINE, BF-TOTAL, BF-LAB, BF-PAYABLE (auto and typed paise labour), also in the phone action bar', async () => {
         document.body.innerHTML = `<select id="billItem"><option value="0">Rice</option><option value="1">Wheat</option></select>
             <input id="billRate"><input id="newWeight"><table id="billTable"><tbody></tbody></table>
             <span id="billTotal"></span><span id="totalPacketsInBill"></span><input type="checkbox" id="autoLaborCharge" checked>
-            <input id="manualLaborCharges" value="0"><span id="laborCalculation"></span><span id="amountPayable"></span>
+            <input id="manualLaborCharges" value="0"><span id="laborCalculation"></span><span id="amountPayable"></span><span id="barPayable"></span>
             <input id="onlinePayment"><input id="cashPayment"><input id="dueAmount">`;
         const entries = [{ rate: 25.35, weights: [40.5, 20.3, 31] }, { rate: 33.5, weights: [12.4] }];
         for (const [i, e] of entries.entries()) {
@@ -59,6 +59,7 @@ describe('the forms show the oracle\'s figures', () => {
         expect(Number(text('billTotal'))).toBe(want.BF_TOTAL_shown);
         expect(Number(document.getElementById('manualLaborCharges').value)).toBe(want.BF_LAB);
         expect(Number(text('amountPayable'))).toBe(want.BF_PAYABLE_shown);
+        expect(Number(text('barPayable'))).toBe(want.BF_PAYABLE_shown);
         expect(PurchaseManager.computeTotals().grandTotal).toBe(want.BF_PAYABLE);
 
         setVal('manualLaborCharges', 12.5);
@@ -66,6 +67,7 @@ describe('the forms show the oracle\'s figures', () => {
         PurchaseManager.updateTotals();
         const typed = O.billForm('purchase', entries, { laborRate: 6.5, labour: 12.5 });
         expect(Number(text('amountPayable'))).toBe(typed.BF_PAYABLE_shown);
+        expect(Number(text('barPayable'))).toBe(typed.BF_PAYABLE_shown);
         expect(PurchaseManager.computeTotals().grandTotal).toBe(typed.BF_PAYABLE);
     });
 
@@ -87,10 +89,10 @@ describe('the forms show the oracle\'s figures', () => {
         expect(PurchaseManager.computeTotals()).toMatchObject({ billTotal: 1000, laborCharges: 13, grandTotal: 987 });
     });
 
-    test('retail: BF-LINE, BF-TOTAL', async () => {
+    test('retail: BF-LINE, BF-TOTAL, also in the phone action bar', async () => {
         document.body.innerHTML = `<select id="saleItem"><option value="0">Rice</option><option value="1">Wheat</option></select>
             <input id="saleRate"><input id="saleWeight"><table id="saleTable"><tbody></tbody></table>
-            <span id="saleTotal"></span><span id="amountReceivable"></span><span id="totalSalePacketsInBill"></span>`;
+            <span id="saleTotal"></span><span id="amountReceivable"></span><span id="barReceivable"></span><span id="totalSalePacketsInBill"></span>`;
         AppState.stock = { 'item-rice': { quantity: 500 }, 'item-wheat': { quantity: 500 } };
         const entries = [{ rate: 41.75, weights: [25.5, 24.7, 10.15] }, { rate: 33.33, weights: [7] }];
         for (const [i, e] of entries.entries()) {
@@ -103,6 +105,7 @@ describe('the forms show the oracle\'s figures', () => {
         expect(lineAmounts('#saleTable')).toEqual(want.BF_LINE);
         expect(Number(text('saleTotal'))).toBe(want.BF_TOTAL_shown);
         expect(Number(text('amountReceivable'))).toBe(want.BF_TOTAL_shown);
+        expect(Number(text('barReceivable'))).toBe(want.BF_TOTAL_shown);
         expect(RetailSaleManager.getCheckDraft().total).toBe(want.BF_TOTAL);
     });
 

@@ -401,6 +401,8 @@ const RetailSaleManager = {
         
         if (saleTotalEl) saleTotalEl.textContent = shown;
         if (amountReceivableEl) amountReceivableEl.textContent = shown;
+        const barReceivable = document.getElementById('barReceivable');
+        if (barReceivable) barReceivable.textContent = shown;
         
         this.updateSalePaymentTotal();
     },
