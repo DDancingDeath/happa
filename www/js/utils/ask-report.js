@@ -74,16 +74,16 @@ ITEM_WORD_SYNONYMS.forEach(group => {
 });
 
 /** The loose spellings of a word, also through the item-name table (#134: chawal = चावल = Rice) and ITEM_WORD_SYNONYMS. */
-function wordVariants(/** @type {string} */ word) {
+function wordVariants(/** @type {string} */ word, synonyms = true) {
     const out = new Set([word, suggestHindiName(word), suggestEnglishName(word)].map(w => looseWord(w || '')).filter(Boolean));
-    [...out].forEach(v => (SYNONYMS.get(v) || []).forEach(s => out.add(s)));
+    if (synonyms) [...out].forEach(v => (SYNONYMS.get(v) || []).forEach(s => out.add(s)));
     return out;
 }
 
-/** Loose spellings of every word of a name. */
-function nameWords(/** @type {...*} */ ...names) {
+/** Loose spellings of every word of a name (without ITEM_WORD_SYNONYMS when `synonyms` is false). */
+function nameWords(/** @type {string[]} */ names, synonyms = true) {
     const out = new Set();
-    names.forEach((/** @type {*} */ n) => partyNameKey(n).split(' ').filter(Boolean).forEach(w => wordVariants(w).forEach(v => out.add(v))));
+    names.forEach((/** @type {*} */ n) => partyNameKey(n).split(' ').filter(Boolean).forEach(w => wordVariants(w, synonyms).forEach(v => out.add(v))));
     return out;
 }
 
@@ -118,14 +118,14 @@ export function reportKinds(items, bills) {
  */
 export function matchKinds(kinds, text) {
     const words = partyNameKey(text).split(' ').filter(Boolean).map(w => ({ w, v: wordVariants(w) }));
-    const withWords = kinds.map(k => ({ k, words: nameWords(k.name, k.hindiName) }));
+    const withWords = kinds.map(k => ({ k, words: nameWords([k.name, k.hindiName]), own: nameWords([k.name, k.hindiName], false) }));
     const hitsOf = (/** @type {Set<string>} */ v) => withWords.filter(x => [...v].some(s => x.words.has(s))).map(x => x.k);
     const hits = words.map(x => hitsOf(x.v));
     const matched = hits.filter(h => h.length);
     let found = matched.length ? matched.reduce((a, h) => a.filter(k => h.includes(k))) : [];
     if (!found.length && matched.length) found = [...new Set(matched.flat())];
     const loose = words.map(x => looseWord(x.w)).filter(w => w.length >= 2);
-    const near = withWords.filter(x => !found.includes(x.k) && loose.some(w => [...x.words].some(s => s.startsWith(w) && s !== w))).map(x => x.k);
+    const near = withWords.filter(x => !found.includes(x.k) && loose.some(w => [...x.own].some(s => s.startsWith(w) && s !== w))).map(x => x.k);
     const unknown = words.filter((x, i) => !hits[i].length).map(x => x.w);
     const byName = (/** @type {{name: string, hindiName: string}} */ a, /** @type {{name: string, hindiName: string}} */ b) => (a.name || a.hindiName).localeCompare(b.name || b.hindiName);
     return { kinds: [...found].sort(byName), near: near.sort(byName), unknown };

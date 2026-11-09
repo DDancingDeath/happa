@@ -92,6 +92,7 @@ describe('matchKinds: the kinds a word names', () => {
         expect(names(matchKinds(shop, 'lakh').near)).toEqual(['Lakhori Chilli']);
         expect(names(matchKinds(shop, 'lah katki').kinds)).toEqual(['Lah Katki', 'लाख कदकी']);
         expect(names(matchKinds(shop, 'lah palash').kinds)).toEqual(['Lakh Palash']);
+        expect(names(matchKinds(shop, 'lak').near)).toEqual(['Lakh Palash', 'Lakhori Chilli', 'लाख कदकी']);
     });
     test('each synonym word is in one group only, groups have two words or more', () => {
         const seen = new Set();
