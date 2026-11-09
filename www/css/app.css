@@ -73,6 +73,8 @@
   --tracking-display: -0.02em;
   /* Page, section and sheet titles: a theme may set a serif face (--font-display) and italic */
   --title-style: normal;
+  /* Digits of the one hero figure (Billing's total): lining, so serif faces don't fall back to old-style digits */
+  --hero-nums: lining-nums;
 
   --r-xs: 4px;
   --r-sm: 6px;
@@ -669,6 +671,7 @@ input[type="number"],
     --w-display: 700;
     --tracking-display: 0;
     --title-style: italic;
+    --hero-nums: oldstyle-nums;
     --rule-style: dashed;
     --r-control: 4px;
     --r-panel: 6px;
@@ -1880,7 +1883,7 @@ a.row:active {
 .display-num {
   font-family: var(--font-hero);
   font-weight: var(--w-display);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
   line-height: 1.1;
 }
 
@@ -4692,6 +4695,7 @@ input[type="number"] {
   font-family: var(--font-hero);
   font-size: var(--fs-display) !important;
   font-weight: var(--w-display);
+  font-variant-numeric: tabular-nums var(--hero-nums);
   letter-spacing: var(--tracking-display);
 }
 
@@ -4845,7 +4849,7 @@ input[type="number"] {
     font-family: var(--font-hero);
     font-size: var(--fs-title);
     font-weight: var(--w-display);
-    font-variant-numeric: tabular-nums;
+    font-variant-numeric: tabular-nums lining-nums;
     line-height: 1.2;
     white-space: nowrap;
     text-overflow: ellipsis;

@@ -211,6 +211,7 @@
   font-family: var(--font-hero);
   font-size: var(--fs-display) !important;
   font-weight: var(--w-display);
+  font-variant-numeric: tabular-nums var(--hero-nums);
   letter-spacing: var(--tracking-display);
 }
 
@@ -364,7 +365,7 @@
     font-family: var(--font-hero);
     font-size: var(--fs-title);
     font-weight: var(--w-display);
-    font-variant-numeric: tabular-nums;
+    font-variant-numeric: tabular-nums lining-nums;
     line-height: 1.2;
     white-space: nowrap;
     text-overflow: ellipsis;

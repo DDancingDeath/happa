@@ -58,7 +58,7 @@ test.each(OWN.map((th) => [th.id, th.kind]))('%s: tokens only, colours on screen
     }
     expect(outsideScreen(src)).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|color-scheme/i);
     // Faces, italic titles and ledger rules are screen-only too: print keeps the Modern type
-    expect(outsideScreen(src)).not.toMatch(/--(font-[\w-]+|w-display|tracking-display|title-style|rule-style)\s*:/);
+    expect(outsideScreen(src)).not.toMatch(/--(font-[\w-]+|w-display|tracking-display|title-style|hero-nums|rule-style)\s*:/);
     if (kind === 'both') expect(src).toContain(`[data-theme="${id}"][data-mode="dark"]`);
 });
 

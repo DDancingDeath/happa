@@ -71,6 +71,8 @@
   --tracking-display: -0.02em;
   /* Page, section and sheet titles: a theme may set a serif face (--font-display) and italic */
   --title-style: normal;
+  /* Digits of the one hero figure (Billing's total): lining, so serif faces don't fall back to old-style digits */
+  --hero-nums: lining-nums;
 
   --r-xs: 4px;
   --r-sm: 6px;

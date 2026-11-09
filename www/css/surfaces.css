@@ -154,7 +154,7 @@ a.row:active {
 .display-num {
   font-family: var(--font-hero);
   font-weight: var(--w-display);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
   line-height: 1.1;
 }
 
