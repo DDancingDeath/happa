@@ -17,5 +17,24 @@
     "messagingSenderId": "516108799937",
     "appId": "1:516108799937:web:a4e3fdbff054b9cc07a940",
     "measurementId": "G-1514HNS14K"
+  },
+  "firebaseAliases": { "legacy": "happa-bfc07" },
+  "environments": {
+    "prod": {
+      "projectId": "bahi-happa",
+      "hostingSite": "bahi-happa",
+      "redirectHostingSites": [],
+      "apiKey": "AIzaSyBTmwhr7Ks8lY4DvdkiNsXYp7yUKKjD_B0",
+      "messagingSenderId": "6046579556",
+      "appId": "1:6046579556:web:ce3a9215b01c41c3fb9871"
+    },
+    "dev": {
+      "projectId": "bahi-happa-dev",
+      "hostingSite": "bahi-happa-dev",
+      "redirectHostingSites": [],
+      "apiKey": "AIzaSyAhBZ9kVIEQDNZC_EGQrkR4iqbJo1ioz8U",
+      "messagingSenderId": "1049470936669",
+      "appId": "1:1049470936669:web:93f034380bf5abd0d48fb4"
+    }
   }
 }

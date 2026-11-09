@@ -8,8 +8,12 @@
  *   node scripts/happa-config.js check            # release gate: in sync, no placeholders, owner confirmed
  *   node scripts/happa-config.js check --sync-only
  *   node scripts/happa-config.js get <key>        # print one derived value (siteUrl, projectId, apkFile, ...)
- *   node scripts/happa-config.js guard [--require-ready] [--sa-env NAME] [--require-sa]
+ *   node scripts/happa-config.js guard [--require-ready] [--sa-env NAME] [--require-sa] [--sa-name SECRET]
  *                                                 # CI: resolve the Firebase project, refuse the old one
+ *
+ * --env prod|dev (apply, check, get, guard) uses happa.config.json "environments.<env>"
+ * instead of "firebase": the Bahi deploy workflows build for bahi-happa / bahi-happa-dev
+ * this way without changing the committed files (#72).
  */
 'use strict';
 
@@ -28,6 +32,20 @@ const QR_FILE = 'www/img/download-qr.svg';
 
 function loadConfig(root = DEFAULT_ROOT) {
     return JSON.parse(fs.readFileSync(path.join(root, CONFIG_FILE), 'utf8'));
+}
+
+/** The config with "firebase" replaced by environments[env] (unchanged without env). */
+function forEnv(raw, env) {
+    if (!env) return raw;
+    const fb = raw.environments && raw.environments[env];
+    if (!fb) throw new Error(`${CONFIG_FILE} has no environments.${env}`);
+    return { ...raw, firebase: fb };
+}
+
+/** .firebaserc aliases: default = the active project, then each environment, then firebaseAliases. */
+function firebaseAliases(raw, projectId) {
+    const envs = Object.entries(raw.environments || {}).map(([name, fb]) => [name, fb && fb.projectId]);
+    return { default: projectId, ...Object.fromEntries(envs), ...(raw.firebaseAliases || {}) };
 }
 
 function derive(raw) {
@@ -70,6 +88,7 @@ function derive(raw) {
         latestReleaseApi: `https://api.github.com/repos/${raw.githubRepo}/releases/latest`,
         // Off until the owner has done the console steps (docs/google-sign-in.md)
         googleSignIn: { web: google.web === true, android: google.android === true },
+        aliases: firebaseAliases(raw, projectId),
         webConfig
     };
 }
@@ -84,8 +103,15 @@ function findPlaceholders(value, at = '') {
 
 /** Problems that block a release (empty when the config is complete). */
 function configProblems(raw) {
-    const errors = findPlaceholders(raw).map((p) => `placeholder not filled: ${p}`);
+    const { environments, ...active } = raw;
+    const errors = findPlaceholders(active).map((p) => `placeholder not filled: ${p}`);
     const d = derive(raw);
+    for (const [name, fb] of Object.entries(environments || {})) {
+        const id = fb && fb.projectId;
+        if (!PROJECT_ID_RE.test(id || '')) errors.push(`environments.${name}.projectId "${id}" is not a valid project id`);
+        if (RETIRED_PROJECT_IDS.includes(id)) errors.push(`environments.${name} "${id}" belongs to the old app`);
+        if ((name === 'dev') !== /-dev$/.test(id || '')) errors.push(`environments.${name}.projectId "${id}": only the dev project may end in -dev`);
+    }
     for (const key of ['appName', 'appNameHi', 'androidPackage', 'apkName', 'githubRepo']) {
         if (!raw[key] || typeof raw[key] !== 'string') errors.push(`${key} is empty`);
     }
@@ -243,7 +269,7 @@ function readFirebaseJson(root) {
 
 /** Every file that carries the app or project identity, and how to write it. */
 const TARGETS = [
-    { file: '.firebaserc', write: (_, d) => JSON.stringify({ projects: { default: d.projectId } }, null, 2) + '\n' },
+    { file: '.firebaserc', write: (_, d) => JSON.stringify({ projects: d.aliases }, null, 2) + '\n' },
     {
         file: 'firebase.json',
         // The app site gets www/; every redirect site gets only a 301 of every path to the app site.
@@ -373,8 +399,8 @@ function writeQr(root, url) {
     fs.appendFileSync(out, `\n<!-- happa-qr: ${url} -->\n`);
 }
 
-function apply(root = DEFAULT_ROOT, { qr = true } = {}) {
-    const raw = loadConfig(root);
+function apply(root = DEFAULT_ROOT, { qr = true, env } = {}) {
+    const raw = forEnv(loadConfig(root), env);
     const changed = [];
     for (const p of plan(root, raw)) {
         if (p.current === p.wanted) continue;
@@ -394,8 +420,8 @@ function apply(root = DEFAULT_ROOT, { qr = true } = {}) {
 }
 
 /** Release gate. Returns a list of problems (empty = ready). */
-function check(root = DEFAULT_ROOT, { syncOnly = false } = {}) {
-    const raw = loadConfig(root);
+function check(root = DEFAULT_ROOT, { syncOnly = false, env } = {}) {
+    const raw = forEnv(loadConfig(root), env);
     const errors = outOfSync(root, raw).map((f) => `${f} does not match ${CONFIG_FILE} (run npm run apply:happa-config)`);
     if (syncOnly) return errors;
     errors.push(...configProblems(raw));
@@ -417,12 +443,13 @@ function readFirebaserc(root) {
  * CI guard for every workflow that touches Firebase. Never lets the old
  * project through. Returns { ok, ready, projectId, site, messages }.
  */
-function guard(root, { requireReady = false, requireSa = false, saJson = '' } = {}) {
-    const d = derive(loadConfig(root));
+function guard(root, { requireReady = false, requireSa = false, saJson = '', saName = 'FIREBASE_SERVICE_ACCOUNT_HAPPA', env } = {}) {
+    const d = derive(forEnv(loadConfig(root), env));
     const messages = [];
     let ok = true;
     let ready = true;
     const fail = (m) => { ok = false; messages.push(`::error::${m}`); };
+    if (env && (env === 'dev') !== /-dev$/.test(d.projectId || '')) fail(`--env ${env} resolves to "${d.projectId}": only the dev environment may use a *-dev project.`);
     const rc = readFirebaserc(root);
     if (rc !== d.projectId) fail(`.firebaserc default "${rc}" differs from ${CONFIG_FILE} projectId "${d.projectId}" (run npm run apply:happa-config).`);
     for (const id of [d.projectId, ...d.hostingSites, rc]) {
@@ -441,7 +468,7 @@ function guard(root, { requireReady = false, requireSa = false, saJson = '' } = 
         else if (saProject && ready && saProject !== d.projectId) fail(`The service account belongs to "${saProject}", not "${d.projectId}".`);
     } else {
         ready = false;
-        if (requireSa) fail('The Happa service account secret is not set (FIREBASE_SERVICE_ACCOUNT_HAPPA).');
+        if (requireSa) fail(`The Happa service account secret is not set (${saName}).`);
         else messages.push('::notice::The Happa service account secret is not set; skipping.');
     }
     return { ok, ready: ok && ready, projectId: d.projectId, site: d.hostingSite, sites: d.hostingSites, redirectSites: d.redirectSites, messages };
@@ -450,15 +477,18 @@ function guard(root, { requireReady = false, requireSa = false, saJson = '' } = 
 function main(argv) {
     const [cmd, ...rest] = argv;
     const has = (f) => rest.includes(f);
+    const opt = (f) => (rest.includes(f) ? rest[rest.indexOf(f) + 1] : undefined);
+    const env = opt('--env');
+    if (env !== undefined && !['prod', 'dev'].includes(env)) { console.error('--env must be prod or dev'); return 1; }
     if (cmd === 'apply') {
-        const changed = apply(DEFAULT_ROOT, { qr: !has('--no-qr') });
+        const changed = apply(DEFAULT_ROOT, { qr: !has('--no-qr'), env });
         console.log(changed.length ? `Updated:\n  ${changed.join('\n  ')}` : 'Everything already matches happa.config.json.');
-        const left = configProblems(loadConfig());
+        const left = configProblems(forEnv(loadConfig(), env));
         if (left.length) console.log(`Still to do before release:\n  ${left.join('\n  ')}`);
         return 0;
     }
     if (cmd === 'check') {
-        const errors = check(DEFAULT_ROOT, { syncOnly: has('--sync-only') });
+        const errors = check(DEFAULT_ROOT, { syncOnly: has('--sync-only'), env });
         if (errors.length) {
             console.error(`Happa config check FAILED:\n  ${errors.join('\n  ')}\nSee docs/happa-go-live.md.`);
             return 1;
@@ -467,7 +497,7 @@ function main(argv) {
         return 0;
     }
     if (cmd === 'get') {
-        const value = derive(loadConfig())[rest[0]];
+        const value = derive(forEnv(loadConfig(), env))[rest[0]];
         if (value === undefined) { console.error(`Unknown key "${rest[0]}"`); return 1; }
         process.stdout.write(typeof value === 'string' ? value : JSON.stringify(value));
         return 0;
@@ -475,7 +505,7 @@ function main(argv) {
     if (cmd === 'guard') {
         const saIdx = rest.indexOf('--sa-env');
         const saJson = saIdx >= 0 ? (process.env[rest[saIdx + 1]] || '') : '';
-        const r = guard(DEFAULT_ROOT, { requireReady: has('--require-ready'), requireSa: has('--require-sa'), saJson: saIdx >= 0 ? saJson : '' });
+        const r = guard(DEFAULT_ROOT, { requireReady: has('--require-ready'), requireSa: has('--require-sa'), saJson: saIdx >= 0 ? saJson : '', saName: opt('--sa-name'), env });
         r.messages.forEach((m) => console.log(m));
         if (process.env.GITHUB_OUTPUT) {
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `project_id=${r.projectId}\nsite=${r.site}\nsites=${r.sites.join(',')}\nredirect_sites=${r.redirectSites.join(',')}\nready=${r.ready}\n`);
@@ -483,11 +513,11 @@ function main(argv) {
         console.log(`project=${r.projectId} site=${r.site} redirects=${r.redirectSites.join(',')} ready=${r.ready}`);
         return r.ok ? 0 : 1;
     }
-    console.error('Usage: node scripts/happa-config.js apply|check [--sync-only]|get <key>|guard [--require-ready] [--require-sa] [--sa-env NAME]');
+    console.error('Usage: node scripts/happa-config.js apply|check [--sync-only]|get <key>|guard [--require-ready] [--require-sa] [--sa-env NAME] [--sa-name SECRET] [--env prod|dev]');
     return 1;
 }
 
-module.exports = { loadConfig, derive, configProblems, hostingProblems, plan, outOfSync, apply, check, guard, TARGETS, RETIRED_PROJECT_IDS, PLACEHOLDER_RE };
+module.exports = { loadConfig, forEnv, derive, configProblems, hostingProblems, plan, outOfSync, apply, check, guard, TARGETS, RETIRED_PROJECT_IDS, PLACEHOLDER_RE };
 
 if (require.main === module) {
     process.exitCode = main(process.argv.slice(2));

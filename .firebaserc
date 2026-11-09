@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "happa-bfc07"
+    "default": "happa-bfc07",
+    "prod": "bahi-happa",
+    "dev": "bahi-happa-dev",
+    "legacy": "happa-bfc07"
   }
 }

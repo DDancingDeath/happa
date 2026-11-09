@@ -1,0 +1,26 @@
+# Deploys the `dev` branch (or any branch, by hand) to the Bahi DEV project
+# (bahi-happa-dev, #72). Does nothing until the repo variable BAHI_CUTOVER is 'true'.
+name: Bahi deploy dev
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+    inputs:
+      load_sample:
+        description: Load the sample items and bills into bahi-happa-dev after the deploy
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  dev:
+    if: vars.BAHI_CUTOVER == 'true'
+    uses: ./.github/workflows/bahi-deploy.yml
+    with:
+      env: dev
+      load_sample: ${{ inputs.load_sample == true }}
+    secrets:
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAHI_HAPPA_DEV }}

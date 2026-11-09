@@ -24,6 +24,22 @@ and is wrapped in **Capacitor** for Android distribution.
   project `happa-bfc07`, from `happa.config.json`). The only site that serves the
   app. `happaapp.web.app` and `happa-bfc07.web.app` (`redirectHostingSites`) only
   301 every path to it, so there is one origin (one offline store, one service worker).
+- **New Firebase projects (#72, cut-over pending)**: prod `bahi-happa` (site
+  `bahi-happa.web.app`) and dev `bahi-happa-dev` (site `bahi-happa-dev.web.app`), in the
+  shop's Google account. Their web config is in `happa.config.json` `environments.prod` /
+  `environments.dev`; the committed files still point at `happa-bfc07` until cut-over.
+  `.firebaserc` aliases: `default` (the active project), `prod`, `dev`, `legacy`
+  (`happa-bfc07`). Build for one of them with
+  `node scripts/happa-config.js apply --env prod|dev` (don't commit the result before
+  cut-over); `guard --env` refuses a `-dev` project for prod and the reverse.
+  Workflows `bahi-deploy-prod.yml` (push to `main`) and `bahi-deploy-dev.yml` (push to
+  `dev`, or manual with optional sample data) do nothing until the repo variable
+  `BAHI_CUTOVER` is `true`; secrets `FIREBASE_SERVICE_ACCOUNT_BAHI_HAPPA` and
+  `FIREBASE_SERVICE_ACCOUNT_BAHI_HAPPA_DEV`. **At cut-over**: set `BAHI_CUTOVER=true`,
+  disable `firebase-hosting-merge.yml` (it still deploys to `happa-bfc07`), then flip
+  `firebase` in `happa.config.json` to the prod values. Sample data for dev only:
+  `node tools/dev/load-sample-data.js [--apply] [--prefix dev_]` (refuses any project
+  not ending in `-dev`). The `dev_` collection prefix (rule 2) stays for one more release.
 - **Old app (archived, never changed)**: Android `com.hitesh.aadhat`, Firebase
   project `aadhat-management`, site `aadhat-management.web.app`, last release
   v1.6.1. No workflow may deploy to it; the CI guard
@@ -580,6 +596,11 @@ Runs are serialized (`concurrency: deploy-main`, never cancelled). The
 `aadhat-management` guard runs before every deploy and `--force` is refused.
 `firestore-rules-deploy.yml` no longer runs on push by itself; a manual
 dispatch deploys only the rules and indexes.
+
+`bahi-deploy-prod.yml` also runs on every push to `main`, but its job is skipped
+unless the repo variable `BAHI_CUTOVER` is `true` (section 1, #72). It builds with
+`apply --env prod` and deploys rules, indexes and Hosting to `bahi-happa` through
+`bahi-deploy.yml`, which `bahi-deploy-dev.yml` shares for `bahi-happa-dev`.
 
 ### Numbers on screen (#216)
 
