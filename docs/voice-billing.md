@@ -1,7 +1,9 @@
 # Voice billing (#81, #131)
 
-Status: a minimal, safe first version is in the app, **off by default**. It needs
-two more changes before it works anywhere (see "What is still needed").
+Status: a minimal, safe first version is in the app, **off by default**. The web
+header (#266) and the Android recogniser (#267) are in, so it can run in Chrome and
+in the Android app; it still needs a test on a real phone (see "What is still
+needed").
 
 ## What it does
 
@@ -77,23 +79,25 @@ internet here" when the engine says so; typing always works.
 Google), as with the keyboard's mic. The app keeps no audio and no text; the
 setting's hint says so.
 
-**Security header.** #198 (#89) sends `Permissions-Policy: microphone=()` on the
-web, which blocks the microphone for the site, and [security.md](security.md)
-said the app has no voice billing. A header can't depend on the setting. Until it
-allows `microphone=(self)`, the web app sees the policy (`document.featurePolicy`)
-and treats voice as not available (the setting is greyed out with "Not available
-on this device"). The header does not reach the Android app (it serves `www/`
-from the APK).
+**Security header.** #198 (#89) first sent `Permissions-Policy: microphone=()` on
+the web, which blocked the microphone for the site. #266 changed it to
+`microphone=(self)` on the app site only (`firebase.json`; frames, other sites and
+the redirect-only sites still get none), and [security.md](security.md) says why.
+The app still reads the policy (`document.featurePolicy`, `www/js/ui/voice-mic.js`):
+where a policy blocks the microphone, voice counts as not available (the setting is
+greyed out with "Not available on this device"). The header does not reach the
+Android app (it serves `www/` from the APK).
 
 ## What is still needed
 
 | Change | Why | State |
 |---|---|---|
-| `Permissions-Policy: microphone=(self)` on the app site, `docs/security.md` updated | The web / PWA (Chrome) can use the mic for voice | separate PR, security review |
-| `@capacitor-community/speech-recognition` 7 + `RECORD_AUDIO` in the Android manifest | The Android app gets a recogniser (the WebView has none) | separate PR, review; then a new APK |
+| `Permissions-Policy: microphone=(self)` on the app site, `docs/security.md` updated | The web / PWA (Chrome) can use the mic for voice | Done (#266, 1 Nov) |
+| `@capacitor-community/speech-recognition` 7 + `RECORD_AUDIO` in the Android manifest | The Android app gets a recogniser (the WebView has none) | Done (#267, 1 Nov); in APKs built since |
+| A test on a real phone in the Android app: Hindi and English, a noisy shop, with and without internet, the microphone prompt | #81's "works in the Android WebView with the mic prompt" item; nothing above was tried on a phone | Owner, open |
 
-Both are safe while the setting is off: no page asks for the microphone unless the
-user switches voice on and taps 🎤.
+Both changes are safe while the setting is off: no page asks for the microphone
+unless the user switches voice on and taps 🎤.
 
 ## Not built yet (from #81 and #131)
 
@@ -105,7 +109,7 @@ user switches voice on and taps 🎤.
   and the Android App Actions shortcut ("Bill banao").
 - Quintal (100 kg) as a weight word; rates per quintal.
 
-Recommendation: ship the two pending changes, test on a real phone with the shop's
-own items (Hindi and English, noisy shop, with and without internet), and only then
-add readback and several items per sentence. Keep the check-before-fill step: voice
+Recommendation: test on a real phone with the shop's own items (Hindi and English,
+noisy shop, with and without internet), and only then add readback and several
+items per sentence. Keep the check-before-fill step: voice
 fills, a person adds and saves.
