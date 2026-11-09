@@ -18,8 +18,8 @@ const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
 // 01/10/2025 00:00 in India: the app reads a DD/MM/YYYY bill date as the phone's local time.
 const IST_OCT_1 = Date.UTC(2025, 8, 30, 18, 30);
-// "Now" for date-keyed test data, taken once per test by the runner, which never starts a
-// test in the last seconds of an IST day: the data and the rules' request.time agree on the day.
+// "Now" for date-keyed test data, taken once per test by the runner, which never starts a test in the
+// last seconds of an IST day (so of a month or year either): the data and the rules' request.time agree.
 let testNow = Date.now();
 const istDayAt = (at, offset = 0) => new Date(at + 330 * MIN + offset * DAY).toISOString().slice(0, 10);
 
@@ -3601,18 +3601,22 @@ defineReadMatrix('dev_');
 // ---- Rentals (#170): rent_* collections, roles per business (#149) ----
 // Months relative to "now" in IST, as the rules compute them.
 const istMonth = (offset = 0) => {
-    const d = new Date(Date.now() + 330 * MIN);
+    const d = new Date(testNow + 330 * MIN);
     const idx = d.getUTCFullYear() * 12 + d.getUTCMonth() + offset;
     return `${Math.floor(idx / 12)}-${String((idx % 12) + 1).padStart(2, '0')}`;
 };
 
 function defineRentSuite(prefix) {
-    const t = (name, fn) => test(`[${prefix || 'prod'} rentals] ${name}`, fn);
+    // This month, the ones before, today and the receipt year, from the test's own "now".
+    let CUR, PREV, PREV2, today, R_YEAR;
+    const t = (name, fn) => test(`[${prefix || 'prod'} rentals] ${name}`, () => {
+        [CUR, PREV, PREV2] = [istMonth(0), istMonth(-1), istMonth(-2)];
+        today = istDayAt(testNow);
+        R_YEAR = Number(today.slice(0, 4));
+        return fn();
+    });
     const c = (name) => `${prefix}${name}`;
     const RENT = ['rent_properties', 'rent_units', 'rent_tenants', 'rent_leases', 'rent_charges'].map(c);
-    const CUR = istMonth(0);
-    const PREV = istMonth(-1);
-    const PREV2 = istMonth(-2);
     const seed = (coll, id, data) => env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(c(coll)).doc(id).set(data));
     const meta = (uid) => ({ archived: false, createdAt: 1, createdBy: uid, updatedAt: 1, updatedBy: uid });
     const lease = (over = {}) => ({ unitId: 'U1', propertyId: 'P1', tenantId: 'T1', rent: 5000, dueDay: 10, startMonth: PREV, endMonth: null,
@@ -3967,7 +3971,6 @@ function defineRentSuite(prefix) {
     });
 
     // ---- Add unit with its tenant / move-in in one batch; start date; phone; electricity modes ----
-    const today = (() => { const d = new Date(Date.now() + 330 * MIN); return `${CUR}-${String(d.getUTCDate()).padStart(2, '0')}`; })();
     const moveInBatch = (uid, { newUnit = true, newTenant = true, phone = '9876543210', rent = 6000, chargeAmount = rent, firstRent = null,
         startDate = today, startMonth = startDate.slice(0, 7), withCharge = true, unitLease = 'LN', extraLease = {}, touch = false } = {}) => {
         const f = db(uid);
@@ -4055,7 +4058,7 @@ function defineRentSuite(prefix) {
     });
 
     // ---- Change of unit (tenant form, rent-store assignUnit): old lease ends, new one starts, one write ----
-    const istDate = (daysAgo) => new Date(Date.now() + 330 * MIN - daysAgo * DAY).toISOString().slice(0, 10);
+    const istDate = (daysAgo) => istDayAt(testNow, -daysAgo);
     // A move date a member may use (today or up to 2 days back, IST, as the rules' request.time) whose day of the
     // month is at least minDay, so the old unit keeps days in its move month (RENT-13). Early in a month that is a
     // day of the month before (its last day is the 28th or later). A move on the 1st ends the old lease with the
@@ -4407,7 +4410,6 @@ function defineRentSuite(prefix) {
     });
 
     // ---- Rent receipts (RENT-12): rent_receipts + rent_counters ----
-    const R_YEAR = new Date(Date.now() + 330 * MIN).getUTCFullYear();
     const rno = (seq) => `R-${R_YEAR}-${String(seq).padStart(4, '0')}`;
     const rctOn = (f, id) => f.collection(c('rent_receipts')).doc(id);
     const ctrOn = (f, year = R_YEAR) => f.collection(c('rent_counters')).doc(`receipts_${year}`);
