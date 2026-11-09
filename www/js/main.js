@@ -63,7 +63,7 @@ const langReady = loadCatalogue(getLang()).catch(e => console.error('Language ca
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261108bs-site-url-msg';
+const BUILD_ID = '20261108bw-first-screen-no-wait';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -523,11 +523,10 @@ async function initializeUserData() {
         // Attach real-time listeners. Their first snapshots populate AppState,
         // so every document is read once per app open (a separate .get() of
         // each collection would read everything a second time).
+        // The item order comes from the itemFrequency listener started here (ITEM_FREQUENCY_CHANGED),
+        // not from a separate server read the first screen would wait for (#59).
         try {
-            await Promise.all([
-                FirebaseService.setupRealtimeListeners(),
-                BillingManager.loadItemFrequency()
-            ]);
+            await FirebaseService.setupRealtimeListeners();
         } catch (loadError) {
             FirebaseService.cleanup();
             throw loadError;
@@ -625,10 +624,9 @@ async function initializeUserData() {
         // restore banner below must not count as start time.
         appStart.complete();
         
-        // Check for auto-saved bill
-        await BillingManager.checkAutoSave();
-        // After the recovery check: a mode switch auto-saves, and with no recovery
-        // pending an empty form deletes the auto-save the check must still read
+        // Auto-saved bill: its banner shows when the read returns. The first screen doesn't wait for it
+        // (a server read queues behind the listeners' server answers, #59); auto-save writes wait for it.
+        BillingManager.checkAutoSave();
         openLaunchShortcut();
         BillingManager.renderBillNumber();
         BillingManager.focusFirstItem();

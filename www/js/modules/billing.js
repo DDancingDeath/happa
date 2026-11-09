@@ -950,6 +950,7 @@ const BillingManager = {
             const hasPurchaseData = billItems.length > 0 || weights.length > 0 || document.getElementById('newWeight')?.value;
             const hasSaleData = saleItems.length > 0 || saleWeights.length > 0 || document.getElementById('saleWeight')?.value;
             
+            if (this.recoveryChecked) await this.recoveryChecked;
             if (!hasPurchaseData && !hasSaleData) {
                 // Nothing typed yet: the unsaved bill on the banner stays where it is
                 if (!this.pendingRecovery) await this.deleteAutoSave();
@@ -1018,6 +1019,8 @@ const BillingManager = {
     async deleteAutoSave() {
         try {
             if (!AppState.currentUser) return;
+            // The auto-save not offered yet is never deleted unread
+            if (this.recoveryChecked) await this.recoveryChecked;
             // After a save the save's own toast stays on screen
             this.keepRecoveryAsDrafts({ quiet: true });
             await BillDrafts.deleteAutoSave(AppState.currentUser.uid);
@@ -1034,7 +1037,20 @@ const BillingManager = {
      * before picking moves it to Drafts, so it is never lost.
      * @async
      */
-    async checkAutoSave() {
+    checkAutoSave() {
+        const check = this.readAutoSave();
+        this.recoveryChecked = check;
+        check.then(() => {
+            if (this.recoveryChecked === check) this.recoveryChecked = null;
+        });
+        return check;
+    },
+
+    /**
+     * The start-up check; auto-save writes and deletes wait for it (`recoveryChecked`).
+     * @private
+     */
+    async readAutoSave() {
         this.setRecovery(null);
         try {
             if (!AppState.currentUser) return;
@@ -1051,6 +1067,9 @@ const BillingManager = {
 
     /** Auto-save waiting for Restore / Discard on the banner; null when none. */
     pendingRecovery: null,
+
+    /** The start-up auto-save check while it is still reading (it never rejects); null once done. */
+    recoveryChecked: null,
 
     /** Shows the banner for `data`, or hides it (null). */
     setRecovery(data) {
@@ -1973,7 +1992,8 @@ on(REFRESH.billingDropdown, () => {
     BillingManager.loadSaleItemsDropdown();
     BillingManager.renderBillNumber();
 });
-on(ITEM_FREQUENCY_CHANGED, () => {
+on(ITEM_FREQUENCY_CHANGED, (data) => {
+    if (data) BillingManager.itemFrequency = { purchase: {}, sale: {}, ...data };
     BillingManager.loadItemsDropdown();
     BillingManager.loadSaleItemsDropdown();
 });

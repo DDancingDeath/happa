@@ -11,6 +11,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { autoSaveSummary, nextBillNumberHint } from '../utils/calc/billing.js';
 import { installActions } from '../ui/actions.js';
+import { emit, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
 
 jest.mock('../firebase/repos/bill-drafts.js', () => ({
     getAutoSave: jest.fn(),
@@ -174,6 +175,34 @@ describe('unsaved-bill banner (#117)', () => {
         expect(PurchaseManager.getBillItems().map(i => i.name)).toEqual(['Rice', 'Wheat']);
         expect(BillDrafts.deleteAutoSave).not.toHaveBeenCalled();
         expect(document.getElementById('autoSaveBanner').hidden).toBe(true);
+    });
+
+    test('the first screen does not wait for the check; auto-save writes before it has read wait for it (#59)', async () => {
+        let answer;
+        BillDrafts.getAutoSave.mockReturnValue(new Promise(resolve => { answer = resolve; }));
+        const checked = BillingManager.checkAutoSave();
+        const emptyForm = BillingManager.autoSaveToCloud();
+        const cleared = BillingManager.deleteAutoSave();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(BillDrafts.deleteAutoSave).not.toHaveBeenCalled();
+        expect(BillDrafts.saveDraft).not.toHaveBeenCalled();
+
+        answer(saved);
+        await Promise.all([checked, emptyForm, cleared]);
+        // The unsaved bill was read before anything was deleted: it is kept in Drafts first
+        expect(BillDrafts.saveDraft).toHaveBeenCalledTimes(1);
+        expect(BillDrafts.saveDraft.mock.calls[0][0]).toMatchObject({ mode: 'purchase', billTotal: 1250 });
+        expect(BillDrafts.saveDraft.mock.invocationCallOrder[0]).toBeLessThan(BillDrafts.deleteAutoSave.mock.invocationCallOrder[0]);
+    });
+});
+
+describe('item order (#59)', () => {
+    test('comes from the itemFrequency listener: no separate read at start', () => {
+        BillingManager.itemFrequency = { purchase: {}, sale: {} };
+        emit(ITEM_FREQUENCY_CHANGED, { purchase: { Rice: { score: 5, count: 1, lastUsed: 1 } } });
+        expect(BillingManager.itemFrequency.purchase.Rice.score).toBe(5);
+        expect(BillingManager.itemFrequency.sale).toEqual({});
     });
 });
 

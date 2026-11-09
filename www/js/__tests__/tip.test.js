@@ -168,7 +168,7 @@ describe('TIP abandoned / expired / error watcher', () => {
         const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'main.js'), 'utf8');
         const done = src.indexOf('appStart.complete();');
         expect(done).toBeGreaterThan(0);
-        expect(done).toBeLessThan(src.indexOf('await BillingManager.checkAutoSave()'));
+        expect(done).toBeLessThan(src.indexOf('BillingManager.checkAutoSave();'));
     });
 
     it('a run past its timeout is reported as expired by sweep()', () => {
