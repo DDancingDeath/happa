@@ -4,8 +4,8 @@
 /**
  * Themes (redesign 2.6, DIRECTION §4): every theme in the registry (www/js/ui/themes.js) has its
  * token file in css/themes, joined into app.css, a name and a description in English and Hindi,
- * stays small (all themes ship in the one stylesheet), and keeps its colours screen-only so printing
- * from any theme is the Modern light output (black on white).
+ * stays small (all themes ship in the one stylesheet), and keeps its colours and type roles screen-only
+ * so printing from any theme is the Modern light output (black on white, Modern faces).
  */
 const fs = require('fs');
 const path = require('path');
@@ -57,6 +57,8 @@ test.each(OWN.map((th) => [th.id, th.kind]))('%s: tokens only, colours on screen
         for (const d of body.split(';').map((x) => x.trim()).filter(Boolean)) expect(d).toMatch(/^(--[\w-]+|color-scheme)\s*:/);
     }
     expect(outsideScreen(src)).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|color-scheme/i);
+    // Faces, italic titles and ledger rules are screen-only too: print keeps the Modern type
+    expect(outsideScreen(src)).not.toMatch(/--(font-[\w-]+|w-display|tracking-display|title-style|rule-style)\s*:/);
     if (kind === 'both') expect(src).toContain(`[data-theme="${id}"][data-mode="dark"]`);
 });
 

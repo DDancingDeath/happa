@@ -20,7 +20,7 @@
   display: table-cell;
   padding: 10px 8px;
   text-align: center;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--table-rule);
   font-size: var(--fs-caption);
   font-weight: var(--w-label);
   color: var(--text-secondary);
@@ -29,7 +29,7 @@
 #billTable tbody tr, #saleTable tbody tr {
   display: table-row;
   background: var(--card-bg);
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px var(--rule-style) var(--border-color);
   transition: background var(--transition);
 }
 

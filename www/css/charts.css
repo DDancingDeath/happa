@@ -375,6 +375,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .bill-details-header h2 {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--fs-title);
   color: var(--dark-color);
 }

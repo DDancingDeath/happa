@@ -1,0 +1,80 @@
+/* Classic (redesign 3.4, DIRECTION 4.2): crisp white and navy, burgundy wholesale; Palatino titles,
+   square corners, ruled table headers, navy masthead (the menu header). Screen-only, so print stays Modern. */
+@media screen {
+  [data-theme="classic"] {
+    --font-display: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, "Noto Serif", "Nirmala UI", "Noto Sans Devanagari", serif;
+    --w-display: 700;
+    --tracking-display: 0;
+    --table-rule: var(--accent);
+    --r-control: 3px;
+    --r-panel: 4px;
+    --r-chip: 3px;
+    --r-sheet: 6px;
+  }
+
+  [data-theme="classic"]:not([data-mode="dark"]) {
+    color-scheme: light;
+    --bg: #f3f3ef;
+    --surface: #ffffff;
+    --surface-2: #ecece6;
+    --surface-3: #dfdfd7;
+    --line: #dadad0;
+    --line-strong: #bdbdb0;
+    --ink: #1b2433;
+    --ink-2: #414a5a;
+    --ink-3: #5c6474;
+    --ink-placeholder: #636a7a;
+    --accent: #1f3a68;
+    --accent-hover: #172c50;
+    --accent-strong: #1f3a68;
+    --accent-text: #1f3a68;
+    --accent-soft: #e4e9f2;
+    --accent-line: #b8c4d9;
+    --mode-sale: #2f6b3f;
+    --mode-sale-soft: #e2ede4;
+    --mode-wholesale: #7a2848;
+    --mode-wholesale-soft: #f3e3ea;
+    --mode-rentals: #2a5e6b;
+    --positive: #2f6b3f;
+    --positive-soft: #e2ede4;
+    --negative: #a3222e;
+    --negative-fill: #a3222e;
+    --warning: #8a5300;
+    --seg-on: #ffffff;
+    --btn-primary-shadow: none;
+  }
+
+  [data-theme="classic"][data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #0f1520;
+    --surface: #161e2b;
+    --surface-2: #1c2636;
+    --surface-3: #253145;
+    --line: rgba(200, 215, 240, 0.1);
+    --line-strong: rgba(200, 215, 240, 0.2);
+    --ink: #e8ecf2;
+    --ink-2: #b3bccb;
+    --ink-3: #8f99aa;
+    --ink-placeholder: #8a93a3;
+    --accent: #3d63a8;
+    --accent-hover: #4a72b8;
+    --accent-strong: #1f3a68;
+    --accent-text: #9db8e6;
+    --accent-soft: rgba(61, 99, 168, 0.22);
+    --accent-line: rgba(157, 184, 230, 0.4);
+    --mode-sale: #2f7a48;
+    --mode-sale-soft: rgba(110, 200, 140, 0.12);
+    --mode-wholesale: #a04a6c;
+    --mode-wholesale-soft: rgba(220, 140, 170, 0.12);
+    --positive: #7cc796;
+    --positive-soft: rgba(124, 199, 150, 0.12);
+    --negative: #f08a94;
+    --negative-soft: rgba(240, 138, 148, 0.12);
+    --warning: #e8b55e;
+    --warning-soft: rgba(232, 181, 94, 0.12);
+    --input-bg: #121925;
+    --seg-on: #253145;
+    --toast-bg: #253145;
+    --toast-ink: #e8ecf2;
+  }
+}

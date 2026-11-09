@@ -11,8 +11,11 @@ export const APPEARANCES = ['light', 'dark', 'system'];
 /** Order = the gallery order. Name and description: i18n ui.settings.theme_<id> / theme_<id>_desc. */
 export const THEMES = [
     { id: 'modern', kind: 'both' },
+    { id: 'vintage', kind: 'both' },
+    { id: 'classic', kind: 'both' },
     { id: 'nordic', kind: 'both' },
     { id: 'nature', kind: 'both' },
+    { id: 'premium', kind: 'both' },
     { id: 'dark', kind: 'dark' },
     { id: 'midnight', kind: 'dark' },
 ];

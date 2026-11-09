@@ -143,6 +143,8 @@
 /* Section Title */
 .section-title {
   margin: 0 0 14px 0;
+  font-family: var(--font-display);
+  font-style: var(--title-style);
   font-size: 16px;
   font-weight: var(--w-strong);
   color: var(--text-primary);

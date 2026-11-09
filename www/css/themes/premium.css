@@ -1,0 +1,101 @@
+/* Premium (redesign 3.4, DIRECTION 4.2): ivory, ink and gold; light serif figures, soft long shadow,
+   black primary with champagne text, gold focus. Screen-only, so print stays Modern. */
+@media screen {
+  [data-theme="premium"] {
+    --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, "Noto Serif", "Nirmala UI", "Noto Sans Devanagari", serif;
+    --w-display: 400;
+    --tracking-display: -0.01em;
+    --r-control: 6px;
+    --r-panel: 10px;
+  }
+
+  [data-theme="premium"]:not([data-mode="dark"]) {
+    color-scheme: light;
+    --bg: #f8f6f2;
+    --surface: #fffdf9;
+    --surface-2: #f1ede5;
+    --surface-3: #e7e1d5;
+    --line: #e8e2d6;
+    --line-strong: #d3cab8;
+    --ink: #1a1714;
+    --ink-2: #4d463d;
+    --ink-3: #6b6256;
+    --ink-placeholder: #6e6559;
+    --accent: #1a1714;
+    --accent-hover: #2e2924;
+    --accent-strong: #2e2924;
+    --accent-text: #7f6119;
+    --accent-soft: #f3ead6;
+    --accent-line: #c9a65a;
+    --on-accent: #f3e2b8;
+    --mode-purchase: #9a7420;
+    --mode-purchase-soft: #f3ead6;
+    --mode-sale: #2f6b4f;
+    --mode-sale-soft: #e1eee7;
+    --mode-wholesale: #5b3f7a;
+    --mode-wholesale-soft: #ece6f3;
+    --mode-rentals: #2f5f6f;
+    --positive: #2f6b4f;
+    --positive-soft: #e1eee7;
+    --negative: #9b2c2c;
+    --negative-soft: #f6e2df;
+    --negative-fill: #9b2c2c;
+    --warning: #85580a;
+    --warning-soft: #f5ead0;
+    --warning-dot: #c9a65a;
+    --focus: 0 0 0 3px rgba(201, 166, 90, 0.45);
+    --panel-border: #ebe5d9;
+    --panel-shadow: 0 1px 2px rgba(60, 40, 10, 0.04), 0 12px 32px -20px rgba(60, 40, 10, 0.25);
+    --seg-on: #fffdf9;
+    --btn-primary-shadow: inset 0 0 0 1px #3a3128, 0 1px 2px rgba(0, 0, 0, 0.2);
+    --btn-sale-bg: #1a1714;
+    --btn-sale-ink: #cfe8da;
+    --toast-bg: #1a1714;
+    --toast-ink: #f3e2b8;
+  }
+
+  [data-theme="premium"][data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #0f0e0c;
+    --surface: #171512;
+    --surface-2: #1f1c18;
+    --surface-3: #29251f;
+    --line: rgba(212, 176, 106, 0.12);
+    --line-strong: rgba(212, 176, 106, 0.24);
+    --ink: #f3ede2;
+    --ink-2: #c6bcaa;
+    --ink-3: #a29781;
+    --ink-placeholder: #978c77;
+    --accent: #d4b06a;
+    --accent-hover: #dfbf80;
+    --accent-strong: #4a3b1c;
+    --accent-text: #e2c88c;
+    --accent-soft: rgba(212, 176, 106, 0.14);
+    --accent-line: rgba(212, 176, 106, 0.4);
+    --on-accent: #1a1408;
+    --mode-purchase: #d4b06a;
+    --mode-purchase-soft: rgba(212, 176, 106, 0.14);
+    --mode-sale: #7cc2a0;
+    --on-mode-sale: #0d1f16;
+    --mode-sale-soft: rgba(124, 194, 160, 0.13);
+    --mode-wholesale: #b9a0dc;
+    --on-mode-wholesale: #1a1226;
+    --mode-wholesale-soft: rgba(185, 160, 220, 0.13);
+    --mode-rentals: #82bccd;
+    --positive: #7cc2a0;
+    --positive-soft: rgba(124, 194, 160, 0.13);
+    --negative: #ee9a92;
+    --negative-soft: rgba(238, 154, 146, 0.12);
+    --warning: #e6c47c;
+    --warning-soft: rgba(230, 196, 124, 0.12);
+    --panel-border: rgba(212, 176, 106, 0.1);
+    --panel-shadow: none;
+    --bar-bg: #13110e;
+    --seg-on: #2e2922;
+    --btn-primary-shadow: var(--highlight);
+    --btn-sale-bg: #7cc2a0;
+    --btn-sale-ink: #0d1f16;
+    --toast-bg: #29251f;
+    --toast-ink: #f3ede2;
+  }
+}

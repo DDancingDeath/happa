@@ -36,7 +36,7 @@
   top: 0;
   left: var(--sp-4);
   right: 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px var(--rule-style) var(--line);
 }
 
 .row.inset-lead + .row.inset-lead::before {
@@ -256,7 +256,7 @@ a.row:active {
 
 .table th {
   padding: 8px 12px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--table-rule);
   color: var(--ink-3);
   font-size: var(--fs-caption);
   font-weight: var(--w-label);
@@ -266,7 +266,7 @@ a.row:active {
 .table td {
   height: 44px;
   padding: 0 12px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px var(--rule-style) var(--line);
 }
 
 .table tbody tr:hover {
