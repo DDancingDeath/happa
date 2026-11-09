@@ -108,7 +108,9 @@ Probe on one CI runner (reopen, 4x CPU): cache answers 3.4 s → 1.9 s, first sc
   collection's window and dues (sales, money in from older bills, the collect / pay
   reminders), so Today would wait just as long; only the billing screen would come earlier,
   and its "Already owes" line needs the dues too.
-- *A shorter wait for the server after a cache answer*: shows older figures first.
+- *A shorter wait for the server after a cache answer*: shows older figures first. The next step
+  is designed in [startup-cached-first.md](startup-cached-first.md): show the cache answers and
+  mark the figures "updating…" until the server confirms them.
 
 ## Regressions
 

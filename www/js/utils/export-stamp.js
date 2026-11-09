@@ -10,7 +10,7 @@ import { csvCell, isoMinute } from './statements.js';
 import { t } from '../i18n/index.js';
 
 /** Export kinds written in the audit row (`details.exportKind`). */
-export const EXPORT_KINDS = Object.freeze(['day', 'month', 'party', 'item', 'csv', 'accountant', 'audit', 'errors']);
+export const EXPORT_KINDS = Object.freeze(['day', 'month', 'party', 'item', 'csv', 'accountant', 'audit', 'errors', 'ask']);
 
 const text = (/** @type {*} */ v, /** @type {number} */ max) => String(v ?? '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, max);
 

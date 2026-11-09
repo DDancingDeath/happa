@@ -53,6 +53,7 @@ const STATIC_ASSETS = [
     '/js/firebase/repos/bill-payments.js',
     '/js/firebase/repos/bill-save.js',
     '/js/firebase/repos/bill-stats.js',
+    '/js/firebase/repos/report-bills.js',
     '/js/firebase/repos/bills.js',
     '/js/firebase/repos/cash-days.js',
     '/js/firebase/repos/cash-sessions.js',
@@ -280,6 +281,7 @@ const STATIC_ASSETS = [
 const LAZY_ASSETS = [
     '/js/modules/ask.js',
     '/js/utils/ask.js',
+    '/js/utils/ask-report.js',
     '/css/rent-receipt.css',
     '/js/rentals/rent-deposit.js',
     '/js/rentals/rent-deposit-store.js',

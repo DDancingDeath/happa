@@ -1,15 +1,16 @@
 /* Live bill checks (#188): red = must fix (block), amber = unusual (warn).
    Never colour only: every mark comes with an icon and a text reason. */
 
+/* Slim (redesign 3.1b): a hairline round the bill; the banner and the field marks carry the reason */
 .bill-checks-block,
 .bill-checks-warn {
-    outline: 3px solid var(--danger-dark);
+    outline: 1px solid var(--negative-line);
     outline-offset: 4px;
     border-radius: 12px;
 }
 
 .bill-checks-warn {
-    outline-color: var(--warning-dark);
+    outline-color: var(--warning-line);
 }
 
 .bill-check-banner {
@@ -17,12 +18,13 @@
     top: 0;
     z-index: 5;
     margin: 0 0 12px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    border: 2px solid var(--danger-dark);
-    background: var(--danger-soft);
-    color: var(--on-danger-soft);
-    box-shadow: var(--shadow-sm);
+    padding: 8px 12px;
+    border-radius: var(--r-panel);
+    border: 1px solid var(--negative-line);
+    /* The soft tint over an opaque surface: the banner sticks over the bill as it scrolls */
+    background: linear-gradient(var(--negative-soft), var(--negative-soft)), var(--surface);
+    color: var(--negative);
+    font-size: var(--fs-sm);
 }
 
 .bill-check-banner[hidden] {
@@ -30,9 +32,9 @@
 }
 
 .bill-check-banner.bill-check-warn {
-    border-color: var(--warning-dark);
-    background: var(--warning-soft);
-    color: var(--on-warning-soft);
+    border-color: var(--warning-line);
+    background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--surface);
+    color: var(--warning);
 }
 
 .bill-check-banner-head {
@@ -128,30 +130,12 @@ tr.bill-check-row .bill-check-msg {
     box-sizing: border-box;
 }
 
-body.dark-mode .bill-check-banner {
-    background: #3b0d0d;
-    color: #fecaca;
-}
-
-body.dark-mode .bill-check-banner.bill-check-warn {
-    background: #3a2a06;
-    color: #fde68a;
-}
-
 body.dark-mode tr.bill-check-block > td {
     background: rgba(220, 38, 38, 0.18);
 }
 
 body.dark-mode tr.bill-check-warn > td {
     background: rgba(217, 119, 6, 0.2);
-}
-
-body.dark-mode .bill-check-msg {
-    color: #fca5a5;
-}
-
-body.dark-mode .bill-check-msg.bill-check-warn {
-    color: #fcd34d;
 }
 
 /* Existing due of the party under the name field (#166) — information only */

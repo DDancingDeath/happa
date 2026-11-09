@@ -43,10 +43,10 @@ const has = (/** @type {*} */ v) => v !== undefined && v !== null && v !== '';
  */
 const EXPORT_KIND_KEYS = {
     day: 'ui.statements.day_book', month: 'ui.statements.month', party: 'ui.statements.party', item: 'ui.statements.item',
-    csv: 'ui.statements.csv', accountant: 'ui.statements.accountant', audit: 'ui.admin.col_audit_logs', errors: 'ui.diag.tab_errors'
+    csv: 'ui.statements.csv', accountant: 'ui.statements.accountant', audit: 'ui.admin.col_audit_logs', errors: 'ui.diag.tab_errors', ask: 'ui.ask.title'
 };
 /** @type {Object<string, string>} */
-const EXPORT_FORMAT_KEYS = { csv: 'ui.statements.download_csv', whatsapp: 'ui.statements.whatsapp', print: 'ui.statements.print', json: 'ui.export.format_file' };
+const EXPORT_FORMAT_KEYS = { csv: 'ui.statements.download_csv', whatsapp: 'ui.statements.whatsapp', print: 'ui.statements.print', json: 'ui.export.format_file', xlsx: 'ui.ask.download_excel' };
 
 /**
  * An audit entry's details as one line in the app language (plain text; escape it).

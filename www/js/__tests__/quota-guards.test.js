@@ -12,7 +12,7 @@ import {
     readsForDocSnapshot,
     quotaBannerText
 } from '../utils/quota-guard.js';
-import { deletesIssued, installFirestoreMeter, getQuotaStatus, getIoCounts, onServerQueryRead, sourceLabel } from '../firebase/firestore-meter.js';
+import { deletesIssued, installFirestoreMeter, getQuotaStatus, getIoCounts, onServerQueryRead, sourceLabel, tagQuery } from '../firebase/firestore-meter.js';
 import { decideStockRebuild, leaseOwnerUid, LEASE_MAX_WAIT_MS, memberWindowStart, MEMBER_APPROX_MAX_EXTRA_MS } from '../utils/rebuild-lease.js';
 
 const fs = require('fs');
@@ -141,6 +141,10 @@ describe('read counter', () => {
         const snap = await new Query('dev_purchases').get();
         expect(snap.size).toBe(7);
         expect(fetched).toEqual(['dev_purchases']);
+        // An Ask item report's reads count under their own name (#415); the listener heal still sees the collection.
+        await tagQuery(new Query('dev_purchases'), 'ask report').get();
+        expect(fetched).toEqual(['dev_purchases', 'dev_purchases']);
+        expect(getQuotaStatus().top).toEqual(expect.arrayContaining([{ source: 'ask report: dev_purchases get', reads: 7 }]));
         offFetched();
         await new DocumentReference('stockCheckpoints/current').get();
         const q = new Query('items');
@@ -152,7 +156,7 @@ describe('read counter', () => {
         expect(seen).toHaveLength(2);
 
         const st = getQuotaStatus();
-        expect(st.reads - before).toBe(7 + 1 + 12 + 1);
+        expect(st.reads - before).toBe(7 + 7 + 1 + 12 + 1);
         expect(st.top).toEqual(expect.arrayContaining([
             { source: 'items listen', reads: 13 },
             { source: 'dev_purchases get', reads: 7 },
