@@ -5259,6 +5259,28 @@ function defineWorkerSuite(prefix) {
         await assertSucceeds(doc('legacyOwner').update({ entries: FieldValue.arrayRemove(entry()), ...stamp() }));
         await assertFails(doc('legacyOwner').update({ startMonth: '2026-03', ...stamp() }));
     });
+
+    t('a removal drops exactly one entry and changes nothing else', async () => {
+        const [e1, e2, e3] = [entry(), entry({ id: 'e2', amount: 6000 }), entry({ id: 'e3', amount: 500, kind: 'pay' })];
+        await seed('w1', worker({ entries: [e1, e2, e3] }));
+        const set = (entries) => doc('legacyOwner').update({ entries, ...stamp() });
+        await assertFails(set([e1, { ...e2, amount: 1 }]));
+        await assertFails(set([e1, { ...e3, amount: 9000000 }]));
+        await assertFails(set([e1, { ...e2, extra: 'x' }]));
+        await assertFails(set([e1, e1]));
+        await assertSucceeds(set([e1, e3]));
+    });
+
+    t('pay steps: the first and the newest are shape-checked; at most 24', async () => {
+        await seed('w1', worker());
+        const pays = (p) => doc('legacyOwner').update({ pays: p, ...stamp() });
+        await assertFails(pays([{ from: '2026-01', amount: 9000, by: 'x' }, { from: '2026-04', amount: 10000 }]));
+        await assertFails(pays([{ from: '2026-01', amount: 9000.5 }, { from: '2026-04', amount: 10000 }]));
+        await assertFails(pays([{ from: '2026-01', amount: -1 }, { from: '2026-04', amount: 10000 }]));
+        const many = Array.from({ length: 25 }, (_, i) => ({ from: `${2026 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}`, amount: 9000 }));
+        await assertFails(pays(many));
+        await assertSucceeds(pays(many.slice(0, 24)));
+    });
 }
 defineWorkerSuite('');
 defineWorkerSuite('dev_');

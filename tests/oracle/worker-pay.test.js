@@ -28,12 +28,15 @@ function oracleBalance(w, upto) {
 function oracleMonth(w, m) {
     const before = MONTHS.indexOf(m) ? oracleBalance(w, MONTHS[MONTHS.indexOf(m) - 1]) : 0;
     const pay = oraclePay(w, m);
-    const closing = oracleBalance(w, m);
-    const y = pay + (before > 0 ? before : 0);
-    const recovered = before < 0 ? Math.min(pay, -before) : 0;
-    let state = null;
-    if (y > 0) state = closing <= 0 ? 'paid' : (y - closing > 0 ? 'part' : 'due');
-    return { pay, paid: oraclePaid(w, m), opening: before, recovered, closing, state, owed: y > 0 ? y : 0 };
+    const paid = oraclePaid(w, m);
+    const arrears = before > 0 ? before : 0;
+    const credit = before < 0 ? -before : 0;
+    const recovered = Math.min(pay, credit);
+    // State in the words of WP-6, not from the balance: Y = pay + arrears, X = paid + advance used.
+    const y = pay + arrears;
+    const x = paid + recovered;
+    const state = y === 0 ? null : x >= y ? 'paid' : x === 0 ? 'due' : 'part';
+    return { pay, paid, opening: before, recovered, closing: oracleBalance(w, m), state, owed: y, covered: y === 0 ? 0 : Math.min(x, y) };
 }
 
 const month = fc.constantFrom(...MONTHS);
@@ -62,7 +65,7 @@ describe('WP-1 … WP-6: each worker, month by month', () => {
                 if (!MONTHS.includes(r.month)) continue;
                 expect(payFor(w, r.month)).toBe(oraclePay(w, r.month));
                 const o = oracleMonth(w, r.month);
-                expect({ pay: r.pay, paid: r.paid, opening: r.opening, recovered: r.recovered, closing: r.closing, state: r.state, owed: r.owed })
+                expect({ pay: r.pay, paid: r.paid, opening: r.opening, recovered: r.recovered, closing: r.closing, state: r.state, owed: r.owed, covered: r.covered })
                     .toEqual(o);
             }
             expect(balance).toBe(oracleBalance(w, NOW));

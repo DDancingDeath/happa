@@ -679,7 +679,7 @@ Bills: only an owner deletes them, and only once voided (#75, OD-14: everyone el
 
 #### Worker pay (#373): workers/{id}
 
-- `wpOk()`: { name (1-60), startMonth 'YYYY-MM', active, pays [≤ 60 steps {from 'YYYY-MM', amount int 0 … 1 crore}; the first from = startMonth], entries [≤ 3,000], updatedAt = server time }. Owner only: read, create, update, delete (prod and `dev_`). Created with no entries. An update keeps the entries, adds exactly one at the end with every earlier one unchanged (the app's arrayUnion; two phones never overwrite each other), or removes one. Only the newest pay step and the newest entry are shape-checked (the rules cannot loop; the earlier ones were checked when they were added).
+- `wpOk()`: { name (1-60), startMonth 'YYYY-MM', active, pays [1-24 steps {from 'YYYY-MM', amount int 0 … 1 crore}; the first from = startMonth], entries [≤ 3,000], updatedAt = server time }. Owner only: read, create, update, delete (prod and `dev_`). Created with no entries. An update keeps the entries, adds exactly one at the end with every earlier one unchanged (the app's arrayUnion; two phones never overwrite each other), or removes exactly one (the rest unchanged: every remaining entry was already there and none is doubled, `hasAll` + `toSet().size()`). The first and the newest pay step and the newest entry are shape-checked (the rules cannot loop; the others were checked when they were added).
 - `wpEntryOk()`: { id (1-40), month 'YYYY-MM' (the month's pay it counts towards), date 'YYYY-MM-DD', amount int 1 … 1 crore, kind 'pay' | 'advance', mode 'cash' | 'online', note? (≤ 120) }.
 
 #### rate trends (#65): per-item-year rate stats + backfill status

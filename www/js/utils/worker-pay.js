@@ -11,6 +11,7 @@ export const ENTRY_MODES = Object.freeze(['cash', 'online']);
 export const MAX_AMOUNT = 10000000;
 export const MAX_NAME = 60;
 export const MAX_NOTE = 120;
+export const MAX_PAY_STEPS = 24;
 
 /**
  * @typedef {{from: string, amount: number}} PayStep
@@ -95,6 +96,18 @@ export function withStart(pays, startMonth) {
     const first = all.filter(p => p.from <= startMonth).pop() || all[0] || { from: startMonth, amount: 0 };
     return [{ from: startMonth, amount: first.amount }, ...all.filter(p => p.from > startMonth)];
 }
+
+/**
+ * The month a worker who left stops being paid (their newest pay step is 0), else null.
+ * @param {PayStep[]} pays
+ */
+export function leftFrom(pays) {
+    const last = steps(pays).pop();
+    return last && last.amount === 0 ? last.from : null;
+}
+
+/** The newest pay above 0, or 0. @param {PayStep[]} pays */
+export const lastPay = (pays) => steps(pays).filter(p => p.amount > 0).map(p => p.amount).pop() || 0;
 
 /** @param {Worker} worker @returns {PayEntry[]} */
 const entriesOf = (worker) => (Array.isArray(worker?.entries) ? worker.entries : [])

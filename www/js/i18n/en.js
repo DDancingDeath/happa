@@ -3399,5 +3399,7 @@ export default {
     'msg.workers.marked_left': "{name} marked as left",
     'msg.workers.rejoined': "{name} working again at {amount} a month",
     'msg.workers.remove_confirm': "Remove {amount} for {name}? The month it paid shows as owed again.",
+    'msg.workers.start_after_left': "The start month must be before the month they stopped being paid.",
+    'msg.workers.too_many_pays': "Too many pay changes for one worker (at most 24).",
     'msg.workers.removed': "Removed"
 };

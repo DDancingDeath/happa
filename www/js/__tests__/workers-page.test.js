@@ -77,3 +77,30 @@ test('a raise counts from its month; marking as left adds a pay of 0 after the l
     await W.saveLeft();
     expect(repo.updateWorker).toHaveBeenLastCalledWith('w1', { active: false, pays: [{ from: PREV, amount: 9000 }, { from: NOW, amount: 10000 }, { from: addMonthKey(NOW, 1), amount: 0 }] });
 });
+
+test('a worker who left: the start month cannot move to or past the month pay stopped, so they can always work again', async () => {
+    const stop = addMonthKey(NOW, 1);
+    repo.loadWorkers.mockResolvedValue([{ ...ramu(), active: false, pays: [{ from: PREV, amount: 9000 }, { from: stop, amount: 0 }] }]);
+    await W.init();
+    W.open('w1');
+    W.showForm('edit');
+    expect(document.getElementById('wpPay')).toBeNull();
+    expect(document.getElementById('wpStart').getAttribute('max')).toBe(NOW);
+    document.getElementById('wpStart').value = stop;
+    await W.saveEdit();
+    expect(repo.updateWorker).not.toHaveBeenCalled();
+    expect(UIManager.showToast).toHaveBeenLastCalledWith(expect.stringMatching(/before the month they stopped/), 'warning');
+    await W.rejoin();
+    expect(repo.updateWorker).toHaveBeenLastCalledWith('w1', { active: true, pays: [{ from: PREV, amount: 9000 }, { from: NOW, amount: 9000 }] });
+});
+
+test('working again with no earlier pay asks for the pay instead of a dead end', async () => {
+    repo.loadWorkers.mockResolvedValue([{ ...ramu(), active: false, pays: [{ from: PREV, amount: 0 }] }]);
+    await W.init();
+    W.open('w1');
+    await W.rejoin();
+    expect(repo.updateWorker).not.toHaveBeenCalled();
+    document.getElementById('wpPay').value = '8000';
+    await W.saveEdit();
+    expect(repo.updateWorker).toHaveBeenLastCalledWith('w1', { name: 'Ramu', startMonth: PREV, active: true, pays: [{ from: PREV, amount: 0 }, { from: NOW, amount: 8000 }] });
+});

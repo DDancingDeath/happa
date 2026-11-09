@@ -14,7 +14,7 @@ import { formatRupees } from '../utils/money.js';
 import { formatMonth, formatDay, todayLocalISO } from '../utils/dates.js';
 import * as repo from '../firebase/repos/workers.js';
 import {
-    MAX_NAME, MAX_NOTE, monthKeyOf, addMonthKey, payFor, withPay, withStart,
+    MAX_NAME, MAX_NOTE, MAX_PAY_STEPS, leftFrom, lastPay, monthKeyOf, addMonthKey, payFor, withPay, withStart,
     paySummary, balanceParts, checkEntry, checkWorker, isMonthKey
 } from '../utils/worker-pay.js';
 
@@ -37,7 +37,8 @@ const state = {
     month: null,
     open: '',
     form: '',
-    seq: 0
+    seq: 0,
+    rejoining: false
 };
 
 const STATE_TAGS = { paid: 'pos', part: 'warn', due: 'neg' };
@@ -126,13 +127,16 @@ function renderPayForm(worker) {
 
 function renderEditForm(worker) {
     const pay = payFor(worker, thisMonth());
-    const payFields = worker.active === false ? '' : `<div class="field">${label('wpPay', 'ui.workers.monthly_pay')}<input class="input" id="wpPay" inputmode="numeric" type="number" min="1" step="1" value="${esc(pay || '')}"></div>
+    const hidePay = worker.active === false && !state.rejoining;
+    const stop = hidePay ? leftFrom(worker.pays) : null;
+    const startMax = stop ? `max="${esc(addMonthKey(stop, -1))}"` : '';
+    const payFields = hidePay ? '' : `<div class="field">${label('wpPay', 'ui.workers.monthly_pay')}<input class="input" id="wpPay" inputmode="numeric" type="number" min="1" step="1" value="${esc(pay || '')}"></div>
             <div class="field">${label('wpPayFrom', 'ui.workers.pay_from')}<input class="input" id="wpPayFrom" type="month" value="${esc(thisMonth())}"></div>
             <p class="tone-muted">${et('ui.workers.pay_from_help')}</p>`;
     return `<div class="panel panel-pad wp-form" id="wpEditForm">
             <h3>${et('ui.workers.edit')}</h3>
             <div class="field">${label('wpName', 'ui.workers.name')}<input class="input" id="wpName" maxlength="${esc(MAX_NAME)}" value="${esc(worker.name)}" autocomplete="off"></div>
-            <div class="field">${label('wpStart', 'ui.workers.start_month')}<input class="input" id="wpStart" type="month" value="${esc(worker.startMonth)}"></div>
+            <div class="field">${label('wpStart', 'ui.workers.start_month')}<input class="input" id="wpStart" type="month" value="${esc(worker.startMonth)}" ${startMax}></div>
             ${payFields}
             ${formActions('saveEdit')}
         </div>`;
@@ -261,18 +265,21 @@ export function step(n) {
 export function open(id) {
     state.open = state.open === id ? '' : id;
     if (state.form !== 'add') state.form = '';
+    state.rejoining = false;
     render();
     if (state.open) byId('wpDetail')?.scrollIntoView?.({ block: 'nearest' });
 }
 
-export function showForm(kind) {
+export function showForm(kind, rejoining = false) {
     state.form = kind;
+    state.rejoining = rejoining;
     render();
     byId(kind === 'pay' ? 'wpAmount' : kind === 'left' ? 'wpLastMonth' : 'wpName')?.focus?.();
 }
 
 export function cancel() {
     state.form = '';
+    state.rejoining = false;
     render();
 }
 
@@ -288,6 +295,7 @@ async function save(key, fn, doneKey, params) {
     try {
         await Helpers.runExclusive(key, '#workers .btn', fn);
         state.form = '';
+        state.rejoining = false;
         render();
         UIManager.showToast(t(doneKey, params), 'success');
         return true;
@@ -325,14 +333,18 @@ export async function savePay() {
 export async function saveEdit() {
     const w = openWorker();
     if (!w) return;
-    const left = w.active === false;
+    const rejoining = state.rejoining && w.active === false;
+    const left = w.active === false && !rejoining;
     const { worker, error } = checkWorker({ name: val('wpName'), pay: left ? '1' : val('wpPay'), startMonth: val('wpStart') }, thisMonth());
     if (error) return warn(error);
+    const stop = leftFrom(w.pays);
+    if (left && stop && worker.startMonth >= stop) return warn('msg.workers.start_after_left');
     const from = left ? worker.startMonth : val('wpPayFrom');
     if (!isMonthKey(from)) return warn('msg.workers.bad_month');
     const started = withStart(w.pays, worker.startMonth);
-    const pays = left || payFor({ ...w, startMonth: worker.startMonth, pays: started }, from) === worker.pay ? started : withPay(started, worker.startMonth, from, worker.pay);
-    const patch = { name: worker.name, startMonth: worker.startMonth, pays };
+    const pays = left || (!rejoining && payFor({ ...w, startMonth: worker.startMonth, pays: started }, from) === worker.pay) ? started : withPay(started, worker.startMonth, from, worker.pay);
+    if (pays.length > MAX_PAY_STEPS) return warn('msg.workers.too_many_pays');
+    const patch = { name: worker.name, startMonth: worker.startMonth, pays, ...(rejoining ? { active: true } : {}) };
     await save('workers.edit', async () => {
         await repo.updateWorker(w.id, patch);
         Object.assign(w, patch);
@@ -345,22 +357,28 @@ export async function saveLeft() {
     if (!w) return;
     if (!isMonthKey(last) || last < w.startMonth) return warn('msg.workers.bad_month');
     const patch = { active: false, pays: withPay(w.pays, w.startMonth, addMonthKey(last, 1), 0) };
+    if (patch.pays.length > MAX_PAY_STEPS) return warn('msg.workers.too_many_pays');
     await save('workers.left', async () => {
         await repo.updateWorker(w.id, patch);
         Object.assign(w, patch);
     }, 'msg.workers.marked_left', { name: w.name });
 }
 
+/** Working again at the newest pay from this month; with no earlier pay, the edit form asks for one. */
 export async function rejoin() {
     const w = openWorker();
     if (!w) return;
-    const last = [...(w.pays || [])].reverse().find(p => Number(p.amount) > 0);
-    if (!last) return showForm('edit');
-    const patch = { active: true, pays: withPay(w.pays, w.startMonth, thisMonth(), Number(last.amount)) };
+    const amount = lastPay(w.pays);
+    if (!amount) {
+        state.rejoining = true;
+        return showForm('edit', true);
+    }
+    const patch = { active: true, pays: withPay(w.pays, w.startMonth, thisMonth(), amount) };
+    if (patch.pays.length > MAX_PAY_STEPS) return warn('msg.workers.too_many_pays');
     await save('workers.rejoin', async () => {
         await repo.updateWorker(w.id, patch);
         Object.assign(w, patch);
-    }, 'msg.workers.rejoined', { name: w.name, amount: formatRupees(last.amount) });
+    }, 'msg.workers.rejoined', { name: w.name, amount: formatRupees(amount) });
 }
 
 export async function removeEntry(workerId, entryId) {
@@ -377,7 +395,7 @@ export async function removeEntry(workerId, entryId) {
 
 /** Signed out: nothing of the last owner's stays in memory. */
 export function reset() {
-    Object.assign(state, { workers: [], loaded: false, error: false, month: null, open: '', form: '', seq: state.seq + 1 });
+    Object.assign(state, { workers: [], loaded: false, error: false, month: null, open: '', form: '', seq: state.seq + 1, rejoining: false });
 }
 
 export const WorkersManager = { init, render, reset, step, open, showForm, cancel, saveWorker, savePay, saveEdit, saveLeft, rejoin, removeEntry };

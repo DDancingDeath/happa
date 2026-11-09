@@ -3399,5 +3399,7 @@ export default {
     'msg.workers.marked_left': "{name}: काम छोड़ दिया",
     'msg.workers.rejoined': "{name} फिर से काम पर, {amount} हर महीने",
     'msg.workers.remove_confirm': "{name} के {amount} हटाएँ? जिस महीने में गिने थे, वह फिर बकाया दिखेगा।",
+    'msg.workers.start_after_left': "शुरू का महीना, वेतन बंद होने वाले महीने से पहले का होना चाहिए।",
+    'msg.workers.too_many_pays': "एक कर्मचारी के वेतन में बहुत बदलाव (ज़्यादा से ज़्यादा 24)।",
     'msg.workers.removed': "हटा दिया"
 };

@@ -1633,20 +1633,23 @@ service cloud.firestore {
         && e.get('kind', '') in ['pay', 'advance'] && e.get('mode', '') in ['cash', 'online'] && rentStr(e, 'note', 0, 120);
     }
 
+    function wpStepOk(s) {
+      return s is map && s.keys().hasOnly(['from', 'amount']) && rentMonth(s.get('from', ''))
+        && s.get('amount', null) is int && s.amount >= 0 && s.amount <= 10000000;
+    }
+
     function wpOk(isNew) {
       let d = request.resource.data;
       let p = d.get('pays', null);
       let e = d.get('entries', null);
       let n = e is list ? e.size() : -1;
       let o = isNew ? 0 : resource.data.entries.size();
-      let last = p is list && p.size() > 0 ? p[p.size() - 1] : null;
       return d.keys().hasOnly(['name', 'startMonth', 'active', 'pays', 'entries', 'updatedAt'])
         && rentStr(d, 'name', 1, 60) && rentMonth(d.get('startMonth', '')) && d.get('active', null) is bool
-        && p is list && p.size() <= 60 && p[0] is map && p[0].get('from', '') == d.startMonth
-        && last is map && last.keys().hasOnly(['from', 'amount']) && rentMonth(last.get('from', ''))
-        && last.get('amount', null) is int && last.amount >= 0 && last.amount <= 10000000
+        && p is list && p.size() >= 1 && p.size() <= 24 && wpStepOk(p[0]) && p[0].from == d.startMonth && wpStepOk(p[p.size() - 1])
         && n >= 0 && n <= 3000 && (n == 0 || wpEntryOk(e[n - 1]))
-        && (isNew ? n == 0 : n == o - 1 || (n == o && e == resource.data.entries)
+        && (isNew ? n == 0 : (n == o - 1 && resource.data.entries.hasAll(e) && e.toSet().size() == n)
+            || (n == o && e == resource.data.entries)
             || (n == o + 1 && (o == 0 || e[0:o] == resource.data.entries)))
         && d.get('updatedAt', null) == request.time;
     }
