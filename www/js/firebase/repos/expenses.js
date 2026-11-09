@@ -285,6 +285,8 @@ export const expenseMethods = {
      */
     async rebuildPersonalExpenseDays(days) {
         if (!canManageCheckpoint() || !this.personalRowsLoaded()) return 0;
+        // Rows from the phone's cache only may miss other phones' changes: never "fix" the totals from them (#59)
+        if (!S.windowState.colls.personalExpenses.live.server) return 0;
         const rows = (S.windowState.colls.personalExpenses.published || []).map(r => ({ ...r, id: docIdOf(r) }));
         const want = personalDaysFromRows(rows);
         const wantOnline = personalOnlineFromRows(rows);

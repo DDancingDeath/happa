@@ -155,6 +155,21 @@ describe('oversell', () => {
         expect(block).toMatchObject({ severity: 'block', overridable: true });
     });
 
+    test('stock from data the server has not confirmed yet only warns, with a note (#59)', () => {
+        const c = ctx({ oversellCanBlock: true, stockUnconfirmed: true });
+        const issue = find(evaluateBill(sale(200, { kind: 'wholesale' }), c), 'oversell');
+        expect(issue.severity).toBe('warn');
+        expect(issue.en).toBe('Rice: selling 200 kg, only 100 kg in stock (short 100 kg) — stock not yet confirmed by the server');
+        expect(issue.hi).toMatch(/स्टॉक अभी सर्वर से पक्का नहीं हुआ$/);
+        expect(buildCheckContext({ stockUnconfirmed: true }, 'wholesale').stockUnconfirmed).toBe(true);
+        expect(buildCheckContext({}, 'wholesale').stockUnconfirmed).toBe(false);
+        // Approximate stock keeps its own note (one note, never both)
+        const both = find(evaluateBill(sale(200, { kind: 'wholesale' }), ctx({
+            oversellCanBlock: true, stockUnconfirmed: true, stockApproximate: true, stockApprox: { builtAt: 0 }
+        })), 'oversell');
+        expect(both.en).toMatch(/approximate stock \(updated —\)$/);
+    });
+
     test('retail only warns however big the shortfall (retail reduces stock, #33; no block limit)', () => {
         expect(find(evaluateBill(sale(500), ctx()), 'oversell').severity).toBe('warn');
     });

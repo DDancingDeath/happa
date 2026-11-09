@@ -271,4 +271,37 @@ describe('rebuild of the day docs from the rows (#98)', () => {
         expect(await FirebaseService.rebuildPersonalExpenseDays([today])).toBe(0);
         AppState.currentUser = null;
     });
+
+    test('never from rows the server has not confirmed yet (#59: other phones\' rows may be missing)', async () => {
+        fake = createFakeFirestore({ holdServer: true });
+        global.firebase = fake.firebase;
+        jest.spyOn(console, 'log').mockImplementation(() => {});
+        jest.spyOn(console, 'info').mockImplementation(() => {});
+        const now = Date.now();
+        const today = toLocalISODate(new Date(now));
+        fake.seed('items', [{ id: 'i1', name: 'Gehu' }]);
+        fake.seed('personalExpenses', [{ id: 'p1', amount: 80, category: 'personal', day: today, date: new Date(now).toISOString(), timestamp: now }]);
+        fake.seed('personalExpenseDays', [{ id: today, amounts: { gone: 99 } }]);
+        AppState.currentUser = { uid: 'm1' };
+        AppState.userRole = 'manager';
+        AppState.settings = { roleAccess: PERSONAL_ON };
+        jest.useFakeTimers();
+        let ready = false;
+        const started = FirebaseService.setupRealtimeListeners().then(() => { ready = true; });
+        for (let i = 0; i < 8 && !ready; i++) {
+            await settle(fake);
+            jest.advanceTimersByTime(2600);
+        }
+        await started;
+        jest.useRealTimers();
+        expect(FirebaseService.personalRowsLoaded()).toBe(true);
+        expect(await FirebaseService.rebuildPersonalExpenseDays([today])).toBe(0);
+        expect(fake.raw('personalExpenseDays').get(today).amounts).toEqual({ gone: 99 });
+
+        fake.releaseServer();
+        await settle(fake);
+        expect(await FirebaseService.rebuildPersonalExpenseDays([today])).toBe(2);
+        expect(fake.raw('personalExpenseDays').get(today).amounts).toEqual({ p1: 80 });
+        AppState.currentUser = null;
+    });
 });

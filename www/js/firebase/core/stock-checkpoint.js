@@ -27,6 +27,7 @@ import { dueVisibleToQueries } from './legacy-scan.js';
 import { tip } from '../../tip/index.js';
 import { checkpointProps } from '../../tip/scenarios/stock-checkpoint.js';
 import { dropRebuildProgress, openRebuildProgress } from './rebuild-progress.js';
+import { expectServer } from '../../utils/data-freshness.js';
 import { FirebaseService } from '../firestore-service.js';
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
@@ -327,11 +328,13 @@ export function listenCheckpoint(gen) {
             resolve();
         };
         pendingFirstSnapshots.push({ resolve: done, reject: done });
+        const heardServer = expectServer('Checkpoint');
         let unsubscribe = () => {};
         try {
             unsubscribe = checkpointRef().onSnapshot({ includeMetadataChanges: true }, snap => {
                 if (gen !== S.sessionGen) return;
                 S.checkpointDoc = snap.exists ? snap.data() : null;
+                if (!snap.metadata.fromCache) heardServer();
                 if (ready) {
                     if (S.checkpointDoc && !S.checkpointDoc.stale && adoptCheckpoint(S.checkpointDoc)) {
                         markDirty(['stockView'], true);
@@ -362,11 +365,13 @@ export function listenCheckpoint(gen) {
             }, error => {
                 console.error('Stock checkpoint listener error:', error);
                 if (S.checkpointDoc === undefined) S.checkpointDoc = null;
+                heardServer();
                 done();
             });
         } catch (e) {
             console.error('Stock checkpoint listener error:', e);
             S.checkpointDoc = null;
+            heardServer();
             done();
         }
         unsubscribeFunctions.push(unsubscribe);
