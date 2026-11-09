@@ -37,6 +37,8 @@ While a bill is being typed:
   back on its bill, and if the bill changed since (a payment or an edit) the app
   first asks, showing both totals (BF-RESTORE).
 - **Voice** (VB-1; off until switched on in Settings › Voice billing): tap 🎤 and
-  say the item, weight and rate. The app shows what it heard and fills the line
-  only after OK; voice never adds to the bill or saves. See
+  say the item, weight and rate. Several lines can be said in one go ("… and …"),
+  and "customer" before a name fills the customer. The app shows what it understood
+  (and reads it aloud, unless muted in the dialog) and acts only after OK: one line
+  fills the form, several ticked lines are added to the bill. Voice never saves. See
   [voice-billing.md](../voice-billing.md).
