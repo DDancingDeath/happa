@@ -462,7 +462,8 @@ const DiagnosticsManager = {
         try {
             UIManager.showLoading();
             this.data = await TelemetryService.getTelemetryData();
-            this.renderErrors();
+            // Another tab may have been opened while the reports were read
+            if (this.activeTab === 'errors') this.renderErrors();
         } catch (error) {
             UIManager.showToast(t('msg.diagnostics.failed_load_diagnostics_data'), 'error');
         } finally {

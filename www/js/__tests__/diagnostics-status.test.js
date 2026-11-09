@@ -256,6 +256,17 @@ describe('Diagnostics › Status: test error reports (#122)', () => {
         }
     });
 
+    test('Errors still loading when Status opens: the late list does not replace the card', async () => {
+        let release;
+        jest.spyOn(TelemetryService, 'getTelemetryData').mockImplementation(() => new Promise(r => { release = r; }));
+        const errors = DiagnosticsManager.showTab('errors');
+        await DiagnosticsManager.showTab('status');
+        release([]);
+        await errors;
+        expect(card()).not.toBeNull();
+        expect(document.getElementById('diagTypeFilter')).toBeNull();
+    });
+
     test('a manager never sees it and cannot send', async () => {
         AppState.userRole = 'manager';
         const send = jest.spyOn(TelemetryService, 'sendTestError');

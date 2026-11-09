@@ -8,9 +8,10 @@ const { listDocs, USERS } = require('./support/emulator');
 
 async function openStatus(page) {
     await showTab(page, 'diagnostics');
-    await page.waitForSelector('#diagnosticsTabsContainer .filter-btn.active');
+    // The owner's first tab (Errors) has drawn, so its late render can't replace Status
+    await page.waitForSelector('#diagTypeFilter');
     await page.evaluate(() => window.app.diagnostics.showTab('status'));
-    await page.waitForSelector('#diagnosticsContainer [data-status-row]');
+    await page.waitForSelector('#diagnosticsContainer .diag-errtest');
 }
 
 const shot = async (page, testInfo, name) => {
