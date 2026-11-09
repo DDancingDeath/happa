@@ -659,6 +659,22 @@ describe('month snapshots', () => {
         expect(save).toHaveBeenCalledTimes(1);
         expect(save.mock.calls[0][0].map(d => d.month)).toEqual(['2026-09', '2026-10']);
     });
+
+    test('bills from the cache only (#59): the shared month snapshots are rolled once the server confirmed them', async () => {
+        const save = jest.spyOn(FirebaseService, 'saveMonthStats').mockResolvedValue();
+        let confirm;
+        jest.spyOn(FirebaseService, 'dataFreshness').mockReturnValue('cache');
+        jest.spyOn(FirebaseService, 'whenServerConfirmed').mockReturnValue(new Promise(r => { confirm = r; }));
+        await MoneyManager.rollSnapshots();
+        await MoneyManager.rollSnapshots();
+        expect(save).not.toHaveBeenCalled();
+        expect(FirebaseService.whenServerConfirmed).toHaveBeenCalledTimes(1);
+        FirebaseService.dataFreshness.mockReturnValue('server');
+        confirm(true);
+        for (let i = 0; i < 8; i++) await Promise.resolve();
+        expect(save).toHaveBeenCalledTimes(1);
+        expect(save.mock.calls[0][0].map(d => d.month)).toEqual(['2026-09', '2026-10']);
+    });
 });
 
 describe('stale month snapshots (a bill of an older month changed after the snapshot was built)', () => {

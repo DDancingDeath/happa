@@ -107,6 +107,9 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
     let updating = false;
     let stale = false;
     let staleTimer = null;
+    // When the figures were last all from the server: the previous session's last server data,
+    // not this session's first listener to answer (the others may still be cached only).
+    let confirmedAt = null;
     const saveServerDataAt = (at) => {
         serverDataSavedAt = at;
         try { storage?.setItem?.(SERVER_DATA_AT_KEY, String(at)); } catch (_) { /* storage full: the time is only shown */ }
@@ -167,7 +170,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
             paint('', '');
             return;
         }
-        const asOf = stale && serverDataAt ? asOfText(serverDataAt) : '';
+        const asOf = stale && confirmedAt ? asOfText(confirmedAt) : '';
         paint(syncStatusText({ online, pending: 0, updating, stale, asOf }), stale ? 'stale' : 'updating');
     };
 
@@ -250,16 +253,28 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
         const next = state === 'cache';
         if (next === updating) return;
         updating = next;
-        stale = false;
-        clearTimeout(staleTimer);
-        staleTimer = updating ? setTimeout(() => { stale = true; render(); }, NOT_UPDATED_AFTER_MS) : null;
+        if (updating) confirmedAt = serverDataAt;
+        armStale();
         render();
     };
+    /** "Updating…" turns into "Not updated since …" after NOT_UPDATED_AFTER_MS online. */
+    const armStale = () => {
+        stale = false;
+        clearTimeout(staleTimer);
+        staleTimer = updating && online ? setTimeout(() => { stale = true; render(); }, NOT_UPDATED_AFTER_MS) : null;
+    };
 
-    const onOnline = () => { online = true; serverSinceOnline = false; render(); };
+    const onOnline = () => {
+        online = true;
+        serverSinceOnline = false;
+        // The server gets its full wait from now, not from an offline start
+        armStale();
+        render();
+    };
     const onOffline = () => {
         online = false;
         ++waitSeq;
+        armStale();
         // The figures were current until now, not only until the last change arrived
         if (serverSinceOnline) {
             serverDataAt = Date.now();

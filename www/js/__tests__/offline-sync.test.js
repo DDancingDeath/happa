@@ -66,6 +66,10 @@ describe('sync pill (#70)', () => {
         expect(marked()).toBe(false);
         go(true);
         expect(marked()).toBe(true);
+        // Back online the server gets its full wait again
+        expect(pill().textContent).toBe('Updating…');
+        jest.advanceTimersByTime(NOT_UPDATED_AFTER_MS);
+        expect(pill().textContent).toBe('Not updated yet');
         status.setFreshness('server');
         expect(pill().hidden).toBe(true);
         expect(marked()).toBe(false);
@@ -78,11 +82,14 @@ describe('sync pill (#70)', () => {
         status = createSyncStatus({ win: window, doc: document, storage: { getItem: () => String(at), setItem: () => {} }, freshness: () => 'cache' });
         status.start();
         expect(pill().textContent).toBe('Updating…');
+        // One listener's server answer doesn't make the figures current: the others are still cached
+        status.noteServerData();
         jest.advanceTimersByTime(NOT_UPDATED_AFTER_MS);
         expect(pill().textContent).toBe('Not updated since 10:42 am');
         setLang('hi');
         expect(syncStatusText({ online: true, pending: 0, updating: true })).toBe('अपडेट हो रहा है…');
-        expect(syncStatusText({ online: true, pending: 0, updating: true, stale: true, asOf: '10:42 am' })).toBe('10:42 am के बाद अपडेट नहीं हुआ');
+        expect(syncStatusText({ online: true, pending: 0, updating: true, stale: true, asOf: '10:42 am' })).toBe('10:42 am से अपडेट नहीं हुआ');
+        expect(syncStatusText({ online: true, pending: 0, updating: true, stale: true })).toBe('अभी तक अपडेट नहीं हुआ');
     });
 
     test('offline → "Offline"; back online → "Synced" once the SDK has nothing queued, then hides', async () => {

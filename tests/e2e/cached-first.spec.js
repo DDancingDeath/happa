@@ -48,6 +48,18 @@ async function reopenWithServerHeld(page) {
     };
 }
 
+/** Page errors and CSP reports of a page the problems fixture doesn't watch (it watches `page` only). */
+function watchProblems(p) {
+    const found = { pageErrors: [], cspReports: [], prodRequests: [] };
+    p.on('pageerror', e => found.pageErrors.push(String(e.message || e)));
+    p.on('console', m => {
+        // The SDK's connectivity probe after a failed request (blocked, as on a real offline phone)
+        if (/violates the following Content Security Policy directive/.test(m.text()) && !/cleardot\.gif/.test(m.text())) found.cspReports.push(m.text());
+    });
+    p.on('request', r => { if (/googleapis\.com/.test(r.url()) && !/127\.0\.0\.1|localhost/.test(r.url())) found.prodRequests.push(r.url()); });
+    return found;
+}
+
 const pillText = (page) => page.locator('#syncStatus');
 const dueRow = (page, customer) => page.locator('#due').getByText(customer, { exact: false });
 
@@ -113,8 +125,11 @@ test('two phones: a due paid on the other phone can\'t be paid again from the st
     try {
         await openDueRow(page, sale.id);
         await expect(page.locator('#due .updating-note')).toBeVisible();
-        // The cached due is still ₹360: paying it all is refused against the server's copy (₹160 left)
+        // The cached due is still ₹360, so the phone's own check lets ₹360 through; the payment's
+        // server read (today's cash session, then the transaction) is not held: it is refused
+        // against the server's copy (₹160 left)
         await record(page, sale.id, 360);
+        await server.release();
         await expect(page.locator('#toast')).toHaveText(
             /another payment on this bill was recorded at the same moment\. Due now ₹160|exceeds outstanding amount \(₹160\)/,
             { timeout: 60000 });
@@ -128,7 +143,7 @@ test('two phones: a due paid on the other phone can\'t be paid again from the st
     expect(problems.pageErrors).toEqual([]);
 });
 
-test('an offline reopen shows the cached figures as "Offline", without "Updating…"', async ({ page, context, problems }, testInfo) => {
+test('an offline reopen shows the cached figures as "Offline", without "Updating…"', async ({ page, context }, testInfo) => {
     test.skip(testInfo.project.name !== 'phone', 'network scenario, once');
     test.setTimeout(180000);
     await login(page, 'owner');
@@ -138,6 +153,7 @@ test('an offline reopen shows the cached figures as "Offline", without "Updating
     await page.close();
 
     const offline = await context.newPage();
+    const problems = watchProblems(offline);
     await quietStart(offline);
     await offline.addInitScript(() => Object.defineProperty(Navigator.prototype, 'onLine', { configurable: true, get: () => false }));
     await offline.route(FIRESTORE, (route) => route.abort('internetdisconnected'));
@@ -148,5 +164,5 @@ test('an offline reopen shows the cached figures as "Offline", without "Updating
     await offline.click('#due .filter-sale');
     await expect(dueRow(offline, customer).first()).toBeVisible();
     await expect(offline.locator('#due .updating-note')).toBeHidden();
-    expect(problems.pageErrors).toEqual([]);
+    expect(problems).toEqual({ pageErrors: [], cspReports: [], prodRequests: [] });
 });
