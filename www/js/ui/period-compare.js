@@ -239,8 +239,9 @@ export function resetPeriodCompareForTests() {
 }
 
 const pctText = (c) => (!c ? '' : c.dir === 'same' ? '＝' : `${c.dir === 'up' ? '▲' : '▼'} ${Math.abs(c.pct)}%`);
-const rupees = (v) => (v === null ? '—' : formatRupees(v));
-const signed = (v) => (v === null ? '—' : `${v > 0 ? '+' : ''}${formatRupees(v)}`);
+const rupees = (v) => (v === null ? '—' : formatRupees(v, { trueMinus: true }));
+const textRupees = (v) => (v === null ? '—' : formatRupees(v));
+const signed = (v) => (v === null ? '—' : `${v > 0 ? '+' : ''}${formatRupees(v, { trueMinus: true })}`);
 
 /**
  * CMP-AB card (Money): one row per figure with A, B, the ₹ change and %.
@@ -269,8 +270,8 @@ export function summaryLines(rows, labels) {
     lines.push({ text: t('ui.cmp.summary_title', { period: labels.a }) });
     if (labels.b) lines.push({ text: t('ui.cmp.vs', { period: labels.b }) });
     rows.forEach(r => {
-        lines.push({ left: t(ROW_KEYS[r.id]), right: rupees(r.a) });
-        if (labels.b) lines.push({ left: `  ${labels.b}`, right: r.c ? `${rupees(r.b)}  ${pctText(r.c)}` : rupees(r.b) });
+        lines.push({ left: t(ROW_KEYS[r.id]), right: textRupees(r.a) });
+        if (labels.b) lines.push({ left: `  ${labels.b}`, right: r.c ? `${textRupees(r.b)}  ${pctText(r.c)}` : textRupees(r.b) });
     });
     return lines;
 }

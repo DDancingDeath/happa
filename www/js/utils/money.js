@@ -82,14 +82,15 @@ export function formatAmount(amount, { decimals = 0, small = false, exact = fals
 }
 
 /**
- * The app's one currency format: "₹2,50,000", "-₹500" (options as formatAmount).
+ * The app's one currency format: "₹2,50,000", "-₹500" (options as formatAmount); `trueMinus` gives "−₹500"
+ * on screen (receipts, prints and CSV keep the plain hyphen).
  * @param {*} amount
- * @param {{decimals?: number, small?: boolean, exact?: boolean}} [opts]
+ * @param {{decimals?: number, small?: boolean, exact?: boolean, trueMinus?: boolean}} [opts]
  * @returns {string}
  */
 export function formatRupees(amount, opts) {
     const text = formatAmount(amount, opts);
-    return text.startsWith('-') ? `-₹${text.slice(1)}` : `₹${text}`;
+    return text.startsWith('-') ? `${opts?.trueMinus ? '−' : '-'}₹${text.slice(1)}` : `₹${text}`;
 }
 
 /**
