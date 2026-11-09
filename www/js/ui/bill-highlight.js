@@ -20,6 +20,7 @@ import {
     bannerText, buildCheckContext, canOverride, evaluateBill, saveGate, toFlags, toOverrides
 } from '../utils/bill-checks.js';
 import { hidePartyDue, renderPartyDue } from './party-due-line.js';
+import { closeSuggestions, hideNameHint, renderNameHint } from './party-suggest.js';
 import { confirmLineRates } from './rate-check.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
 import { getLang, t } from '../i18n/index.js';
@@ -304,7 +305,9 @@ export const BillChecksUI = {
         lastIssues[kind] = issues;
         try {
             const cfg = forms[kind];
-            renderPartyDue(kind, cfg.fields?.party?.inputs?.[0], cfg.getDraft());
+            const draft = cfg.getDraft();
+            renderPartyDue(kind, cfg.fields?.party?.inputs?.[0], draft);
+            renderNameHint(kind, draft);
         } catch (error) {
             console.error('Party due line failed:', error);
         }
@@ -318,6 +321,8 @@ export const BillChecksUI = {
         const section = sectionOf(kind);
         if (section) renderIssues(kind, []);
         hidePartyDue(kind);
+        hideNameHint(kind);
+        closeSuggestions(kind);
     },
 
     /**

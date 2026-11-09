@@ -146,7 +146,7 @@ the migration. **Inline** = computed inside a page module.
 | BILL-COUNT | `business-metrics.billCount`; Today counts with `.length` (calc/today.js) | `billCount` |
 | BILL-TIME | `business-metrics.billTime`, `recordTime`; copy in `anomalies.billTime` | `business-metrics.billTime` |
 | CMP | `business-metrics.comparisonRanges`, `change` | same |
-| PARTY | `parties.partyNameKey`, `sameParty`, `pickPartyName` (#139; `aging.normalizePartyName` and `due-payments.normalizeParty` / `sameParty` re-export them). The duplicate-bill warning keeps its own trim + lower-case key (`parties.duplicateCheckNameKey`); the Anomalies report's top / repeat parties count by the trimmed raw name (`anomalies.summarizeAnomalies`, heat map) | `utils/parties.js` |
+| PARTY | `parties.partyNameKey`, `sameParty`, `pickPartyName` (#139; `aging.normalizePartyName` and `due-payments.normalizeParty` / `sameParty` re-export them). The duplicate-bill warning keeps its own trim + lower-case key (`parties.duplicateCheckNameKey`); the Anomalies report's top / repeat parties count by the trimmed raw name (`anomalies.summarizeAnomalies`, heat map). Billing's name suggestions and "Did you mean" (`party-match.matchParties` / `closeParty`, #139 phase 1) also match loose spellings (Latin / Devanagari, honorifics), for suggesting only, never for grouping | `utils/parties.js`, `utils/party-match.js` |
 | MONEY-TEXT | `money.formatRupees` / `formatAmount`; pages also print raw `₹${x}` (cash-management.js:619-694) and `Math.round` | `money.formatRupees` |
 | DATE-TEXT | `dates.formatDay`, `formatDayTime` | same |
 | T1, T2, T4, T5, T6, T7, T8, T9, T10, T11, T12, T15, T16, T17 | `calc/today.todaySummary` (#185) on top of `saleTimePayment`, `outstandingDue`; day.js only renders | same |

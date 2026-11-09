@@ -30,7 +30,7 @@
         <div class="form-row field bill-customer">
             <label for="customerName" data-i18n="ui.billing.customer_label">Customer</label>
             <div class="bill-customer-box">
-                <input type="text" class="input" id="customerName" list="customerOptions" placeholder="Name (optional)" data-i18n-placeholder="ui.billing.enter_customer_name_optional"/>
+                <input type="text" class="input" id="customerName" autocomplete="off" placeholder="Name (optional)" data-i18n-placeholder="ui.billing.enter_customer_name_optional"/>
                 <button type="button" class="contact-pick-btn" data-perm="contacts" data-onclick="billing.pickContact()" title="Pick Contact" aria-label="Pick Contact" data-i18n-title="ui.common.pick_contact" data-i18n-aria-label="ui.common.pick_contact"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-contact"/></svg></button>
             </div>
             <datalist id="customerOptions"></datalist>
@@ -205,7 +205,7 @@
         <div class="form-row field bill-customer">
             <label for="saleCustomerName" data-i18n="ui.billing.customer_label">Customer</label>
             <div class="bill-customer-box">
-                <input type="text" class="input" id="saleCustomerName" list="saleCustomerOptions" placeholder="Name (optional)" data-i18n-placeholder="ui.billing.enter_customer_name_optional"/>
+                <input type="text" class="input" id="saleCustomerName" autocomplete="off" placeholder="Name (optional)" data-i18n-placeholder="ui.billing.enter_customer_name_optional"/>
                 <button type="button" class="contact-pick-btn" data-perm="contacts" data-onclick="billing.pickSaleContact()" title="Pick Contact" aria-label="Pick Contact" data-i18n-title="ui.common.pick_contact" data-i18n-aria-label="ui.common.pick_contact"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-contact"/></svg></button>
             </div>
             <datalist id="saleCustomerOptions"></datalist>
