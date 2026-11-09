@@ -11,6 +11,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { autoSaveSummary, nextBillNumberHint } from '../utils/calc/billing.js';
 import { installActions } from '../ui/actions.js';
+import { emit, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
 
 jest.mock('../firebase/repos/bill-drafts.js', () => ({
     getAutoSave: jest.fn(),
@@ -174,6 +175,110 @@ describe('unsaved-bill banner (#117)', () => {
         expect(PurchaseManager.getBillItems().map(i => i.name)).toEqual(['Rice', 'Wheat']);
         expect(BillDrafts.deleteAutoSave).not.toHaveBeenCalled();
         expect(document.getElementById('autoSaveBanner').hidden).toBe(true);
+    });
+
+    test('the first screen does not wait for the check; auto-save writes before it has read wait for it (#59)', async () => {
+        let answer;
+        BillDrafts.getAutoSave.mockReturnValue(new Promise(resolve => { answer = resolve; }));
+        const checked = BillingManager.checkAutoSave();
+        const emptyForm = BillingManager.autoSaveToCloud();
+        const cleared = BillingManager.deleteAutoSave();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(BillDrafts.deleteAutoSave).not.toHaveBeenCalled();
+        expect(BillDrafts.saveDraft).not.toHaveBeenCalled();
+
+        answer(saved);
+        await Promise.all([checked, emptyForm, cleared]);
+        // The unsaved bill was read before anything was deleted: it is kept in Drafts first
+        expect(BillDrafts.saveDraft).toHaveBeenCalledTimes(1);
+        expect(BillDrafts.saveDraft.mock.calls[0][0]).toMatchObject({ mode: 'purchase', billTotal: 1250 });
+        expect(BillDrafts.saveDraft.mock.invocationCallOrder[0]).toBeLessThan(BillDrafts.deleteAutoSave.mock.invocationCallOrder[0]);
+        // The banner never offered it: the move to Drafts is said
+        expect(UIManager.showToast).toHaveBeenCalledWith(expect.any(String), 'info');
+    });
+
+    test('an unfinished edit typed over during the check is kept as a draft of that edit (#59, #93)', async () => {
+        let answer;
+        BillDrafts.getAutoSave.mockReturnValue(new Promise(resolve => { answer = resolve; }));
+        BillingManager.checkAutoSave();
+        PurchaseManager.setBillItems([{ name: 'Maize', qty: 1, rate: 1, total: 1 }]);
+        const typed = BillingManager.autoSaveToCloud();
+        answer({ ...saved, editingBillId: 'b9', editingBillType: 'purchase', editingBase: 'v1' });
+        await typed;
+        expect(BillDrafts.saveDraft).toHaveBeenCalledTimes(1);
+        expect(BillDrafts.saveDraft.mock.calls[0][0]).toMatchObject({
+            mode: 'purchase', editingBillId: 'b9', editingBillType: 'purchase', editingBase: 'v1', pendingBill: null
+        });
+        expect(BillDrafts.saveAutoSave.mock.calls[0][1].purchase.items.map(i => i.name)).toEqual(['Maize']);
+    });
+
+    test('typed before the check answered, auto-saved by the timer after it: an edit is still kept (#59)', async () => {
+        jest.useFakeTimers();
+        let answer;
+        BillDrafts.getAutoSave.mockReturnValue(new Promise(resolve => { answer = resolve; }));
+        const checked = BillingManager.checkAutoSave();
+        PurchaseManager.setBillItems([{ name: 'Maize', qty: 1, rate: 1, total: 1 }]);
+        BillingManager.triggerAutoSave();
+        answer({ ...saved, editingBillId: 'b9', editingBillType: 'purchase', editingBase: 'v1' });
+        await checked;
+        expect(document.getElementById('autoSaveBanner').hidden).toBe(false);
+        await jest.advanceTimersByTimeAsync(2500);
+        jest.useRealTimers();
+        expect(BillDrafts.saveDraft).toHaveBeenCalledTimes(1);
+        expect(BillDrafts.saveDraft.mock.calls[0][0]).toMatchObject({ editingBillId: 'b9', pendingBill: null });
+        expect(BillDrafts.saveAutoSave).toHaveBeenCalledTimes(1);
+    });
+
+    test('a rate typed (no line added yet) when the check answers also makes an edit recovery unseen (#59)', async () => {
+        let answer;
+        BillDrafts.getAutoSave.mockReturnValue(new Promise(resolve => { answer = resolve; }));
+        const checked = BillingManager.checkAutoSave();
+        document.getElementById('billRate').value = '25';
+        answer({ ...saved, editingBillId: 'b9', editingBillType: 'purchase', editingBase: 'v1' });
+        await checked;
+        PurchaseManager.setBillItems([{ name: 'Maize', qty: 1, rate: 25, total: 25 }]);
+        await BillingManager.autoSaveToCloud();
+        expect(BillDrafts.saveDraft.mock.calls[0][0]).toMatchObject({ editingBillId: 'b9' });
+        expect(UIManager.showToast).toHaveBeenCalledWith(expect.any(String), 'info');
+    });
+
+    test('a write waiting on the check also waits for a second check of the same user (#59)', async () => {
+        const answers = [];
+        BillDrafts.getAutoSave.mockImplementation(() => new Promise(resolve => answers.push(resolve)));
+        BillingManager.checkAutoSave();
+        const cleared = BillingManager.deleteAutoSave();
+        BillingManager.checkAutoSave();
+        answers[0](saved);
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(BillDrafts.deleteAutoSave).not.toHaveBeenCalled();
+        answers[1](saved);
+        await cleared;
+        expect(BillDrafts.saveDraft).toHaveBeenCalledTimes(1);
+        expect(BillDrafts.deleteAutoSave).toHaveBeenCalledTimes(1);
+    });
+
+    test('a check that answers after another user signed in offers nothing (#59)', async () => {
+        let answer;
+        BillDrafts.getAutoSave.mockReturnValueOnce(new Promise(resolve => { answer = resolve; }));
+        const first = BillingManager.checkAutoSave();
+        AppState.currentUser = { uid: 'u2' };
+        BillDrafts.getAutoSave.mockResolvedValueOnce(null);
+        await BillingManager.checkAutoSave();
+        answer(saved);
+        await first;
+        expect(BillingManager.pendingRecovery).toBeNull();
+        expect(document.getElementById('autoSaveBanner').hidden).toBe(true);
+    });
+});
+
+describe('item order (#59)', () => {
+    test('comes from the itemFrequency listener: no separate read at start', () => {
+        BillingManager.itemFrequency = { purchase: {}, sale: {} };
+        emit(ITEM_FREQUENCY_CHANGED, { purchase: { Rice: { score: 5, count: 1, lastUsed: 1 } } });
+        expect(BillingManager.itemFrequency.purchase.Rice.score).toBe(5);
+        expect(BillingManager.itemFrequency.sale).toEqual({});
     });
 });
 
