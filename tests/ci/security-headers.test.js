@@ -44,6 +44,10 @@ function directives(policy) {
     return out;
 }
 
+// App Check's reCAPTCHA v3 (#89, docs/security.md): only its paths, not all of www.google.com / www.gstatic.com.
+const RECAPTCHA_SCRIPT_SRC = ['https://www.google.com/recaptcha/', 'https://www.gstatic.com/recaptcha/'];
+const RECAPTCHA_FRAME_SRC = 'https://www.google.com/recaptcha/';
+
 // Origins in the code that the app only links to or opens as a page (CSP does not
 // cover navigation), never fetches or runs.
 const NOT_LOADED = {
@@ -197,8 +201,9 @@ describe('app site CSP (enforced, #89)', () => {
         }
     });
 
-    test("script-src allows only our files, the hashed #themeBoot, Auth's gapi loader and the pinned SheetJS CDN", () => {
-        expect(csp['script-src']).toEqual(["'self'", ...inlineScripts().map((s) => s.hash), 'https://apis.google.com', new URL(XLSX_URL).origin]);
+    test("script-src allows only our files, the hashed #themeBoot, Auth's gapi loader, the pinned SheetJS CDN and App Check's reCAPTCHA", () => {
+        expect(csp['script-src']).toEqual(["'self'", ...inlineScripts().map((s) => s.hash), 'https://apis.google.com', new URL(XLSX_URL).origin,
+            ...RECAPTCHA_SCRIPT_SRC]);
         // No per-element / per-attribute override that could let inline code back in.
         expect(csp['script-src-elem']).toBeUndefined();
         expect(csp['script-src-attr']).toBeUndefined();
@@ -207,12 +212,23 @@ describe('app site CSP (enforced, #89)', () => {
         expect(csp['style-src']).toEqual(["'self'", "'unsafe-inline'"]);
     });
 
-    test("frame-src is only Firebase Auth's iframe: the project's authDomain, or the site itself with Google sign-in on Hosting", () => {
+    test("frame-src is only Firebase Auth's iframe (the project's authDomain, or the site itself with Google sign-in on Hosting) and reCAPTCHA's", () => {
         // On phones the compat Auth SDK loads gapi and frames <authDomain>/__/auth/iframe at start-up.
         // With Google sign-in on, Hosting serves that helper on the site itself ('self'; firebaseConfig.js).
         const config = fs.readFileSync(path.join(ROOT, 'www', 'firebaseConfig.js'), 'utf8');
         const authDomain = config.match(/"authDomain":\s*"([^"]+)"/)[1];
-        expect(csp['frame-src']).toEqual(["'self'", `https://${authDomain}`]);
+        expect(csp['frame-src']).toEqual(["'self'", `https://${authDomain}`, RECAPTCHA_FRAME_SRC]);
+    });
+
+    test('App Check (#89): only its token API and the /recaptcha/ paths of reCAPTCHA v3, never the whole Google origins', () => {
+        expect(csp['connect-src']).toContain('https://content-firebaseappcheck.googleapis.com');
+        for (const sources of [csp['script-src'], csp['frame-src']]) {
+            expect(sources).not.toContain('https://www.gstatic.com');
+            expect(sources).not.toContain('https://www.google.com');
+            expect(sources.filter((s) => /google\.com|gstatic\.com/.test(s) && s !== 'https://apis.google.com')
+                .every((s) => s.endsWith('/recaptcha/'))).toBe(true);
+        }
+        expect(csp['frame-src'].filter((s) => /recaptcha/.test(s))).toEqual([RECAPTCHA_FRAME_SRC]);
     });
 
     test('connect-src allows the Firebase APIs the SDK calls and the release check', () => {
@@ -222,6 +238,7 @@ describe('app site CSP (enforced, #89)', () => {
             'https://identitytoolkit.googleapis.com',
             'https://securetoken.googleapis.com',
             'https://firebaseinstallations.googleapis.com',
+            'https://content-firebaseappcheck.googleapis.com',
             'https://apis.google.com',
             new URL(APP_IDENTITY.latestReleaseApi).origin
         ]));

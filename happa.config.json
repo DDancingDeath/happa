@@ -9,6 +9,9 @@
     "web": false,
     "android": false
   },
+  "appCheck": {
+    "siteKey": ""
+  },
   "firebase": {
     "projectId": "happa-bfc07",
     "hostingSite": "myhappa",

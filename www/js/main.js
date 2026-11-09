@@ -37,6 +37,7 @@ import { createSyncWatcher } from './tip/scenarios/sync.js';
 import { createWatchdog, TICK_MS as WATCHDOG_TICK_MS } from './tip/scenarios/main-thread.js';
 import { runNumberChecksOnce, numberChecksProps } from './tip/scenarios/number-checks.js';
 import { whenIdle } from './utils/background-tasks.js';
+import { startAppCheck } from './services/app-check.js';
 import { APP_VERSION } from './version.js';
 import { AuditService } from './services/audit.js';
 import { TelemetryService } from './services/telemetry.js';
@@ -63,7 +64,7 @@ const langReady = loadCatalogue(getLang()).catch(e => console.error('Language ca
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261108cq-app-shell';
+const BUILD_ID = '20261108cr-appcheck';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -676,6 +677,7 @@ async function initializeUserData() {
         // idle (#59); the scan still starts 8 s after this.
         const shownAt = Date.now();
         whenIdle(() => {
+            startAppCheck();
             loadAllCatalogues().catch(e => console.warn('Language catalogue not loaded:', e?.message || e));
             loadReceiptDrawing().catch(e => console.warn('Receipt drawing not loaded:', e?.message || e));
             if (AppState.userRole !== 'owner' && AppState.userRole !== 'manager') return;
@@ -755,6 +757,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 AppState.currentUser = null;
                 document.getElementById('printerPermissionBanner')?.remove();
                 document.getElementById('authScreen').style.display = 'flex';
+                // App Check (#89, monitor mode): ready before the sign-in request, after the login screen
+                whenIdle(() => startAppCheck(), { timeoutMs: 4000 });
             }
         });
     }
