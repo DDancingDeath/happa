@@ -1980,6 +1980,11 @@ export default {
 
     'ui.nav.bottom_label': "मुख्य पेज",
     'ui.nav.more': "और",
+    'ui.nav.menu': "मेन्यू",
+    'ui.nav.pages': "पेज",
+    'ui.nav.group_daily': "रोज़ का काम",
+    'ui.nav.group_money': "हिसाब-किताब",
+    'ui.nav.group_manage': "प्रबंधन",
     'ui.nav.pull_refresh': "↓ ताज़ा करने के लिए खींचें",
     'ui.nav.release_refresh': "↻ छोड़ें, ताज़ा होगा",
     'ui.settings.swipe_tabs': "पेज बदलने के लिए बाएँ या दाएँ स्वाइप करें",

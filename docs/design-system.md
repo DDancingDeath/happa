@@ -107,6 +107,7 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
 - **Feedback** `.notice` (`.pos/.neg/.warn/.info`), `.empty`, `.skel`, `.toast` (near-black; light in the
   Dark theme), `.dialog` / `.sheet` / `.scrim` (old `.modal-overlay > .modal-box`), `.spinner` (blocking
   saves only).
+- **App shell (phone and tablet, <1024 px)**: `header.app-bar` (`hamburger.css`) holds the open page's title (`#appBarTitle`, the menu name `t('ui.nav.*')` set by `ui/bottom-nav.js` on `aadhat:tabshown`), the sync pill (`#syncStatus`) and the bell; pages scroll under it (`--appbar-h`, `--tab-top`). The menu button shows only in Rentals (no tab bar). **More** opens `#sideNav` as a modal bottom sheet (`navigation.css`): the business switch and the pages not on the tab bar (`data-bar` links are hidden there) in groups (`.nav-group`); it takes focus, keeps Tab inside, closes on Esc, Back or a swipe down and gives focus back. Desktop keeps the sidebar; the bar draws nothing there (`display: contents`). The open page is the `main` landmark (`role="main"`, set by `showTab`).
 - **Tones** for text written by scripts: `.tone-pos`, `.tone-neg`, `.tone-warn`, `.tone-info`,
   `.tone-muted`, instead of inline colours.
 
@@ -194,5 +195,6 @@ counts toward the 1.5 KB. A look that tokens can't express needs a new token in 
 | `tests/ci/theme-contrast.test.js` | a text / background pair under 4.5:1 in any theme × mode |
 | `tests/ci/icon-sprite.test.js` | a missing `#i-*` symbol, or the sprite growing too large |
 | `www/js/__tests__/theme-manager.test.js`, `theme-boot.test.js` | Appearance, System, preview and the pre-paint boot |
-| `tests/e2e/themes.spec.js` | axe contrast on Billing, Today, Outstanding per theme × mode; the gallery preview, Cancel, Apply |
+| `tests/e2e/themes.spec.js` | axe contrast on Billing, Today, Outstanding and the open More sheet per theme × mode; the gallery preview, Cancel, Apply |
+| `tests/e2e/app-shell.spec.js` | the phone app bar title (en, hi), one `main`, the More sheet's focus, Tab, Esc and Back; the desktop sidebar |
 | `tests/e2e/a11y-contrast.spec.js`, `billing-fold.spec.js` | contrast on the main pages (en, hi); Save / Print above the fold |

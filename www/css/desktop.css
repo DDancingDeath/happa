@@ -15,8 +15,14 @@
   /* ---------- App shell: permanent sidebar, no hamburger/overlay ---------- */
   .hamburger,
   .side-nav .close-btn,
-  .overlay {
+  .overlay,
+  .app-bar-title {
     display: none !important;
+  }
+
+  /* The phone app bar is not drawn; its bell and sync pill keep their desktop places */
+  .app-bar {
+    display: contents;
   }
 
   .side-nav {

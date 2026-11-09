@@ -1980,6 +1980,11 @@ export default {
 
     'ui.nav.bottom_label': "Main pages",
     'ui.nav.more': "More",
+    'ui.nav.menu': "Menu",
+    'ui.nav.pages': "Pages",
+    'ui.nav.group_daily': "Daily",
+    'ui.nav.group_money': "Money",
+    'ui.nav.group_manage': "Manage",
     'ui.nav.pull_refresh': "↓ Pull to refresh",
     'ui.nav.release_refresh': "↻ Release to refresh",
     'ui.settings.swipe_tabs': "Swipe left or right to change page",

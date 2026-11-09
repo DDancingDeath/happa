@@ -3,7 +3,7 @@
   /* The tab is the scroll container. 100dvh is the visible height while the
      browser's URL bar shows, so the page bottom is not hidden under it (#104);
      100vh is the fallback for older WebViews. */
-  padding: 70px 16px calc(96px + env(safe-area-inset-bottom, 0px)) 16px;
+  padding: var(--tab-top) 16px calc(96px + env(safe-area-inset-bottom, 0px)) 16px;
   max-width: 480px;
   min-height: 100vh;
   min-height: 100dvh;
