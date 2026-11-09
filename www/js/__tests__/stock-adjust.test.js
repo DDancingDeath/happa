@@ -144,6 +144,21 @@ describe('StockManager.applyStockAdjustment', () => {
         }
     });
 
+    test('a stock count and a reversal also wait while stock is unconfirmed (#59)', async () => {
+        startFreshness();
+        try {
+            UIManager.showToast.mockClear();
+            UIManager.showModal.mockClear();
+            await StockManager.openStockCount();
+            await StockManager.reverseAdjustment('x');
+            expect(UIManager.showToast).toHaveBeenCalledTimes(2);
+            expect(UIManager.showToast.mock.calls.every(c => /still updating/i.test(c[0]))).toBe(true);
+            expect(UIManager.showModal).not.toHaveBeenCalled();
+        } finally {
+            resetFreshness();
+        }
+    });
+
     test('set to 0 works; a blank quantity does not mean 0', async () => {
         fill('set', '');
         await StockManager.applyStockAdjustment();
