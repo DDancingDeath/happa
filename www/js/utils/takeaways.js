@@ -23,11 +23,12 @@ const dirOf = (/** @type {?{dir: string}|undefined} */ c) => (c ? c.dir : null);
  * @param {string} a.previousLabel e.g. "Sep"
  * @param {?{name: string, diff: number}} a.driver biggest item change (I6)
  * @param {?{pct: number, dir: string}} a.salesVsLastYear
+ * @param {?Takeaway} [a.noSales] noSalesTakeaway(), said first
  * @returns {Array<{key: string, params?: Object, link?: string}>}
  */
-export function profitTakeaways({ profit, vsLastYear, vsPrevious, lastYearLabel, previousLabel, driver, salesVsLastYear }) {
+export function profitTakeaways({ profit, vsLastYear, vsPrevious, lastYearLabel, previousLabel, driver, salesVsLastYear, noSales = null }) {
     /** @type {Takeaway[]} */
-    const out = [];
+    const out = noSales ? [noSales] : [];
     if (profit === null || profit === undefined) return out;
     const amount = Math.abs(Math.round(profit));
     const cmp = vsLastYear || vsPrevious;
@@ -40,6 +41,21 @@ export function profitTakeaways({ profit, vsLastYear, vsPrevious, lastYearLabel,
     }
     if (dirOf(salesVsLastYear) === 'up' && dirOf(vsLastYear) === 'down') out.push({ key: 'ui.tk.gut_sales_up_profit_down', link: 'insights-items' });
     return out;
+}
+
+/**
+ * Empty state of Money › Profit (#92): the period has no sale bill. "yet" while the period
+ * is still running (today and this week always are); a month is named.
+ * @param {{count: number, day?: boolean, week?: boolean, month?: ?string, ongoing?: boolean}} a
+ *   count: M1 bills; month: the month's label when the period is a month
+ * @returns {?Takeaway}
+ */
+export function noSalesTakeaway({ count, day = false, week = false, month = null, ongoing = false }) {
+    if (count > 0) return null;
+    if (day) return { key: 'ui.tk.no_sales_today' };
+    if (week) return { key: 'ui.tk.no_sales_week' };
+    if (month) return { key: ongoing ? 'ui.tk.no_sales_month_yet' : 'ui.tk.no_sales_month', params: { month } };
+    return { key: ongoing ? 'ui.tk.no_sales_yet' : 'ui.tk.no_sales' };
 }
 
 /**

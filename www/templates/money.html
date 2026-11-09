@@ -47,15 +47,16 @@
                 <div class="ins-takeaway" data-takeaway id="moneyProfitTakeaway"></div>
                 <div class="ins-caveats" id="moneyProfitCaveats"></div>
             </div>
+            <p class="ins-hint" data-perm="profit" id="moneyProfitCaption"><span data-i18n="ui.money.profit_caption">Counts all sales made, credit sales too. Cash that came in:</span> <button type="button" class="ins-link" data-onclick="money.setSection('cash')"><span data-i18n="ui.money.tab_cash">Cash</span> ›</button></p>
             <div class="ins-card">
                 <h3 class="ins-card-title" data-i18n="ui.money.how_we_got_here">How we got here</h3>
                 <div class="ins-ladder">
                     <div class="ins-row ins-tap" data-breakdown="sales" role="button" tabindex="0"><span data-i18n="ui.money.sales">Sales</span><span data-metric="M1" id="moneySales">—</span></div>
                     <div class="ins-row ins-sub" id="moneySalesSplit"></div>
                     <div class="ins-row ins-tap" data-perm="profit" data-breakdown="cogs" role="button" tabindex="0"><span data-i18n="ui.money.cogs_minus">− Cost of what was sold</span><span data-metric="M2" id="moneyCogs">—</span></div>
-                    <div class="ins-row ins-total ins-tap" data-perm="profit" data-breakdown="gross" role="button" tabindex="0"><span data-i18n="ui.money.gross_eq">= Gross profit</span><span data-metric="M3" id="moneyGross">—</span></div>
+                    <div class="ins-row ins-total ins-tap" data-perm="profit" data-breakdown="gross" role="button" tabindex="0"><span data-i18n="ui.money.gross_eq">= Profit on goods</span><span data-metric="M3" id="moneyGross">—</span></div>
                     <div class="ins-row ins-tap" data-breakdown="business" role="button" tabindex="0"><span data-i18n="ui.money.business_minus">− Business expenses</span><span data-metric-ref="M4" id="moneyBusinessTerm">—</span></div>
-                    <div class="ins-row ins-tap" data-breakdown="badDebts" role="button" tabindex="0"><span data-i18n="ui.money.bad_debts_minus">− Bad debts</span><span data-metric="M5" id="moneyBadDebts">—</span></div>
+                    <div class="ins-row ins-tap" data-breakdown="badDebts" role="button" tabindex="0"><span data-i18n="ui.money.bad_debts_minus">− Dues written off</span><span data-metric="M5" id="moneyBadDebts">—</span></div>
                     <div class="ins-row ins-total ins-tap" data-perm="profit" data-breakdown="profit" role="button" tabindex="0"><span id="moneyProfitEqLabel"></span><span data-metric-ref="M6" id="moneyProfitTerm">—</span></div>
                 </div>
             </div>
@@ -67,7 +68,7 @@
             </div>
             <div class="ins-card" data-perm="stockValue">
                 <details class="ins-details">
-                    <summary data-i18n="ui.money.stock_movement">Stock movement (check line)</summary>
+                    <summary data-i18n="ui.money.stock_movement">Stock check</summary>
                     <div class="ins-ladder" id="moneyStockMovement" data-metric="M17"></div>
                 </details>
                 <div class="ins-row ins-sub"><span data-i18n="ui.money.bought">Bought</span><span data-metric="M16" id="moneyPurchases">—</span></div>
