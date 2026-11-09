@@ -1,6 +1,6 @@
 {
   "_readme": "Type ratchet (tests/ci/type-guard.test.js). Counts may only go down: TYPE_BASELINE=lower npx jest type-guard. Use --fs-* and --w-* tokens (www/css/variables.css).",
-  "total": 703,
+  "total": 698,
   "files": {
     "www/css/anomalies.css": 14,
     "www/css/app-updates.css": 6,
@@ -44,7 +44,6 @@
     "www/js/services/exporter.js": 5,
     "www/js/utils/quota-guard.js": 1,
     "www/templates/admin.html": 15,
-    "www/templates/billing.html": 5,
     "www/templates/cash-management.html": 48,
     "www/templates/day.html": 9,
     "www/templates/diagnostics.html": 24,

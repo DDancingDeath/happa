@@ -13,7 +13,7 @@ const ROOT = path.join(__dirname, '..', '..');
 const BILLING = fs.readFileSync(path.join(ROOT, 'www', 'templates', 'billing.html'), 'utf8');
 
 const BILLING_E2E_IDS = [
-    'amountPayable', 'autoSaveBanner', 'billComments', 'billDate', 'billItem', 'billRate', 'billTable',
+    'amountPayable', 'amountReceivable', 'autoSaveBanner', 'barPayable', 'barReceivable', 'billComments', 'billDate', 'billItem', 'billRate', 'billTable',
     'billTotal', 'billing', 'cashCheckbox', 'cashPayment', 'customerName', 'newWeight', 'printBillBtn',
     'printSaleBtn', 'purchaseModeBtn', 'purchaseSection', 'saleCashCheckbox', 'saleCashPayment',
     'saleCustomerName', 'saleDate', 'saleDueAmount', 'saleDueCheckbox', 'saleItem', 'saleModeBtn', 'saleRate',
@@ -49,6 +49,16 @@ test.each(BILLING_E2E_IDS)('billing.html keeps #%s, once', (id) => {
 test('the list has every id the E2E specs use on Billing', () => {
     const missing = [...e2eIds()].filter((id) => count(id) > 0 && !BILLING_E2E_IDS.includes(id));
     expect(missing).toEqual([]);
+});
+
+test('every <div> is closed, and Sale is not nested in Purchase', () => {
+    const depthAt = (marker) => {
+        const head = BILLING.slice(0, BILLING.indexOf(marker));
+        return (head.match(/<div\b/g) || []).length - (head.match(/<\/div>/g) || []).length;
+    };
+    expect(depthAt('<!-- SALE SECTION -->')).toBe(depthAt('<!-- PURCHASE SECTION -->'));
+    expect(depthAt('<!-- END SALE SECTION -->')).toBe(depthAt('<!-- PURCHASE SECTION -->'));
+    expect((BILLING.match(/<div\b/g) || []).length).toBe((BILLING.match(/<\/div>/g) || []).length);
 });
 
 test('the E2E code still uses every listed id', () => {

@@ -184,9 +184,12 @@ export function warnDuplicateBillNumbers(c, changes) {
  * @private
  */
 export function noteLocalRecordWrite(collKey, docId, record) {
+    const id = String(docId);
+    // Bills read for an Ask item report (#415) follow this phone's own edits, voids and deletes too.
+    const held = S.reportBills.get(collKey);
+    if (held) held.bills = record ? held.bills.map(b => (String(b.id) === id ? { ...record, id: record.id ?? id } : b)) : held.bills.filter(b => String(b.id) !== id);
     const c = S.windowState?.colls[collKey];
     if (!c) return;
-    const id = String(docId);
     if (record) {
         if (!liveIdSet(c).has(id)) {
             const rec = { ...record, id: record.id ?? id };
