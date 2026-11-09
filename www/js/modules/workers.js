@@ -126,13 +126,14 @@ function renderPayForm(worker) {
 
 function renderEditForm(worker) {
     const pay = payFor(worker, thisMonth());
+    const payFields = worker.active === false ? '' : `<div class="field">${label('wpPay', 'ui.workers.monthly_pay')}<input class="input" id="wpPay" inputmode="numeric" type="number" min="1" step="1" value="${esc(pay || '')}"></div>
+            <div class="field">${label('wpPayFrom', 'ui.workers.pay_from')}<input class="input" id="wpPayFrom" type="month" value="${esc(thisMonth())}"></div>
+            <p class="tone-muted">${et('ui.workers.pay_from_help')}</p>`;
     return `<div class="panel panel-pad wp-form" id="wpEditForm">
             <h3>${et('ui.workers.edit')}</h3>
             <div class="field">${label('wpName', 'ui.workers.name')}<input class="input" id="wpName" maxlength="${esc(MAX_NAME)}" value="${esc(worker.name)}" autocomplete="off"></div>
             <div class="field">${label('wpStart', 'ui.workers.start_month')}<input class="input" id="wpStart" type="month" value="${esc(worker.startMonth)}"></div>
-            <div class="field">${label('wpPay', 'ui.workers.monthly_pay')}<input class="input" id="wpPay" inputmode="numeric" type="number" min="1" step="1" value="${esc(pay || '')}"></div>
-            <div class="field">${label('wpPayFrom', 'ui.workers.pay_from')}<input class="input" id="wpPayFrom" type="month" value="${esc(thisMonth())}"></div>
-            <p class="tone-muted">${et('ui.workers.pay_from_help')}</p>
+            ${payFields}
             ${formActions('saveEdit')}
         </div>`;
 }
@@ -324,12 +325,13 @@ export async function savePay() {
 export async function saveEdit() {
     const w = openWorker();
     if (!w) return;
-    const { worker, error } = checkWorker({ name: val('wpName'), pay: val('wpPay'), startMonth: val('wpStart') }, thisMonth());
+    const left = w.active === false;
+    const { worker, error } = checkWorker({ name: val('wpName'), pay: left ? '1' : val('wpPay'), startMonth: val('wpStart') }, thisMonth());
     if (error) return warn(error);
-    const from = val('wpPayFrom');
+    const from = left ? worker.startMonth : val('wpPayFrom');
     if (!isMonthKey(from)) return warn('msg.workers.bad_month');
     const started = withStart(w.pays, worker.startMonth);
-    const pays = payFor({ ...w, startMonth: worker.startMonth, pays: started }, from) === worker.pay ? started : withPay(started, worker.startMonth, from, worker.pay);
+    const pays = left || payFor({ ...w, startMonth: worker.startMonth, pays: started }, from) === worker.pay ? started : withPay(started, worker.startMonth, from, worker.pay);
     const patch = { name: worker.name, startMonth: worker.startMonth, pays };
     await save('workers.edit', async () => {
         await repo.updateWorker(w.id, patch);

@@ -25,7 +25,7 @@ less was paid, "Advance ₹X carried to next month" when more was paid; that adv
 month's pay first. **Month by month** lists each month's pay, what was paid, the advance used, the
 state and the balance carried on; **Payments and advances** lists every entry.
 
-**The cards** for the month shown (‹ › change the month): pay this month (WP-7), paid out this month,
+**The cards** for the month shown (‹ › change the month): pay for the month (WP-7), paid out in the month,
 the money given in the month whatever month it was for (WP-8), still to pay (WP-9) and advances
 carried (WP-10), and how many workers are paid, part-paid and due.
 

@@ -366,8 +366,8 @@ nothing at start. Oracle: `tests/oracle/worker-pay.test.js`.
 | WP-4 | Advance recovered ("₹X from advance") | min(WP-1, the advance carried in, i.e. −WP-3 when WP-3 < 0). |
 | WP-5 | Balance carried forward ("₹X still to pay" / "Advance ₹X carried to next month") | WP-3 + WP-1 − WP-2, month after month up to the month shown. Above 0 = still to pay (arrears carry to the next month); below 0 = an advance carried to the next month, which pays that month's pay first (WP-4). Entries for a later month are not counted yet. Code: `workerLedger`, `balanceParts`. |
 | WP-6 | The worker's month: Paid / Part-paid, ₹X of ₹Y / ₹Y due | Y = WP-1 + what was still owed from before (WP-3 when above 0). Paid when WP-5 ≤ 0; otherwise X = Y − WP-5 (paid this month + advance recovered): part-paid when X > 0, due when X = 0. No state when Y = 0 (before the start, after leaving with nothing owed). The page line "N paid · N part-paid · N due" counts the workers in each state for the month shown. Code: `monthState`. |
-| WP-7 | Pay this month (page card) | Σ WP-1 of every worker for the month shown. |
-| WP-8 | Paid out this month (page card) — as OD-07 | Money that went out in the month: Σ amount of every entry whose `date` is in the month, whatever month it pays. |
+| WP-7 | Pay for the month (page card) | Σ WP-1 of every worker for the month shown. |
+| WP-8 | Paid out in the month (page card) — as OD-07 | Money that went out in the month: Σ amount of every entry whose `date` is in the month, whatever month it pays. |
 | WP-9 | Still to pay (page card) | Σ WP-5 at the end of the month shown, over workers whose WP-5 is above 0 (those who left too). |
 | WP-10 | Advances carried (page card) | Σ −WP-5 over workers whose WP-5 is below 0. WP-9 − WP-10 = Σ WP-1 of all months − Σ WP-2 of all months (up to the month shown). |
 
