@@ -41,6 +41,21 @@ const NO_KEYBOARD = /^(checkbox|radio|range|button|submit|reset|file|color|image
 export const opensKeyboard = (el) => !!el && (el.tagName === 'TEXTAREA' || el.isContentEditable === true
     || (el.tagName === 'INPUT' && !NO_KEYBOARD.test(String(el.type || 'text').toLowerCase())));
 
+/**
+ * body.typing while a field that opens the keyboard has focus (the bar hides). The bar comes back a
+ * task after the field loses focus: a tap that blurs the field (on Save, near the bottom) then ends
+ * on what it touched, not on the bar showing again under the finger.
+ * @param {Document} doc
+ */
+export function trackTyping(doc = document) {
+    const sync = () => doc.body.classList.toggle('typing', opensKeyboard(doc.activeElement));
+    doc.addEventListener('focusin', (e) => {
+        if (opensKeyboard(e.target)) doc.body.classList.add('typing');
+        else setTimeout(sync, 0);
+    });
+    doc.addEventListener('focusout', () => setTimeout(sync, 0));
+}
+
 const somethingOpen = () => !!document.querySelector('.side-nav.active, .modal-overlay.active, .bill-details-overlay.active, #notifPanel:not([hidden])');
 
 export const BottomNav = {
@@ -63,8 +78,7 @@ export const BottomNav = {
         if (box) box.checked = this.swipeOn;
         window.addEventListener('aadhat:tabshown', (e) => this.markActive(e.detail?.tabId));
         // The on-screen keyboard would push the bar over the field being typed in
-        document.addEventListener('focusin', (e) => document.body.classList.toggle('typing', opensKeyboard(e.target)));
-        document.addEventListener('focusout', () => document.body.classList.remove('typing'));
+        trackTyping(document);
         this.bindGestures();
     },
 

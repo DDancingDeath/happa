@@ -449,10 +449,14 @@ const PurchaseManager = {
             laborCharges = 0;
         }
         
+        const payableShown = payableOnScreen(billTotal, laborCharges);
         const grandTotalElement = document.getElementById('amountPayable');
         if (grandTotalElement) {
-            grandTotalElement.textContent = payableOnScreen(billTotal, laborCharges);
+            grandTotalElement.textContent = payableShown;
         }
+        // The phone action bar repeats BF-PAYABLE
+        const barPayable = document.getElementById('barPayable');
+        if (barPayable) barPayable.textContent = payableShown;
         
         this.updatePaymentTotal();
     },

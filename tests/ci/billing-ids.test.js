@@ -13,7 +13,7 @@ const ROOT = path.join(__dirname, '..', '..');
 const BILLING = fs.readFileSync(path.join(ROOT, 'www', 'templates', 'billing.html'), 'utf8');
 
 const BILLING_E2E_IDS = [
-    'amountPayable', 'autoSaveBanner', 'billComments', 'billDate', 'billItem', 'billRate', 'billTable',
+    'amountPayable', 'amountReceivable', 'autoSaveBanner', 'barPayable', 'barReceivable', 'billComments', 'billDate', 'billItem', 'billRate', 'billTable',
     'billTotal', 'billing', 'cashCheckbox', 'cashPayment', 'customerName', 'newWeight', 'printBillBtn',
     'printSaleBtn', 'purchaseModeBtn', 'purchaseSection', 'saleCashCheckbox', 'saleCashPayment',
     'saleCustomerName', 'saleDate', 'saleDueAmount', 'saleDueCheckbox', 'saleItem', 'saleModeBtn', 'saleRate',
