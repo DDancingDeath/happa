@@ -10,14 +10,14 @@
 import { activeExpenses, activityBills, billTotal, isOnlineExpense, isPersonalExpense, outstandingDue, round2 } from '../money.js';
 import { endOfLocalDayExclusive, parseAnyBillDate, startOfLocalDay } from '../dates.js';
 import { dueEvents, paymentBreakdown, saleTimePayment, sumDueEvents } from '../due-payments.js';
-import { labourGap, labourSummary } from '../labour.js';
+import { labourGap, labourPaid, labourPaidGap, labourSummary } from '../labour.js';
 import { billDayTime } from './cash.js';
 
 /** Field of todaySummary() → its spec ID in docs/calculations.md. */
 export const TODAY_SPEC = Object.freeze({
     purchases: 'T1', purchaseCount: 'T1',
     sales: 'T2', saleCount: 'T2',
-    labour: 'T3, T-LAB-1, T-LAB-2, T-LAB-3',
+    labour: 'T3, T-LAB-1, T-LAB-2, T-LAB-3, T-LAB-4, T-LAB-5',
     businessExpenses: 'T4', businessExpenseCount: 'T4',
     personalExpenses: 'T5', personalExpenseCount: 'T5',
     expenses: 'T8, T9', expensesCash: 'T8', expensesOnline: 'T9',
@@ -168,13 +168,15 @@ export function todaySummary({ bills = {}, expenses = [], personalDay = null, se
     const netOutflow = totalOut - totalIn;
 
     const labour = labourSummary(purchaseBills, settings);
+    // T-LAB-4 / T-LAB-5 (OD-03 step 1): paid to labourers from today's business expenses; display only, not in profit
+    const paid = labourPaid(business);
 
     return {
         from: from.getTime(),
         to: to.getTime(),
         purchases, purchaseCount: purchaseBills.length,
         sales, saleCount: saleBills.length,
-        labour: { ...labour, gap: labourGap(labour.difference), packets: sumOf(labour.rows, r => r.packets) },
+        labour: { ...labour, gap: labourGap(labour.difference), packets: sumOf(labour.rows, r => r.packets), paid, paidGap: labourPaidGap(paid.amount, labour.deducted.amount) },
         businessExpenses, businessExpenseCount: business.length,
         personalExpenses, personalExpenseCount: personal.length + (Number(personalDay?.count) || 0),
         expenses: expensesTotal,
