@@ -9,6 +9,7 @@
 
 import { openingAmount, outstandingDue, readPayment, round2 } from './money.js';
 import { billDateOf } from './history-filters.js';
+import { partyNameKey, partyNameSpelling, pickPartyName } from './parties.js';
 
 /** OVERDUE (OD-08): a bill with a due is overdue when it is more than this many days old. */
 export const OVERDUE_DAYS = 30;
@@ -87,62 +88,8 @@ export function bucketIndex(days) {
     return AGING_BUCKETS.findIndex(b => days <= b.max);
 }
 
-/**
- * Grouping key for a party name: case, extra spaces and Unicode form ignored.
- * @param {*} name
- * @returns {string} '' when there is no name
- */
-export function normalizePartyName(name) {
-    return String(name ?? '').normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
-}
-
-const capitals = (/** @type {string} */ s) => (String(s).match(/(^|\s)\p{Lu}/gu) || []).length;
-
-/**
- * The spelling to show for a party seen under several spellings ("test party",
- * "Test Party"): the most used one; on a tie the one with more capitalised
- * words, then the latest seen.
- * @param {Map<string, {count: number, last: number}>} spellings raw name → use count and last time
- * @returns {string}
- */
-export function pickPartyName(spellings) {
-    let best = '';
-    /** @type {?{count: number, last: number}} */
-    let bestInfo = null;
-    (spellings || new Map()).forEach((info, name) => {
-        if (!name) return;
-        const better = !bestInfo || info.count > bestInfo.count
-            || (info.count === bestInfo.count && (capitals(name) > capitals(best)
-                || (capitals(name) === capitals(best) && info.last > bestInfo.last)));
-        if (better) { best = name; bestInfo = info; }
-    });
-    return best;
-}
-
-/**
- * Groups raw party names by normalizePartyName and picks one display spelling
- * per party (pickPartyName). Used wherever parties are listed or filtered.
- * @param {Iterable<string>} names raw names, one per bill (repeats count)
- * @returns {Map<string, string>} key → display name
- */
-export function partyDisplayNames(names) {
-    const byKey = new Map();
-    let i = 0;
-    for (const raw of names || []) {
-        const name = String(raw ?? '').trim().replace(/\s+/g, ' ');
-        const key = normalizePartyName(name);
-        if (!key) continue;
-        if (!byKey.has(key)) byKey.set(key, new Map());
-        const spellings = byKey.get(key);
-        const info = spellings.get(name) || { count: 0, last: 0 };
-        info.count++;
-        info.last = ++i;
-        spellings.set(name, info);
-    }
-    const out = new Map();
-    byKey.forEach((spellings, key) => out.set(key, pickPartyName(spellings)));
-    return out;
-}
+// The PARTY rule lives in utils/parties.js; these names stay for existing importers.
+export { partyNameKey as normalizePartyName, pickPartyName, partyDisplayNames } from './parties.js';
 
 /**
  * Phone stored on a bill, if any.
@@ -196,8 +143,8 @@ export function buildAging(bills, { today = new Date() } = {}) {
             overdueCount++;
         }
 
-        const rawName = String(bill.customerName ?? '').trim().replace(/\s+/g, ' ');
-        const key = normalizePartyName(rawName);
+        const rawName = partyNameSpelling(bill.customerName);
+        const key = partyNameKey(rawName);
         let party = byKey.get(key);
         if (!party) {
             party = { key, name: rawName, phone: '', total: 0, overdue: 0, oldestDays: 0, bucket: 0, longOverdue: false, bills: [], _latest: -Infinity, _names: new Map() };

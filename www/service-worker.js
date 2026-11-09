@@ -143,6 +143,7 @@ const STATIC_ASSETS = [
     '/js/utils/bill-share.js',
     '/js/utils/bill-edits.js',
     '/js/utils/aging.js',
+    '/js/utils/parties.js',
     '/js/utils/anomalies.js',
     '/js/utils/party-due.js',
     '/js/utils/due-reminder.js',

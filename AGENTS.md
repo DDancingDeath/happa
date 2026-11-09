@@ -490,8 +490,10 @@ in `.github/review-rules-examples/`.
   the first sign-in (until the stock checkpoint is stored), the first Today render (reopen → Today
   drawn, with the reads and their top sources) and the whole history window
   (`ensureHistoryFrom(null)`), with the read meter's counts. Not part of the E2E suite: the nightly
-  `bench.yml` adds each result to `bench-trend.csv` on the `bench-trend` branch and warns (never
-  fails) above `tools/bench/budgets.json`; a manual run on another branch leaves the trend alone. `BENCH_YEARS`, `BENCH_ACTIVITY`, `BENCH_RUNS` size a local run.
+  `bench.yml` adds each result to `bench-trend.csv` on the `bench-trend` branch and warns above
+  `tools/bench/budgets.json`; it fails when a figure is over its hard limit (`_gate`: 1.5× the
+  budget or the median of the last 7 runs) two runs in a row (#120, docs/performance-budget.md).
+  A manual run on another branch, or with `simulate_slowdown` (gate self-test), leaves the trend alone. `BENCH_YEARS`, `BENCH_ACTIVITY`, `BENCH_RUNS` size a local run.
 - **Contrast (#68)**: `tests/e2e/a11y-contrast.spec.js` runs axe-core's WCAG AA
   `color-contrast` rule on the main pages (owner, en / hi, phone / desktop) and fails on
   any finding. Text on a page card uses the theme variables (`--success-color`,
