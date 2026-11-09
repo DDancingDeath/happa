@@ -6,6 +6,9 @@
 #    (scripts/android-version-code.js) and its versionName is the tag without "v".
 #  - Pull requests touching the Android build: unsigned debug APK only (no release),
 #    to catch build breakage before merge.
+#  - Pushes to main touching the Android build: the same debug build, so main holds
+#    the Gradle cache. A tag run can only restore caches from its own ref or main, so
+#    without it every release downloaded Gradle from services.gradle.org (rc12 timed out).
 
 name: Android release
 
@@ -13,6 +16,21 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - main
+    paths:
+      - 'android/**'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'www/changelog.json'
+      - 'www/js/version.js'
+      - 'scripts/release.js'
+      - 'scripts/release-notes.js'
+      - 'scripts/happa-config.js'
+      - 'happa.config.json'
+      - 'tests/fixtures/google-services.dummy.json'
+      - '.github/workflows/android-release.yml'
   workflow_dispatch:
     inputs:
       tag:
@@ -159,6 +177,21 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: gradle
+
+      # The wrapper downloads Gradle itself when the cache misses; services.gradle.org sometimes
+      # times out, so fetch it up front with retries (a no-op on a cache hit).
+      - name: Download Gradle (with retries)
+        working-directory: android
+        run: |
+          for attempt in 1 2 3; do
+            ./gradlew --version --no-daemon && exit 0
+            if (( attempt < 3 )); then
+              echo "::warning::Gradle download failed (attempt $attempt of 3); retrying in $((attempt * 30)) s."
+              sleep $((attempt * 30))
+            fi
+          done
+          echo "::error::Could not download Gradle after 3 attempts."
+          exit 1
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
@@ -313,6 +346,21 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: gradle
+
+      # The wrapper downloads Gradle itself when the cache misses; services.gradle.org sometimes
+      # times out, so fetch it up front with retries (a no-op on a cache hit).
+      - name: Download Gradle (with retries)
+        working-directory: android
+        run: |
+          for attempt in 1 2 3; do
+            ./gradlew --version --no-daemon && exit 0
+            if (( attempt < 3 )); then
+              echo "::warning::Gradle download failed (attempt $attempt of 3); retrying in $((attempt * 30)) s."
+              sleep $((attempt * 30))
+            fi
+          done
+          echo "::error::Could not download Gradle after 3 attempts."
+          exit 1
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
