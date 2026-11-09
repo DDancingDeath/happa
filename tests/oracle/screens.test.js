@@ -57,9 +57,9 @@ function shown(id) {
     const el = document.getElementById(id);
     if (!el) throw new Error(`#${id} missing`);
     const text = el.textContent.replace(/[,\s₹]/g, '');
-    const m = text.match(/^([+-]?)(\d+(?:\.\d+)?)/);
+    const m = text.match(/^([+\-−]?)(\d+(?:\.\d+)?)/);
     if (!m) throw new Error(`#${id} has no number: "${el.textContent}"`);
-    return (m[1] === '-' ? -1 : 1) * Number(m[2]);
+    return (m[1] === '-' || m[1] === '−' ? -1 : 1) * Number(m[2]);
 }
 const rupee = (v) => Math.round(v);
 
@@ -440,7 +440,7 @@ describe('Money › Cash day chart (this month) == oracle (M14 per day)', () => 
         const days = [];
         for (let t = from; t <= NOW; t = O.dayRange(t)[1]) days.push(O.finance(data, O.dayRange(t)).F7_cashFlow);
         expect(bars).toHaveLength(days.length);
-        bars.forEach((rect, i) => expect(Number(rect.textContent.split(': ')[1].replace(/[^\d.-]/g, ''))).toBe(rupee(days[i]) || 0));
+        bars.forEach((rect, i) => expect(Number(rect.textContent.split(': ')[1].replace(/−/g, '-').replace(/[^\d.-]/g, ''))).toBe(rupee(days[i]) || 0));
         expect(O.r2(days.reduce((a, v) => a + v, 0))).toBe(O.metrics(data, [from, O.dayRange(NOW)[1]]).M14_net);
     });
 });

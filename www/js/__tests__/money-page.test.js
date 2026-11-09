@@ -162,14 +162,36 @@ describe('comparisons and takeaways', () => {
         // 1–21 Oct last year: only day 3 counts → profit 200
         const m = moneySummary({ ...data, base: { state: {}, from: -Infinity } }, { from: OCT[0], to: OCT[1] });
         const c = change(m.M6.total, 200);
-        expect(text).toContain(`${Math.abs(c.pct)}% vs Oct 2025`);
+        expect(text).toContain(`${Math.abs(c.pct)}% vs 1–21 Oct 2025`);
     });
 
-    test('a loss is said in words and the uncosted kg are explained (gut check)', () => {
-        const list = profitTakeaways({ profit: -110.96, vsLastYear: null, vsPrevious: null, uncosted: { qty: 12, estimate: 360 } });
-        expect(list.map(x => x.key)).toEqual(['ui.tk.loss', 'ui.tk.gut_uncosted']);
+    test('a loss is said in words; an unknown cost is left to the caveat, said once (V2 O-18)', () => {
+        const list = profitTakeaways({ profit: -110.96, vsLastYear: null, vsPrevious: null });
+        expect(list.map(x => x.key)).toEqual(['ui.tk.loss']);
         expect(t(list[0].key, list[0].params)).toBe('Loss of ₹111 in this period.');
-        expect(t(list[1].key, list[1].params, 'hi')).toContain('12 kg');
+        expect(profitTakeaways({ profit: null })).toEqual([]);
+    });
+
+    test('this month so far compares with the same days: "vs 1–21 Sep", "vs 1–21 Oct 2025"; a whole month by its name (O-19)', () => {
+        const sepStart = new Date(2026, 8, 1).getTime();
+        AppState.historyLoadedFrom = sepStart;
+        jest.spyOn(FirebaseService, 'getStockCheckpointState').mockReturnValue({ state: {}, asOf: sepStart });
+        AppState.expensesHistory.push({ id: 'eSep', date: '2026-09-10', amount: 100, category: 'business', type: 'rent' });
+        MoneyManager.init('profit');
+        const text = () => document.getElementById('moneyProfitCompare').textContent;
+        expect(text()).toMatch(/vs 1–21 Sep\b/);
+        expect(text()).toContain('vs 1–21 Oct 2025');
+        setLang('hi');
+        try {
+            MoneyManager.render();
+            expect(text()).toContain('1–21 सित॰ से');
+            expect(text()).not.toContain('1 से 21');
+        } finally {
+            setLang('en');
+        }
+        MoneyManager.step(-1);
+        expect(text()).toMatch(/vs Aug\b/);
+        expect(text()).toContain('vs Sep 2025');
     });
 
     test('profit takeaways prefer last year, name the biggest item change and flag sales up / profit down', () => {
@@ -225,11 +247,11 @@ describe('comparisons and takeaways', () => {
         AppState.expensesHistory.push({ id: 'eSep', date: '2026-09-10', amount: 100, category: 'business', type: 'rent' });
         MoneyManager.init('profit');
         const text = (id) => document.getElementById(id).textContent;
-        expect(text('moneyProfitCompare')).toContain('vs Oct 2025: not known');
+        expect(text('moneyProfitCompare')).toContain('vs 1–21 Oct 2025: not known');
         MoneyManager.setSection('cash');
-        expect(text('moneyCashCompare')).toContain('vs Oct 2025: not known');
+        expect(text('moneyCashCompare')).toContain('vs 1–21 Oct 2025: not known');
         MoneyManager.setSection('spending');
-        expect(text('moneySpendCompare')).toMatch(/^[▲▼＝] .*(% vs Sep|about the same as Sep) · vs Oct 2025: not known$/);
+        expect(text('moneySpendCompare')).toMatch(/^[▲▼＝] .*(% vs 1–21 Sep|about the same as 1–21 Sep) · vs 1–21 Oct 2025: not known$/);
         MoneyManager.setSection('worth');
         expect(text('moneyWorthCompare')).toBe('stock vs Oct 2025: not known');
         setLang('hi');
@@ -325,8 +347,35 @@ describe('taps, caveats and checks', () => {
         jest.spyOn(FirebaseService, 'getStockCheckpointState').mockReturnValue(null);
         MoneyManager.init('profit');
         expect(document.getElementById('moneyProfitValue').textContent).toBe('—');
-        expect(document.getElementById('moneyProfitTakeaway').textContent).toMatch(/cost of what was sold is not known/);
-        expect(document.getElementById('moneyProfitCaveats').textContent).toMatch(/Build month history/);
+        expect(document.getElementById('moneyProfitTakeaway').textContent).toBe('');
+        expect(document.getElementById('moneyProfitCaveats').textContent).toMatch(/Cost not known: .*Build month history/);
+        expect(document.getElementById('moneyProfitLabel').textContent).toBe('Profit');
+    });
+
+    test('profit is "(estimate)" while some kg sold has no cost yet, and the reason is said once (O-18)', () => {
+        AppState.items.push({ id: 'i-dal', name: 'Dal', hindiName: 'दाल' });
+        AppState.retailSalesHistory.push({ id: 'rDal', date: '2026-10-05T10:00:00', customerName: 'Ram', items: [{ itemId: 'i-dal', name: 'Dal', qty: 12, rate: 50, total: 600 }],
+            total: 600, cashPayment: 600, onlinePayment: 0, dueAmount: 0, payment: { cash: 600, online: 0, due: 0, total: 600 } });
+        AppState.purchaseHistory.push({ id: 'pDal', date: '2026-10-10T10:00:00', customerName: 'Mohan', items: [{ itemId: 'i-dal', name: 'Dal', qty: 20, rate: 30, total: 600 }],
+            billTotal: 600, laborCharges: 0, grandTotal: 600, cashPayment: 600, onlinePayment: 0, dueAmount: 0, payment: { cash: 600, online: 0, due: 0, total: 600 } });
+        MoneyManager.init('profit');
+        const text = (id) => document.getElementById(id).textContent;
+        expect(text('moneyProfitLabel')).toBe('Profit (estimate)');
+        expect(text('moneyProfitEqLabel')).toBe('= Profit (estimate)');
+        expect(text('moneyProfitCaveats')).toMatch(/^⚠ Cost not known for 12 kg sold before it was bought/);
+        expect(text('moneyProfitTakeaway')).not.toMatch(/kg|cost/i);
+        setLang('hi');
+        try {
+            MoneyManager.render();
+            expect(text('moneyProfitLabel')).toBe('मुनाफ़ा (अनुमान)');
+            expect(text('moneyProfitEqLabel')).toBe('= मुनाफ़ा (अनुमान)');
+        } finally {
+            setLang('en');
+        }
+        AppState.retailSalesHistory = AppState.retailSalesHistory.filter(b => b.id !== 'rDal');
+        MoneyManager.render();
+        expect(text('moneyProfitLabel')).toBe('Profit');
+        expect(text('moneyProfitEqLabel')).toBe('= Profit');
     });
 
     test('a period before the loaded bills offers to load them instead of showing ₹0', () => {
@@ -602,12 +651,12 @@ describe('stale month snapshots (a bill of an older month changed after the snap
         MoneyManager.snapshots = { '2025-10': { ...doc, stale: true, staleAt: 5 } };
         MoneyManager.init('profit');
         const text = (id) => document.getElementById(id).textContent;
-        expect(text('moneyProfitCompare')).toContain('vs Oct 2025: not known');
+        expect(text('moneyProfitCompare')).toContain('vs 1–21 Oct 2025: not known');
         expect(text('moneyBuildHistory')).toContain(t('ui.money.stale_hint'));
         expect(document.querySelector('#moneyBuildHistory button')).not.toBeNull();
         MoneyManager.snapshots = { '2025-10': doc };
         MoneyManager.render();
-        expect(text('moneyProfitCompare')).toMatch(/% vs Oct 2025/);
+        expect(text('moneyProfitCompare')).toMatch(/% vs 1–21 Oct 2025/);
         expect(text('moneyBuildHistory')).not.toContain(t('ui.money.stale_hint'));
     });
 
@@ -621,11 +670,11 @@ describe('stale month snapshots (a bill of an older month changed after the snap
         MoneyManager.staleSeen = {};
         MoneyManager.listenSnapshots();
         MoneyManager.init('profit');
-        expect(document.getElementById('moneyProfitCompare').textContent).toMatch(/% vs Oct 2025/);
+        expect(document.getElementById('moneyProfitCompare').textContent).toMatch(/% vs 1–21 Oct 2025/);
         window.dispatchEvent(new CustomEvent('aadhat:monthstale', { detail: { months: ['2025-10'], at: 77 } }));
         expect(MoneyManager.snapshots['2025-10']).toMatchObject({ stale: true, staleAt: 77, m: doc.m });
         expect(MoneyManager.staleSeen['2025-10']).toBe(NOW);
-        expect(document.getElementById('moneyProfitCompare').textContent).toContain('vs Oct 2025: not known');
+        expect(document.getElementById('moneyProfitCompare').textContent).toContain('vs 1–21 Oct 2025: not known');
     });
 
     test('rebuild: an older stale month is rebuilt from full history read after the mark was seen, clearing the flag', async () => {
