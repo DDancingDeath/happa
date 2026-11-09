@@ -171,7 +171,7 @@ describe('Ask page: item reports (ASK-5)', () => {
         jest.restoreAllMocks();
         jest.useFakeTimers({ now: new Date(2026, 10, 9, 12), doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
         document.body.innerHTML = '<div id="askExamples"></div><div id="askAnswers"></div>';
-        AskManager.answers = [];
+        AskManager.reset();
         held = null;
         Object.assign(AppState, { currentUser: { uid: 'owner1' }, userRole: 'owner', purchaseHistory: recent, items, settings: {} });
         jest.spyOn(FirebaseService, 'isFullHistoryLoaded').mockReturnValue(false);
@@ -215,6 +215,12 @@ describe('Ask page: item reports (ASK-5)', () => {
         await AskManager.loadOlder(AskManager.answers[0].id);
         expect(modal).not.toHaveBeenCalled();
         expect(answers()).toContain('free data limit');
+    });
+
+    test('two questions asked at once share the one oldest-purchase read', async () => {
+        await Promise.all([AskManager.ask('lah kitna kharida ab tak'), AskManager.ask('chawal kitna kharida ab tak')]);
+        expect(FirebaseService.oldestBillTime).toHaveBeenCalledTimes(1);
+        AskManager.reset();
     });
 
     test('a manager gets no report and no read', async () => {

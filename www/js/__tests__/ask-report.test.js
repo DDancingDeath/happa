@@ -5,7 +5,7 @@
  */
 import { answerQuestion, parseQuestion } from '../utils/ask.js';
 import {
-    estimateReportReads, itemPurchaseReport, matchKinds, mergeReportBills, reportCsv, reportDays,
+    estimateReportReads, itemPurchaseReport, labourShares, matchKinds, mergeReportBills, reportCsv, reportDays,
     reportKinds, reportPeriod, reportSheets, sheetName, validateSpec
 } from '../utils/ask-report.js';
 import { purchaseItems } from '../utils/business-metrics.js';
@@ -22,6 +22,9 @@ describe('parseQuestion: item reports', () => {
         ['is saal chawal kitna kharida', { intent: 'item_report', subject: 'chawal', range: 'this-year' }],
         ['last FY lah purchase report', { intent: 'item_report', subject: 'lah', range: 'last-fy' }],
         ['aaj lah kitna kharida', { intent: 'item_report', subject: 'lah', range: 'today' }],
+        ['lah kitna kharida pichle saal se ab tak', { intent: 'item_report', subject: 'lah', range: 'since-last-year' }],
+        ['pichle mahine se aaj tak lah ki kharid', { intent: 'item_report', subject: 'lah', range: 'since-last-month' }],
+        ['Ramesh se lah kitna kharida', { intent: 'item_report', subject: 'ramesh lah', range: 'this-month' }],
         ['kal lah kitna kharida', { intent: 'today_only' }],
         ["What's today's purchase", { intent: 'purchases_today' }],
         ['aaj kitna maal kharida', { intent: 'purchases_today' }],
@@ -64,10 +67,10 @@ describe('matchKinds: the kinds a word names', () => {
     });
     test('two words narrow it down; a word that names nothing is left out', () => {
         expect(names(matchKinds(kinds, 'lah kusmi').kinds)).toEqual(['Lah Kusmi']);
-        expect(names(matchKinds(kinds, 'lah sab plus page').kinds)).toHaveLength(5);
+        expect(matchKinds(kinds, 'lah ramesh')).toMatchObject({ unknown: ['ramesh'] });
     });
     test('a word that only starts a name is offered, never counted', () => {
-        expect(matchKinds(kinds, 'lahs')).toEqual({ kinds: [], near: expect.arrayContaining([expect.objectContaining({ name: 'Lahsun Desi' })]) });
+        expect(matchKinds(kinds, 'lahs')).toEqual({ kinds: [], near: expect.arrayContaining([expect.objectContaining({ name: 'Lahsun Desi' })]), unknown: ['lahs'] });
     });
     test('the item-name table: chawal = Rice', () => {
         expect(names(matchKinds(reportKinds([{ id: 'i', name: 'Rice' }], []), 'chawal').kinds)).toEqual(['Rice']);
@@ -91,7 +94,9 @@ describe('itemPurchaseReport (ASK-5)', () => {
         const byKey = Object.fromEntries(purchaseItems(PURCHASES, ITEMS, ALL).map(r => [r.itemKey, r]));
         report.groups.forEach(g => {
             const want = byKey[g.key] || { qty: 0, lineValue: 0, labour: 0, amount: 0 };
-            expect([g.totals.kg, g.totals.amount, g.totals.labour, g.totals.net]).toEqual([want.qty, want.lineValue, want.labour, want.amount]);
+            expect([g.totals.kg, g.totals.amount]).toEqual([want.qty, want.lineValue]);
+            expect(g.totals.labour).toBeCloseTo(want.labour, 1);
+            expect(g.totals.net).toBeCloseTo(want.amount, 1);
         });
         expect(report.totals.bills).toBe(3);
         expect(report.rowCount).toBe(4);
@@ -99,6 +104,23 @@ describe('itemPurchaseReport (ASK-5)', () => {
     test('a period leaves other days out', () => {
         const nov = reportPeriod('this-month', new Date(2026, 10, 9, 12));
         expect(itemPurchaseReport(PURCHASES, ITEMS, kinds, nov).groups.find(g => g.key === 'old').rows).toEqual([]);
+    });
+});
+
+describe('labourShares: whole paise that add up to the bill\'s labour', () => {
+    test('three equal lines share ₹100 as 33.34 + 33.33 + 33.33', () => {
+        expect(labourShares(100, [1000, 1000, 1000])).toEqual([33.34, 33.33, 33.33]);
+        expect(labourShares(60, [20000, 400, 1500])).toEqual([54.79, 1.1, 4.11]);
+        expect(labourShares(0, [5, 5])).toEqual([0, 0]);
+        expect(labourShares(10, [0, 0])).toEqual([0, 0]);
+    });
+    test('a kind\'s sheet column adds up to its totals row', () => {
+        const items = [{ id: 'l', name: 'Lah' }, { id: 'x', name: 'Rice' }];
+        const bills = [1, 2, 3].map(n => bill(`b${n}`, `2026-11-0${n}T10:00:00`, String(n), [line('l', 'Lah', 10, 100), line('x', 'Rice', 10, 100), line('x', 'Rice', 10, 100)], 100));
+        const g = itemPurchaseReport(bills, items, [{ key: 'l', name: 'Lah', hindiName: '' }], ALL).groups[0];
+        const sum = (k) => Math.round(g.rows.reduce((a, r) => a + r[k], 0) * 100) / 100;
+        expect([sum('labour'), sum('net')]).toEqual([g.totals.labour, g.totals.net]);
+        expect(g.totals.labour).toBe(100.02);
     });
 });
 
@@ -113,6 +135,15 @@ describe('answerQuestion: item reports', () => {
         const a = answerQuestion(parseQuestion('lah kitna kharida ab tak'), src, { role: 'owner', today, covered: false });
         expect(a).toMatchObject({ needsOlder: true, spec: 'ASK-5', period: { preset: 'all', loadFrom: null } });
         expect(a.report).toBeUndefined();
+    });
+    test('a party named with the item: no figure (every party\'s Lah would answer another question)', () => {
+        const a = answerQuestion(parseQuestion('Ramesh se lah kitna kharida'), src, { role: 'owner', today });
+        expect(a.notItems).toEqual(['ramesh']);
+        expect(a.report).toBeUndefined();
+    });
+    test('a name only on older bills: the older bills can still be loaded', () => {
+        expect(answerQuestion(parseQuestion('chhuri kitna kharida ab tak'), { bills: { purchases: [] }, items: ITEMS }, { role: 'owner', today, covered: false }))
+            .toMatchObject({ kinds: [], needsOlder: true });
     });
     test('no item of that name', () => {
         expect(answerQuestion(parseQuestion('Ramesh se kitna kharida'), src, { role: 'owner', today })).toMatchObject({ kinds: [], near: [], subject: 'ramesh' });

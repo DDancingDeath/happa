@@ -75,6 +75,8 @@ const MONTH = words(['mahina', 'mahine', 'month', 'महीना', 'मही�
 const YEAR = words(['saal', 'year', 'साल', 'varsh', 'वर्ष']);
 const LAST = words(['pichle', 'pichhle', 'pichla', 'last', 'previous', 'पिछले', 'पिछला']);
 const FY = words(['fy', 'financial']);
+// "pichle saal se ab tak": from the start of that period until today
+const SINCE = words(['se', 'from', 'since', 'से']);
 const ALL_TIME = words(['all', 'sab', 'sabhi', 'saara', 'kul', 'total', 'shuru', 'सब', 'सभी', 'सारा', 'कुल', 'शुरू']);
 const SO_FAR = /(^|\s)((ab|abhi|aaj|aj|अब|अभी|आज)\s+(tak|तक)|(till|until|upto|up to)\s+(today|now|date)|so far|all time)(?=[\s?!.,]|$)/;
 // More purchase spellings for reports ("kitni lah kharidi").
@@ -91,10 +93,12 @@ const hasAny = (/** @type {string[]} */ tokens, /** @type {Set<string>} */ set) 
  */
 export function reportRange(text, tokens) {
     const last = hasAny(tokens, LAST);
-    if (hasAny(tokens, FY)) return last ? 'last-fy' : 'this-fy';
-    if (hasAny(tokens, MONTH)) return last ? 'last-month' : 'this-month';
-    if (hasAny(tokens, YEAR)) return last ? 'last-year' : 'this-year';
-    if (SO_FAR.test(String(text || '').normalize('NFC').toLowerCase()) || hasAny(tokens, ALL_TIME)) return 'all';
+    const soFar = SO_FAR.test(String(text || '').normalize('NFC').toLowerCase());
+    const from = (/** @type {string} */ unit) => (!last ? `this-${unit}` : soFar && hasAny(tokens, SINCE) ? `since-last-${unit}` : `last-${unit}`);
+    if (hasAny(tokens, FY)) return from('fy');
+    if (hasAny(tokens, MONTH)) return from('month');
+    if (hasAny(tokens, YEAR)) return from('year');
+    if (soFar || hasAny(tokens, ALL_TIME)) return 'all';
     if (hasAny(tokens, TODAY)) return 'today';
     if (hasAny(tokens, OTHER_DAY) || tokens.some(w => /[\d\u0966-\u096F]/.test(w))) return null;
     return 'this-month';
@@ -146,7 +150,7 @@ export function parseQuestion(text) {
     if (stockAsked) return otherDay ? { intent: 'today_only' } : { intent: 'item_stock', subject: leftover() };
     // "lah kitna kharida ab tak": one item's purchases (ASK-5)
     if ((hasAny(tokens, PURCHASES) || hasAny(tokens, BOUGHT)) && !hasAny(tokens, SALES) && !hasAny(tokens, EXPENSES)) {
-        const REPORT_KEYWORDS = [...KEYWORDS, BOUGHT, REPORT, MONTH, YEAR, LAST, FY, ALL_TIME, OTHER_DAY, AMBIGUOUS];
+        const REPORT_KEYWORDS = [...KEYWORDS, BOUGHT, REPORT, MONTH, YEAR, LAST, FY, SINCE, ALL_TIME, OTHER_DAY, AMBIGUOUS];
         const subject = tokens.filter(w => !REPORT_KEYWORDS.some(s => s.has(w)) && !/^[\d\u0966-\u096F]/.test(w)).join(' ');
         if (subject) {
             const range = reportRange(text, tokens);
@@ -287,10 +291,13 @@ export function answerQuestion(q, src = {}, { role = 'staff', wholesale = false,
         const rs = validateSpec({ v: 1, billType: 'purchase', item: { text: q.subject, mode: 'family' }, range: { preset: q.range } });
         if (!rs) return { intent: 'unknown', spec: null, page: null };
         const purchases = bills.purchases || [];
-        const { kinds, near } = matchKinds(reportKinds(src.items, purchases), rs.item.text);
+        const { kinds, near, unknown } = matchKinds(reportKinds(src.items, purchases), rs.item.text);
         const period = reportPeriod(rs.range.preset, today, cfg);
         const base = { intent, spec, page: null, subject: rs.item.text, period, kinds, near: near.slice(0, ASK_MATCH_LIMIT), nearMore: Math.max(0, near.length - ASK_MATCH_LIMIT) };
-        if (!kinds.length) return base;
+        // "Ramesh se lah kitna kharida": a report of every party's Lah would answer another question
+        if (kinds.length && unknown.length) return { ...base, notItems: unknown };
+        // A name only on bills older than this phone has may still be found once they are read
+        if (!kinds.length) return !covered && !near.length ? { ...base, needsOlder: true } : base;
         if (!covered) return { ...base, needsOlder: true };
         return { ...base, report: itemPurchaseReport(purchases, src.items, kinds, period) };
     }

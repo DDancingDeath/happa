@@ -65,7 +65,10 @@ describe('ASK-5: one item\'s purchases = Insights › Items purchases (oracle), 
     test.each([['chawal kitna kharida ab tak', 'i-rice'], ['गेहूं कितना खरीदा अब तक', 'i-wheat']])('%s', (q, id) => {
         const a = ask(q);
         const g = a.report.groups.find(x => x.key === id);
-        expect([g.totals.kg, g.totals.amount, g.totals.labour, g.totals.net]).toEqual([want[id].qty, want[id].lineValue, want[id].labour, want[id].amount]);
+        expect([g.totals.kg, g.totals.amount]).toEqual([want[id].qty, want[id].lineValue]);
+        // labour in whole paise per line (labourShares): within a paisa per bill of the unrounded share
+        expect(Math.abs(g.totals.labour - want[id].labour)).toBeLessThan(0.01 * g.totals.bills + 1e-9);
+        expect(Math.abs(g.totals.net - want[id].amount)).toBeLessThan(0.01 * g.totals.bills + 1e-9);
         expect(g.totals.avgRate).toBe(O.r2(want[id].lineValue / want[id].qty));
     });
     test('every kind after labour, with the bills\' adjustments, = the purchases total (M16 / R1)', () => {

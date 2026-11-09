@@ -31,8 +31,8 @@ const PAGE_NAMES = { day: 'ui.ask.open_today', due: 'ui.ask.open_outstanding', s
 const bills = (n) => tn('ui.today.bills_count', n);
 const parties = (n) => tn('ui.ask.parties_count', n);
 let seq = 0;
-/** The oldest purchase's time, read once per signed-in person (1 read). */
-let oldest = { uid: undefined, value: null };
+/** The oldest purchase's time: one read per signed-in person, shared by questions asked meanwhile. */
+let oldest = { uid: undefined, promise: null };
 
 export const AskManager = {
     answers: [],
@@ -102,6 +102,7 @@ export const AskManager = {
     /** Sign-out: nothing of this person's answers stays on the page. */
     reset() {
         this.answers = [];
+        oldest = { uid: undefined, promise: null };
         const host = document.getElementById('askAnswers');
         if (host) host.innerHTML = '';
     },
@@ -142,17 +143,18 @@ export const AskManager = {
         return answer;
     },
 
-    async oldestPurchase() {
+    oldestPurchase() {
         const uid = this.uid();
-        if (oldest.uid !== uid || oldest.value === null) {
-            try {
-                oldest = { uid, value: await FirebaseService.oldestBillTime('purchases') };
-            } catch (e) {
+        if (oldest.uid !== uid || !oldest.promise) {
+            const entry = { uid, promise: null };
+            entry.promise = FirebaseService.oldestBillTime('purchases').catch((e) => {
                 console.warn('Ask: oldest purchase not read:', e?.message || e);
+                if (oldest === entry) oldest = { uid: undefined, promise: null };
                 return null;
-            }
+            });
+            oldest = entry;
         }
-        return oldest.value;
+        return oldest.promise;
     },
 
     /** The owner's confirm, then one read of the older purchase bills (owner only). */
@@ -218,10 +220,11 @@ export const AskManager = {
     /** One item report answer (ASK-5) as HTML. */
     reportHtml(a, id, { line, choose, itemName }) {
         if (a.ownerOnly) return line(t('ui.ask.report_owner_only'));
-        if (!a.kinds.length) return a.near.length ? choose(a.near.map(itemName), a.nearMore) : line(t('ui.ask.no_item', { name: a.subject }));
+        if (a.notItems) return line(t('ui.ask.report_not_item', { words: a.notItems.join(' ') }));
+        if (!a.kinds.length && !a.needsOlder) return a.near.length ? choose(a.near.map(itemName), a.nearMore) : line(t('ui.ask.no_item', { name: a.subject }));
         const lang = getLang();
         let html = line(t('ui.ask.report_head', { period: this.periodLabel(a.period.preset) }))
-            + line(t('ui.ask.report_kinds', { names: a.kinds.map(itemName).join(', ') }))
+            + line(a.kinds.length ? t('ui.ask.report_kinds', { names: a.kinds.map(itemName).join(', ') }) : t('ui.ask.report_no_item_here', { name: a.subject }))
             + (a.near.length ? line(t('ui.ask.report_not_included', { names: a.near.map(itemName).join(', ') })) : '');
         if (a.needsOlder) {
             if (a.stopped) return html + line(t('ui.ask.report_quota'));

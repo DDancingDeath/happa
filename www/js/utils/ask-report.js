@@ -20,7 +20,8 @@ import { endOfLocalDayExclusive, toLocalISODate } from './dates.js';
 import { t } from '../i18n/index.js';
 
 /** Periods an item report can cover (business-metrics periodRange presets). */
-export const REPORT_PRESETS = Object.freeze(['today', 'this-month', 'last-month', 'this-year', 'last-year', 'this-fy', 'last-fy', 'all']);
+export const REPORT_PRESETS = Object.freeze(['today', 'this-month', 'last-month', 'this-year', 'last-year', 'this-fy', 'last-fy', 'all',
+    'since-last-month', 'since-last-year', 'since-last-fy']);
 const BILL_TYPES = ['purchase'];
 const MEASURES = ['kg', 'amount', 'avgRate', 'bills', 'labour', 'net'];
 
@@ -89,32 +90,56 @@ export function reportKinds(items, bills) {
 /**
  * The kinds the typed words name. A kind matches a word when one of its name's words
  * is that word (any spelling, Latin or Devanagari); several matching words narrow it down
- * ("lah kusmi"), words that match nothing are left out. A name that only starts with the
- * word ("Lahsun" for "lah") is never included: it is listed in `near`.
+ * ("lah kusmi"). A name that only starts with the word ("Lahsun" for "lah") is never
+ * included: it is listed in `near`. Words that name nothing are in `unknown` (a party's
+ * name: the report would not be about it, so the answer gives no figure).
  * @param {Array<{key: string, name: string, hindiName: string}>} kinds reportKinds()
  * @param {string} text the typed subject
- * @returns {{kinds: Array<{key: string, name: string, hindiName: string}>, near: Array<{key: string, name: string, hindiName: string}>}}
+ * @returns {{kinds: Array<{key: string, name: string, hindiName: string}>, near: Array<{key: string, name: string, hindiName: string}>, unknown: string[]}}
  */
 export function matchKinds(kinds, text) {
     const words = partyNameKey(text).split(' ').filter(Boolean).map(w => ({ w, v: wordVariants(w) }));
     const withWords = kinds.map(k => ({ k, words: nameWords(k.name, k.hindiName) }));
     const hitsOf = (/** @type {Set<string>} */ v) => withWords.filter(x => [...v].some(s => x.words.has(s))).map(x => x.k);
-    const matched = words.map(x => hitsOf(x.v)).filter(h => h.length);
+    const hits = words.map(x => hitsOf(x.v));
+    const matched = hits.filter(h => h.length);
     let found = matched.length ? matched.reduce((a, h) => a.filter(k => h.includes(k))) : [];
     if (!found.length && matched.length) found = [...new Set(matched.flat())];
     const loose = words.map(x => looseWord(x.w)).filter(w => w.length >= 2);
     const near = withWords.filter(x => !found.includes(x.k) && loose.some(w => [...x.words].some(s => s.startsWith(w) && s !== w))).map(x => x.k);
+    const unknown = words.filter((x, i) => !hits[i].length).map(x => x.w);
     const byName = (/** @type {{name: string, hindiName: string}} */ a, /** @type {{name: string, hindiName: string}} */ b) => (a.name || a.hindiName).localeCompare(b.name || b.hindiName);
-    return { kinds: [...found].sort(byName), near: near.sort(byName) };
+    return { kinds: [...found].sort(byName), near: near.sort(byName), unknown };
 }
 
 const billNo = (/** @type {Rec} */ b) => String(b?.billNumber || b?.billNo || '');
 
 /**
+ * A bill's labour shared by line value in whole paise that add up to it exactly (largest
+ * remainder), so a sheet's labour column adds up to its totals row.
+ * @param {number} labour
+ * @param {number[]} values line amounts
+ * @returns {number[]}
+ */
+export function labourShares(labour, values) {
+    const value = values.reduce((a, v) => a + v, 0);
+    const paise = Math.round(labour * 100);
+    if (!(value > 0) || !paise) return values.map(() => 0);
+    const exact = values.map(v => paise * v / value);
+    const out = exact.map(Math.floor);
+    let left = paise - out.reduce((a, v) => a + v, 0);
+    exact.map((e, i) => ({ i, r: e - out[i] })).sort((a, b) => b.r - a.r).forEach(({ i }) => {
+        if (left > 0) { out[i]++; left--; }
+    });
+    return out.map(p => p / 100);
+}
+
+/**
  * ASK-5: the purchase lines of the chosen kinds in [from, to), bill by bill, with each
  * kind's totals. A line's amount is its saved line amount (readLineItem, as AVG-COST);
- * its labour is the bill's labour shared by line value (as Insights › Items and ST5), so
- * amount − labour of every line of every kind adds up to M16 with the bills' adjustments.
+ * its labour is the bill's labour shared by line value in whole paise (labourShares; Insights ›
+ * Items and ST5 share it the same way, unrounded), so amount − labour of every line of every
+ * kind adds up to M16 with the bills' adjustments.
  * Average rate = total amount ÷ total kg (weighted by kg, not a mean of the rates).
  * @param {?Array<Rec>|undefined} purchases bills (voided bills and opening records are left out)
  * @param {?Array<{id: string, name?: string, hindiName?: string}>|undefined} items catalogue
@@ -127,13 +152,12 @@ export function itemPurchaseReport(purchases, items, kinds, { from, to }) {
     const byKey = new Map(groups.map(g => [g.key, g]));
     billsInRange(purchases || [], from, to).forEach(b => {
         const lines = (Array.isArray(b.items) ? b.items : []).map((/** @type {BillLine} */ l) => ({ l, v: readLineItem(l) }));
-        const value = lines.reduce((a, x) => a + x.v.total, 0);
-        const labour = billLabour(b);
+        const shares = labourShares(billLabour(b), lines.map(x => x.v.total));
         const time = eventTime(/** @type {Rec} */ (b));
-        lines.forEach(({ l, v }) => {
+        lines.forEach(({ l, v }, i) => {
             const g = byKey.get(getKey(l));
             if (!g) return;
-            const share = value > 0 ? labour * (v.total / value) : 0;
+            const share = shares[i];
             g.raw.kg += v.qty;
             g.raw.amount += v.total;
             g.raw.labour += share;
@@ -141,7 +165,7 @@ export function itemPurchaseReport(purchases, items, kinds, { from, to }) {
             g.rows.push({
                 billNo: billNo(b), time, qty: v.qty,
                 rate: v.rate > 0 ? v.rate : (v.qty > 0 ? round2(v.total / v.qty) : 0),
-                amount: v.total, labour: round2(share), net: round2(v.total - share)
+                amount: v.total, labour: share, net: round2(v.total - share)
             });
         });
     });
@@ -182,8 +206,11 @@ export function reportDays(period, now) {
  * @returns {{preset: string, from: number, to: number, loadFrom: ?number}}
  */
 export function reportPeriod(preset, now, cfg) {
-    const r = periodRange(REPORT_PRESETS.includes(preset) ? preset : 'this-month', now, /** @type {*} */ (cfg));
-    return { preset: r.preset, from: r.from, to: r.to, loadFrom: Number.isFinite(r.from) ? r.from : null };
+    const p = REPORT_PRESETS.includes(preset) ? preset : 'this-month';
+    const since = p.startsWith('since-');
+    const r = periodRange(since ? p.slice(6) : p, now, /** @type {*} */ (cfg));
+    const to = since ? periodRange('today', now, /** @type {*} */ (cfg)).to : r.to;
+    return { preset: p, from: r.from, to, loadFrom: Number.isFinite(r.from) ? r.from : null };
 }
 
 /**

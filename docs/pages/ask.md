@@ -15,7 +15,9 @@ much and at what average rate: "lah kitna kharida ab tak", "pichle mahine chawal
 "लाह की किस्में कितनी खरीदीं". Every item whose name has that word counts (Lah Kusmi, Rangeeni
 Lah, लाह, old archived items and names typed on bills too); a name that only starts the
 same ("Lahsun") is listed as not counted. The period is today, this or last month, year or
-financial year, or all time ("ab tak", "till today"); without one it is this month. Each
+financial year, from the start of last month or year till today ("pichle saal se ab tak"), or
+all time ("ab tak", "till today"); without one it is this month. A party's name in the
+question ("Ramesh se lah kitna kharida") gets no figure: the report counts every party. Each
 kind shows its kg, average rate (total amount ÷ total kg) and amount, plus the total after
 labour, the same figures as Insights › Items, adding up to Money's purchases. **Excel**
 saves a Summary sheet and one sheet per kind (bill no., date, kg, rate, amount, labour,

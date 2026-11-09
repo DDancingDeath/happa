@@ -4,6 +4,7 @@
  */
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { S } from '../firebase/core/session.js';
+import { noteLocalRecordWrite } from '../firebase/core/history-window.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 
 let fake;
@@ -36,6 +37,19 @@ test('from a day: only bills from then on; an all-time question still needs a re
     expect(bills.map(b => b.id)).toEqual(['b']);
     expect(FirebaseService.reportBillsInMemory('purchases', null)).toBeNull();
     expect(FirebaseService.reportBillsInMemory('purchases', 4500)).not.toBeNull();
+});
+
+test('a bill this phone voids, edits or deletes changes in the bills held too', async () => {
+    await FirebaseService.readReportBills('purchases', null);
+    noteLocalRecordWrite('purchases', 'a', { id: 'a', timestamp: 1000, voided: true, items: [] });
+    noteLocalRecordWrite('purchases', 'b', null);
+    expect(FirebaseService.reportBillsInMemory('purchases', null).bills.map(b => [b.id, !!b.voided])).toEqual([['a', true], ['legacy', false]]);
+});
+
+test('the oldest bill from the phone\'s cache is refused (it would make the estimate far too low)', async () => {
+    const cached = { docs: [{ data: () => ({ timestamp: 5000 }) }], metadata: { fromCache: true } };
+    global.firebase = { firestore: () => ({ collection: () => ({ orderBy: () => ({ limit: () => ({ get: async () => cached }) }) }) }) };
+    await expect(FirebaseService.oldestBillTime('purchases')).rejects.toMatchObject({ code: 'unavailable' });
 });
 
 test('oldest purchase time: one read; only bill collections', async () => {

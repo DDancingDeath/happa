@@ -14,8 +14,6 @@ import { tagQuery } from '../firestore-meter.js';
 
 const TAG = 'ask report';
 const READS = ['purchases', 'retailSales', 'wholesaleSales'];
-/** @type {Map<string, {gen: number, from: ?number, bills: Array<Object>, readAt: number}>} */
-const held = new Map();
 
 const covers = (/** @type {?{from: ?number}} */ h, /** @type {?number} */ from) => !!h && (h.from === null || (from !== null && from >= h.from));
 
@@ -29,6 +27,8 @@ export const reportBillMethods = {
     async oldestBillTime(collKey) {
         if (!READS.includes(collKey)) throw new Error(`Not a bill collection: ${collKey}`);
         const snap = await getWithRetry(a => tagQuery(getDb().collection(col(collKey)).orderBy('timestamp', 'asc').limit(1 + a), TAG), `${collKey} oldest`);
+        // The phone's cache holds only the loaded window: its oldest bill would make the estimate far too low.
+        if (snap.metadata?.fromCache) throw Object.assign(new Error('The oldest bill could not be read from the server'), { code: 'unavailable' });
         return snap.docs.length ? Number(snap.docs[0].data().timestamp) : Infinity;
     },
 
@@ -39,7 +39,7 @@ export const reportBillMethods = {
      * @returns {?{bills: Array<Object>, readAt: number}}
      */
     reportBillsInMemory(collKey, from) {
-        const h = held.get(collKey);
+        const h = S.reportBills.get(collKey);
         if (!h || h.gen !== S.sessionGen) return null;
         return covers(h, from) ? { bills: h.bills, readAt: h.readAt } : null;
     },
@@ -65,12 +65,12 @@ export const reportBillMethods = {
         }, `${collKey} report`);
         if (snap.metadata?.fromCache) throw Object.assign(new Error('Older bills could not be read from the server'), { code: 'unavailable' });
         const bills = snap.docs.map(mapDoc);
-        if (gen === S.sessionGen) held.set(collKey, { gen, from, bills, readAt });
+        if (gen === S.sessionGen) S.reportBills.set(collKey, { gen, from, bills, readAt });
         return { bills, readAt };
     },
 
-    /** Drops the report bills held in memory (sign-out; tests). */
+    /** Drops the report bills held in memory (tests). */
     forgetReportBills() {
-        held.clear();
+        S.reportBills.clear();
     }
 };
