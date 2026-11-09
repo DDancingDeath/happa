@@ -56,6 +56,7 @@
 - [पूछें](pages/ask.hi.md)
 - [रेट](pages/rates.hi.md)
 - [किराया](pages/rentals.hi.md)
+- [कर्मचारी / वेतन (मालिक)](pages/workers.hi.md)
 - [सेटिंग, एडमिन, ऐप की सेहत](pages/settings.hi.md)
 
 ---

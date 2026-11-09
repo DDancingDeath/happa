@@ -3570,6 +3570,11 @@ function defineReadMatrix(prefix) {
         get: (db) => db.collection(c('rent_public')).doc('tok').get(), getAllowed: EVERYONE,
         list: (db) => db.collection(c('rent_public')).get(), listAllowed: []
     });
+    add('workers (worker pay, #373)', {
+        seed: [[`${c('workers')}/w1`, { name: 'Ramu', startMonth: '2026-01', active: true, pays: [{ from: '2026-01', amount: 9000 }], entries: [] }]],
+        get: (db) => db.collection(c('workers')).doc('w1').get(), getAllowed: OWNER,
+        list: (db) => db.collection(c('workers')).get(), listAllowed: OWNER
+    });
     add('unknown collection', {
         seed: [[`${c('somethingElse')}/d1`, { a: 1 }]],
         get: (db) => db.collection(c('somethingElse')).doc('d1').get(), getAllowed: [],
@@ -5197,6 +5202,66 @@ function defineReminderSuite(prefix) {
 }
 defineReminderSuite('');
 defineReminderSuite('dev_');
+
+// ---- Worker pay (#373): owner only; entries are added one at a time (arrayUnion) or one removed ----
+function defineWorkerSuite(prefix) {
+    const workers = `${prefix}workers`;
+    const t = (name, fn) => test(`[${prefix || 'prod'}] worker pay: ${name}`, fn);
+    const worker = (extra = {}) => ({ name: 'Ramu', startMonth: '2026-01', active: true, pays: [{ from: '2026-01', amount: 9000 }], entries: [], updatedAt: serverTimestamp(), ...extra });
+    const entry = (extra = {}) => ({ id: 'e1', month: '2026-02', date: '2026-02-10', amount: 3000, kind: 'advance', mode: 'cash', ...extra });
+    const seed = (id, data) => env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(workers).doc(id).set({ ...data, updatedAt: Timestamp.now() }));
+    const doc = (uid, id = 'w1') => as(uid).collection(workers).doc(id);
+    const stamp = () => ({ updatedAt: serverTimestamp() });
+
+    t('only the owner creates, reads and deletes', async () => {
+        await assertFails(doc('manager1').set(worker()));
+        await assertFails(doc('staff1').set(worker()));
+        await assertFails(doc('rentManager').set(worker()));
+        await assertSucceeds(doc('legacyOwner').set(worker()));
+        await assertSucceeds(doc('owner2').get());
+        await assertFails(doc('manager1').get());
+        await assertFails(as('manager1').collection(workers).get());
+        await assertFails(doc('manager1').delete());
+        await assertSucceeds(doc('legacyOwner').delete());
+    });
+
+    t('create: the shape is checked', async () => {
+        const bad = [
+            { name: '' }, { name: 'x'.repeat(61) }, { startMonth: '2026-13' }, { active: 'yes' },
+            { pays: [] }, { pays: [{ from: '2026-02', amount: 9000 }] }, { pays: [{ from: '2026-01', amount: 90.5 }] },
+            { pays: [{ from: '2026-01', amount: -1 }] }, { pays: [{ from: '2026-01', amount: 9000, by: 'x' }] },
+            { entries: [entry()] }, { phone: '99' }, { updatedAt: Timestamp.fromMillis(Date.now() - MIN) }
+        ];
+        for (const [i, extra] of bad.entries()) await assertFails(doc('legacyOwner', `b${i}`).set(worker(extra)));
+        await assertSucceeds(doc('legacyOwner', 'ok').set(worker({ pays: [{ from: '2026-01', amount: 0 }] })));
+    });
+
+    t('an entry is added with arrayUnion; its shape is checked', async () => {
+        await seed('w1', worker());
+        const add = (e) => doc('legacyOwner').update({ entries: FieldValue.arrayUnion(e), ...stamp() });
+        for (const extra of [{ amount: 0 }, { amount: 99.5 }, { amount: 10000001 }, { kind: 'bonus' }, { mode: 'upi' },
+            { month: '2026-2' }, { date: '10/02/2026' }, { note: 'x'.repeat(121) }, { id: '' }, { by: 'x' }]) {
+            await assertFails(add(entry(extra)));
+        }
+        await assertSucceeds(add(entry({ note: 'Diwali advance' })));
+        await assertSucceeds(add(entry({ id: 'e2', kind: 'pay', mode: 'online', amount: 6000 })));
+        await assertFails(doc('manager1').update({ entries: FieldValue.arrayUnion(entry({ id: 'e3' })), ...stamp() }));
+        await assertFails(doc('legacyOwner').update({ entries: FieldValue.arrayUnion(entry({ id: 'e4' })) }));
+    });
+
+    t('entries never change in place; one at a time is removed; edits keep them', async () => {
+        await seed('w1', worker({ entries: [entry(), entry({ id: 'e2', amount: 6000 })] }));
+        await assertFails(doc('legacyOwner').update({ entries: [entry({ amount: 1 }), entry({ id: 'e2', amount: 6000 })], ...stamp() }));
+        await assertFails(doc('legacyOwner').update({ entries: [entry({ amount: 1 }), entry({ id: 'e2', amount: 6000 }), entry({ id: 'e3' })], ...stamp() }));
+        await assertFails(doc('legacyOwner').update({ entries: [], ...stamp() }));
+        await assertSucceeds(doc('legacyOwner').update({ name: 'Ramu Kaka', pays: [{ from: '2026-01', amount: 9000 }, { from: '2026-04', amount: 10000 }], ...stamp() }));
+        await assertSucceeds(doc('legacyOwner').update({ active: false, pays: [{ from: '2026-01', amount: 9000 }, { from: '2026-06', amount: 0 }], ...stamp() }));
+        await assertSucceeds(doc('legacyOwner').update({ entries: FieldValue.arrayRemove(entry()), ...stamp() }));
+        await assertFails(doc('legacyOwner').update({ startMonth: '2026-03', ...stamp() }));
+    });
+}
+defineWorkerSuite('');
+defineWorkerSuite('dev_');
 
 test('[cross-env] prod approval does not grant dev access and vice versa', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {

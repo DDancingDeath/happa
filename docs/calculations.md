@@ -347,6 +347,30 @@ Oracle: `tests/oracle/rent.test.js`.
 | RENT-21 | A tenant's month on This month (Simple: "This month: paid" / "This month: part paid, ₹X of ₹Y" / "This month: ₹Y due") — OD-07 | From the tenant's charge for this month (active tenancy): paid when its due (RENT-5) is 0, part paid when 0 < paid < amount (X = paid, Y = the month's amount, rent + electricity), else due (₹Y = its due). No line without a charge this month or for a tenant who moved out. The row's months owed and Late / Part paid badges (RENT-5) stay as they were. Code: `rent-math.monthState`. Oracle: `tests/oracle/rent.test.js`. |
 | RENT-15 | Total deposits held (Tenants › Deposits held) | Σ RENT-14 over every tenant whose deposit held is above 0 (one bounded query, `held > 0`). Code: `rent-math-ledger.depositsTotal`. |
 
+## Workers / Salaries (`templates/workers.html`, `modules/workers.js`, `utils/worker-pay.js`) — #373 phase 1
+
+The owner's monthly pay tracker (owner only). Each worker (`workers/{id}`: `name`, `startMonth`,
+`active`, `pays` = pay steps `{from, amount}`, `entries` = payments and advances `{id, month, date,
+amount, kind, mode, note}`) has, for every month from the start month, a pay, what was paid for it and
+a balance carried to the next month. Whole rupees. **Not linked to Money:** worker pay is not an
+expense here and changes no M*, T*, C* or ST* figure (Money › Spending, Today, the cash drawer stay as
+they were) until the owner decides how it fits with the labour expense type (#373, V2 OD-03 / OD-09).
+Reads: one query of `workers` each time the page opens (one read per worker; one when there are none);
+nothing at start. Oracle: `tests/oracle/worker-pay.test.js`.
+
+| ID | On screen | Definition |
+|---|---|---|
+| WP-1 | Monthly pay ("₹X a month"; Month by month › Pay) | The amount of the worker's last pay step whose `from` month is on or before the month; 0 before the start month. A changed pay is a new step from the chosen month ("New pay counts from"): earlier months keep the old pay. Marking a worker as left adds a step of 0 from the month after the last month of pay; "Working again" adds the last pay from this month. Code: `payFor`, `withPay`, `withStart`. |
+| WP-2 | Paid for the month (Month by month › Paid) | Σ amount of the worker's entries whose `month` is that month, pay and advances alike (an advance counts towards the month it is for). |
+| WP-3 | Carried in | The month before's balance (WP-5); 0 in the first month. Above 0 = still owed from before; below 0 = an advance paid ahead. |
+| WP-4 | Advance recovered ("₹X from advance") | min(WP-1, the advance carried in, i.e. −WP-3 when WP-3 < 0). |
+| WP-5 | Balance carried forward ("₹X still to pay" / "Advance ₹X carried to next month") | WP-3 + WP-1 − WP-2, month after month up to the month shown. Above 0 = still to pay (arrears carry to the next month); below 0 = an advance carried to the next month, which pays that month's pay first (WP-4). Entries for a later month are not counted yet. Code: `workerLedger`, `balanceParts`. |
+| WP-6 | The worker's month: Paid / Part-paid, ₹X of ₹Y / ₹Y due | Y = WP-1 + what was still owed from before (WP-3 when above 0). Paid when WP-5 ≤ 0; otherwise X = Y − WP-5 (paid this month + advance recovered): part-paid when X > 0, due when X = 0. No state when Y = 0 (before the start, after leaving with nothing owed). The page line "N paid · N part-paid · N due" counts the workers in each state for the month shown. Code: `monthState`. |
+| WP-7 | Pay this month (page card) | Σ WP-1 of every worker for the month shown. |
+| WP-8 | Paid out this month (page card) — as OD-07 | Money that went out in the month: Σ amount of every entry whose `date` is in the month, whatever month it pays. |
+| WP-9 | Still to pay (page card) | Σ WP-5 at the end of the month shown, over workers whose WP-5 is above 0 (those who left too). |
+| WP-10 | Advances carried (page card) | Σ −WP-5 over workers whose WP-5 is below 0. WP-9 − WP-10 = Σ WP-1 of all months − Σ WP-2 of all months (up to the month shown). |
+
 ---
 
 ## Calculation layer: Money (M*) and Insights (I*) (`utils/business-metrics.js`) — redesign

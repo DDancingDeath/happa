@@ -366,6 +366,11 @@ const NavigationManager = {
         if (tabId === 'admin' && window.app?.admin) {
             setTimeout(() => window.app.admin.init(), 100);
         }
+
+        // Workers / Salaries (#373, owner): its code loads on first open, and it reads on every open
+        if (tabId === 'workers' && window.app?.workers) {
+            setTimeout(() => window.app.workers.init(), 100);
+        }
     },
 
     // Owner/manager-only pages fall back to Today (Trends and Product traffic to Insights); pages switched off in Roles & access to Billing

@@ -625,6 +625,11 @@ Bills: only an owner deletes them, and only once voided (#75, OD-14: everyone el
 - `validReminderNext()`: The next copy of a repeating reminder, created in the batch that marks it done.
 - `reminderEditOk()`: Owner / manager edit an open reminder: title, date (a changed one in the create range), party, repeat.
 
+#### Worker pay (#373): workers/{id}
+
+- `wpOk()`: { name (1-60), startMonth 'YYYY-MM', active, pays [≤ 60 steps {from 'YYYY-MM', amount int 0 … 1 crore}; the first from = startMonth], entries [≤ 3,000], updatedAt = server time }. Owner only: read, create, update, delete (prod and `dev_`). Created with no entries. An update keeps the entries, adds exactly one at the end with every earlier one unchanged (the app's arrayUnion; two phones never overwrite each other), or removes one. Only the newest pay step and the newest entry are shape-checked (the rules cannot loop; the earlier ones were checked when they were added).
+- `wpEntryOk()`: { id (1-40), month 'YYYY-MM' (the month's pay it counts towards), date 'YYYY-MM-DD', amount int 1 … 1 crore, kind 'pay' | 'advance', mode 'cash' | 'online', note? (≤ 120) }.
+
 #### rate trends (#65): per-item-year rate stats + backfill status
 
 - `validRateStats()`: rateStats/{itemId}_{YYYY} holds weekly (weeks: {'wYYYY-MM-DD': bucket}) and monthly (months: {'mYYYY-MM': bucket}) buckets of one item and year; rateStats/_meta is the backfill status. Owner/manager only. Bucket maps are size-capped (rules can't check every bucket; the app writes them).
