@@ -18,7 +18,7 @@ const SHEET_ID = 'financeBreakdownSheet';
 
 const rupees = (n, { paise = false } = {}) => {
     if (n === null || n === undefined || !Number.isFinite(n)) return '—';
-    return formatRupees(n, paise ? { exact: true } : undefined);
+    return formatRupees(n, { exact: paise, trueMinus: true });
 };
 const qtyText = (q) => formatKg(q);
 const dateText = (ms) => (ms == null ? '' : Helpers.formatDate(ms));

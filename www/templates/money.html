@@ -41,7 +41,7 @@
         </div>
         <section class="ins-section" id="moneyProfit" data-money-pane="profit">
             <div class="ins-hero ins-tap" data-perm="profit" data-breakdown="profit" role="button" tabindex="0">
-                <div class="ins-hero-label" data-i18n="ui.money.profit">Profit</div>
+                <div class="ins-hero-label" id="moneyProfitLabel"></div>
                 <div class="ins-hero-value" data-metric="M6" id="moneyProfitValue">—</div>
                 <div class="ins-compare" id="moneyProfitCompare"></div>
                 <div class="ins-takeaway" data-takeaway id="moneyProfitTakeaway"></div>
@@ -52,11 +52,11 @@
                 <div class="ins-ladder">
                     <div class="ins-row ins-tap" data-breakdown="sales" role="button" tabindex="0"><span data-i18n="ui.money.sales">Sales</span><span data-metric="M1" id="moneySales">—</span></div>
                     <div class="ins-row ins-sub" id="moneySalesSplit"></div>
-                    <div class="ins-row ins-tap" data-perm="profit" data-breakdown="cogs" role="button" tabindex="0"><span data-i18n="ui.money.cogs_minus">− Cost of goods sold</span><span data-metric="M2" id="moneyCogs">—</span></div>
+                    <div class="ins-row ins-tap" data-perm="profit" data-breakdown="cogs" role="button" tabindex="0"><span data-i18n="ui.money.cogs_minus">− Cost of what was sold</span><span data-metric="M2" id="moneyCogs">—</span></div>
                     <div class="ins-row ins-total ins-tap" data-perm="profit" data-breakdown="gross" role="button" tabindex="0"><span data-i18n="ui.money.gross_eq">= Gross profit</span><span data-metric="M3" id="moneyGross">—</span></div>
                     <div class="ins-row ins-tap" data-breakdown="business" role="button" tabindex="0"><span data-i18n="ui.money.business_minus">− Business expenses</span><span data-metric-ref="M4" id="moneyBusinessTerm">—</span></div>
                     <div class="ins-row ins-tap" data-breakdown="badDebts" role="button" tabindex="0"><span data-i18n="ui.money.bad_debts_minus">− Bad debts</span><span data-metric="M5" id="moneyBadDebts">—</span></div>
-                    <div class="ins-row ins-total ins-tap" data-perm="profit" data-breakdown="profit" role="button" tabindex="0"><span data-i18n="ui.money.profit_eq">= Profit</span><span data-metric-ref="M6" id="moneyProfitTerm">—</span></div>
+                    <div class="ins-row ins-total ins-tap" data-perm="profit" data-breakdown="profit" role="button" tabindex="0"><span id="moneyProfitEqLabel"></span><span data-metric-ref="M6" id="moneyProfitTerm">—</span></div>
                 </div>
             </div>
             <div class="ins-card" data-perm="profit">
