@@ -906,6 +906,32 @@ describe('labour on Money › Spending (T-LAB-1, T-LAB-2 for the period)', () =>
         expect(unexplainedValuesOf('money')).toEqual([]);
     });
 
+    test('paid to labourers (M20) and paid − deducted (M21): the period\'s business Labour expenses only; en + hi; Sep after stepping back', () => {
+        AppState.settings = { laborRate: 6, labourPackageKg: 35 };
+        AppState.expensesHistory.push(
+            { id: 'L1', date: '2026-10-21', amount: 300, category: 'business', type: 'Labor' },
+            { id: 'L2', date: '2026-10-02', amount: 50, category: 'business', type: 'labour charges' },
+            { id: 'L3', date: '2026-10-21', amount: 70, category: 'personal', type: 'Labour' },
+            { id: 'L4', date: '2026-10-21', amount: 90, category: 'business', type: 'Labour', voided: true },
+            { id: 'L5', date: '2026-09-10', amount: 40, category: 'business', type: 'मजदूरी' });
+        MoneyManager.init('spending');
+        const text = (id) => document.getElementById(id).textContent;
+        const M7 = O.metrics(data, OCT).M7_labour;
+        expect(shown('moneyLabourPaid')).toBe(350);
+        expect(text('moneyLabourPaidCount')).toBe('(2 expenses)');
+        expect(text('moneyLabourPaidDiff')).toBe(`₹${350 - M7} more paid than deducted`);
+        setLang('hi');
+        try {
+            MoneyManager.render();
+            expect(text('moneyLabourPaidDiff')).toBe(`काटी गई से ₹${350 - M7} ज़्यादा दिया`);
+        } finally {
+            setLang('en');
+        }
+        MoneyManager.step(-1);
+        expect(shown('moneyLabourPaid')).toBe(40);
+        expect(text('moneyLabourPaidCount')).toBe('(1 expense)');
+    });
+
     test('an old bill with only `labour` gives the same M7 on Spending, its breakdown, the snapshot, items and parties', async () => {
         const { purchaseItems, partySummary } = await import('../utils/business-metrics.js');
         AppState.purchaseHistory = AppState.purchaseHistory.map(b => {

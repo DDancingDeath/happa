@@ -27,6 +27,7 @@ import { ManualReminders } from '../ui/manual-reminders.js';
 const formatCurrency = (amount) => Helpers.formatCurrency(amount);
 const formatDate = (date) => Helpers.formatDate(date);
 const LABOUR_GAP_KEYS = { same: 'ui.today.labour_same', more: 'ui.today.labour_more', less: 'ui.today.labour_less' };
+const LABOUR_PAID_KEYS = { same: 'ui.today.labour_paid_same', more: 'ui.today.labour_paid_more', less: 'ui.today.labour_paid_less' };
 const CHANNELS = { retail: 'Retail', wholesale: 'Wholesale', purchase: 'Purchase' };
 const BILL_KIND_KEYS = { retail: 'ui.finance.bill_retail', wholesale: 'ui.finance.bill_wholesale', purchase: 'ui.reports.pdf_purchase' };
 const BILLS_SHOWN = 8;
@@ -450,13 +451,19 @@ export const DayManager = {
     },
 
     /**
-     * Today › Labour card: deducted from farmers (T-LAB-1), to pay labour (T-LAB-2) and the gap.
+     * Today › Labour card: deducted from farmers (T-LAB-1), paid to labourers (T-LAB-4) and the difference
+     * (T-LAB-5), and the estimate to pay (T-LAB-2) with its gap (T-LAB-3).
      * @param {Object} labour - todaySummary().labour (labourSummary + gap + packets)
      */
     renderLabour(labour) {
         this.lastLabour = labour;
-        const { deducted, toPay, gap } = labour;
+        const { deducted, toPay, gap, paid, paidGap } = labour;
         this.updateElement('todayLabourDeductedBills', tn('ui.today.labour_deducted_bills', deducted.bills));
+        if (paid) {
+            this.updateElement('todayLabourPaid', formatCurrency(paid.amount));
+            this.updateElement('todayLabourPaidCount', tn('ui.today.labour_paid_count', paid.count));
+            this.updateElement('todayLabourPaidDiff', t(LABOUR_PAID_KEYS[paidGap.kind], { amount: formatCurrency(paidGap.amount) }));
+        }
         this.updateElement('todayLabourToPay', formatCurrency(toPay.amount));
         this.updateElement('todayLabourToPayCalc', labourCalcText(toPay, 'ui.today.labour_to_pay_calc'));
         this.updateElement('todayLabourDiff', t(LABOUR_GAP_KEYS[gap.kind], { amount: formatCurrency(gap.amount) }));

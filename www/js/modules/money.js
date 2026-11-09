@@ -18,7 +18,7 @@ import { FinanceBreakdownSheet } from '../ui/finance-breakdown-sheet.js';
 import { t, tn, getLang } from '../i18n/index.js';
 import { formatRupees, formatAmount, normalizeLabourSettings } from '../utils/money.js';
 import { entryAmount } from '../utils/calc/billing.js';
-import { labourSummary, labourToPayByDay, labourCalcText, periodLabourGap } from '../utils/labour.js';
+import { labourSummary, labourToPayByDay, labourCalcText, periodLabourGap, labourPaidGap } from '../utils/labour.js';
 import { formatMonth, formatDay, toLocalISODate, parseAnyBillDate, monthStart, addLocalDays, periodBounds, localDayKeys, endUpToNow, daysInMonth } from '../utils/dates.js';
 import { pickReplayBase, billsInRange } from '../utils/finance-calc.js';
 import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom, refreshOnDemandHistory } from '../utils/history-window.js';
@@ -26,7 +26,7 @@ import { refusedForClock } from '../utils/clock-skew.js';
 import {
     moneySummary, periodRange, comparisonRanges, change, outstandingTotals, netWorth, fiscalYearLabel, periodCompare,
     itemSummary, biggestChange, profitPerDay, billTime, roundTo, sharePct, addsUp, netMoneyByDay,
-    accountsTotal, accountsList, accountEntry, accountsFromPhone, MAX_WORTH_ACCOUNTS, expensePer100Sales,
+    accountsTotal, accountsList, accountEntry, accountsFromPhone, MAX_WORTH_ACCOUNTS, expensePer100Sales, labourPaidIn,
     drawerTerm, stepDayOrWeek, dayOrWeekSpan, DRAWER_MAX_AGE_DAYS
 } from '../utils/business-metrics.js';
 import { insightsSettings } from '../utils/insights-config.js';
@@ -689,7 +689,10 @@ export const MoneyManager = {
         this.renderLabour(r);
     },
 
-    /** Labour for the period (one home for periods; Today has today's): T-LAB-1 deducted (M7), T-LAB-2 to pay per day (M18). */
+    /**
+     * Labour for the period (one home for periods; Today has today's): T-LAB-1 deducted (M7), paid to labourers (M20)
+     * and the difference (M21, display only: not in profit), T-LAB-2 to pay per day (M18, an estimate).
+     */
     renderLabour(r) {
         const bills = billsInRange(AppState.purchaseHistory || [], r.from, r.to);
         const settings = AppState.settings || {};
@@ -698,12 +701,17 @@ export const MoneyManager = {
         const toPay = { ...labourToPayByDay(bills, settings, b => { const t = billTime(b); return t === null ? null : toLocalISODate(new Date(t)); }), packageKg, rate };
         this.text('moneyLabour', money(deducted.amount));
         this.text('moneyLabourBills', tn('ui.today.labour_deducted_bills', deducted.bills));
+        const paid = labourPaidIn(AppState.expensesHistory || [], r.from, r.to);
+        const paidGap = labourPaidGap(paid.amount, deducted.amount);
+        this.text('moneyLabourPaid', money(paid.amount));
+        this.text('moneyLabourPaidCount', tn('ui.today.labour_paid_count', paid.count));
+        this.text('moneyLabourPaidDiff', t({ same: 'ui.today.labour_paid_same', more: 'ui.today.labour_paid_more', less: 'ui.today.labour_paid_less' }[paidGap.kind], { amount: formatRupees(paidGap.amount) }));
         this.text('moneyLabourToPay', money(toPay.amount));
         this.text('moneyLabourCalc', labourCalcText(toPay, 'ui.money.labour_to_pay_calc'));
         const gap = periodLabourGap(toPay.amount, deducted.amount);
         const key = { same: 'ui.today.labour_same', more: 'ui.today.labour_more', less: 'ui.today.labour_less' }[gap.kind];
         this.text('moneyLabourDiff', t(key, { amount: formatRupees(gap.amount) }));
-        return { deducted, toPay };
+        return { deducted, toPay, paid };
     },
 
     renderWithdrawals(m) {
