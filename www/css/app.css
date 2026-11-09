@@ -261,6 +261,7 @@
   --fs-title: 20px;
   --fs-display: 28px;
   --fs-hero: 34px;
+  --fs-appbar: 22px;
   --lh-body: 1.45;
   --sp-1: 4px;
   --sp-2: 8px;
@@ -273,6 +274,8 @@
   --gutter: 16px;
   --section-gap: 24px;
   --row-h: 56px;
+  --appbar-h: 52px;
+  --tab-top: calc(var(--appbar-h) + env(safe-area-inset-top, 0px) + var(--sp-3));
   --control-h: 44px;
   --control-h-sm: 32px;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -2521,58 +2524,112 @@ body {
 }
 
 /* ---- css/hamburger.css ---- */
-.hamburger {
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 1000;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  padding: 11px;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.hamburger:hover {
-  box-shadow: var(--shadow-md);
-}
-
-@media (min-width: 481px) {
-  .hamburger {
-    left: calc(50% - 228px);
+/* App bar (redesign 4.1). Below the desktop width: the page title, the sync pill and the bell on the
+   canvas colour; pages scroll under it. The menu button (.hamburger) shows only in Rentals, which has no
+   tab bar. Desktop draws no bar: desktop.css keeps the bell and the pill in their places. */
+@media (max-width: 1023.98px) {
+  .app-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 990;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    box-sizing: border-box;
+    height: calc(var(--appbar-h) + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) max(var(--sp-1), calc(50% - 236px)) 0 max(var(--gutter), calc(50% - 224px));
+    background: var(--bg);
+    color: var(--ink);
   }
-}
 
-.hamburger:active {
-  transform: scale(0.95);
-}
+  .app-bar-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-appbar);
+    font-weight: var(--w-strong);
+    letter-spacing: var(--tracking-display);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
-.hamburger span {
-  width: 24px;
-  height: 3px;
-  background: var(--text-primary);
-  border-radius: var(--radius-full);
-  transition: all var(--transition);
-}
+  .app-bar .app-bar-btn {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    z-index: auto;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-full);
+    background: transparent;
+    color: var(--ink);
+    box-shadow: none;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
+  }
 
-/* Solid band behind the floating menu and bell buttons so scrolled content
-   never shows under them (F10). Desktop has no floating buttons. */
-@media (max-width: 1023px) {
+  .app-bar .app-bar-btn:hover {
+    background: var(--state-hover);
+  }
+
+  .app-bar .app-bar-btn:active {
+    transform: scale(0.96);
+  }
+
+  .app-bar .hamburger {
+    display: none;
+    margin-left: calc(-1 * var(--sp-3));
+  }
+
+  body.biz-rentals .app-bar .hamburger {
+    display: inline-flex;
+  }
+
+  .app-bar .notif-badge {
+    top: 4px;
+    right: 2px;
+    box-shadow: 0 0 0 2px var(--bg);
+  }
+
+  .app-bar .sync-pill {
+    position: static;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 55%;
+    transform: none;
+    box-shadow: none;
+    z-index: auto;
+  }
+
+  /* The canvas band under the bar, so content scrolling up never shows between the bar and a page's sticky head (F10) */
   .tab::before {
     content: '';
     display: block;
     position: sticky;
-    top: -70px;
-    height: 70px;
-    margin: -70px -16px 0;
-    background: var(--light-bg);
+    top: calc(-1 * var(--tab-top));
+    height: var(--tab-top);
+    margin: calc(-1 * var(--tab-top)) calc(-1 * var(--gutter)) 0;
+    background: var(--bg);
     z-index: 900;
+  }
+}
+
+@media print {
+  .app-bar {
+    display: none !important;
   }
 }
 
@@ -2684,6 +2741,16 @@ body {
   font-weight: var(--w-strong);
 }
 
+.nav-user {
+  margin-top: 6px;
+  font-size: var(--fs-sm);
+  color: var(--on-accent-strong);
+}
+
+.nav-group-title {
+  display: none;
+}
+
 .nav-icon {
   display: inline-flex;
   justify-content: center;
@@ -2716,6 +2783,222 @@ body {
 .nav-menu a[data-biz="rentals"] { display: none; }
 body.biz-rentals .nav-menu a[data-biz="rentals"] { display: flex; }
 body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }
+/* Below the desktop width the menu is a bottom sheet (redesign 4.1): the business switch and the pages
+   not on the tab bar, as a grid in groups. Closed, it is hidden from focus and screen readers. */
+@media (max-width: 1023.98px) {
+  .side-nav {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-width: 560px;
+    height: auto;
+    max-height: calc(100vh - var(--tab-top));
+    max-height: calc(100dvh - var(--tab-top));
+    margin: 0 auto;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+    background: var(--panel-bg);
+    box-shadow: var(--e3);
+    transform: translateY(100%);
+    visibility: hidden;
+    transition: transform var(--dur-3) var(--ease), visibility 0s linear var(--dur-3);
+  }
+
+  .side-nav.active {
+    left: 0;
+    transform: none;
+    visibility: visible;
+    transition: transform var(--dur-3) var(--ease);
+  }
+
+  .side-nav::before {
+    content: '';
+    flex: none;
+    align-self: center;
+    width: 36px;
+    height: 4px;
+    margin-top: var(--sp-2);
+    border-radius: var(--r-full);
+    background: var(--line-strong);
+  }
+
+  .nav-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--sp-2);
+    padding: var(--sp-1) var(--sp-2) var(--sp-3) var(--gutter);
+    background: none;
+    color: var(--ink);
+    box-shadow: none;
+  }
+
+  .nav-who {
+    display: contents;
+  }
+
+  .nav-header h2 {
+    grid-column: 1;
+    font-size: var(--fs-lead);
+  }
+
+  .nav-user {
+    grid-column: 1;
+    margin-top: 0;
+    color: var(--ink-3);
+  }
+
+  .close-btn {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    width: 44px;
+    height: 44px;
+    background: none;
+    color: var(--ink-2);
+    backdrop-filter: none;
+  }
+
+  /* Not "all": an inherited visibility change would be animated too, and the sheet's controls could not take focus as it opens */
+  .close-btn,
+  .nav-menu a {
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+  }
+
+  .close-btn:hover {
+    background: var(--state-hover);
+    transform: none;
+  }
+
+  .close-btn:active {
+    transform: scale(0.96);
+  }
+
+  .biz-switch {
+    grid-column: 1 / -1;
+    gap: 0;
+    margin: var(--sp-3) var(--sp-2) 0 0;
+    padding: 3px;
+    border-radius: var(--r-control);
+    background: var(--seg-track);
+  }
+
+  .biz-switch button {
+    flex: 1 1 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    min-height: 40px;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: transparent;
+    color: var(--ink-2);
+    font-size: var(--fs-body);
+  }
+
+  .biz-switch button.active {
+    background: var(--seg-on);
+    color: var(--ink);
+    box-shadow: var(--e1);
+  }
+
+  .nav-menu {
+    padding: 0 var(--sp-2) var(--sp-2);
+  }
+
+  .nav-menu.nav-menu-footer {
+    border-top: 0;
+    padding-bottom: var(--sp-4);
+  }
+
+  .nav-group,
+  .nav-menu-footer {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--sp-1);
+  }
+
+  .nav-group-title {
+    display: block;
+    grid-column: 1 / -1;
+    margin: var(--sp-3) var(--sp-2) var(--sp-1);
+    font-family: var(--font-display);
+    font-size: var(--fs-sm);
+    font-style: var(--title-style);
+    font-weight: var(--w-label);
+    color: var(--ink-3);
+  }
+
+  .nav-menu a {
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 6px;
+    min-height: 88px;
+    margin: 0;
+    padding: var(--sp-1) 2px var(--sp-2);
+    font-size: var(--fs-caption);
+    line-height: 1.25;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+
+  .nav-menu a:hover,
+  .nav-menu a:active {
+    background: var(--state-hover);
+    color: var(--ink);
+  }
+
+  .nav-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0;
+    align-items: center;
+    border-radius: var(--r-panel);
+    background: var(--surface-2);
+    color: var(--ink-2);
+  }
+
+  .nav-menu a.active {
+    background: none;
+    color: var(--accent-text);
+  }
+
+  .nav-menu a.active .nav-icon {
+    background: var(--accent-soft);
+    color: var(--accent-text);
+  }
+
+  /* The tab bar has these pages; Rentals (no tab bar) hides them anyway */
+  .nav-menu a[data-bar],
+  .nav-group[data-biz="rentals"],
+  body.biz-rentals .nav-group:not([data-biz]) {
+    display: none;
+  }
+
+  body.biz-rentals .nav-group[data-biz="rentals"] {
+    display: grid;
+  }
+
+  .nav-group:not(:has(a:not([data-bar]):not([style*="none"]))) .nav-group-title {
+    display: none;
+  }
+}
+
+/* A short screen (a phone on its side): the whole sheet scrolls, not only the page grid between the header and Settings */
+@media (max-width: 1023.98px) and (max-height: 480px) {
+  .side-nav {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .side-nav .nav-menu {
+    flex: none;
+    overflow: visible;
+  }
+}
+
 /* Phone bottom bar (#142); desktop.css hides it */
 /* The app's own pull-to-refresh replaces the browser's (a full reload re-reads everything) */
 body {
@@ -2789,7 +3072,7 @@ body.typing .bottom-nav {
 
 .pull-refresh {
   position: fixed;
-  top: 12px;
+  top: var(--tab-top);
   left: 50%;
   transform: translate(-50%, 0);
   z-index: 960;
@@ -2817,7 +3100,7 @@ body.typing .bottom-nav {
 }
 
 /* The Android update banner sits above the bar, not on it */
-@media (max-width: 1023px) {
+@media (max-width: 1023.98px) {
   body:not(.biz-rentals) .app-update-banner {
     bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
@@ -2901,7 +3184,7 @@ body.typing .bottom-nav {
   /* The tab is the scroll container. 100dvh is the visible height while the
      browser's URL bar shows, so the page bottom is not hidden under it (#104);
      100vh is the fallback for older WebViews. */
-  padding: 70px 16px calc(96px + env(safe-area-inset-bottom, 0px)) 16px;
+  padding: var(--tab-top) 16px calc(96px + env(safe-area-inset-bottom, 0px)) 16px;
   max-width: 480px;
   min-height: 100vh;
   min-height: 100dvh;
@@ -3724,7 +4007,7 @@ html[data-updating] .updating-mark {
 }
 
 /* Items page on a phone: action buttons and the rates table fit the width (F28) */
-@media (max-width: 1023px) {
+@media (max-width: 1023.98px) {
   #itemsActionButtons {
     flex-wrap: wrap;
   }
@@ -4938,7 +5221,7 @@ input[type="number"] {
 }
 
 /* Phone and tablet: the row is compact (payable, two icon buttons, Save) */
-@media (max-width: 1023px) {
+@media (max-width: 1023.98px) {
   #billing .bill-bar-total {
     display: block;
     flex: 1;
@@ -4996,7 +5279,7 @@ input[type="number"] {
 /* With room for it, the row is a bar above the tab bar, always in the same place (typing does not
    move it, so a tap that ends a field's focus still lands on Save). It runs down behind the tab bar.
    A short screen (a phone on its side, the app with its keyboard open) keeps the row at the end of the bill. */
-@media (max-width: 1023px) and (min-height: 481px) {
+@media (max-width: 1023.98px) and (min-height: 481px) {
   #billing .bill-actions {
     position: fixed;
     left: 0;
@@ -9954,7 +10237,7 @@ tr.finance-tappable td:first-child::after {
 }
 
 /* Sub-tab and date-filter bars: room for the tap hint, all five periods fit on a phone (F09) */
-@media (max-width: 1023px) {
+@media (max-width: 1023.98px) {
     #finance > .filter-buttons,
     #financeDashboardSection > .card {
         margin-bottom: 12px;
@@ -10748,8 +11031,14 @@ body.dark-mode .notif-panel-actions {
   /* ---------- App shell: permanent sidebar, no hamburger/overlay ---------- */
   .hamburger,
   .side-nav .close-btn,
-  .overlay {
+  .overlay,
+  .app-bar-title {
     display: none !important;
+  }
+
+  /* The phone app bar is not drawn; its bell and sync pill keep their desktop places */
+  .app-bar {
+    display: contents;
   }
 
   .side-nav {

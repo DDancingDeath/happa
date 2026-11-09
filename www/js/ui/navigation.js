@@ -7,6 +7,37 @@ import { t } from '../i18n/index.js';
 import { closeTopDialog } from '../utils/keyboard-shortcuts.js';
 import { TemplateLoader } from '../utils/template-loader.js';
 
+/** Below the desktop width the side menu is a modal bottom sheet (redesign 4.1). */
+const isSheet = () => typeof window === 'undefined' || !window.matchMedia || !window.matchMedia('(min-width: 1024px)').matches;
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+const shown = (el) => !!el && el.isConnected && el.getClientRects().length > 0;
+
+/**
+ * Focus back after the sheet closes: what opened it if it still shows, else the opener showing now
+ * (switching business swaps More for the bar's menu button), else the page title.
+ */
+function focusOpener(prev) {
+    const target = [prev, ...document.querySelectorAll('.bottom-nav-item[data-tab="more"], .app-bar .hamburger')].find(shown)
+        || document.getElementById('appBarTitle');
+    target?.focus?.({ preventScroll: true });
+}
+
+/** Keeps Tab / Shift+Tab inside `box` (its visible focusable elements). */
+export function trapFocus(e, box) {
+    if (!box) return;
+    const items = [...box.querySelectorAll(FOCUSABLE)].filter(el => el.getClientRects().length > 0);
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    const at = document.activeElement;
+    if (e.shiftKey ? (at === first || !box.contains(at)) : (at === last || !box.contains(at))) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+    }
+}
+
 // Routes: every id that showTab() accepts besides plain page ids (the .tab element id).
 //   tab     page element to show            section  sub-view handed to the page (see showTabFromNav)
 //   needs   extra TAB_ROLES/TAB_PERMISSIONS id   id   canonical id kept in history (aliases / old ids)
@@ -111,9 +142,25 @@ const NavigationManager = {
     setMenuOpen(open) {
         const sideNav = document.querySelector('.side-nav');
         const overlay = document.querySelector('.overlay');
+        const wasOpen = this.isMenuOpen();
         if (sideNav) sideNav.classList.toggle('active', open);
         if (overlay) overlay.classList.toggle('active', open);
-        document.querySelector('.bottom-nav-item[data-tab="more"]')?.setAttribute('aria-expanded', String(!!open));
+        document.querySelectorAll('.bottom-nav-item[data-tab="more"], .app-bar .hamburger').forEach(b => b.setAttribute('aria-expanded', String(!!open)));
+        if (!sideNav || open === wasOpen || !isSheet()) return;
+        // Phone: the menu is a modal bottom sheet (redesign 4.1); focus goes in, and back to what opened it
+        if (open) {
+            this.menuReturn = document.activeElement;
+            sideNav.setAttribute('role', 'dialog');
+            sideNav.setAttribute('aria-modal', 'true');
+            sideNav.setAttribute('aria-label', t('ui.nav.menu'));
+            sideNav.querySelector('.close-btn')?.focus({ preventScroll: true });
+        } else {
+            sideNav.removeAttribute('role');
+            sideNav.removeAttribute('aria-modal');
+            sideNav.removeAttribute('aria-label');
+            if (sideNav.contains(document.activeElement)) focusOpener(this.menuReturn);
+            this.menuReturn = null;
+        }
     },
 
     openMenu() {
@@ -151,6 +198,8 @@ const NavigationManager = {
                 if (e.key === 'Escape' && this.isMenuOpen()) {
                     e.preventDefault();
                     this.closeMenu();
+                } else if (e.key === 'Tab' && this.isMenuOpen() && isSheet()) {
+                    trapFocus(e, document.querySelector('.side-nav'));
                 }
             });
         }
@@ -160,10 +209,12 @@ const NavigationManager = {
             sideNav.dataset.swipeBound = '1';
             let startX = null;
             let startY = null;
+            let atTop = false;
             sideNav.addEventListener('touchstart', (e) => {
                 const t = e.touches && e.touches[0];
                 startX = t ? t.clientX : null;
                 startY = t ? t.clientY : null;
+                atTop = sideNav.scrollTop <= 0 && (sideNav.querySelector('.nav-menu')?.scrollTop || 0) <= 0;
             }, { passive: true });
             sideNav.addEventListener('touchend', (e) => {
                 const t = e.changedTouches && e.changedTouches[0];
@@ -171,7 +222,8 @@ const NavigationManager = {
                 const dx = t.clientX - startX;
                 const dy = t.clientY - startY;
                 startX = null;
-                if (dx < -60 && Math.abs(dx) > Math.abs(dy) * 1.5) this.closeMenu();
+                // The sheet closes on a swipe down from its top
+                if (atTop && dy > 60 && dy > Math.abs(dx) * 1.5) this.closeMenu();
             }, { passive: true });
         }
     },
@@ -351,6 +403,8 @@ const NavigationManager = {
         const selectedTab = document.getElementById(route.tab);
         if (selectedTab) {
             selectedTab.classList.add('active');
+            // The open page is the one main landmark (hidden pages are not exposed)
+            selectedTab.setAttribute('role', 'main');
         }
         
         if (evt) {

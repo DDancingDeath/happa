@@ -1,7 +1,8 @@
 /** Phone bottom bar (#142): active item, swipe targets, the swipe setting. */
 import fs from 'fs';
 import path from 'path';
-import { BAR_TABS, BottomNav, opensKeyboard, swipeTarget, trackTyping } from '../ui/bottom-nav.js';
+import { BAR_TABS, BottomNav, opensKeyboard, pageTitleKey, swipeTarget, trackTyping } from '../ui/bottom-nav.js';
+import { setLang, resetLangForTests } from '../i18n/index.js';
 
 const NAV = fs.readFileSync(path.resolve(__dirname, '../../templates/navigation.html'), 'utf8');
 
@@ -91,4 +92,23 @@ test('a reload that says it failed shows no "Updated"', async () => {
     BottomNav.onRefreshed = done;
     await expect(BottomNav.refreshPage('history')).resolves.toBe(false);
     expect(done).not.toHaveBeenCalled();
+});
+
+test('the app bar shows the open page\'s menu name, and follows the language (redesign 4.1)', async () => {
+    resetLangForTests();
+    document.body.innerHTML = NAV;
+    BottomNav.bound = false;
+    BottomNav.init();
+    const title = () => document.getElementById('appBarTitle').textContent;
+    window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId: 'due' } }));
+    expect(title()).toBe('Outstanding');
+    window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId: 'items' } }));
+    expect(title()).toBe('Rates');
+    await setLang('hi');
+    expect(title()).toBe('रेट');
+    expect(pageTitleKey('cash-management')).toBe('ui.nav.today');
+    expect(pageTitleKey('settings')).toBe('ui.nav.settings');
+    expect(pageTitleKey('rentals')).toBe('ui.biz.rentals');
+    expect(pageTitleKey('unknown')).toBe('ui.app.name');
+    resetLangForTests();
 });

@@ -1,54 +1,108 @@
-.hamburger {
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 1000;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  padding: 11px;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.hamburger:hover {
-  box-shadow: var(--shadow-md);
-}
-
-@media (min-width: 481px) {
-  .hamburger {
-    left: calc(50% - 228px);
+/* App bar (redesign 4.1). Below the desktop width: the page title, the sync pill and the bell on the
+   canvas colour; pages scroll under it. The menu button (.hamburger) shows only in Rentals, which has no
+   tab bar. Desktop draws no bar: desktop.css keeps the bell and the pill in their places. */
+@media (max-width: 1023.98px) {
+  .app-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 990;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    box-sizing: border-box;
+    height: calc(var(--appbar-h) + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) max(var(--sp-1), calc(50% - 236px)) 0 max(var(--gutter), calc(50% - 224px));
+    background: var(--bg);
+    color: var(--ink);
   }
-}
 
-.hamburger:active {
-  transform: scale(0.95);
-}
+  .app-bar-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-appbar);
+    font-weight: var(--w-strong);
+    letter-spacing: var(--tracking-display);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
-.hamburger span {
-  width: 24px;
-  height: 3px;
-  background: var(--text-primary);
-  border-radius: var(--radius-full);
-  transition: all var(--transition);
-}
+  .app-bar .app-bar-btn {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    z-index: auto;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-full);
+    background: transparent;
+    color: var(--ink);
+    box-shadow: none;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
+  }
 
-/* Solid band behind the floating menu and bell buttons so scrolled content
-   never shows under them (F10). Desktop has no floating buttons. */
-@media (max-width: 1023px) {
+  .app-bar .app-bar-btn:hover {
+    background: var(--state-hover);
+  }
+
+  .app-bar .app-bar-btn:active {
+    transform: scale(0.96);
+  }
+
+  .app-bar .hamburger {
+    display: none;
+    margin-left: calc(-1 * var(--sp-3));
+  }
+
+  body.biz-rentals .app-bar .hamburger {
+    display: inline-flex;
+  }
+
+  .app-bar .notif-badge {
+    top: 4px;
+    right: 2px;
+    box-shadow: 0 0 0 2px var(--bg);
+  }
+
+  .app-bar .sync-pill {
+    position: static;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 55%;
+    transform: none;
+    box-shadow: none;
+    z-index: auto;
+  }
+
+  /* The canvas band under the bar, so content scrolling up never shows between the bar and a page's sticky head (F10) */
   .tab::before {
     content: '';
     display: block;
     position: sticky;
-    top: -70px;
-    height: 70px;
-    margin: -70px -16px 0;
-    background: var(--light-bg);
+    top: calc(-1 * var(--tab-top));
+    height: var(--tab-top);
+    margin: calc(-1 * var(--tab-top)) calc(-1 * var(--gutter)) 0;
+    background: var(--bg);
     z-index: 900;
+  }
+}
+
+@media print {
+  .app-bar {
+    display: none !important;
   }
 }

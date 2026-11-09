@@ -670,7 +670,7 @@ tr.finance-tappable td:first-child::after {
 }
 
 /* Sub-tab and date-filter bars: room for the tap hint, all five periods fit on a phone (F09) */
-@media (max-width: 1023px) {
+@media (max-width: 1023.98px) {
     #finance > .filter-buttons,
     #financeDashboardSection > .card {
         margin-bottom: 12px;

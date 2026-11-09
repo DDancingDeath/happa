@@ -259,6 +259,7 @@
   --fs-title: 20px;
   --fs-display: 28px;
   --fs-hero: 34px;
+  --fs-appbar: 22px;
   --lh-body: 1.45;
   --sp-1: 4px;
   --sp-2: 8px;
@@ -271,6 +272,8 @@
   --gutter: 16px;
   --section-gap: 24px;
   --row-h: 56px;
+  --appbar-h: 52px;
+  --tab-top: calc(var(--appbar-h) + env(safe-area-inset-top, 0px) + var(--sp-3));
   --control-h: 44px;
   --control-h-sm: 32px;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);

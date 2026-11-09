@@ -6,9 +6,21 @@
  */
 
 import { safeSetItem } from '../utils/storage-full.js';
+import { t, LANG_CHANGE_EVENT } from '../i18n/index.js';
 
 /** The bar's pages, left to right (tab element ids); "More" opens the side menu. */
 export const BAR_TABS = Object.freeze(['billing', 'day', 'history', 'due']);
+
+const TITLE_KEYS = Object.freeze({
+    day: 'ui.nav.today', 'cash-management': 'ui.nav.today', items: 'ui.nav.rates', stock: 'ui.nav.stocks',
+    'wholesale-sales': 'ui.nav.sales', due: 'ui.nav.outstanding', rentals: 'ui.biz.rentals'
+});
+const SAME_NAME = new Set(['billing', 'history', 'expenses', 'money', 'insights', 'statements', 'anomalies', 'health', 'admin', 'diagnostics', 'settings', 'ask']);
+
+/** The app bar title (redesign 4.1): the open page's menu name, else the app name. */
+export function pageTitleKey(tab) {
+    return TITLE_KEYS[tab] || (SAME_NAME.has(tab) ? `ui.nav.${tab}` : 'ui.app.name');
+}
 const SWIPE_KEY = 'aadhat.swipeTabs';
 /** Pull distance (px) that refreshes on release. */
 export const PULL_REFRESH_PX = 70;
@@ -76,7 +88,8 @@ export const BottomNav = {
         try { this.swipeOn = localStorage.getItem(SWIPE_KEY) === '1'; } catch { this.swipeOn = false; }
         const box = document.getElementById('settingSwipeTabs');
         if (box) box.checked = this.swipeOn;
-        window.addEventListener('aadhat:tabshown', (e) => this.markActive(e.detail?.tabId));
+        window.addEventListener('aadhat:tabshown', (e) => { this.markActive(e.detail?.tabId); this.setTitle(e.detail?.tabId); });
+        window.addEventListener(LANG_CHANGE_EVENT, () => this.setTitle(this.titleTab));
         // The on-screen keyboard would push the bar over the field being typed in
         trackTyping(document);
         this.bindGestures();
@@ -92,6 +105,12 @@ export const BottomNav = {
             if (here && onBar) item.setAttribute('aria-current', 'page');
             else item.removeAttribute('aria-current');
         });
+    },
+
+    setTitle(tabId) {
+        this.titleTab = tabId;
+        const el = document.getElementById('appBarTitle');
+        if (el) el.textContent = t(pageTitleKey(tabId));
     },
 
     /** Pull-to-refresh: the page's own data reload (no filter or form reset). */

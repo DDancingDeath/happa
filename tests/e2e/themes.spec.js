@@ -1,6 +1,6 @@
 /**
  * Themes (redesign 2.6, DIRECTION §4): text contrast (axe `color-contrast`, WCAG AA) on Billing,
- * Today and Outstanding in every theme × mode (and in Hindi for the serif themes, whose Devanagari stays
+ * Today and Outstanding, and on the app bar with the More sheet open, in every theme × mode (and in Hindi for the serif themes, whose Devanagari stays
  * in the sans face), and the Settings › Appearance gallery: a tap previews
  * a theme app-wide without saving it, Cancel or leaving Settings restores the saved one, Apply saves it
  * (it survives a reload, applied before first paint); printing from a serif theme looks like Modern.
@@ -63,6 +63,14 @@ for (const [theme, appearance, lang = 'en'] of COMBOS) {
                 for (const n of v.nodes) found.push(`${name}: ${n.target.join(' ')} — ${(n.any[0]?.message || v.help).replace(/\s+/g, ' ')}`);
             }
         }
+        // The app bar and the More sheet (redesign 4.1)
+        await page.evaluate(() => window.app.nav.toggleMenu());
+        await expect(page.locator('#sideNav')).toBeVisible();
+        const sheet = await new AxeBuilder({ page }).include('#sideNav').include('#appBar').withRules(['color-contrast']).analyze();
+        for (const v of sheet.violations) {
+            for (const n of v.nodes) found.push(`More: ${n.target.join(' ')} — ${(n.any[0]?.message || v.help).replace(/\s+/g, ' ')}`);
+        }
+        await page.evaluate(() => window.app.nav.closeMenu());
         if (found.length) console.log(`[themes] ${theme} ${appearance} ${found.length} element(s):\n${found.join('\n')}`);
         expect(found).toEqual([]);
         expect(problems.pageErrors).toEqual([]);
