@@ -49,6 +49,10 @@ const clip = (value, max) => (value === undefined || value === null ? undefined 
 
 const SCRUBBED_FIELDS = new Set(['message', 'stack', 'context']);
 
+/** The owner's test error (Diagnostics › Status, #122): one fingerprint, so repeats group together. */
+const TEST_ERROR_REF = 'test-error';
+const TEST_ERROR_MESSAGE = 'Test error sent by the owner from Diagnostics';
+
 /** How long an error report is kept after it was last seen (#116; the audit log keeps 90 days too). */
 const REPORT_KEEP_MS = 90 * 24 * 60 * 60 * 1000;
 
@@ -229,7 +233,8 @@ const TelemetryService = {
         }
         // TIP error watcher (#217): errors during an open scenario run turn a pass into a warning.
         // An error toast may be a typing mistake; a real failure also reaches console.error.
-        if (errorData?.type !== 'toast') {
+        // The owner's test error is not an app failure.
+        if (errorData?.type !== 'toast' && errorData?.ref !== TEST_ERROR_REF) {
             noteTipError();
             if (errorData?.type !== 'warning') this.sessionErrors++;
         }
@@ -295,6 +300,7 @@ const TelemetryService = {
 
     /**
      * Sync errors to Firestore
+     * @returns {Promise<{failed: Set<string>}|undefined>} the fingerprints not stored; undefined when nothing was sent
      */
     async syncToFirestore() {
         if (this.errorBuffer.length === 0) return;
@@ -351,6 +357,7 @@ const TelemetryService = {
             }
             this.backoffMs = 0;
             this.backoffUntil = 0;
+            return { failed: new Set() };
         } catch (error) {
             // Don't recursively log telemetry errors
             console.warn('Telemetry sync failed:', error?.message);
@@ -359,6 +366,7 @@ const TelemetryService = {
             this.backoffUntil = Date.now() + this.backoffMs;
             // Re-add errors to buffer
             this.errorBuffer = [...errorsToSync, ...this.errorBuffer].slice(0, MAX_LOCAL_ERRORS);
+            return { failed: new Set(errorsToSync.map(e => e.fingerprint)) };
         }
     },
 
@@ -386,6 +394,31 @@ const TelemetryService = {
             message: message,
             context: context
         });
+    },
+
+    /**
+     * The owner's test (#122): one error through the normal path, sent now rather than after
+     * the debounce or an earlier failure's backoff. 'queued': no answer in time (offline, the
+     * write waits in Firestore's queue); 'failed': refused or not sent (kept for the next sync).
+     * @param {number} [waitMs=8000] longest wait for the server
+     * @returns {Promise<'sent'|'queued'|'failed'>}
+     */
+    async sendTestError(waitMs = 8000) {
+        if (AppState.userRole !== 'owner') {
+            throw new Error('Unauthorized');
+        }
+        this.captureError({ type: 'manual', ref: TEST_ERROR_REF, message: TEST_ERROR_MESSAGE });
+        clearTimeout(this.syncTimer);
+        this.syncTimer = null;
+        this.backoffUntil = 0;
+        let timer;
+        const sent = this.syncToFirestore().then(r => (r && !r.failed.has(TEST_ERROR_REF) ? 'sent' : 'failed'));
+        const late = new Promise(resolve => { timer = setTimeout(() => resolve('queued'), waitMs); });
+        try {
+            return await Promise.race([sent, late]);
+        } finally {
+            clearTimeout(timer);
+        }
     },
 
     /**
@@ -443,4 +476,4 @@ const TelemetryService = {
 // Error toasts (#82) are reported under their ref, whether or not init() ran.
 on(TOAST_ERROR, ({ message, ref }) => TelemetryService.captureError({ type: 'toast', message, ref }));
 
-export { TelemetryService, buildTelemetryDoc, mergeTelemetryReports };
+export { TelemetryService, buildTelemetryDoc, mergeTelemetryReports, TEST_ERROR_REF, TEST_ERROR_MESSAGE };

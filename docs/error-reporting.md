@@ -9,7 +9,7 @@ here is free on the Spark plan.
 |---|---|---|---|
 | Error telemetry | Uncaught errors and unhandled promise rejections (the `error` / `unhandledrejection` listeners in `main.js`) plus explicit `logError` / `logWarning` calls, grouped by fingerprint. Errors only written with `console.error` (most `catch` blocks) are **not** sent. Firestore quota errors are not sent (they would only fail again) | Diagnostics (owner), collection `telemetry` (create-only, owner read, field sizes capped by the rules) | `www/js/services/telemetry.js`, `firebase/repos/telemetry.js` |
 | Test in Production (TIP) | Bill save, payment, cash close and app start: failures, slow runs, runs with errors (`errors_seen`), and runs left open when the app was killed or crashed (`abandoned`). Watchdog (#83): `MainThread` fails `frozen` when a 1-second timer runs 5 s or more late while the app is on screen (a frozen screen). The timer runs only while the page is on screen; each 5 minutes on screen is one run, a shorter stretch counts once it lasted a minute, sleep is not judged, and it keeps at most 2 failure samples a day (`maxSamplesPerDay`) so the other tests keep theirs; a change still waiting to sync online after 5 minutes is `Sync` › `not_flushed` (#161). No reads | App health page; a daily job opens, updates and closes `tip-auto` GitHub issues (counts, reason codes and a few small samples: rounded bill totals, line counts, flags; no names) | `www/js/tip/`, `tools/tip/autobugs.js`, `.github/workflows/tip-autobugs.yml` |
-| Crash reports (Android app only, **off unless the user switches it on**) | Native crashes of the APK (a Java exception in a plugin, the app killed by an uncaught error): Firebase Crashlytics through the `@capacitor-firebase/crashlytics` plugin | Firebase console › Crashlytics (owner's Google account) | `www/js/services/crash-reports.js`, Settings › Crash reports, `android/app/src/main/AndroidManifest.xml` (`firebase_crashlytics_collection_enabled` false) |
+| Crash reports (Android app only, **off unless the user switches it on**) | Native crashes of the APK (a Java exception in a plugin, the app killed by an uncaught error): Firebase Crashlytics through the `@capacitor-firebase/crashlytics` plugin | Firebase console › Crashlytics (owner's Google account); the owner's test: Diagnostics › Status (below) | `www/js/services/crash-reports.js`, Settings › Crash reports, `android/app/src/main/AndroidManifest.xml` (`firebase_crashlytics_collection_enabled` false) |
 | Startup and read meter | Startup step timings, document reads per session, quota-exhausted errors (one banner per session) | Diagnostics → "Startup timings", "Data reads this session" | `utils/startup-timings.js`, `firebase/firestore-meter.js`, `utils/quota-guard.js` |
 
 The Android APK is the same web app inside a Capacitor WebView, so all of the
@@ -101,8 +101,36 @@ and the switch says "Not set up in this version of the app yet":
 4. Build the next APK (tag, `android-release.yml`): with the secret present the
    workflow writes the file before the build and `android/app/build.gradle`
    applies the Google services and Crashlytics Gradle plugins.
-5. On a test phone: Settings › Crash reports on. Crashlytics shows the app once a
-   crash has been sent (it sends on the next app start after a crash).
+5. On a test phone: Settings › Crash reports on, then send a test crash (below). Crashlytics
+   shows the app once a crash has been sent (it sends on the next app start after a crash).
+
+The project moves to `happa-bahi` at the Firebase cutover (rename plan §8.G, #375): the Android app
+`com.happa` is registered there and its `google-services.json` becomes the `GOOGLE_SERVICES_JSON`
+secret, so from the first APK built after that the reports are in **happa-bahi**'s console, not
+`happa-bfc07`'s. Crash collection still stays off on every phone until its user switches it on.
+
+## Check that reports arrive (owner)
+
+**Diagnostics › Status › Test error reports** is shown to the owner only (managers see Number checks
+only; members can't open Diagnostics) and works on the website and in the Android app:
+
+| Button | What it does | Where to look |
+|---|---|---|
+| **Send a test error** | Records one error (type `manual`, message "Test error sent by the owner from Diagnostics", fingerprint `test-error`) through the normal error telemetry (it is not counted as an app error in Status or by Test in Production), and sends it at once instead of after the 5-second wait (or an earlier failure's pause). The screen says which: sent; no answer within 8 seconds (offline: it waits on the phone and is sent when online); or refused (for example by the rules or the daily quota), so error reports from this phone are not arriving. In the Android app with crash reports on, it also records a **non-fatal** Crashlytics report (the app keeps running) | Diagnostics › Errors (filter *Manual*); repeats are grouped as one entry. Crashlytics: Firebase console › Crashlytics › *Non-fatals*, after the app is opened again |
+| **Send a test crash (closes the app)** | Android app only, and only while crash reports are on: after a confirm, the plugin's `crash()` closes the app with "Test crash sent by the owner from Diagnostics" | Open the app again (the report is sent then); Firebase console › Crashlytics › *Crashes* within a few minutes |
+
+Below the buttons the card says what the phone can reach: on the website, crash reports exist only in
+the Android app; in an APK built without `google-services.json`, "Crash reports are not set up in this
+version of the app" (no test crash is offered: the plugin's `crash()` would close the app even without
+Firebase, with no report); with the switch off, where to switch it on. Hide the test entries afterwards
+in Diagnostics › Errors.
+
+Steps for the owner after the cutover (and after any change to the Crashlytics set-up):
+1. Install the new APK; Settings › Crash reports on (the switch is per phone).
+2. Diagnostics › Status › **Send a test error**; then **Send a test crash** and confirm.
+3. Open the app again, wait a few minutes, and check Firebase console › project **happa-bahi** ›
+   Crashlytics: the app `com.happa` shows one crash and one non-fatal, both starting with "Test".
+4. Turn crash reports off again on that phone if it should not send them.
 
 ## When something breaks in the field
 

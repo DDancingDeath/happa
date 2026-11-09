@@ -11,6 +11,8 @@
 import { safeSetItem } from '../utils/storage-full.js';
 
 export const CRASH_REPORTS_KEY = 'aadhat.crashReports';
+export const TEST_EXCEPTION_MESSAGE = 'Test error sent by the owner from Diagnostics, not a real error';
+export const TEST_CRASH_MESSAGE = 'Test crash sent by the owner from Diagnostics';
 
 /** The native plugin in the Android app, or null (website, older APK). */
 export function crashPlugin(win = window) {
@@ -67,6 +69,45 @@ export const CrashReports = {
     async setOn(on) {
         safeSetItem(CRASH_REPORTS_KEY, on ? '1' : '0');
         return this.apply({ fresh: !!on });
+    },
+
+    /**
+     * Whether an owner's test can reach Crashlytics from here (#122):
+     * 'web' (no plugin), 'not-set-up' (no Firebase config in this APK), 'off' or 'on'.
+     * @returns {'web'|'not-set-up'|'off'|'on'}
+     */
+    testReach() {
+        if (!crashPlugin()) return 'web';
+        if (this.state === 'not-set-up') return 'not-set-up';
+        return this.state === 'on' && this.isOn() ? 'on' : 'off';
+    },
+
+    /**
+     * A non-fatal test report; sent by Crashlytics on the next app start. Never throws.
+     * @param {string} [message]
+     * @returns {Promise<boolean>} recorded
+     */
+    async sendTestException(message = TEST_EXCEPTION_MESSAGE) {
+        if (this.testReach() !== 'on') return false;
+        try {
+            await crashPlugin().recordException({ message });
+            return true;
+        } catch (e) {
+            console.warn('Test crash report not recorded:', e?.message || e);
+            return false;
+        }
+    },
+
+    /**
+     * Closes the app with a test crash. The plugin's crash() throws even without a Firebase
+     * config, so it is called only while reports are on (and therefore set up).
+     * @param {string} [message]
+     * @returns {Promise<boolean>} false when not called
+     */
+    async sendTestCrash(message = TEST_CRASH_MESSAGE) {
+        if (this.testReach() !== 'on') return false;
+        await crashPlugin().crash({ message });
+        return true;
     },
 
     /** The Settings card: shown only in the Android app; the note when it isn't set up. */

@@ -35,7 +35,7 @@ import { tip, configureTip, startTipReporting, tipDeviceId } from './tip/index.j
 import { dayKeyOf } from './tip/tip.js';
 import { createSyncWatcher } from './tip/scenarios/sync.js';
 import { createWatchdog, TICK_MS as WATCHDOG_TICK_MS } from './tip/scenarios/main-thread.js';
-import { claimToday, numberChecksProps } from './tip/scenarios/number-checks.js';
+import { runNumberChecksOnce, numberChecksProps } from './tip/scenarios/number-checks.js';
 import { whenIdle } from './utils/background-tasks.js';
 import { APP_VERSION } from './version.js';
 import { AuditService } from './services/audit.js';
@@ -194,18 +194,19 @@ watchdogOn();
 function scheduleTipNumberChecks() {
     if (AppState.userRole !== 'owner' && AppState.userRole !== 'manager') return;
     whenIdle(() => {
-        try {
-            if (!AppState.stockReady || !claimToday(localStorage, dayKeyOf(Date.now()))) return;
-            Promise.all([loadDiagnostics(), loadAnomalies()]).then(([diag, anom]) => {
+        if (!AppState.stockReady) return;
+        runNumberChecksOnce({
+            store: localStorage,
+            dayKey: dayKeyOf(Date.now()),
+            load: () => Promise.all([loadDiagnostics(), loadAnomalies()]),
+            run: ([diag, anom]) => {
                 const run = tip.start('NumberChecks');
                 const results = diag.numberCheckResults();
                 run.complete(numberChecksProps(results));
                 // #160: each mismatch also reaches Anomalies, once
                 anom.recordNumberChecks(results).catch(e => console.warn('Number-check flags failed:', e?.message || e));
-            }).catch(e => console.warn('TIP number checks failed:', e?.message || e));
-        } catch (e) {
-            console.warn('TIP number checks failed:', e?.message || e);
-        }
+            }
+        }).catch(e => console.warn('TIP number checks failed:', e?.message || e));
     }, { minDelayMs: 30000 });
 }
 
@@ -1462,7 +1463,7 @@ window.app = {
     diagnostics: {
         ...Object.fromEntries(['init', 'runNumberChecks', 'showTab', 'loadData', 'loadAuditLogs', 'filterByType',
         'filterAuditLogs', 'deleteError', 'clearAll', 'runSpeedCheck', 'copyStatus', 'shareStatus', 'exportAuditCsv', 'printAudit',
-        'exportErrorReport']
+        'exportErrorReport', 'sendTestError', 'sendTestCrash']
             .map(name => [name, (...args) => loadDiagnostics().then(m => m[name](...args))]))
     },
     
