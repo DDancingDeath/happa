@@ -13,9 +13,12 @@ async function openStatus(page) {
     await page.waitForSelector('#diagnosticsContainer [data-status-row]');
 }
 
-const shot = async (page, testInfo, name) => testInfo.attach(name, {
-    body: await page.locator('.diag-errtest').screenshot(), contentType: 'image/png'
-});
+const shot = async (page, testInfo, name) => {
+    // The sign-in toast and the phone's bottom bar would cover the card
+    await page.evaluate(() => document.querySelectorAll('#toast, .bottom-nav').forEach(el => { el.style.visibility = 'hidden'; }));
+    await testInfo.attach(name, { body: await page.locator('.diag-errtest').screenshot(), contentType: 'image/png' });
+    await page.evaluate(() => document.querySelectorAll('#toast, .bottom-nav').forEach(el => { el.style.visibility = ''; }));
+};
 
 test('the owner sends a test error from the website; it is stored and listed under Errors', async ({ page, problems }, testInfo) => {
     await login(page, 'owner');
