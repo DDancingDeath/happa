@@ -1058,8 +1058,12 @@ const BillingManager = {
      */
     async afterRecoveryCheck() {
         const uid = AppState.currentUser?.uid;
-        await this.recoveryChecked;
-        return AppState.currentUser?.uid === uid ? true : null;
+        let check;
+        while ((check = this.recoveryChecked)) {
+            await check;
+            if (AppState.currentUser?.uid !== uid) return null;
+        }
+        return true;
     },
 
     /**
@@ -1076,7 +1080,10 @@ const BillingManager = {
             
             if (!autoSaveData || (current && !current())) return;
             
-            this.setRecovery({ ...autoSaveData, userId: autoSaveData.userId || AppState.currentUser.uid });
+            // A bill already being typed (the first screen doesn't wait for this check): the banner
+            // comes too late to be a choice, so typing on keeps this one in Drafts, also an edit
+            this.setRecovery({ ...autoSaveData, userId: autoSaveData.userId || AppState.currentUser.uid },
+                { unseen: !this.formsFreeForRestore() });
         } catch (error) {
             console.error('Failed to check auto-save:', error);
         }
@@ -1085,12 +1092,16 @@ const BillingManager = {
     /** Auto-save waiting for Restore / Discard on the banner; null when none. */
     pendingRecovery: null,
 
+    /** The banner's auto-save showed up while a bill was already being typed (#59). */
+    recoveryUnseen: false,
+
     /** The start-up auto-save check while it is still reading (it never rejects); null once done. */
     recoveryChecked: null,
 
     /** Shows the banner for `data`, or hides it (null). */
-    setRecovery(data) {
+    setRecovery(data, { unseen = false } = {}) {
         this.pendingRecovery = data || null;
+        this.recoveryUnseen = !!data && unseen;
         const banner = document.getElementById('autoSaveBanner');
         if (banner) banner.hidden = !data;
         if (data) this.showRecoveryBanner(data);
@@ -1120,7 +1131,8 @@ const BillingManager = {
      * lines or weights) and hides the banner. The draft writes are queued at once
      * (also offline), before the auto-save is overwritten or deleted.
      */
-    keepRecoveryAsDrafts({ quiet = false, unseen = false } = {}) {
+    keepRecoveryAsDrafts({ quiet = false, unseen: waited = false } = {}) {
+        const unseen = waited || !!this.recoveryUnseen;
         const data = this.takeRecovery();
         // An unfinished edit of a saved bill is not a new bill: it is dropped, as before. One the
         // banner never offered (typed over during the start-up check) is kept as a draft of that edit.

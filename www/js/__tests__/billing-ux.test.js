@@ -213,6 +213,39 @@ describe('unsaved-bill banner (#117)', () => {
         expect(BillDrafts.saveAutoSave.mock.calls[0][1].purchase.items.map(i => i.name)).toEqual(['Maize']);
     });
 
+    test('typed before the check answered, auto-saved by the timer after it: an edit is still kept (#59)', async () => {
+        jest.useFakeTimers();
+        let answer;
+        BillDrafts.getAutoSave.mockReturnValue(new Promise(resolve => { answer = resolve; }));
+        const checked = BillingManager.checkAutoSave();
+        PurchaseManager.setBillItems([{ name: 'Maize', qty: 1, rate: 1, total: 1 }]);
+        BillingManager.triggerAutoSave();
+        answer({ ...saved, editingBillId: 'b9', editingBillType: 'purchase', editingBase: 'v1' });
+        await checked;
+        expect(document.getElementById('autoSaveBanner').hidden).toBe(false);
+        await jest.advanceTimersByTimeAsync(2500);
+        jest.useRealTimers();
+        expect(BillDrafts.saveDraft).toHaveBeenCalledTimes(1);
+        expect(BillDrafts.saveDraft.mock.calls[0][0]).toMatchObject({ editingBillId: 'b9', pendingBill: null });
+        expect(BillDrafts.saveAutoSave).toHaveBeenCalledTimes(1);
+    });
+
+    test('a write waiting on the check also waits for a second check of the same user (#59)', async () => {
+        const answers = [];
+        BillDrafts.getAutoSave.mockImplementation(() => new Promise(resolve => answers.push(resolve)));
+        BillingManager.checkAutoSave();
+        const cleared = BillingManager.deleteAutoSave();
+        BillingManager.checkAutoSave();
+        answers[0](saved);
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(BillDrafts.deleteAutoSave).not.toHaveBeenCalled();
+        answers[1](saved);
+        await cleared;
+        expect(BillDrafts.saveDraft).toHaveBeenCalledTimes(1);
+        expect(BillDrafts.deleteAutoSave).toHaveBeenCalledTimes(1);
+    });
+
     test('a check that answers after another user signed in offers nothing (#59)', async () => {
         let answer;
         BillDrafts.getAutoSave.mockReturnValueOnce(new Promise(resolve => { answer = resolve; }));
