@@ -35,7 +35,7 @@ import {
     buildSnapshot, figuresFromSnapshot, rangeFigures, monthsToRoll, monthBounds,
     monthKeysBetween, lastMonthKeys, monthKeyOf, snapshotsFrom, staleToRebuild, outdatedOlderMonths
 } from '../utils/month-snapshots.js';
-import { profitTakeaways, cashTakeaways, spendingTakeaways, worthTakeaways } from '../utils/takeaways.js';
+import { profitTakeaways, noSalesTakeaway, cashTakeaways, spendingTakeaways, worthTakeaways } from '../utils/takeaways.js';
 import { can, canEditWorthAccounts, canReadWorthAccounts } from '../utils/role-access.js';
 import { dataSignature } from '../utils/render-memo.js';
 import { openExternal } from '../utils/open-external.js';
@@ -576,10 +576,15 @@ export const MoneyManager = {
         this.html('moneyProfitCompare', compareHtml([vsItem(m.M6.total, prev?.M6, labels.prev), vsItem(m.M6.total, ly?.M6, labels.ly), vsB(m.M6.total, b?.M6, labels)]));
         const onProfit = this.section === 'profit';
         const driverRows = onProfit ? this.itemDriver(m, r) : null;
+        const noSales = noSalesTakeaway({
+            count: m.M1.count, day: !!r.day, week: !!r.week,
+            month: r.month ? formatMonth(r.from, { lang: getLang() }) : null, ongoing: r.to > now.getTime()
+        });
         this.html('moneyProfitTakeaway', takeawayHtml(profitTakeaways({
             profit: m.M6.total, vsLastYear: vsLy, vsPrevious: vsPrev, lastYearLabel: labels.ly, previousLabel: labels.prev,
             driver: driverRows,
-            salesVsLastYear: change(m.M1.total, ly?.M1 ?? null)
+            salesVsLastYear: change(m.M1.total, ly?.M1 ?? null),
+            noSales
         })));
         this.html('moneyProfitCaveats', this.caveatsHtml(m, ['M2', 'M6']));
         this.text('moneySales', money(m.M1.total));

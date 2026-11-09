@@ -751,7 +751,8 @@
       "moneyProfitLabel": "Profit",
       "moneyProfitValue": "₹0",
       "moneyProfitCompare": "▲ 100% vs 1 Oct · ▲ 100% vs 1 Nov 2025",
-      "moneyProfitTakeaway": "Profit ₹0, 100% more than 1 Nov 2025.",
+      "moneyProfitTakeaway": "No sales in Nov 2026 yet.Profit ₹0, 100% more than 1 Nov 2025.",
+      "moneyProfitCaption": "Counts all sales made, credit sales too. Cash that came in: Cash ›",
       "moneySales": "₹0",
       "moneySalesSplit": "0 bills",
       "moneyCogs": "₹0",
@@ -816,6 +817,7 @@
       "moneyProfitValue": "−₹13,185",
       "moneyProfitCompare": "▼ 20% vs Dec · ▼ 26% vs Jan 2026",
       "moneyProfitTakeaway": "Loss of ₹13,185 in this period.Sales went up but profit went down: goods cost more. Check item margins.",
+      "moneyProfitCaption": "Counts all sales made, credit sales too. Cash that came in: Cash ›",
       "moneySales": "₹23,119",
       "moneySalesSplit": "16 bills",
       "moneyCogs": "₹19,760",
@@ -881,6 +883,7 @@
       "moneyProfitValue": "−₹7,264",
       "moneyProfitCompare": "▲ 21% vs Jan · ▼ 91% vs Feb 2027",
       "moneyProfitTakeaway": "Loss of ₹7,264 in this period.Sales went up but profit went down: goods cost more. Check item margins.",
+      "moneyProfitCaption": "Counts all sales made, credit sales too. Cash that came in: Cash ›",
       "moneySales": "₹37,900",
       "moneySalesSplit": "17 bills",
       "moneyCogs": "₹34,196",
@@ -946,6 +949,7 @@
       "moneyProfitValue": "−₹14,256",
       "moneyProfitCompare": "▼ 121% vs Feb · ▼ 130% vs Mar 2026",
       "moneyProfitTakeaway": "Loss of ₹14,256 in this period.Sales went up but profit went down: goods cost more. Check item margins.",
+      "moneyProfitCaption": "Counts all sales made, credit sales too. Cash that came in: Cash ›",
       "moneySales": "₹24,977",
       "moneySalesSplit": "21 bills",
       "moneyCogs": "₹21,786",
@@ -1011,6 +1015,7 @@
       "moneyProfitValue": "−₹643",
       "moneyProfitCompare": "▼ 616% vs 1 Dec · ▲ 52% vs 1 Jan 2026",
       "moneyProfitTakeaway": "Loss of ₹643 in this period.",
+      "moneyProfitCaption": "Counts all sales made, credit sales too. Cash that came in: Cash ›",
       "moneySales": "₹1,827",
       "moneySalesSplit": "1 bill",
       "moneyCogs": "₹1,554",
@@ -2396,8 +2401,8 @@
     },
     "month": {
       "title": "Month statement · Nov 2026",
-      "share": "Month statement · Nov 2026\nSales: ₹0\nCost of what was sold: ₹0\nGross profit: ₹0\nBusiness expenses: ₹0\nBad debts: ₹0\nProfit: ₹0\nLabour on purchases (not in cost): ₹0\nPersonal expenses: ₹0\nWithdrawals: ₹0\nKept in business: ₹0\nMoney in: ₹0\nMoney out: ₹0\nNet money in: ₹0\nBought: ₹0\nStock at the start: ₹7,31,948\nStock at the end: ₹7,31,948",
-      "text": "Month statement · Nov 2026Sales₹0− Cost of what was sold₹0= Gross profit₹0− Business expenses₹0− Bad debts₹0= Profit₹0Labour on purchases (not in cost)₹0Personal expenses₹0Withdrawals₹0Kept in business₹0Money in₹0Money out₹0Net money in₹0Bought₹0Stock at the start₹7,31,948= Stock at the end₹7,31,948",
+      "share": "Month statement · Nov 2026\nSales: ₹0\nCost of what was sold: ₹0\nProfit on goods: ₹0\nBusiness expenses: ₹0\nDues written off: ₹0\nProfit: ₹0\nLabour on purchases (not in cost): ₹0\nPersonal expenses: ₹0\nWithdrawals: ₹0\nKept in business: ₹0\nMoney in: ₹0\nMoney out: ₹0\nNet money in: ₹0\nBought: ₹0\nStock at the start: ₹7,31,948\nStock at the end: ₹7,31,948",
+      "text": "Month statement · Nov 2026Sales₹0− Cost of what was sold₹0= Profit on goods₹0− Business expenses₹0− Dues written off₹0= Profit₹0Labour on purchases (not in cost)₹0Personal expenses₹0Withdrawals₹0Kept in business₹0Money in₹0Money out₹0Net money in₹0Bought₹0Stock at the start₹7,31,948= Stock at the end₹7,31,948",
       "rows": 16,
       "first": [
         [
@@ -2409,7 +2414,7 @@
           0
         ],
         [
-          "Gross profit",
+          "Profit on goods",
           0
         ]
       ],
@@ -2494,8 +2499,8 @@
     },
     "month": {
       "title": "Month statement · Jan 2027",
-      "share": "Month statement · Jan 2027\nSales: ₹23,119\nCost of what was sold: ₹19,760\nGross profit: ₹3,359\nBusiness expenses: ₹16,100\nBad debts: ₹0\nProfit: -₹12,741\nLabour on purchases (not in cost): ₹18\nPersonal expenses: ₹2,000\nWithdrawals: ₹0\nKept in business: -₹14,741\nMoney in: ₹17,865\nMoney out: ₹25,544\nNet money in: -₹7,679\nBought: ₹6,740\nStock at the start: ₹8,63,662\nStock at the end: ₹8,50,661",
-      "text": "Month statement · Jan 2027Sales₹23,119− Cost of what was sold₹19,760= Gross profit₹3,359− Business expenses₹16,100− Bad debts₹0= Profit-₹12,741Labour on purchases (not in cost)₹18Personal expenses₹2,000Withdrawals₹0Kept in business-₹14,741Money in₹17,865Money out₹25,544Net money in-₹7,679Bought₹6,740Stock at the start₹8,63,662= Stock at the end₹8,50,661⚠ ₹1,050 of expenses have no type; they count as business.",
+      "share": "Month statement · Jan 2027\nSales: ₹23,119\nCost of what was sold: ₹19,760\nProfit on goods: ₹3,359\nBusiness expenses: ₹16,100\nDues written off: ₹0\nProfit: -₹12,741\nLabour on purchases (not in cost): ₹18\nPersonal expenses: ₹2,000\nWithdrawals: ₹0\nKept in business: -₹14,741\nMoney in: ₹17,865\nMoney out: ₹25,544\nNet money in: -₹7,679\nBought: ₹6,740\nStock at the start: ₹8,63,662\nStock at the end: ₹8,50,661",
+      "text": "Month statement · Jan 2027Sales₹23,119− Cost of what was sold₹19,760= Profit on goods₹3,359− Business expenses₹16,100− Dues written off₹0= Profit-₹12,741Labour on purchases (not in cost)₹18Personal expenses₹2,000Withdrawals₹0Kept in business-₹14,741Money in₹17,865Money out₹25,544Net money in-₹7,679Bought₹6,740Stock at the start₹8,63,662= Stock at the end₹8,50,661⚠ ₹1,050 of expenses have no type; they count as business.",
       "rows": 16,
       "first": [
         [
@@ -2507,7 +2512,7 @@
           19759.58
         ],
         [
-          "Gross profit",
+          "Profit on goods",
           3359.42
         ]
       ],
@@ -2736,8 +2741,8 @@
     },
     "month": {
       "title": "Month statement · Feb 2028",
-      "share": "Month statement · Feb 2028\nSales: ₹37,494\nCost of what was sold: ₹33,847\nGross profit: ₹3,647\nBusiness expenses: ₹10,750\nBad debts: ₹218\nProfit: -₹7,321\nLabour on purchases (not in cost): ₹102\nPersonal expenses: ₹1,400\nWithdrawals: ₹17,000\nKept in business: -₹25,721\nMoney in: ₹36,650\nMoney out: ₹52,910\nNet money in: -₹16,260\nBought: ₹40,760\nStock at the start: ₹11,60,466\nStock at the end: ₹11,67,481",
-      "text": "Month statement · Feb 2028Sales₹37,494− Cost of what was sold₹33,847= Gross profit₹3,647− Business expenses₹10,750− Bad debts₹218= Profit-₹7,321Labour on purchases (not in cost)₹102Personal expenses₹1,400Withdrawals₹17,000Kept in business-₹25,721Money in₹36,650Money out₹52,910Net money in-₹16,260Bought₹40,760Stock at the start₹11,60,466= Stock at the end₹11,67,481⚠ ₹250 of expenses have no type; they count as business.",
+      "share": "Month statement · Feb 2028\nSales: ₹37,494\nCost of what was sold: ₹33,847\nProfit on goods: ₹3,647\nBusiness expenses: ₹10,750\nDues written off: ₹218\nProfit: -₹7,321\nLabour on purchases (not in cost): ₹102\nPersonal expenses: ₹1,400\nWithdrawals: ₹17,000\nKept in business: -₹25,721\nMoney in: ₹36,650\nMoney out: ₹52,910\nNet money in: -₹16,260\nBought: ₹40,760\nStock at the start: ₹11,60,466\nStock at the end: ₹11,67,481",
+      "text": "Month statement · Feb 2028Sales₹37,494− Cost of what was sold₹33,847= Profit on goods₹3,647− Business expenses₹10,750− Dues written off₹218= Profit-₹7,321Labour on purchases (not in cost)₹102Personal expenses₹1,400Withdrawals₹17,000Kept in business-₹25,721Money in₹36,650Money out₹52,910Net money in-₹16,260Bought₹40,760Stock at the start₹11,60,466= Stock at the end₹11,67,481⚠ ₹250 of expenses have no type; they count as business.",
       "rows": 16,
       "first": [
         [
@@ -2749,7 +2754,7 @@
           33846.72
         ],
         [
-          "Gross profit",
+          "Profit on goods",
           3647.28
         ]
       ],
@@ -3054,8 +3059,8 @@
     },
     "month": {
       "title": "Month statement · Mar 2027",
-      "share": "Month statement · Mar 2027\nSales: ₹24,095\nCost of what was sold: ₹20,998\nGross profit: ₹3,097\nBusiness expenses: ₹16,775\nBad debts: ₹0\nProfit: -₹13,678\nLabour on purchases (not in cost): ₹240\nPersonal expenses: ₹5,400\nWithdrawals: ₹15,000\nKept in business: -₹34,078\nMoney in: ₹21,442\nMoney out: ₹1,40,242\nNet money in: -₹1,18,800\nBought: ₹1,47,446\nStock at the start: ₹6,67,244\nStock at the end: ₹7,94,101",
-      "text": "Month statement · Mar 2027Sales₹24,095− Cost of what was sold₹20,998= Gross profit₹3,097− Business expenses₹16,775− Bad debts₹0= Profit-₹13,678Labour on purchases (not in cost)₹240Personal expenses₹5,400Withdrawals₹15,000Kept in business-₹34,078Money in₹21,442Money out₹1,40,242Net money in-₹1,18,800Bought₹1,47,446Stock at the start₹6,67,244= Stock at the end₹7,94,101⚠ ₹1,000 of expenses have no type; they count as business.",
+      "share": "Month statement · Mar 2027\nSales: ₹24,095\nCost of what was sold: ₹20,998\nProfit on goods: ₹3,097\nBusiness expenses: ₹16,775\nDues written off: ₹0\nProfit: -₹13,678\nLabour on purchases (not in cost): ₹240\nPersonal expenses: ₹5,400\nWithdrawals: ₹15,000\nKept in business: -₹34,078\nMoney in: ₹21,442\nMoney out: ₹1,40,242\nNet money in: -₹1,18,800\nBought: ₹1,47,446\nStock at the start: ₹6,67,244\nStock at the end: ₹7,94,101",
+      "text": "Month statement · Mar 2027Sales₹24,095− Cost of what was sold₹20,998= Profit on goods₹3,097− Business expenses₹16,775− Dues written off₹0= Profit-₹13,678Labour on purchases (not in cost)₹240Personal expenses₹5,400Withdrawals₹15,000Kept in business-₹34,078Money in₹21,442Money out₹1,40,242Net money in-₹1,18,800Bought₹1,47,446Stock at the start₹6,67,244= Stock at the end₹7,94,101⚠ ₹1,000 of expenses have no type; they count as business.",
       "rows": 16,
       "first": [
         [
@@ -3067,7 +3072,7 @@
           20997.87
         ],
         [
-          "Gross profit",
+          "Profit on goods",
           3097.13
         ]
       ],
@@ -3416,8 +3421,8 @@
     },
     "month": {
       "title": "Month statement · Jan 2027",
-      "share": "Month statement · Jan 2027\nSales: ₹0\nCost of what was sold: ₹0\nGross profit: ₹0\nBusiness expenses: ₹750\nBad debts: ₹0\nProfit: -₹750\nLabour on purchases (not in cost): ₹0\nPersonal expenses: ₹0\nWithdrawals: ₹11,500\nKept in business: -₹12,250\nMoney in: ₹0\nMoney out: ₹750\nNet money in: -₹750\nBought: ₹0\nStock at the start: ₹8,36,137\nStock at the end: ₹8,36,137",
-      "text": "Month statement · Jan 2027Sales₹0− Cost of what was sold₹0= Gross profit₹0− Business expenses₹750− Bad debts₹0= Profit-₹750Labour on purchases (not in cost)₹0Personal expenses₹0Withdrawals₹11,500Kept in business-₹12,250Money in₹0Money out₹750Net money in-₹750Bought₹0Stock at the start₹8,36,137= Stock at the end₹8,36,137",
+      "share": "Month statement · Jan 2027\nSales: ₹0\nCost of what was sold: ₹0\nProfit on goods: ₹0\nBusiness expenses: ₹750\nDues written off: ₹0\nProfit: -₹750\nLabour on purchases (not in cost): ₹0\nPersonal expenses: ₹0\nWithdrawals: ₹11,500\nKept in business: -₹12,250\nMoney in: ₹0\nMoney out: ₹750\nNet money in: -₹750\nBought: ₹0\nStock at the start: ₹8,36,137\nStock at the end: ₹8,36,137",
+      "text": "Month statement · Jan 2027Sales₹0− Cost of what was sold₹0= Profit on goods₹0− Business expenses₹750− Dues written off₹0= Profit-₹750Labour on purchases (not in cost)₹0Personal expenses₹0Withdrawals₹11,500Kept in business-₹12,250Money in₹0Money out₹750Net money in-₹750Bought₹0Stock at the start₹8,36,137= Stock at the end₹8,36,137",
       "rows": 16,
       "first": [
         [
@@ -3429,7 +3434,7 @@
           0
         ],
         [
-          "Gross profit",
+          "Profit on goods",
           0
         ]
       ],
