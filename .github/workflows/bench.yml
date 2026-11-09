@@ -2,15 +2,23 @@
 # emulators; the first Today render and the whole history window, with a 4x slower
 # CPU (tests/bench, playwright.bench.config.js). Nightly; each result is added to
 # bench-trend.csv on the `bench-trend` branch (a data branch: no workflow runs on it,
-# nothing deploys). Over a budget (tools/bench/budgets.json) it warns; it never fails
-# for a slow night. A run that can't measure (the app broke) fails as usual.
-# A manual run on another branch (workflow_dispatch --ref) measures it without touching the trend.
+# nothing deploys). Over a budget (tools/bench/budgets.json) it warns. Over the hard
+# limit (`_gate`: 1.5x the budget or 1.5x the median of the last 7 runs) it warns the first
+# night and fails when the next run is over it too (#120, docs/performance-budget.md).
+# A run that can't measure (the app broke) fails as usual.
+# A manual run on another branch (workflow_dispatch --ref), or with simulate_slowdown,
+# is checked against a copy of the trend and never pushes it.
 name: Multi-year load benchmark
 
 on:
   schedule:
     - cron: '0 22 * * *' # 03:30 IST nightly, after the E2E run
   workflow_dispatch:
+    inputs:
+      simulate_slowdown:
+        description: 'Gate self-test: multiply the timings of this run and of the last trend row by this factor (e.g. 2). The trend is not pushed.'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -24,6 +32,9 @@ jobs:
     name: Multi-year load benchmark
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      LIVE_TREND: ${{ github.ref == 'refs/heads/main' && !inputs.simulate_slowdown }}
+      SIMULATE_SLOWDOWN: ${{ inputs.simulate_slowdown }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -64,7 +75,6 @@ jobs:
           FIREBASE_TOOLS_VERSION: ${{ steps.v.outputs.firebase }}
         run: npm run bench
       - name: Trend file (bench-trend branch)
-        if: github.ref == 'refs/heads/main'
         run: |
           if git fetch --depth=1 origin bench-trend; then
             git worktree add ../trend FETCH_HEAD
@@ -73,16 +83,23 @@ jobs:
             git -C ../trend checkout --orphan bench-trend
             git -C ../trend rm -rfq .
           fi
-      - name: Record the result (warns above budget)
-        run: node tools/bench/record.js --result test-results/bench-result.json --trend "${{ github.ref == 'refs/heads/main' && '../trend/bench-trend.csv' || 'test-results/bench-trend.csv' }}" --budgets tools/bench/budgets.json --sha "$GITHUB_SHA"
+          if [ "$LIVE_TREND" != true ] && [ -f ../trend/bench-trend.csv ]; then cp ../trend/bench-trend.csv test-results/bench-trend.csv; fi
+      - name: Record the result (warns above budget; flags the hard limit)
+        id: record
+        run: node tools/bench/record.js --result test-results/bench-result.json --trend "${{ env.LIVE_TREND == 'true' && '../trend/bench-trend.csv' || 'test-results/bench-trend.csv' }}" --budgets tools/bench/budgets.json --sha "$GITHUB_SHA" ${SIMULATE_SLOWDOWN:+--simulate-slowdown "$SIMULATE_SLOWDOWN"}
       - name: Push the trend
-        if: github.ref == 'refs/heads/main'
+        if: env.LIVE_TREND == 'true'
         run: |
           cd ../trend
           git add bench-trend.csv
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -qm "bench: $(date -u +%F) ${GITHUB_SHA::7}"
           git push origin HEAD:refs/heads/bench-trend
+      - name: Fail on a large slowdown (two runs in a row over the hard limit)
+        if: steps.record.outputs.regressed == 'true'
+        run: |
+          echo "::error title=Benchmark regression::over the hard limit two runs in a row; see the job summary (#120, docs/performance-budget.md)"
+          exit 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:

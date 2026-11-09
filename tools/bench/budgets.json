@@ -1,5 +1,13 @@
 {
-  "_comment": "Multi-year load benchmark budgets (#59): ms with a 4x slower CPU on a CI runner; startupReads is the field limit of docs/performance-budget.md (reads from sign-in to the first screen, fail above 2,500; #159). Above one the nightly job warns; it never fails. Tighten them once the trend has settled.",
+  "_comment": "Multi-year load benchmark budgets (#59): ms with a 4x slower CPU on a CI runner; startupReads is the field limit of docs/performance-budget.md (reads from sign-in to the first screen, fail above 2,500; #159). Above a budget the nightly job only warns. Tighten them once the trend has settled.",
+  "_gate": {
+    "_comment": "Hard limit (#120, docs/performance-budget.md 'Regressions'): a figure over budgetRatio x its budget, or over trendRatio x the median of its last trendWindow trend rows (when at least trendMinRows have it), on `consecutive` runs in a row fails the nightly job.",
+    "budgetRatio": 1.5,
+    "trendRatio": 1.5,
+    "trendWindow": 7,
+    "trendMinRows": 5,
+    "consecutive": 2
+  },
   "firstTodayMs": 8000,
   "historyLoadMs": 20000,
   "startupReads": 2500
