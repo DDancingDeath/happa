@@ -16,7 +16,8 @@ import { activeExpenses, activityBills, billLabour, billTotal, isPersonalExpense
 import { eventTime, createItemKeyResolver } from './stock-replay.js';
 import { parseAnyBillDate, toLocalISODate } from './dates.js';
 import { saleTimePayment, dueEvents, sumDueEvents } from './due-payments.js';
-import { buildAging, normalizePartyName, pickPartyName } from './aging.js';
+import { buildAging } from './aging.js';
+import { partyNameKey, partyNameSpelling, pickPartyName } from './parties.js';
 import { INSIGHTS_DEFAULTS } from './insights-config.js';
 import { lastCountedSession } from './cash-session.js';
 import { labourPaid } from './labour.js';
@@ -667,8 +668,8 @@ export function partySummary(src, kind, { from, to }) {
     /** @type {Map<string, Rec>} */
     const rows = new Map();
     bills.forEach(b => {
-        const raw = String(b.customerName ?? b.supplierName ?? '').trim().replace(/\s+/g, ' ');
-        const key = normalizePartyName(raw);
+        const raw = partyNameSpelling(b.customerName ?? b.supplierName);
+        const key = partyNameKey(raw);
         const t = billTime(b) ?? 0;
         const r = rows.get(key) || { key, spellings: new Map(), total: 0, count: 0, labour: 0, qty: 0, last: 0 };
         const sp = r.spellings.get(raw) || { count: 0, last: 0 };
@@ -724,8 +725,8 @@ export function stoppedComingCheck(src, now = new Date(), cfg = INSIGHTS_DEFAULT
     const seen = new Map();
     const rowOf = (/** @type {string} */ key) => seen.get(key) || { key, spellings: new Map(), months: new Set(), last: 0 };
     /** @type {Bill[]} */ (activityBills([...(src.retailSales || []), ...(src.wholesaleSales || [])])).forEach(b => {
-        const raw = String(b.customerName ?? '').trim().replace(/\s+/g, ' ');
-        const key = normalizePartyName(raw);
+        const raw = partyNameSpelling(b.customerName);
+        const key = partyNameKey(raw);
         if (!key) return;
         const t = billTime(b);
         if (t === null) return;
@@ -745,7 +746,7 @@ export function stoppedComingCheck(src, now = new Date(), cfg = INSIGHTS_DEFAULT
         const list = snapshotCustomers[`${lyMonths[i].getFullYear()}-${pad}`];
         if (!Array.isArray(list)) return { list: [], known: false };
         list.forEach((/** @type {Rec} */ p) => {
-            const key = normalizePartyName(p.key || p.name || '');
+            const key = partyNameKey(p.key || p.name || '');
             if (!key) return;
             const r = rowOf(key);
             r.months.add(months[i]);

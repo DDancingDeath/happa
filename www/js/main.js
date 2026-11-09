@@ -19,7 +19,7 @@ import { syncSavedRangesOnSignIn } from './utils/saved-ranges.js';
 import { on, REFRESH, READS_ALERT } from './utils/events.js';
 import { backgroundReadsAllowed, getQuotaStatus } from './firebase/firestore-meter.js';
 import { ItemsManager } from './modules/items.js';
-import { PrinterService, printerManager } from './services/printer.js';
+import { PrinterService, printerManager, loadReceiptDrawing } from './services/printer.js';
 import { BillingManager, PurchaseManager, RetailSaleManager } from './modules/billing.js';
 import { StockManager } from './modules/stock.js';
 import { WholesaleSalesManager } from './modules/wholesale-sales.js';
@@ -28,10 +28,8 @@ import { OutstandingManager } from './modules/outstanding.js';
 import { ExpensesManager } from './modules/miscellaneous.js';
 import { SettingsManager } from './modules/settings.js';
 import { CashManagementManager } from './modules/cash-management.js';
-import { DayManager } from './modules/day.js';
+import { DayManager, loadAnomalies, loadedAnomalies } from './modules/day.js';
 import { ManualReminders } from './ui/manual-reminders.js';
-import { AnomaliesManager } from './modules/anomalies.js';
-import { HealthManager } from './modules/health.js';
 import { RolesAccessManager } from './modules/roles-access.js';
 import { tip, configureTip, startTipReporting, tipDeviceId } from './tip/index.js';
 import { dayKeyOf } from './tip/tip.js';
@@ -42,8 +40,6 @@ import { whenIdle } from './utils/background-tasks.js';
 import { APP_VERSION } from './version.js';
 import { AuditService } from './services/audit.js';
 import { TelemetryService } from './services/telemetry.js';
-import { DiagnosticsManager } from './modules/diagnostics.js';
-import { AdminManager } from './modules/admin.js';
 import { AppUpdatesManager } from './modules/app-updates.js';
 import { NotificationsManager } from './modules/notifications.js';
 import { markStartup, noteStartup, logStartupTimings } from './utils/startup-timings.js';
@@ -57,7 +53,10 @@ import { startLongTaskRecorder } from './utils/perf-probe.js';
 import { shortcutFromSearch, withoutShortcut } from './utils/launch-shortcut.js';
 import { UsageView } from './ui/usage-view.js';
 import { installActions } from './ui/actions.js';
-import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18n/index.js';
+import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT, loadCatalogue, loadAllCatalogues } from './i18n/index.js';
+
+// #59: only the app language's catalogue is loaded before the first screen (DOMContentLoaded waits for it)
+const langReady = loadCatalogue(getLang()).catch(e => console.error('Language catalogue not loaded:', e));
 
 // Build stamp — bumped on every deploy that ships new JS so you can verify
 // in the browser console whether the latest code is actually running. If
@@ -114,13 +113,14 @@ function loadInsights() {
     return insightsLoading;
 }
 
-// Statements page (redesign phase 4): statements.js is imported on first use
+// Statements page (redesign phase 4): statements.js is imported on first use, with both
+// language catalogues for the CSV in English (#59)
 let statements = null;
 let statementsLoading = null;
 function loadStatements() {
     if (!statementsLoading) {
-        statementsLoading = import('./modules/statements.js')
-            .then(m => (statements = m.StatementsManager))
+        statementsLoading = Promise.all([import('./modules/statements.js'), loadAllCatalogues()])
+            .then(([m]) => (statements = m.StatementsManager))
             .catch(e => { statementsLoading = null; throw e; });
     }
     return statementsLoading;
@@ -137,6 +137,25 @@ function loadAsk() {
     }
     return askLoading;
 }
+
+/** Imports a module on first use (#59: not parsed before the first screen); a failed import is tried again next time. */
+function onDemand(load) {
+    let loading = null;
+    return () => {
+        if (!loading) loading = load().catch(e => { loading = null; throw e; });
+        return loading;
+    };
+}
+// App health, Diagnostics and Admin (Anomalies: loadAnomalies in day.js): the set variable is for the
+// language redraw, which can't wait
+let health = null;
+let diagnostics = null;
+let admin = null;
+const loadHealth = onDemand(() => import('./modules/health.js').then(m => (health = m.HealthManager)));
+// The number-check flags are written in both languages and the audit CSV in English
+const loadDiagnostics = onDemand(() => Promise.all([import('./modules/diagnostics.js'), loadAllCatalogues()])
+    .then(([m]) => (diagnostics = m.DiagnosticsManager)));
+const loadAdmin = onDemand(() => import('./modules/admin.js').then(m => (admin = m.AdminManager)));
 
 // Data changes re-render the open lazy pages (firestore-service.js emits, utils/events.js);
 // the eager pages subscribe in their own modules. Money, Insights and Statements subscribe
@@ -177,11 +196,13 @@ function scheduleTipNumberChecks() {
     whenIdle(() => {
         try {
             if (!AppState.stockReady || !claimToday(localStorage, dayKeyOf(Date.now()))) return;
-            const run = tip.start('NumberChecks');
-            const results = DiagnosticsManager.numberCheckResults();
-            run.complete(numberChecksProps(results));
-            // #160: each mismatch also reaches Anomalies, once
-            AnomaliesManager.recordNumberChecks(results).catch(e => console.warn('Number-check flags failed:', e?.message || e));
+            Promise.all([loadDiagnostics(), loadAnomalies()]).then(([diag, anom]) => {
+                const run = tip.start('NumberChecks');
+                const results = diag.numberCheckResults();
+                run.complete(numberChecksProps(results));
+                // #160: each mismatch also reaches Anomalies, once
+                anom.recordNumberChecks(results).catch(e => console.warn('Number-check flags failed:', e?.message || e));
+            }).catch(e => console.warn('TIP number checks failed:', e?.message || e));
         } catch (e) {
             console.warn('TIP number checks failed:', e?.message || e);
         }
@@ -234,6 +255,7 @@ async function injectTemplates() {
 function refreshForLanguage(lang) {
     SettingsManager.syncItemNamesWithLanguage(lang);
     const run = (label, fn) => { try { fn(); } catch (e) { console.warn(`[i18n] ${label} redraw failed:`, e); } };
+    run('theme gallery', () => SettingsManager.renderThemeGallery());
     // Relabel item pickers in place: reloading them would reset the chosen item and rate.
     run('items', () => {
         const label = (item) => ((AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name);
@@ -250,7 +272,11 @@ function refreshForLanguage(lang) {
     if (!AppState.currentUser) return;
     const tabId = document.querySelector('.tab.active')?.id;
     const redraw = {
-        day: () => { DayManager.updateTodayHeader(); DayManager.loadTodayData(); AnomaliesManager.drawDayReport(); },
+        day: () => {
+            DayManager.updateTodayHeader();
+            DayManager.loadTodayData();
+            loadedAnomalies()?.drawDayReport();
+        },
         due: () => OutstandingManager.renderDue(),
         history: () => {
             const toggle = document.getElementById('historyViewToggle');
@@ -263,19 +289,20 @@ function refreshForLanguage(lang) {
         expenses: () => ExpensesManager.renderexpensesHistory(),
         items: () => ItemsManager.renderItemsTable(document.getElementById('itemsSearchInput')?.value || ''),
         diagnostics: () => {
-            DiagnosticsManager.renderTabs();
-            const view = { errors: 'renderErrors', audit: 'renderAuditLogs', numbers: 'renderNumberChecks', status: 'renderStatus' }[DiagnosticsManager.activeTab];
-            if (view) DiagnosticsManager[view]();
+            if (!diagnostics) return;
+            diagnostics.renderTabs();
+            const view = { errors: 'renderErrors', audit: 'renderAuditLogs', numbers: 'renderNumberChecks', status: 'renderStatus' }[diagnostics.activeTab];
+            if (view) diagnostics[view]();
         },
         money: () => money?.render(),
         ask: () => ask?.init(),
         insights: () => insights?.render(),
         statements: () => { statements?.renderControls(); statements?.render(); },
         billing: () => BillingManager.refreshForLanguage(),
-        anomalies: () => AnomaliesManager.refreshForLanguage(),
+        anomalies: () => loadedAnomalies()?.refreshForLanguage(),
         stock: () => StockManager.refreshForLanguage(),
-        admin: () => { AdminManager.renderTabs(); AdminManager.renderContent(); },
-        health: () => { if (HealthManager.data) HealthManager.render(); }
+        admin: () => { admin?.renderTabs(); admin?.renderContent(); },
+        health: () => { if (health?.data) health.render(); }
     }[tabId];
     if (redraw) run(tabId, redraw);
     if (tabId === 'day' && DayManager.currentSubTab === 'cash') run('day-cash', () => CashManagementManager.refreshForLanguage());
@@ -364,6 +391,8 @@ function loadUserDataAndInitialize() {
 
 /** How long startup waits for the minClientVersion read once data is ready (ms). */
 const VERSION_CHECK_WAIT_MS = 1500;
+/** The daily anomaly scan starts this long after the first screen (AnomaliesManager.scheduleDailyScan). */
+const DAILY_SCAN_DELAY_MS = 8000;
 
 let outdatedBlocked = false;
 /** Outdated app: stop syncing and keep the app hidden behind the update message. */
@@ -640,8 +669,18 @@ async function initializeUserData() {
         // Printed bill (#107): none shared yet → offer this phone's own choices for every phone (once)
         appSettingsApplied.then(loaded => (loaded ? SettingsManager.offerReceiptShare() : false))
             .catch(e => console.warn('Receipt share offer skipped:', e?.code || e));
-        // Daily anomaly scan (#187): owner/manager devices, once per day, over loaded data
-        AnomaliesManager.scheduleDailyScan();
+        // Daily anomaly scan (#187): owner/manager devices, once per day, over loaded data. The other
+        // language's catalogue, the receipt drawing and the anomalies code are parsed when the phone is
+        // idle (#59); the scan still starts 8 s after this.
+        const shownAt = Date.now();
+        whenIdle(() => {
+            loadAllCatalogues().catch(e => console.warn('Language catalogue not loaded:', e?.message || e));
+            loadReceiptDrawing().catch(e => console.warn('Receipt drawing not loaded:', e?.message || e));
+            if (AppState.userRole !== 'owner' && AppState.userRole !== 'manager') return;
+            loadAnomalies()
+                .then(m => m.scheduleDailyScan(Math.max(0, DAILY_SCAN_DELAY_MS - (Date.now() - shownAt))))
+                .catch(e => console.warn('Anomalies not loaded:', e?.message || e));
+        }, { timeoutMs: 4000 });
 
         // Team directory (#87): managers read names and roles from it; once a day the owner's phone
         // rebuilds it from the profiles when they differ (late, so it never slows the first screens)
@@ -677,6 +716,7 @@ if (window.Capacitor?.getPlatform?.() === 'android') document.documentElement.cl
 document.addEventListener('DOMContentLoaded', async function() {
     // STEP 1: Login screen and app shell now, pages in the background
     markStartup('dom-ready');
+    await langReady;
     ThemeManager.init(CHOICE_AT_LOAD);
     await injectTemplates();
     markStartup('shell');
@@ -1268,28 +1308,20 @@ window.app = {
         applyTemplate: (category, index) => ExpensesManager.applyTemplate(category, index)
     },
     
-    // Anomalies (#187, #40): Day report card on Today + Anomalies page
+    // Anomalies (#187, #40): Day report card on Today + Anomalies page (anomalies.js is imported on first use)
     anomalies: {
-        init: () => AnomaliesManager.init(),
-        openPage: () => AnomaliesManager.openPage(),
-        applyFilters: () => AnomaliesManager.applyFilters(),
-        showView: (view) => AnomaliesManager.showView(view),
-        loadMore: () => AnomaliesManager.loadMore(),
-        openRef: (id) => AnomaliesManager.openRef(id),
-        review: (id, status) => AnomaliesManager.review(id, status),
-        shareDayReport: () => AnomaliesManager.shareDayReport(),
-        printDayReport: () => AnomaliesManager.printDayReport(),
-        refreshNow: () => AnomaliesManager.refreshNow(),
-        cashCloseLine: () => AnomaliesManager.cashCloseLine()
+        ...Object.fromEntries(['init', 'openPage', 'applyFilters', 'showView', 'loadMore', 'openRef', 'review',
+            'shareDayReport', 'printDayReport', 'refreshNow']
+            .map(name => [name, (...args) => loadAnomalies().then(m => m[name](...args))])),
+        // The cash-close screen's line, when the code is loaded (owner/manager phones load it after the first screen)
+        cashCloseLine: () => loadedAnomalies()?.cashCloseLine()
     },
 
     // Rate trends (#65): monthly rate history per item + seasonal estimate
-    // App health / Test in Production (#217): owner/manager page + Today banner
+    // App health / Test in Production (#217): owner/manager page + Today banner (health.js is imported on first use)
     health: {
-        init: () => HealthManager.init(),
-        refresh: () => HealthManager.refresh(),
-        openPage: () => HealthManager.openPage(),
-        savePolicies: () => HealthManager.savePolicies()
+        ...Object.fromEntries(['init', 'refresh', 'openPage', 'savePolicies']
+            .map(name => [name, (...args) => loadHealth().then(m => m[name](...args))]))
     },
 
     // Money (redesign §5.2): money.js is imported on first use
@@ -1391,6 +1423,10 @@ window.app = {
         saveRentals: () => SettingsManager.saveRentals(),
         openOpeningStock: () => SettingsManager.openOpeningStock(),
         setAppearance: (appearance) => SettingsManager.setAppearance(appearance),
+        previewTheme: (id) => SettingsManager.previewTheme(id),
+        applyThemePreview: () => SettingsManager.applyThemePreview(),
+        cancelThemePreview: () => SettingsManager.cancelThemePreview(),
+        resetTheme: () => SettingsManager.resetTheme(),
         clearAllData: () => SettingsManager.clearAllData(),
         toggleBluetoothPrinter: () => SettingsManager.toggleBluetoothPrinter(),
         togglePrintPreview: () => SettingsManager.togglePrintPreview(),
@@ -1422,25 +1458,12 @@ window.app = {
         setRentRole: (userId, role) => RolesAccessManager.setRentRole(userId, role)
     },
     
-    // Diagnostics (owner; managers see Number checks only)
+    // Diagnostics (owner; managers see Number checks only; diagnostics.js is imported on first use)
     diagnostics: {
-        init: () => DiagnosticsManager.init(),
-        runNumberChecks: () => DiagnosticsManager.runNumberChecks(),
-        showTab: (tab) => DiagnosticsManager.showTab(tab),
-        loadData: () => DiagnosticsManager.loadData(),
-        loadAuditLogs: () => DiagnosticsManager.loadAuditLogs(),
-        filterByType: (type) => DiagnosticsManager.filterByType(type),
-        filterAuditLogs: (action) => DiagnosticsManager.filterAuditLogs(action),
-        deleteError: (errorId) => DiagnosticsManager.deleteError(errorId),
-        clearAll: () => DiagnosticsManager.clearAll(),
-        runSpeedCheck: () => DiagnosticsManager.runSpeedCheck(),
-        copyStatus: () => DiagnosticsManager.copyStatus(),
-        shareStatus: () => DiagnosticsManager.shareStatus(),
-        exportAuditCsv: () => DiagnosticsManager.exportAuditCsv(),
-        printAudit: () => DiagnosticsManager.printAudit(),
-        exportErrorReport: () => DiagnosticsManager.exportErrorReport(),
-        sendTestError: () => DiagnosticsManager.sendTestError(),
-        sendTestCrash: () => DiagnosticsManager.sendTestCrash()
+        ...Object.fromEntries(['init', 'runNumberChecks', 'showTab', 'loadData', 'loadAuditLogs', 'filterByType',
+        'filterAuditLogs', 'deleteError', 'clearAll', 'runSpeedCheck', 'copyStatus', 'shareStatus', 'exportAuditCsv', 'printAudit',
+        'exportErrorReport', 'sendTestError', 'sendTestCrash']
+            .map(name => [name, (...args) => loadDiagnostics().then(m => m[name](...args))]))
     },
     
     // Settings › Usage on this phone (#136, local only)
@@ -1450,28 +1473,17 @@ window.app = {
         clear: () => UsageView.clear()
     },
 
-    // Admin (owner only)
+    // Admin (owner only; admin.js is imported on first use)
     admin: {
-        init: () => AdminManager.init(),
-        showTab: (tab) => AdminManager.showTab(tab),
+        ...Object.fromEntries(['init', 'showTab', 'approveUser', 'showActivity', 'rejectUser', 'restoreUser', 'showChangeRole',
+            'resetUserPassword', 'deleteUser', 'loadStorageStats', 'clearAllData', 'checkDueFields', 'backfillDueFields', 'checkBackupFile']
+            .map(name => [name, (...args) => loadAdmin().then(m => m[name](...args))])),
         saveCheckThresholds: () => SettingsManager.saveCheckThresholds(),
-        approveUser: (userId) => AdminManager.approveUser(userId),
-        showActivity: (range) => AdminManager.showActivity(range),
-        rejectUser: (userId) => AdminManager.rejectUser(userId),
-        restoreUser: (userId, userName) => AdminManager.restoreUser(userId, userName),
-        showChangeRole: (userId, userName, currentRole) => AdminManager.showChangeRole(userId, userName, currentRole),
-        resetUserPassword: (userId, email) => AdminManager.resetUserPassword(userId, email),
-        deleteUser: (userId, userName) => AdminManager.deleteUser(userId, userName),
-        loadStorageStats: () => AdminManager.loadStorageStats(),
-        clearAllData: () => AdminManager.clearAllData(),
-        checkDueFields: () => AdminManager.checkDueFields(),
-        backfillDueFields: () => AdminManager.backfillDueFields(),
-        checkBackupFile: (file) => AdminManager.checkBackupFile(file),
         // The backup picker: check the chosen file, then clear the input so the same file can be picked again
         checkBackupInput: (input) => {
-            const checked = AdminManager.checkBackupFile(input.files && input.files[0]);
+            const file = input.files && input.files[0];
             input.value = '';
-            return checked;
+            return loadAdmin().then(m => m.checkBackupFile(file));
         }
     },
     

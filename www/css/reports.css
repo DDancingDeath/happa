@@ -57,8 +57,8 @@
 }
 
 .export-btn.csv:hover {
-    background: var(--success-color);
-    color: white;
+    background: var(--btn-success);
+    color: var(--btn-sale-ink);
 }
 
 .export-btn.pdf {
@@ -67,8 +67,8 @@
 }
 
 .export-btn.pdf:hover {
-    background: var(--danger-color);
-    color: white;
+    background: var(--btn-danger);
+    color: var(--btn-danger-ink);
 }
 
 /* Tab Navigation */
@@ -205,6 +205,7 @@
 
 .reports-hero-card.sale-theme {
     background: var(--btn-success);
+    color: var(--btn-sale-ink);
 }
 
 .hero-stat {
@@ -672,7 +673,7 @@
 
 .compare-card.sale {
     background: var(--btn-success);
-    color: white;
+    color: var(--btn-sale-ink);
 }
 
 .compare-icon {

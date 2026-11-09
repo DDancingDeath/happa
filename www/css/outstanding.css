@@ -150,7 +150,7 @@
 .aging-sort-btn.active {
     background: var(--btn-primary);
     border-color: var(--btn-primary);
-    color: #fff;
+    color: var(--btn-primary-ink);
 }
 
 .aging-party {
@@ -206,7 +206,7 @@
 .aging-btn.aging-remind {
     background: var(--btn-success);
     border-color: var(--btn-success);
-    color: #fff;
+    color: var(--btn-sale-ink);
 }
 
 .aging-badge {

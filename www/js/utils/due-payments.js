@@ -21,25 +21,9 @@ import { parseAnyBillDate } from './dates.js';
 export const BILL_COLLECTIONS = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' };
 
 /**
- * Party name for comparing: Unicode-normalised, trimmed, inner spaces
- * collapsed, case-insensitive (works for Hindi names too).
- * @param {*} name
- * @returns {string}
+ * Party name for comparing (PARTY): re-exported from utils/parties.js for existing importers.
  */
-export function normalizeParty(name) {
-    return String(name ?? '').normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
-}
-
-/**
- * True when two party names are the same person (exact after normalising; '' never matches).
- * @param {*} a
- * @param {*} b
- * @returns {boolean}
- */
-export function sameParty(a, b) {
-    const x = normalizeParty(a);
-    return x !== '' && x === normalizeParty(b);
-}
+export { partyNameKey as normalizeParty, sameParty } from './parties.js';
 
 /**
  * Party name stored on a bill (customer for sales, supplier for purchases).
@@ -304,7 +288,7 @@ export function billAgeOrder(a, b) {
 
 /**
  * DUE-ALL: what "Complete all due" settles for one party: every open bill whose
- * party is `partyKey` (by `keyOf`, e.g. aging.js normalizePartyName) with its
+ * party is `partyKey` (by `keyOf`, e.g. parties.js partyNameKey) with its
  * BILL-DUE, oldest first, and the total.
  * @param {Rec[]} bills
  * @param {string} partyKey

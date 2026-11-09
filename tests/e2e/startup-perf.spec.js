@@ -1,15 +1,20 @@
 /**
  * Start-up timing with a 4× slower CPU (#66, #59): a signed-in owner reopens the
- * app five times; the median of each startup mark (utils/startup-timings.js) and
- * the page templates fetched before the first screen are printed as
- * "[startup-perf]" lines in the CI log. Reports only (CI machines vary); the
- * template count is the one hard check.
+ * app five times; the median of each startup mark (utils/startup-timings.js), the
+ * first contentful paint and the JavaScript loaded before the first screen (files
+ * and their size on disk, KB), and the page templates fetched before the first
+ * screen are printed as "[startup-perf]" lines in the CI log. Reports only (CI
+ * machines vary); the template count is the one hard check.
  */
+const fs = require('fs');
+const path = require('path');
 const { test, expect, login } = require('./support/app');
 const { EAGER_PAGES, SHELL_TEMPLATES } = require('./support/templates');
 
 const RUNS = 5;
+const WWW = path.join(__dirname, '../../www');
 const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
+const fileSize = (p) => { try { return fs.statSync(path.join(WWW, p)).size; } catch (_) { return 0; } };
 
 test('cold start of a signed-in phone with a 4× slower CPU', async ({ page, problems }, testInfo) => {
     test.skip(testInfo.project.name !== 'phone', 'measured once, on the phone project');
@@ -25,14 +30,27 @@ test('cold start of a signed-in phone with a 4× slower CPU', async ({ page, pro
         await page.reload({ waitUntil: 'domcontentloaded' });
         await page.waitForFunction(() => (window.performance.getEntriesByName('aadhat:app-shown').length > 0), null, { timeout: 120000 });
         page.off('request', onRequest);
-        const marks = await page.evaluate(() => Object.fromEntries(performance.getEntriesByType('mark')
-            .filter(m => m.name.startsWith('aadhat:')).map(m => [m.name.slice(7), Math.round(m.startTime)])));
-        runs.push({ marks, templates: [...new Set(templates)] });
+        const { marks, fcp, scripts } = await page.evaluate(() => {
+            const shown = performance.getEntriesByName('aadhat:app-shown')[0].startTime;
+            return {
+                marks: Object.fromEntries(performance.getEntriesByType('mark')
+                    .filter(m => m.name.startsWith('aadhat:')).map(m => [m.name.slice(7), Math.round(m.startTime)])),
+                fcp: Math.round(performance.getEntriesByName('first-contentful-paint')[0]?.startTime ?? -1),
+                scripts: [...new Set(performance.getEntriesByType('resource')
+                    .filter(r => r.startTime <= shown && /\.js$/.test(new URL(r.name).pathname))
+                    .map(r => new URL(r.name).pathname))]
+            };
+        });
+        const jsKb = Math.round(scripts.reduce((sum, p) => sum + fileSize(p), 0) / 1024);
+        runs.push({ marks: { ...marks, fcp }, templates: [...new Set(templates)], jsFiles: scripts.length, jsKb });
     }
-    const names = ['shell', 'templates', 'auth', 'profile', 'listeners', 'app-shown'];
+    const names = ['fcp', 'shell', 'templates', 'auth', 'profile', 'listeners', 'app-shown'];
     const summary = Object.fromEntries(names.map(n => [n, median(runs.map(r => r.marks[n]).filter(v => v !== undefined))]));
+    summary.jsFiles = median(runs.map(r => r.jsFiles));
+    summary.jsKb = median(runs.map(r => r.jsKb));
     const fetched = runs[runs.length - 1].templates;
     console.log(`[startup-perf] cpu=4x runs=${RUNS} median ms: ${names.map(n => `${n}=${summary[n]}`).join(' ')}`);
+    console.log(`[startup-perf] JavaScript before the first screen: ${summary.jsFiles} files, ${summary.jsKb} KB`);
     console.log(`[startup-perf] templates fetched before the first screen (${fetched.length}): ${fetched.sort().join(', ')}`);
     testInfo.annotations.push({ type: 'startup-perf', description: JSON.stringify({ summary, fetched }) });
     if (EAGER_PAGES) expect(fetched.sort()).toEqual([...SHELL_TEMPLATES, ...EAGER_PAGES].sort());

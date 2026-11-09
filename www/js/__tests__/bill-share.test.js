@@ -12,9 +12,12 @@ jest.mock('../ui/infinite-scroll.js', () => ({ attachOlderHistoryScroll: jest.fn
 import {
     copyMark, buildReprintPayload, buildBillShareText, receiptDateTime, formatReceiptDateTime
 } from '../utils/bill-share.js';
-import { BluetoothPrinterManager, PrinterService } from '../services/printer.js';
+import { BluetoothPrinterManager, PrinterService, loadReceiptDrawing } from '../services/printer.js';
 import { HistoryManager } from '../modules/history.js';
 import { AppState } from '../utils/state.js';
+
+// The receipt drawing is imported on the first print (#59)
+beforeAll(() => loadReceiptDrawing());
 
 const PURCHASE = {
     id: 'p1', billNumber: 'P20261003-001', type: 'purchase', isPurchase: true,

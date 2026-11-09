@@ -69,7 +69,7 @@ afterEach(() => {
 });
 
 describe('live case (fake values): ₹2,50,000 opening due today + ₹10 sale paid ₹4', () => {
-    test('Today: due to receive ₹6, sales ₹10 from 1 bill', () => {
+    test('Today: due to receive ₹6, sales ₹10 from 1 bill', async () => {
         const ids = ['todayTotalPurchases', 'todayPurchaseCount', 'todayTotalSales', 'todaySaleCount', 'todayLaborCost', 'todayBusinessExpenses',
             'todayBusinessExpenseCount', 'todayPersonalExpenses', 'todayPersonalExpenseCount', 'todayTotalIn', 'todayTotalOut', 'todayNetCashFlow',
             'todayCashFlowLabel', 'todayCashReceived', 'todayOnlineReceived', 'todayCashPaid', 'todayOnlinePaid', 'todayTotalCashFlow',
@@ -82,6 +82,7 @@ describe('live case (fake values): ₹2,50,000 opening due today + ₹10 sale pa
         expect(text('todaySaleCount')).toBe('1 bill');
         expect(text('todayCashReceived')).toBe('₹4');
         expect(text('todayTransactionsList')).not.toContain('Test Party A');
+        for (let i = 0; i < 10; i++) await Promise.resolve();
         expect(JSON.stringify(report.mock.calls[0][0])).not.toContain('opening-retail-old1');
     });
 

@@ -299,7 +299,7 @@
   border: none;
   border-radius: 8px;
   background: var(--btn-primary);
-  color: white;
+  color: var(--btn-primary-ink);
   font-weight: var(--w-strong);
   font-size: 14px;
   cursor: pointer;
@@ -642,11 +642,11 @@
 
 .bill-action-btn.btn-share {
   background: var(--btn-success);
-  color: #fff;
+  color: var(--btn-sale-ink);
 }
 
 .bill-action-btn.btn-share:hover {
-  background: #065f46;
+  background-image: linear-gradient(var(--state-hover), var(--state-hover));
 }
 
 @media (max-width: 480px) {

@@ -9,7 +9,7 @@
 import { AppState } from '../utils/state.js';
 import { NavigationManager } from './navigation.js';
 import { UIManager } from './ui-manager.js';
-import { t } from '../i18n/index.js';
+import { t, loadAllCatalogues } from '../i18n/index.js';
 import { rentRoleOf } from '../utils/settings-sections.js';
 
 /** 'owner' | 'manager' | 'member' | null: what this user may do in Rentals. */
@@ -53,7 +53,8 @@ export const BusinessSwitcher = {
     /** Loads the Rentals code once (dynamic import, never at start-up). */
     load() {
         if (!loading) {
-            loading = import('../rentals/rentals.js').then((m) => {
+            // Receipts and reports can be in the tenant's / another language: both catalogues (#59)
+            loading = Promise.all([import('../rentals/rentals.js'), loadAllCatalogues()]).then(([m]) => {
                 rentals = m.RentalsModule;
                 Object.assign(window.app.rentals, m.RentalsModule.api);
                 return rentals;
