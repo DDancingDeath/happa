@@ -29,7 +29,7 @@ export const REPORT_GROUPS = Object.freeze(['item', 'party', 'month']);
 /** Bill type → its Firestore collection key. */
 export const REPORT_COLLECTIONS = Object.freeze({ purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' });
 const MEASURES = ['kg', 'amount', 'avgRate', 'bills', 'labour', 'net'];
-const MAX_KEYS = 100;
+const MAX_KEYS = 1000;
 
 /**
  * @typedef {{v: 1, billType: string, item: ?{text: string, mode: 'family'}, party: ?{text: string}, keys: ?string[],
@@ -144,7 +144,8 @@ export function reportKinds(items, bills) {
  * name: the report would not be about it, so the answer gives no figure).
  * @param {Array<{key: string, name: string, hindiName: string}>} kinds reportKinds()
  * @param {string} text the typed subject
- * @returns {{kinds: Array<{key: string, name: string, hindiName: string}>, near: Array<{key: string, name: string, hindiName: string}>, unknown: string[]}}
+ * @returns {{kinds: Array<{key: string, name: string, hindiName: string}>, near: Array<{key: string, name: string, hindiName: string}>, unknown: string[], partial: string[]}}
+ *   partial: the unknown words that start a word of some kind's name ("chaw" for Chawal)
  */
 export function matchKinds(kinds, text) {
     const words = partyNameKey(text).split(' ').filter(Boolean).map(w => ({ w, v: wordVariants(w) }));
@@ -157,8 +158,9 @@ export function matchKinds(kinds, text) {
     const loose = words.map(x => looseWord(x.w)).filter(w => w.length >= 2);
     const near = withWords.filter(x => !found.includes(x.k) && loose.some(w => [...x.own].some(s => s.startsWith(w) && s !== w))).map(x => x.k);
     const unknown = words.filter((x, i) => !hits[i].length).map(x => x.w);
+    const partial = unknown.filter(w => { const l = looseWord(w); return l.length >= 2 && withWords.some(x => [...x.own].some(s => s.startsWith(l) && s !== l)); });
     const byName = (/** @type {{name: string, hindiName: string}} */ a, /** @type {{name: string, hindiName: string}} */ b) => (a.name || a.hindiName).localeCompare(b.name || b.hindiName);
-    return { kinds: [...found].sort(byName), near: near.sort(byName), unknown };
+    return { kinds: [...found].sort(byName), near: near.sort(byName), unknown, partial };
 }
 
 const billNo = (/** @type {Rec} */ b) => String(b?.billNumber || b?.billNo || '');

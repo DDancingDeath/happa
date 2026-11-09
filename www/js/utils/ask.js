@@ -107,10 +107,27 @@ const REPORT_ASK = words(['report', 'excel', 'xlsx', 'sheet', 'sheets', 'csv', '
 const POINTERS = words(['this', 'that', 'ne', 'इस', 'उस', 'ने']);
 // "Mohan ne kharida", "lah kisne kharida": the party bought, so it was our sale (and "ne becha" our purchase)
 const BY_THEM = words(['ne', 'ने', 'kisne', 'किसने']);
+const FIRST_PERSON = words(['main', 'mai', 'mein', 'hum', 'ham', 'मैं', 'मै', 'हम']);
+// "Mohan ne humse kya kharida": us, never a name
+const US = words(['humse', 'hamse', 'mujhse', 'hume', 'humein', 'hamein', 'mujhe', 'humko', 'hamko', 'हमसे', 'मुझसे', 'हमें', 'मुझे', 'हमको']);
+const PERIOD_BEFORE = words(['is', 'iss', 'this', 'pichle', 'pichhle', 'pichla', 'last', 'previous', 'agle', 'next', 'इस', 'पिछले', 'पिछला']);
+const MONTH_FIRST = /^(month|mahine|mahina|महीने|महीना)/;
 /** A report by month with no period named covers last month and this one: still on the phone. */
 const MONTHLY_DEFAULT = 'since-last-month';
 
 const hasAny = (/** @type {string[]} */ tokens, /** @type {Set<string>} */ set) => tokens.some(w => set.has(w));
+
+/**
+ * The words of a report question that may name items or a party: the request, period, bill
+ * type, grouping and pronoun words left out.
+ * @param {string[]} tokens questionWords()
+ * @returns {string[]}
+ */
+function subjectWords(tokens) {
+    const KEYWORDS = [LINK, TODAY, TOTAL, NOISE, DUES, STOCK, GOODS, SALES, PURCHASES, EXPENSES, BOUGHT, SOLD, REPORT, MONTH, YEAR, LAST, FY,
+        SINCE, ALL_TIME, OTHER_DAY, AMBIGUOUS, RETAIL, WHOLESALE, BY_PARTY, ITEM_WORDS, REPORT_ASK, POINTERS, FIRST_PERSON, US];
+    return tokens.filter(w => !KEYWORDS.some(s => s.has(w)) && !/^[\d\u0966-\u096F]/.test(w));
+}
 
 /**
  * The period an item report asks about ("is mahine", "pichle saal", "ab tak", "aaj");
@@ -202,21 +219,27 @@ export function parseQuestion(text) {
  */
 function itemReportQuestion(text, sale) {
     const lower = String(text || '').normalize('NFC').toLowerCase();
-    const plain = lower.replace(BY_MONTH, '$1 ');
-    const monthly = plain !== lower;
+    let monthly = false;
+    const plain = lower.replace(BY_MONTH, (/** @type {string} */ m, /** @type {string} */ lead, /** @type {string} */ phrase, ...rest) => {
+        // "pichle mahine ke hisab se", "is month wise": that month is the period, not a grouping
+        const before = String(rest[rest.length - 1]).slice(0, Number(rest[rest.length - 2])).trim().split(/\s+/).pop() || '';
+        if (PERIOD_BEFORE.has(before) && MONTH_FIRST.test(phrase)) return m;
+        monthly = true;
+        return `${lead} `;
+    });
     const tokens = questionWords(plain);
     const byParty = hasAny(tokens, BY_PARTY) || WHO_ALL.test(plain);
     const groupBy = monthly ? 'month' : byParty ? 'party' : 'item';
-    const KEYWORDS = [LINK, TODAY, TOTAL, NOISE, DUES, STOCK, GOODS, SALES, PURCHASES, EXPENSES, BOUGHT, SOLD, REPORT, MONTH, YEAR, LAST, FY,
-        SINCE, ALL_TIME, OTHER_DAY, AMBIGUOUS, RETAIL, WHOLESALE, BY_PARTY, ITEM_WORDS, REPORT_ASK, POINTERS];
-    const subject = tokens.filter(w => !KEYWORDS.some(s => s.has(w)) && !/^[\d\u0966-\u096F]/.test(w)).join(' ');
+    const subject = subjectWords(tokens).join(' ');
     // "abhi tak ki bikri" alone is today's sales so far: only a month, year or FY makes it a report
     const periodNamed = [MONTH, YEAR, FY, LAST].some(s => hasAny(tokens, s));
     const asked = subject || groupBy !== 'item' || WHAT_ALL.test(plain) || hasAny(tokens, REPORT_ASK);
     if (!asked && !periodNamed) return null;
     const range = monthly && !periodNamed && !SO_FAR.test(plain) && !hasAny(tokens, TODAY) && !hasAny(tokens, ALL_TIME) ? MONTHLY_DEFAULT : reportRange(plain, tokens);
     if (!range) return { intent: 'today_only' };
-    const sold = sale !== hasAny(tokens, BY_THEM);
+    // "Mohan ne kharida": Mohan bought from us; not "main ne / hum ne" (we did)
+    const byThem = tokens.some((w, i) => BY_THEM.has(w) && !((w === 'ne' || w === 'ने') && FIRST_PERSON.has(tokens[i - 1])));
+    const sold = sale !== byThem;
     const one = hasAny(tokens, WHOLESALE) !== hasAny(tokens, RETAIL);
     const billType = !sold ? 'purchase' : !one ? 'sale' : hasAny(tokens, WHOLESALE) ? 'wholesale' : 'retail';
     return { intent: 'item_report', billType, subject, range, groupBy };
@@ -375,10 +398,13 @@ export function answerQuestion(q, src = {}, { role = 'staff', wholesale = false,
             const kinds = picked ? pool.filter(k => picked.has(k.key)) : m.kinds;
             const near = picked ? pool.filter(k => !picked.has(k.key)) : m.near;
             Object.assign(base, { kinds, pool, picked: !!picked, near: near.slice(0, ASK_MATCH_LIMIT), nearMore: Math.max(0, near.length - ASK_MATCH_LIMIT) });
-            if (m.unknown.length) {
+            // a word that only started a kind's name ("chaw"), once that kind is picked by hand, is not a party
+            const partyWords = picked ? m.unknown.filter(w => !m.partial.includes(w) || !kinds.length) : m.unknown;
+            if (partyWords.length) {
                 // "Ramesh se lah kitna kharida", "Ramesh ko kya kya becha": the words that name no item name a party
-                const typed = spellings(m.unknown.join(' '));
-                const namesOf = (/** @type {{key: string, name: string}} */ p) => [p.key, ...spellings(p.name)];
+                const typed = spellings(partyWords.join(' '));
+                // "Ramesh Ji" typed as "Ramesh ji ko": the words a question drops are not needed
+                const namesOf = (/** @type {{key: string, name: string}} */ p) => [p.key, ...spellings(p.name), ...spellings(subjectWords(questionWords(p.name)).join(' '))];
                 const hits = matchNames(reportParties(all), namesOf, typed);
                 // only a name that starts with the words ("bhai" → Bhairav Traders) is offered, never counted
                 const exact = hits.length === 1 && namesOf(hits[0]).some(n => typed.includes(n));
@@ -386,7 +412,7 @@ export function answerQuestion(q, src = {}, { role = 'staff', wholesale = false,
                 if (!hits.length) {
                     // A name only on bills older than this phone has may still be found once they are read
                     if (!covered) return { ...base, ...older };
-                    return m.kinds.length ? { ...base, notItems: m.unknown } : base;
+                    return m.kinds.length ? { ...base, notItems: partyWords } : base;
                 }
                 partyKey = hits[0].key;
                 base.party = hits[0].name;

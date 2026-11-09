@@ -330,6 +330,7 @@ export const AskManager = {
                 + controls;
         }
         const r = a.report;
+        if (!r) return html + controls;
         const shown = r.groups.filter(g => g.totals.bills);
         if (!shown.length) return html + line(t('ui.ask.report_none')) + controls;
         const label = (g) => groupLabel(r, g, lang);

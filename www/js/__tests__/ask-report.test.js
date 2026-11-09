@@ -59,6 +59,12 @@ describe('parseQuestion: item reports', () => {
         ['Mohan ne kya kya kharida', R('sale', 'mohan', 'this-month')],
         ['lah kisne kharida', R('sale', 'lah', 'this-month', 'party')],
         ['Ramesh ne kitna lah becha', R('purchase', 'ramesh lah', 'this-month')],
+        ['main ne lah kitna becha', R('sale', 'lah', 'this-month')],
+        ['हम ने इस महीने कितना बेचा', R('sale', '', 'this-month')],
+        ['Mohan ne humse kya kya kharida', R('sale', 'mohan', 'this-month')],
+        ['pichle mahine ke hisab se lah kitna becha', R('sale', 'lah', 'last-month')],
+        ['is mahine ke hisab se lah kitna becha', R('sale', 'lah', 'this-month')],
+        ['pichle saal ki bikri mahine ke hisab se', R('sale', '', 'last-year', 'month')],
         ['this month lah purchase', R('purchase', 'lah', 'this-month')],
         ['aaj ki bikri', { intent: 'sales_today' }],
         ['aaj kitna bika', { intent: 'sales_today' }],
@@ -106,7 +112,7 @@ describe('matchKinds: the kinds a word names', () => {
         expect(matchKinds(kinds, 'lah ramesh')).toMatchObject({ unknown: ['ramesh'] });
     });
     test('a word that only starts a name is offered, never counted', () => {
-        expect(matchKinds(kinds, 'lahs')).toEqual({ kinds: [], near: expect.arrayContaining([expect.objectContaining({ name: 'Lahsun Desi' })]), unknown: ['lahs'] });
+        expect(matchKinds(kinds, 'lahs')).toEqual({ kinds: [], near: expect.arrayContaining([expect.objectContaining({ name: 'Lahsun Desi' })]), unknown: ['lahs'], partial: ['lahs'] });
     });
     test('synonyms (ITEM_WORD_SYNONYMS): lah = lakh = लाख, katki = कदकी; Lahsun still never counted', () => {
         const shop = reportKinds([{ id: 'lk', name: 'Lah Katki' }, { id: 'lp', name: 'Lakh Palash' }, { id: 'g', name: 'Garlic', hindiName: 'लहसुन' }, { id: 'lc', name: 'Lakhori Chilli' }],
@@ -229,7 +235,7 @@ describe('spec, reads, sheets', () => {
         expect(validateSpec({ v: 1, billType: 'sale', range: { preset: 'all' }, groupBy: 'profit' }).groupBy).toBe('item');
         expect(validateSpec({ v: 1, billType: 'expenses', range: { preset: 'all' } })).toBeNull();
         expect(validateSpec({ v: 1, billType: 'purchase', item: { text: 'lah' }, range: { preset: 'forever' } })).toBeNull();
-        expect(validateSpec({ v: 1, billType: 'purchase', range: { preset: 'all' }, keys: Array.from({ length: 500 }, (_, i) => `k${i}`) }).keys).toHaveLength(100);
+        expect(validateSpec({ v: 1, billType: 'purchase', range: { preset: 'all' }, keys: Array.from({ length: 1500 }, (_, i) => `k${i}`) }).keys).toHaveLength(1000);
     });
     test('the bills on the phone win over the copies read; bills voided on the phone go', () => {
         const merged = mergeReportBills([{ id: 'a', v: 'phone' }], [{ id: 'a', v: 'server' }, { id: 'b' }, { id: 'c' }], ['c']);
@@ -312,6 +318,21 @@ describe('sales, parties and months (ASK-6, ASK-5)', () => {
         const a = answerQuestion(parseQuestion('is mahine ki bikri bhai'), s, { role: 'owner', today });
         expect(a).toMatchObject({ partyMatches: ['Bhairav Traders'] });
         expect(a.report).toBeUndefined();
+    });
+    test('a party named with "ji": the words a question drops are not needed for an exact match', () => {
+        const s = { ...src, bills: { ...src.bills, retailSales: [...retail, sale('s7', '2026-11-03T10:00:00', 'R7', 'Sharma Ji', [line('r', 'Rice', 7, 40)])] } };
+        const a = answerQuestion(parseQuestion('Sharma ji ko kya kya becha'), s, { role: 'owner', today });
+        expect(a).toMatchObject({ party: 'Sharma Ji', report: { totals: { kg: 7 } } });
+    });
+    test('a word that only starts a kind\'s name: once that kind is picked by hand, it is reported', () => {
+        const s = { bills: { purchases: PURCHASES }, items: [{ id: 'g', name: 'Garlic', hindiName: 'लहसुन' }] };
+        const q = parseQuestion('lahs kitna kharida ab tak');
+        const first = answerQuestion(q, s, { role: 'owner', today });
+        expect(first).toMatchObject({ kinds: [], pool: [expect.objectContaining({ key: 'g' })] });
+        expect(first.report).toBeUndefined();
+        const picked = answerQuestion({ ...q, keys: ['g'] }, s, { role: 'owner', today });
+        expect(picked.report.totals).toMatchObject({ kg: 10, amount: 800 });
+        expect(answerQuestion(parseQuestion('Mohan se lah kitna kharida'), s, { role: 'owner', today }).notItems).toEqual(['mohan']);
     });
     test('a party\'s name is the spelling used most across retail and wholesale', () => {
         const s = { ...src, bills: { purchases: [], wholesaleSales: [sale('w9', '2026-11-03T10:00:00', 'W9', 'BHAIRAV TRADERS', [line('r', 'Rice', 1, 40)])],

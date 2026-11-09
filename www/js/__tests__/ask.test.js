@@ -212,6 +212,18 @@ describe('Ask page: item reports (ASK-5)', () => {
         expect(AskManager.answers[0].q).toMatchObject({ range: 'last-month', billType: 'purchase', groupBy: 'month', keys: ['k', 'g'] });
     });
 
+    test('picking the offered kind when the word only started its name gives its report (no crash)', async () => {
+        jest.spyOn(FirebaseService, 'isFullHistoryLoaded').mockReturnValue(true);
+        AppState.purchaseHistory = [{ ...pb('p3', '2026-11-05T10:00:00', '20', 10, 90), items: [{ itemId: 'g', name: 'Garlic', qty: 10, rate: 90, total: 900 }] }];
+        AppState.items = [items[1]];
+        await AskManager.ask('is mahine lahs kitna kharida');
+        expect(answers()).toContain('Which one? Garlic');
+        await AskManager.toggleKind(AskManager.answers[0].id, 'g');
+        expect(answers()).toContain('Garlic: 10 kg · average ₹90.00/kg · ₹900 (1 bill)');
+        await AskManager.ask('help');
+        expect(answers()).toContain('I can tell you');
+    });
+
     test('a kind chip keeps the keyboard focus after it is turned on or off', async () => {
         jest.spyOn(FirebaseService, 'isFullHistoryLoaded').mockReturnValue(true);
         await AskManager.ask('is mahine lah kitna kharida');
