@@ -7,6 +7,7 @@
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { TelemetryService } from '../services/telemetry.js';
+import { CrashReports } from '../services/crash-reports.js';
 import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
 import { formatDateTimeIN } from '../utils/dates.js';
@@ -329,7 +330,68 @@ const DiagnosticsManager = {
                 ${canShare ? `<button class="diag-btn" data-onclick="diagnostics.shareStatus()">${tx('ui.status.share')}</button>` : ''}
             </div>
             ${speed}
-            <p style="font-size:0.8rem;color:#4b5563;margin-top:12px;">${tx('ui.status.copy_note')}</p>`;
+            <p style="font-size:0.8rem;color:#4b5563;margin-top:12px;">${tx('ui.status.copy_note')}</p>
+            ${this.errorTestHtml()}`;
+    },
+
+    /** Owner-only test of error reports (#122): the web error path, and Crashlytics in the Android app. */
+    errorTestHtml() {
+        const reach = CrashReports.testReach();
+        const note = {
+            web: 'ui.diag.test_crash_web',
+            'not-set-up': 'ui.diag.test_crash_not_set_up',
+            off: 'ui.diag.test_crash_off',
+            on: 'ui.diag.test_crash_on'
+        }[reach];
+        const crashBtn = reach === 'on'
+            ? `<button class="diag-btn danger" data-errtest="crash" data-onclick="diagnostics.sendTestCrash()">${tx('ui.diag.test_send_crash')}</button>`
+            : '';
+        return `
+            <div class="diag-error-card diag-errtest" data-crash-reach="${Helpers.escapeHtml(reach)}">
+                <h3>${tx('ui.diag.test_title')}</h3>
+                <p class="setting-description">${tx('ui.diag.test_intro')}</p>
+                <div class="diagnostics-controls">
+                    <button class="diag-btn refresh" data-errtest="error" data-onclick="diagnostics.sendTestError()">${tx('ui.diag.test_send_error')}</button>
+                    ${crashBtn}
+                </div>
+                <p class="setting-description" data-errtest-note>${tx(note)}</p>
+                <p class="setting-description" data-errtest-result role="status" aria-live="polite"></p>
+            </div>`;
+    },
+
+    async sendTestError() {
+        if (!isOwner()) return;
+        const btn = document.querySelector('[data-errtest="error"]');
+        if (btn?.disabled) return;
+        if (btn) btn.disabled = true;
+        const lines = [];
+        try {
+            const web = await TelemetryService.sendTestError();
+            lines.push(t(web === 'sent' ? 'msg.diag.test_sent' : 'msg.diag.test_queued'));
+        } catch (err) {
+            console.warn('Test error not recorded:', err?.message || err);
+            lines.push(t('msg.diag.test_failed'));
+        }
+        if (CrashReports.testReach() === 'on') {
+            const recorded = await CrashReports.sendTestException();
+            lines.push(t(recorded ? 'msg.diag.test_crashlytics_recorded' : 'msg.diag.test_crashlytics_failed'));
+        }
+        if (btn) btn.disabled = false;
+        const out = document.querySelector('[data-errtest-result]');
+        if (out) out.textContent = lines.join(' ');
+        return lines;
+    },
+
+    /** Closes the app on purpose, after a confirm; only while crash reports are on. */
+    async sendTestCrash() {
+        if (!isOwner()) return false;
+        if (CrashReports.testReach() !== 'on') {
+            if (this.activeTab === 'status') this.renderStatus();
+            return false;
+        }
+        const ok = await UIManager.showModal(t('msg.diag.test_crash_confirm'), t('ui.diag.test_crash_confirm_title'), true);
+        if (!ok) return false;
+        return CrashReports.sendTestCrash();
     },
 
     /** Speed check (#83): local probes only, no reads. */

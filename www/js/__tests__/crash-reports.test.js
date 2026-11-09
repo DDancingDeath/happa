@@ -99,3 +99,59 @@ test('an APK without the Firebase config: "not set up", the switch is disabled',
     expect([box.checked, box.disabled]).toEqual([false, true]);
     expect(document.getElementById('crashReportsNotSetUp').hidden).toBe(false);
 });
+
+describe('owner test from Diagnostics', () => {
+    const testPlugin = () => Object.assign(fakePlugin(), {
+        recordException: jest.fn(async () => {}),
+        crash: jest.fn(async () => {})
+    });
+
+    test('website: nothing goes to Crashlytics', async () => {
+        await CrashReports.apply();
+        expect(CrashReports.testReach()).toBe('web');
+        expect(await CrashReports.sendTestException()).toBe(false);
+        expect(await CrashReports.sendTestCrash()).toBe(false);
+    });
+
+    test('no Firebase config: "not set up", and crash() is never called (it would close the app)', async () => {
+        const plugin = testPlugin();
+        plugin.setEnabled.mockRejectedValue(new Error('Default FirebaseApp is not initialized'));
+        nativeWith(plugin);
+        localStorage.setItem(CRASH_REPORTS_KEY, '1');
+        await CrashReports.apply();
+        expect(CrashReports.testReach()).toBe('not-set-up');
+        expect(await CrashReports.sendTestException()).toBe(false);
+        expect(await CrashReports.sendTestCrash()).toBe(false);
+        expect(plugin.recordException).not.toHaveBeenCalled();
+        expect(plugin.crash).not.toHaveBeenCalled();
+    });
+
+    test('switched off: nothing is sent', async () => {
+        const plugin = testPlugin();
+        nativeWith(plugin);
+        await CrashReports.apply();
+        expect(CrashReports.testReach()).toBe('off');
+        expect(await CrashReports.sendTestCrash()).toBe(false);
+        expect(plugin.crash).not.toHaveBeenCalled();
+    });
+
+    test('switched on: a non-fatal test report, and a test crash only when asked', async () => {
+        const plugin = testPlugin();
+        nativeWith(plugin);
+        await CrashReports.setOn(true);
+        expect(CrashReports.testReach()).toBe('on');
+        expect(await CrashReports.sendTestException()).toBe(true);
+        expect(plugin.recordException).toHaveBeenCalledWith({ message: expect.stringMatching(/^Test error .*not a real error$/) });
+        expect(plugin.crash).not.toHaveBeenCalled();
+        expect(await CrashReports.sendTestCrash()).toBe(true);
+        expect(plugin.crash).toHaveBeenCalledWith({ message: expect.stringMatching(/^Test crash/) });
+    });
+
+    test('a failing non-fatal report is reported as not recorded, never thrown', async () => {
+        const plugin = testPlugin();
+        plugin.recordException.mockRejectedValue(new Error('boom'));
+        nativeWith(plugin);
+        await CrashReports.setOn(true);
+        expect(await CrashReports.sendTestException()).toBe(false);
+    });
+});

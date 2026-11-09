@@ -25,3 +25,8 @@ Part of the [owner guide](../owner-guide.md) (one file per page). Hindi: [settin
 - **Diagnostics › Audit logs**: CSV (in English) or Print / PDF of the entries listed;
   **Errors**: Export report (the errors with names, numbers and secrets removed, plus this
   phone's status) to send to whoever fixes the app. Both are written in the audit log.
+- **Diagnostics › Status › Test error reports** (owner only): **Send a test error** records a test error
+  through the app's error reports; it shows under Diagnostics › Errors. In the Android app with crash reports
+  switched on it also goes to Crashlytics (an error that did not close the app), and **Send a test crash**
+  closes the app on purpose after a confirm. With crash reports off, or not set up in that version of the app,
+  it says so and offers no test crash (docs/error-reporting.md, "Check that reports arrive").

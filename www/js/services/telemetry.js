@@ -49,6 +49,10 @@ const clip = (value, max) => (value === undefined || value === null ? undefined 
 
 const SCRUBBED_FIELDS = new Set(['message', 'stack', 'context']);
 
+/** The owner's test error (Diagnostics › Status, #122): one fingerprint, so repeats group together. */
+const TEST_ERROR_REF = 'test-error';
+const TEST_ERROR_MESSAGE = 'Test error sent by the owner from Diagnostics';
+
 /** How long an error report is kept after it was last seen (#116; the audit log keeps 90 days too). */
 const REPORT_KEEP_MS = 90 * 24 * 60 * 60 * 1000;
 
@@ -389,6 +393,29 @@ const TelemetryService = {
     },
 
     /**
+     * The owner's test (#122): one error through the normal path, sent now rather than after
+     * the debounce. Offline the write stays queued and is sent later.
+     * @param {number} [waitMs=8000] longest wait for the server
+     * @returns {Promise<'sent'|'queued'>}
+     */
+    async sendTestError(waitMs = 8000) {
+        if (AppState.userRole !== 'owner') {
+            throw new Error('Unauthorized');
+        }
+        this.captureError({ type: 'manual', ref: TEST_ERROR_REF, message: TEST_ERROR_MESSAGE });
+        clearTimeout(this.syncTimer);
+        this.syncTimer = null;
+        let timer;
+        const sent = this.syncToFirestore().then(() => !this.errorBuffer.some(e => e.fingerprint === TEST_ERROR_REF));
+        const late = new Promise(resolve => { timer = setTimeout(() => resolve(false), waitMs); });
+        try {
+            return (await Promise.race([sent, late])) ? 'sent' : 'queued';
+        } finally {
+            clearTimeout(timer);
+        }
+    },
+
+    /**
      * Get all telemetry data (owner only)
      * @returns {Promise<Array>} Telemetry data
      */
@@ -443,4 +470,4 @@ const TelemetryService = {
 // Error toasts (#82) are reported under their ref, whether or not init() ran.
 on(TOAST_ERROR, ({ message, ref }) => TelemetryService.captureError({ type: 'toast', message, ref }));
 
-export { TelemetryService, buildTelemetryDoc, mergeTelemetryReports };
+export { TelemetryService, buildTelemetryDoc, mergeTelemetryReports, TEST_ERROR_REF, TEST_ERROR_MESSAGE };
