@@ -71,6 +71,10 @@
   --w-strong: 600;
   --w-display: 600;
   --tracking-display: -0.02em;
+  /* Page, section and sheet titles: a theme may set a serif face (--font-display) and italic */
+  --title-style: normal;
+  /* Digits of the one hero figure (Billing's total): lining, so serif faces don't fall back to old-style digits */
+  --hero-nums: lining-nums;
 
   --r-xs: 4px;
   --r-sm: 6px;
@@ -98,6 +102,7 @@
   --bar-border: var(--line);
   --seg-track: var(--surface-2);
   --seg-on: var(--surface);
+  --table-rule: var(--line);
   --toast-bg: #1d1d24;
   --toast-ink: #f4f4f7;
   --toast-pos: #4ade9b;
@@ -312,6 +317,13 @@ html[lang="hi"] {
   --fs-sm: 14px;
   --fs-body: 16px;
   --lh-body: 1.6;
+}
+
+/* Devanagari has no italic and is never letter-spaced: a theme's italic titles and display tracking stay Latin-only */
+html[lang="hi"],
+html[lang="hi"] [data-theme] {
+  --title-style: normal;
+  --tracking-display: 0;
 }
 
 body.dark-mode {
@@ -650,6 +662,190 @@ input[type="number"],
   color: var(--info-dark);
 }
 
+/* ---- css/themes/vintage.css ---- */
+/* Vintage (redesign 3.4, DIRECTION 4.2): parchment, sepia ink, oxblood; serif titles and figures,
+   italic section titles (not in Hindi), dashed ledger rules. Screen-only, so print stays Modern. */
+@media screen {
+  [data-theme="vintage"] {
+    --font-display: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "Noto Serif", "Nirmala UI", "Noto Sans Devanagari", serif;
+    --w-display: 700;
+    --tracking-display: 0;
+    --title-style: italic;
+    --hero-nums: oldstyle-nums;
+    --rule-style: dashed;
+    --r-control: 4px;
+    --r-panel: 6px;
+    --r-chip: 4px;
+    --r-sheet: 8px;
+  }
+
+  [data-theme="vintage"]:not([data-mode="dark"]) {
+    color-scheme: light;
+    --bg: #efe6d2;
+    --surface: #fbf6ea;
+    --surface-2: #f2e8d3;
+    --surface-3: #e6d9bd;
+    --line: #ddcfb1;
+    --line-strong: #c4b18b;
+    --ink: #2e2418;
+    --ink-2: #57472f;
+    --ink-3: #6a5840;
+    --ink-placeholder: #6f5d44;
+    --accent: #8f3a22;
+    --accent-hover: #7a3019;
+    --accent-strong: #7a3019;
+    --accent-text: #8f3a22;
+    --accent-soft: #f2dccd;
+    --accent-line: #dcae95;
+    --on-accent: #fff8ec;
+    --mode-sale: #3f6b36;
+    --mode-sale-soft: #e3ead3;
+    --mode-wholesale: #6b4a8a;
+    --mode-wholesale-soft: #ece3f2;
+    --mode-rentals: #2f6670;
+    --positive: #3f6b36;
+    --positive-soft: #e3ead3;
+    --negative: #a1281f;
+    --negative-soft: #f7ddd3;
+    --negative-fill: #a1281f;
+    --warning: #87560a;
+    --warning-soft: #f6e6c2;
+    --warning-dot: #c98a1b;
+    --focus: 0 0 0 3px rgba(143, 58, 34, 0.25);
+    --e1: 0 1px 0 rgba(90, 60, 20, 0.12);
+    --panel-shadow: 0 1px 0 #d6c6a4, 0 2px 0 rgba(90, 60, 20, 0.06);
+    --input-bg: #fffdf6;
+    --bar-bg: #f6eedb;
+    --seg-track: #e6d9bd;
+    --seg-on: #fbf6ea;
+    --toast-bg: #2e2418;
+    --toast-ink: #fbf6ea;
+    --btn-primary-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18);
+  }
+
+  [data-theme="vintage"][data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #17120d;
+    --surface: #221a13;
+    --surface-2: #2b2219;
+    --surface-3: #362b1f;
+    --line: rgba(240, 220, 190, 0.1);
+    --line-strong: rgba(240, 220, 190, 0.2);
+    --ink: #f1e6d2;
+    --ink-2: #cdbb9d;
+    --ink-3: #ab987b;
+    --ink-placeholder: #a08e72;
+    --accent: #d98a5c;
+    --accent-hover: #e39a6f;
+    --accent-strong: #7a3019;
+    --accent-text: #e9a77f;
+    --accent-soft: rgba(217, 138, 92, 0.16);
+    --accent-line: rgba(217, 138, 92, 0.4);
+    --on-accent: #1d120a;
+    --mode-sale: #93b884;
+    --on-mode-sale: #142010;
+    --mode-sale-soft: rgba(147, 184, 132, 0.14);
+    --mode-wholesale: #b99ad6;
+    --on-mode-wholesale: #1c1226;
+    --mode-wholesale-soft: rgba(185, 154, 214, 0.14);
+    --mode-rentals: #7fb7c0;
+    --positive: #9fc48f;
+    --positive-soft: rgba(147, 184, 132, 0.14);
+    --negative: #f08a7a;
+    --negative-soft: rgba(240, 138, 122, 0.14);
+    --warning: #e8bd66;
+    --warning-soft: rgba(232, 189, 102, 0.14);
+    --input-bg: #1d1610;
+    --bar-bg: #1d1610;
+    --seg-track: #2b2219;
+    --seg-on: #3a2e21;
+    --toast-bg: #3a2e21;
+    --toast-ink: #f1e6d2;
+  }
+}
+
+/* ---- css/themes/classic.css ---- */
+/* Classic (redesign 3.4, DIRECTION 4.2): crisp white and navy, burgundy wholesale; Palatino titles,
+   square corners, ruled table headers, navy masthead (the menu header). Screen-only, so print stays Modern. */
+@media screen {
+  [data-theme="classic"] {
+    --font-display: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, "Noto Serif", "Nirmala UI", "Noto Sans Devanagari", serif;
+    --w-display: 700;
+    --tracking-display: 0;
+    --table-rule: var(--accent);
+    --r-control: 3px;
+    --r-panel: 4px;
+    --r-chip: 3px;
+    --r-sheet: 6px;
+  }
+
+  [data-theme="classic"]:not([data-mode="dark"]) {
+    color-scheme: light;
+    --bg: #f3f3ef;
+    --surface: #ffffff;
+    --surface-2: #ecece6;
+    --surface-3: #dfdfd7;
+    --line: #dadad0;
+    --line-strong: #bdbdb0;
+    --ink: #1b2433;
+    --ink-2: #414a5a;
+    --ink-3: #5c6474;
+    --ink-placeholder: #636a7a;
+    --accent: #1f3a68;
+    --accent-hover: #172c50;
+    --accent-strong: #1f3a68;
+    --accent-text: #1f3a68;
+    --accent-soft: #e4e9f2;
+    --accent-line: #b8c4d9;
+    --mode-sale: #2f6b3f;
+    --mode-sale-soft: #e2ede4;
+    --mode-wholesale: #7a2848;
+    --mode-wholesale-soft: #f3e3ea;
+    --mode-rentals: #2a5e6b;
+    --positive: #2f6b3f;
+    --positive-soft: #e2ede4;
+    --negative: #a3222e;
+    --negative-fill: #a3222e;
+    --warning: #8a5300;
+    --seg-on: #ffffff;
+    --btn-primary-shadow: none;
+  }
+
+  [data-theme="classic"][data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #0f1520;
+    --surface: #161e2b;
+    --surface-2: #1c2636;
+    --surface-3: #253145;
+    --line: rgba(200, 215, 240, 0.1);
+    --line-strong: rgba(200, 215, 240, 0.2);
+    --ink: #e8ecf2;
+    --ink-2: #b3bccb;
+    --ink-3: #8f99aa;
+    --ink-placeholder: #8a93a3;
+    --accent: #3d63a8;
+    --accent-hover: #4a72b8;
+    --accent-strong: #1f3a68;
+    --accent-text: #9db8e6;
+    --accent-soft: rgba(61, 99, 168, 0.22);
+    --accent-line: rgba(157, 184, 230, 0.4);
+    --mode-sale: #2f7a48;
+    --mode-sale-soft: rgba(110, 200, 140, 0.12);
+    --mode-wholesale: #a04a6c;
+    --mode-wholesale-soft: rgba(220, 140, 170, 0.12);
+    --positive: #7cc796;
+    --positive-soft: rgba(124, 199, 150, 0.12);
+    --negative: #f08a94;
+    --negative-soft: rgba(240, 138, 148, 0.12);
+    --warning: #e8b55e;
+    --warning-soft: rgba(232, 181, 94, 0.12);
+    --input-bg: #121925;
+    --seg-on: #253145;
+    --toast-bg: #253145;
+    --toast-ink: #e8ecf2;
+  }
+}
+
 /* ---- css/themes/nordic.css ---- */
 /* Nordic (redesign 2.6, DIRECTION 4.2): airy off-white, fjord blue, borderless soft panels.
    Colours are screen-only, so printing from any theme uses the Modern light values (black on white). */
@@ -818,6 +1014,109 @@ input[type="number"],
     --panel-shadow: none;
     --seg-on: #2c3a29;
     --toast-bg: #273425;
+  }
+}
+
+/* ---- css/themes/premium.css ---- */
+/* Premium (redesign 3.4, DIRECTION 4.2): ivory, ink and gold; light serif figures, soft long shadow,
+   black primary with champagne text, gold focus. Screen-only, so print stays Modern. */
+@media screen {
+  [data-theme="premium"] {
+    --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, "Noto Serif", "Nirmala UI", "Noto Sans Devanagari", serif;
+    --w-display: 400;
+    --tracking-display: -0.01em;
+    --r-control: 6px;
+    --r-panel: 10px;
+  }
+
+  [data-theme="premium"]:not([data-mode="dark"]) {
+    color-scheme: light;
+    --bg: #f8f6f2;
+    --surface: #fffdf9;
+    --surface-2: #f1ede5;
+    --surface-3: #e7e1d5;
+    --line: #e8e2d6;
+    --line-strong: #d3cab8;
+    --ink: #1a1714;
+    --ink-2: #4d463d;
+    --ink-3: #6b6256;
+    --ink-placeholder: #6e6559;
+    --accent: #1a1714;
+    --accent-hover: #2e2924;
+    --accent-strong: #2e2924;
+    --accent-text: #7f6119;
+    --accent-soft: #f3ead6;
+    --accent-line: #c9a65a;
+    --on-accent: #f3e2b8;
+    --mode-purchase: #9a7420;
+    --mode-purchase-soft: #f3ead6;
+    --mode-sale: #2f6b4f;
+    --mode-sale-soft: #e1eee7;
+    --mode-wholesale: #5b3f7a;
+    --mode-wholesale-soft: #ece6f3;
+    --mode-rentals: #2f5f6f;
+    --positive: #2f6b4f;
+    --positive-soft: #e1eee7;
+    --negative: #9b2c2c;
+    --negative-soft: #f6e2df;
+    --negative-fill: #9b2c2c;
+    --warning: #85580a;
+    --warning-soft: #f5ead0;
+    --warning-dot: #c9a65a;
+    --focus: 0 0 0 3px rgba(201, 166, 90, 0.45);
+    --panel-border: #ebe5d9;
+    --panel-shadow: 0 1px 2px rgba(60, 40, 10, 0.04), 0 12px 32px -20px rgba(60, 40, 10, 0.25);
+    --seg-on: #fffdf9;
+    --btn-primary-shadow: inset 0 0 0 1px #3a3128, 0 1px 2px rgba(0, 0, 0, 0.2);
+    --btn-sale-bg: #1a1714;
+    --btn-sale-ink: #cfe8da;
+    --toast-bg: #1a1714;
+    --toast-ink: #f3e2b8;
+  }
+
+  [data-theme="premium"][data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #0f0e0c;
+    --surface: #171512;
+    --surface-2: #1f1c18;
+    --surface-3: #29251f;
+    --line: rgba(212, 176, 106, 0.12);
+    --line-strong: rgba(212, 176, 106, 0.24);
+    --ink: #f3ede2;
+    --ink-2: #c6bcaa;
+    --ink-3: #a29781;
+    --ink-placeholder: #978c77;
+    --accent: #d4b06a;
+    --accent-hover: #dfbf80;
+    --accent-strong: #4a3b1c;
+    --accent-text: #e2c88c;
+    --accent-soft: rgba(212, 176, 106, 0.14);
+    --accent-line: rgba(212, 176, 106, 0.4);
+    --on-accent: #1a1408;
+    --mode-purchase: #d4b06a;
+    --mode-purchase-soft: rgba(212, 176, 106, 0.14);
+    --mode-sale: #7cc2a0;
+    --on-mode-sale: #0d1f16;
+    --mode-sale-soft: rgba(124, 194, 160, 0.13);
+    --mode-wholesale: #b9a0dc;
+    --on-mode-wholesale: #1a1226;
+    --mode-wholesale-soft: rgba(185, 160, 220, 0.13);
+    --mode-rentals: #82bccd;
+    --positive: #7cc2a0;
+    --positive-soft: rgba(124, 194, 160, 0.13);
+    --negative: #ee9a92;
+    --negative-soft: rgba(238, 154, 146, 0.12);
+    --warning: #e6c47c;
+    --warning-soft: rgba(230, 196, 124, 0.12);
+    --panel-border: rgba(212, 176, 106, 0.1);
+    --panel-shadow: none;
+    --bar-bg: #13110e;
+    --seg-on: #2e2922;
+    --btn-primary-shadow: var(--highlight);
+    --btn-sale-bg: #7cc2a0;
+    --btn-sale-ink: #0d1f16;
+    --toast-bg: #29251f;
+    --toast-ink: #f3ede2;
   }
 }
 
@@ -1466,7 +1765,7 @@ input[type="checkbox"].switch:focus-visible,
   top: 0;
   left: var(--sp-4);
   right: 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px var(--rule-style) var(--line);
 }
 
 .row.inset-lead + .row.inset-lead::before {
@@ -1584,7 +1883,7 @@ a.row:active {
 .display-num {
   font-family: var(--font-hero);
   font-weight: var(--w-display);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
   line-height: 1.1;
 }
 
@@ -1686,7 +1985,7 @@ a.row:active {
 
 .table th {
   padding: 8px 12px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--table-rule);
   color: var(--ink-3);
   font-size: var(--fs-caption);
   font-weight: var(--w-label);
@@ -1696,7 +1995,7 @@ a.row:active {
 .table td {
   height: 44px;
   padding: 0 12px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px var(--rule-style) var(--line);
 }
 
 .table tbody tr:hover {
@@ -2621,9 +2920,10 @@ body.typing .bottom-nav {
 }
 
 .tab h2 {
+  font-family: var(--font-display);
   font-size: var(--text-2xl);
   font-weight: var(--w-strong);
-  letter-spacing: -0.02em;
+  letter-spacing: var(--tracking-display);
   color: var(--text-primary);
   margin-bottom: 20px;
   padding-bottom: 12px;
@@ -3138,7 +3438,7 @@ html[data-updating] .updating-mark {
   display: table-cell;
   padding: 10px 8px;
   text-align: center;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--table-rule);
   font-size: var(--fs-caption);
   font-weight: var(--w-label);
   color: var(--text-secondary);
@@ -3147,7 +3447,7 @@ html[data-updating] .updating-mark {
 #billTable tbody tr, #saleTable tbody tr {
   display: table-row;
   background: var(--card-bg);
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px var(--rule-style) var(--border-color);
   transition: background var(--transition);
 }
 
@@ -3992,6 +4292,8 @@ input[type="number"] {
 
 #billing .bill-section-title {
   margin: var(--sp-5) 0 var(--sp-2);
+  font-family: var(--font-display);
+  font-style: var(--title-style);
   color: var(--ink-3);
   font-size: var(--fs-sm);
   font-weight: var(--w-label);
@@ -4421,7 +4723,11 @@ input[type="number"] {
 }
 
 #billing .grand-total strong {
+  font-family: var(--font-hero);
   font-size: var(--fs-display) !important;
+  font-weight: var(--w-display);
+  font-variant-numeric: tabular-nums var(--hero-nums);
+  letter-spacing: var(--tracking-display);
 }
 
 #billing .labor-input-row .checkbox-label {
@@ -4450,7 +4756,7 @@ input[type="number"] {
 #billing .bill-pay-title {
   margin-top: var(--sp-2);
   padding-top: var(--sp-3);
-  border-top: 1px solid var(--line);
+  border-top: 1px var(--rule-style) var(--line);
   color: var(--ink-3);
   font-size: var(--fs-sm);
   font-weight: var(--w-label);
@@ -4571,9 +4877,10 @@ input[type="number"] {
     display: block;
     overflow: hidden;
     color: var(--ink);
+    font-family: var(--font-hero);
     font-size: var(--fs-title);
-    font-weight: var(--w-strong);
-    font-variant-numeric: tabular-nums;
+    font-weight: var(--w-display);
+    font-variant-numeric: tabular-nums lining-nums;
     line-height: 1.2;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -6786,7 +7093,7 @@ body.dark-mode .stock-row__qty {
     justify-content: space-between;
     align-items: center;
     padding: 12px 0;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px var(--rule-style) var(--border-color);
 }
 
 .payment-row:last-child {
@@ -7531,6 +7838,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .bill-details-header h2 {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--fs-title);
   color: var(--dark-color);
 }
@@ -7905,6 +8213,8 @@ body.no-perm-contacts [data-perm~="contacts"] {
 /* Settings sections: Common, Aadhat, Rentals */
 .settings-section-title {
   margin: 8px 0 12px;
+  font-family: var(--font-display);
+  font-style: var(--title-style);
   font-size: var(--fs-title);
   font-weight: var(--w-strong);
 }
@@ -8295,6 +8605,8 @@ body.no-perm-contacts [data-perm~="contacts"] {
 /* Section Title */
 .section-title {
   margin: 0 0 14px 0;
+  font-family: var(--font-display);
+  font-style: var(--title-style);
   font-size: 16px;
   font-weight: var(--w-strong);
   color: var(--text-primary);

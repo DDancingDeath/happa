@@ -130,6 +130,8 @@ body.no-perm-contacts [data-perm~="contacts"] {
 /* Settings sections: Common, Aadhat, Rentals */
 .settings-section-title {
   margin: 8px 0 12px;
+  font-family: var(--font-display);
+  font-style: var(--title-style);
   font-size: var(--fs-title);
   font-weight: var(--w-strong);
 }

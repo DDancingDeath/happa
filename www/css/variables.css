@@ -69,6 +69,10 @@
   --w-strong: 600;
   --w-display: 600;
   --tracking-display: -0.02em;
+  /* Page, section and sheet titles: a theme may set a serif face (--font-display) and italic */
+  --title-style: normal;
+  /* Digits of the one hero figure (Billing's total): lining, so serif faces don't fall back to old-style digits */
+  --hero-nums: lining-nums;
 
   --r-xs: 4px;
   --r-sm: 6px;
@@ -96,6 +100,7 @@
   --bar-border: var(--line);
   --seg-track: var(--surface-2);
   --seg-on: var(--surface);
+  --table-rule: var(--line);
   --toast-bg: #1d1d24;
   --toast-ink: #f4f4f7;
   --toast-pos: #4ade9b;
@@ -310,6 +315,13 @@ html[lang="hi"] {
   --fs-sm: 14px;
   --fs-body: 16px;
   --lh-body: 1.6;
+}
+
+/* Devanagari has no italic and is never letter-spaced: a theme's italic titles and display tracking stay Latin-only */
+html[lang="hi"],
+html[lang="hi"] [data-theme] {
+  --title-style: normal;
+  --tracking-display: 0;
 }
 
 body.dark-mode {

@@ -8,8 +8,11 @@
 @import url('css/variables.css');
 
 /* Themes (redesign 2.6): token overrides only; the registry is js/ui/themes.js */
+@import url('css/themes/vintage.css');
+@import url('css/themes/classic.css');
 @import url('css/themes/nordic.css');
 @import url('css/themes/nature.css');
+@import url('css/themes/premium.css');
 @import url('css/themes/dark.css');
 @import url('css/themes/midnight.css');
 

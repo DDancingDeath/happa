@@ -23,14 +23,14 @@ layer-2 tokens. Nothing else changes per theme.
 | Layer | What | Tokens | Set by |
 |---|---|---|---|
 | **1. Semantic** | Colours by meaning, elevation, focus | `--bg`, `--surface`, `--surface-2`, `--surface-3`, `--line`, `--line-strong`, `--ink`, `--ink-2`, `--ink-3`, `--ink-placeholder`, `--scrim`; `--accent`, `--accent-hover`, `--accent-strong`, `--accent-text`, `--accent-soft`, `--accent-line`; `--mode-sale`, `--mode-wholesale`, `--mode-rentals` (+ `-soft`); `--positive`, `--negative`, `--warning`, `--info` (+ `-soft`, `-line`), `--negative-fill`, `--warning-dot`, `--caution-soft`; the **inks** `--on-accent`, `--on-accent-strong`, `--on-mode-sale`, `--on-mode-wholesale`, `--on-caution-soft`; `--e1`…`--e3`, `--highlight`, `--focus`, `--state-hover` | every theme (a light block, and a dark block unless it is always dark) |
-| **2. Component** | Shape and type roles (declared beside layer 1, on `:root, [data-theme]`); materials and button inks derived from layer 1 (on `:root, [data-theme], [data-mode]`) | `--r-xs`, `--r-sm`, `--r-control`, `--r-panel`, `--r-chip`, `--r-sheet`, `--r-full`, `--rule-style`; `--font-ui`, `--font-display`, `--font-num`, `--font-hero`, `--w-regular`, `--w-strong`, `--w-display`, `--tracking-display`; `--page-bg`, `--panel-bg`, `--panel-border`, `--panel-shadow`, `--input-bg`, `--input-border`, `--bar-bg`, `--bar-border`, `--seg-track`, `--seg-on`, `--btn-primary-bg`, `--btn-primary-ink`, `--btn-primary-shadow`, `--btn-sale-bg`, `--btn-sale-ink`, `--btn-danger-bg`, `--btn-danger-ink`, `--toast-bg`, `--toast-ink`, `--toast-pos/-neg/-warn/-info`, `--preview-apply-line`, `--mode-purchase` | defaults in `variables.css`; a theme overrides only what makes it different |
+| **2. Component** | Shape and type roles (declared beside layer 1, on `:root, [data-theme]`); materials and button inks derived from layer 1 (on `:root, [data-theme], [data-mode]`) | `--r-xs`, `--r-sm`, `--r-control`, `--r-panel`, `--r-chip`, `--r-sheet`, `--r-full`, `--rule-style`; `--font-ui`, `--font-display`, `--font-num`, `--font-hero`, `--w-regular`, `--w-strong`, `--w-display`, `--tracking-display`, `--title-style`, `--hero-nums`; `--page-bg`, `--panel-bg`, `--panel-border`, `--panel-shadow`, `--input-bg`, `--input-border`, `--bar-bg`, `--bar-border`, `--seg-track`, `--seg-on`, `--table-rule`, `--btn-primary-bg`, `--btn-primary-ink`, `--btn-primary-shadow`, `--btn-sale-bg`, `--btn-sale-ink`, `--btn-danger-bg`, `--btn-danger-ink`, `--toast-bg`, `--toast-ink`, `--toast-pos/-neg/-warn/-info`, `--preview-apply-line`, `--mode-purchase` | defaults in `variables.css`; a theme overrides only what makes it different |
 | **3. Components** | `.btn`, `.field`, `.seg`, `.panel`, `.row`, `.notice` … (§3) | read tokens, never raw colours | base CSS only |
 
 **Not per theme** (on `:root`): the type scale `--fs-caption|sm|body|lead|title|display|hero`,
 `--lh-body`, `--w-label`, spacing `--sp-1…10`, `--gutter`,
 `--section-gap`, `--row-h`, `--control-h(-sm)`, motion `--ease`, `--dur-1…3`. Layouts are therefore
-identical in every theme. Hindi (`html[lang="hi"]`) raises `--fs-sm` / `--fs-body` and `--lh-body`
-and makes `--w-label` 400; the Android app (`html.platform-android`) uses weight 500.
+identical in every theme. Hindi (`html[lang="hi"]`) raises `--fs-sm` / `--fs-body` and `--lh-body`,
+makes `--w-label` 400, and turns off a theme's italic titles and display tracking (`--title-style`, `--tracking-display`); the Android app (`html.platform-android`) uses weight 500.
 
 **Old names** (`--primary-color`, `--card-bg`, `--white`, `--success-color`, `--btn-primary`,
 `--shadow-md`, `--radius`, …) are aliases of the tokens above, so older stylesheets follow every
@@ -51,6 +51,12 @@ aliases are on `:root` only, so a scoped preview keeps the page's values for the
   screen-only**, so printing from any theme or mode gives Modern light: black on white. Receipts
   are drawn on a canvas with their own colours and never read tokens.
 - A theme of `kind: 'dark'` (Dark, Midnight) is always dark, whatever the Appearance choice.
+- **Type roles.** Page, section and sheet titles read `--font-display` (section titles also `--title-style`);
+  Billing's total and the action-bar figure read `--font-hero` and `--w-display` (figures keep lining digits; only Vintage's hero total takes old-style, `--hero-nums`); bill-table rows, list rows
+  and payment rows read `--rule-style`; table headers `--table-rule`. Vintage, Classic and Premium set a serif
+  `--font-display` (Vintage italic section titles and dashed rules, Classic navy header rules, Premium a light
+  400 weight). Their stacks keep `"Nirmala UI", "Noto Sans Devanagari"` before the generic `serif`, so Hindi
+  text stays Devanagari sans; only Latin text and digits take the serif.
 - The choice is per device (`happa.theme`, `happa.appearance`, `happa.themeKind`,
   `happa.bar.light|dark` in localStorage). No Firestore reads or writes.
 - The browser bar (`theme-color`) takes the theme's `--bg`, so `--bg` must be a `#rrggbb` hex.
@@ -135,7 +141,7 @@ type.
    - a block `[data-theme="<id>"]` for what is the same in both modes (shape, faces, materials);
    - for `kind: 'both'`, `[data-theme="<id>"]:not([data-mode="dark"])` (light) and
      `[data-theme="<id>"][data-mode="dark"]` (dark); for `kind: 'dark'`, one block;
-   - every colour inside `@media screen { … }`, so print stays black on white;
+   - every colour, face and rule style inside `@media screen { … }`, so print stays black on white in the Modern type;
    - set the layer-1 colours, and every ink whose fill turns light (`--on-accent`,
      `--on-mode-sale`, `--on-mode-wholesale`); keep `--accent-strong` deep enough for white text;
    - `--bg` as a `#rrggbb` hex (it becomes the browser bar colour).
