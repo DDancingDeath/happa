@@ -1,9 +1,9 @@
 # Voice billing (#81, #131)
 
-Status: a minimal, safe first version is in the app, **off by default**. The web
-header (#266) and the Android recogniser (#267) are in, so it can run in Chrome and
-in the Android app; it still needs a test on a real phone (see "What is still
-needed").
+Status: in the app, **off by default**: one or several bill lines per sentence,
+the customer's name and a spoken readback (#81 A1–A3). The web header (#266) and
+the Android recogniser (#267) are in, so it can run in Chrome and in the Android
+app; it still needs a test on a real phone (see "What is still needed").
 
 ## What it does
 
@@ -12,16 +12,47 @@ device has a speech engine, Billing shows a 🎤 button on the purchase and the
 retail sale form. One tap:
 
 1. listens once (the language follows the app: Hindi `hi-IN`, English `en-IN`);
-2. reads the item, weight and rate from what was heard (`www/js/utils/voice-parse.js`,
-   spec VB-1 in [calculations.md](calculations.md));
-3. shows a check dialog: what was heard, and the item / weight (kg) / rate (₹) it
-   found, or "not heard";
-4. only after **OK** puts them in the form's Item, Rate and Weight boxes.
+2. reads the customer's name and each line's item, weight and rate from what was
+   heard (`www/js/utils/voice-parse.js`, spec VB-1 in [calculations.md](calculations.md));
+3. shows a check dialog: what was heard, the customer, and the item / weight (kg) /
+   rate (₹) found for each line, or "not heard", and reads it back aloud;
+4. only after **OK**: one line goes in the form's Item, Rate and Weight boxes;
+   several lines are added to the bill, each ticked line through the form's own
+   Add to Bill (with its bag-weight and rate checks), in spoken order; the
+   customer's name, if ticked, goes in the Customer box.
 
-Voice never taps Add to Bill and never saves: the user checks the line, taps Add
-to Bill, then Save, as when typing. It refuses to switch the item while weights
-for another item are already entered (they would move to the spoken item). Nothing
-heard is stored, logged or sent anywhere by the app.
+Voice never saves. One line: the user checks it, taps Add to Bill, then Save, as
+when typing. Several lines: the user unticks any wrong line in the dialog (a line
+missing its weight or rate can't be ticked), then checks the bill and saves. If a
+check stops a line (the user taps Fix), that line stays in the form, the later
+lines are not added, and the message says how many were. Voice refuses to switch
+the item while weights for another item are already entered (they would move to
+the spoken item), and adds no lines while a weight is typed or entered but not
+added. Nothing heard is stored, logged or sent anywhere by the app.
+
+**Several lines (A2).** "गेहूं 50 kg 25 रुपये, सरसों 30 kg 55 रुपये": lines are split
+at "aur" / "और" / "and" / "phir" / "फिर", a comma, a full stop or "।", or between two
+items said with nothing between them (cut where both sides read best as a line,
+"10 kg aloo 30 rupees 5 kg pyaaz 25"). A part that names no item stays with the
+line before it, so "one hundred and fifty kg" and "aloo 10 kilo aur 30 rupaye" stay
+one line.
+
+**Customer (A3).** "customer" / "ग्राहक" / "naam" / "नाम" / "party" / "kisan" and then
+up to three words ("ग्राहक का नाम रमेश", "customer name is Mohan Lal"), ending at a
+number, an item, a unit or a line break. A name already in the form's customer
+list is used with its spelling. The dialog says which typed name it would replace;
+untick it to keep that one. Said alone ("customer Suresh"), only the name is filled.
+
+**Readback (A1).** The dialog reads back what was understood with the browser's
+`speechSynthesis` in `hi-IN` or `en-IN` ("Customer Ramesh. Wheat, 50 kg, 25 rupees
+per kg"; in Hindi with the Hindi item name), and stops when the dialog closes, so
+the next 🎤 doesn't hear it. Its **Read aloud** switch mutes it on this device
+(`aadhat.voiceReadback`; on by default). It uses only a voice on the device
+(`localService`), never a network voice such as Chrome's "Google …" voices, which
+would send the text (names, items, amounts) to a server. With no such voice for the
+language, or no `speechSynthesis` at all (the Android System WebView often has none
+or lists no voices), nothing is read aloud, the switch is hidden and the dialog works
+the same.
 
 Understood: digits (also Devanagari ०–९), Hindi number words 1–99, सौ / hundred,
 हज़ार / thousand, आधा / half (½), पाव / quarter (¼), डेढ़ (1½), ढाई (2½), साढ़े (+½), सवा (+¼),
@@ -94,22 +125,22 @@ Android app (it serves `www/` from the APK).
 |---|---|---|
 | `Permissions-Policy: microphone=(self)` on the app site, `docs/security.md` updated | The web / PWA (Chrome) can use the mic for voice | Done (#266, 1 Nov) |
 | `@capacitor-community/speech-recognition` 7 + `RECORD_AUDIO` in the Android manifest | The Android app gets a recogniser (the WebView has none) | Done (#267, 1 Nov); in APKs built since |
-| A test on a real phone in the Android app: Hindi and English, a noisy shop, with and without internet, the microphone prompt | #81's "works in the Android WebView with the mic prompt" item; nothing above was tried on a phone | Owner, open |
+| A test on a real phone in the Android app: Hindi and English, a noisy shop, with and without internet, the microphone prompt, several lines in one sentence, a customer's name, whether the readback speaks | #81's "works in the Android WebView with the mic prompt" item; nothing above was tried on a phone | Owner, open |
 
 Both changes are safe while the setting is off: no page asks for the microphone
 unless the user switches voice on and taps 🎤.
 
 ## Not built yet (from #81 and #131)
 
-- #81: spoken readback (A1), several items in one sentence (A2), customer-name
-  dictation (A3), the wake word (A0, needs a Picovoice key), Hindi number words
-  above 99 except hundreds.
+- #81: the wake word (A0, needs a Picovoice key), Hindi number words above 99
+  except hundreds; a native text-to-speech plugin if the Android app turns out to
+  have no voice for the readback.
 - #131: continuous dictation, "undo", edit a row by voice, a transcript strip, a
   beep, counting missed phrases (C13, through the local usage counters of #136),
   and the Android App Actions shortcut ("Bill banao").
 - Quintal (100 kg) as a weight word; rates per quintal.
 
 Recommendation: test on a real phone with the shop's own items (Hindi and English,
-noisy shop, with and without internet), and only then add readback and several
-items per sentence. Keep the check-before-fill step: voice
-fills, a person adds and saves.
+noisy shop, with and without internet, one and several lines, the readback) before
+anyone relies on it. Keep the check-before-fill step: voice fills or adds only
+after OK, and a person saves.

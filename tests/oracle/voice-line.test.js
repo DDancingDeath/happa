@@ -4,7 +4,7 @@
  * dialog shows exactly those numbers and the item named.
  */
 import fc from 'fast-check';
-import { parseVoiceLine } from '../../www/js/utils/voice-parse.js';
+import { parseVoiceLine, parseVoiceBill } from '../../www/js/utils/voice-parse.js';
 
 const ITEMS = [{ name: 'Rice', hindiName: 'चावल' }, { name: 'Moong Dal', hindiName: 'मूंग दाल' }];
 const KILO = '\u0915\u093F\u0932\u094B';
@@ -37,5 +37,35 @@ describe('VB-1: values as heard', () => {
             const said = `${HINDI_WORDS[w]} ${KILO} चावल ${HINDI_WORDS[r]} रुपये`;
             expect(parseVoiceLine(said, ITEMS)).toMatchObject({ itemIndex: 0, weight: HINDI_VALUES[w], rate: HINDI_VALUES[r] });
         }), { numRuns: 100, seed: 81 });
+    });
+});
+
+describe('VB-1 for each line of a several-line utterance (#81 A2)', () => {
+    const SEPARATORS = [', ', ' aur ', ' and ', ' और ', '; ', ' phir '];
+    test('two lines joined by aur / and / a comma: each line as heard', () => {
+        const amount = fc.integer({ min: 1, max: 9999 }).map(n => n / (n % 3 === 0 ? 10 : 1));
+        const line = fc.record({ field: fc.constantFrom('name', 'hindiName'), weight: amount, rate: amount, shape: fc.integer({ min: 0, max: SHAPES.length - 1 }) });
+        fc.assert(fc.property(fc.boolean(), line, line, fc.constantFrom(...SEPARATORS), (swap, a, b, sep) => {
+            const [ia, ib] = swap ? [1, 0] : [0, 1];
+            const said = SHAPES[a.shape](ITEMS[ia][a.field], String(a.weight), String(a.rate)) + sep
+                + SHAPES[b.shape](ITEMS[ib][b.field], String(b.weight), String(b.rate));
+            expect(parseVoiceBill(said, ITEMS).lines).toMatchObject([
+                { itemIndex: ia, weight: a.weight, rate: a.rate, extraNumbers: false },
+                { itemIndex: ib, weight: b.weight, rate: b.rate, extraNumbers: false }
+            ]);
+        }), { numRuns: 300, seed: 81 });
+    });
+
+    test('no word between two lines that each start with the item ("गेहूं 50 kg 25 रुपये सरसों 30 kg 55 रुपये")', () => {
+        const amount = fc.integer({ min: 1, max: 9999 }).map(n => n / (n % 3 === 0 ? 10 : 1));
+        const line = fc.record({ field: fc.constantFrom('name', 'hindiName'), weight: amount, rate: amount, shape: fc.constantFrom(1, 3, 5) });
+        fc.assert(fc.property(fc.boolean(), line, line, (swap, a, b) => {
+            const [ia, ib] = swap ? [1, 0] : [0, 1];
+            const said = `${SHAPES[a.shape](ITEMS[ia][a.field], String(a.weight), String(a.rate))} ${SHAPES[b.shape](ITEMS[ib][b.field], String(b.weight), String(b.rate))}`;
+            expect(parseVoiceBill(said, ITEMS).lines).toMatchObject([
+                { itemIndex: ia, weight: a.weight, rate: a.rate },
+                { itemIndex: ib, weight: b.weight, rate: b.rate }
+            ]);
+        }), { numRuns: 300, seed: 81 });
     });
 });
