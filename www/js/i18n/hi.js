@@ -883,7 +883,6 @@ export default {
     'ui.ask.period_since_last_fy': "पिछले वित्त वर्ष की शुरुआत से आज तक",
     'ui.ask.report_sheet_title': "माल की खरीद",
     'ui.ask.sheet_summary': "सार",
-    'ui.ask.col_period': "समय",
     'ui.ask.col_kind': "किस्म",
     'ui.ask.col_bills': "बिल",
     'ui.ask.col_weight': "वज़न (kg)",

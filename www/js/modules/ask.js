@@ -204,7 +204,7 @@ export const AskManager = {
         return Exporter.run({
             kind: 'ask', format: fmt, period: { ...reportDays(a.period, new Date()), label }, rows: a.report.rowCount,
             produce: (stamp) => {
-                const sheets = reportSheets(a.report, { lang, stamp: stampPairs(stamp, lang), period: label });
+                const sheets = reportSheets(a.report, { lang, stamp: stampPairs(stamp, lang) });
                 const name = exportFilename(stamp, 'item-report', fmt);
                 return fmt === 'xlsx'
                     ? Exporter.saveWorkbook(sheets, name)

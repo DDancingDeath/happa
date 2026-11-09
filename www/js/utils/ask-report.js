@@ -269,10 +269,10 @@ const blank = (/** @type {?number} */ v) => (v === null || v === undefined ? '' 
  * The report as sheets: a Summary (the stamp, one row per kind and the total), then one
  * sheet per kind with its bill lines sorted by date and a totals row.
  * @param {ReturnType<typeof itemPurchaseReport>} report
- * @param {{lang: 'en'|'hi', stamp: Array<[string, string]>, period: string}} opts stamp: stampPairs()
+ * @param {{lang: 'en'|'hi', stamp: Array<[string, string]>}} opts stamp: stampPairs() (shop, period, time, who)
  * @returns {Array<{name: string, rows: Array<Array<*>>, widths: number[]}>}
  */
-export function reportSheets(report, { lang, stamp, period }) {
+export function reportSheets(report, { lang, stamp }) {
     const tl = (/** @type {string} */ k) => t(k, null, lang);
     const kindName = (/** @type {{name: string, hindiName: string}} */ g) => (lang === 'hi' && g.hindiName ? g.hindiName : g.name || g.hindiName);
     const used = new Set();
@@ -284,7 +284,6 @@ export function reportSheets(report, { lang, stamp, period }) {
         rows: [
             [tl('ui.ask.report_sheet_title')],
             ...stamp.map(([k, v]) => [k, v]),
-            [tl('ui.ask.col_period'), period],
             [],
             summaryHead,
             ...groups.map(g => sumRow(kindName(g), g.totals)),

@@ -8438,6 +8438,7 @@ body.dark-mode .today-cash-prompt {
 .ask-question { font-weight: var(--w-strong); margin-bottom: 4px; }
 .ask-line { margin: 2px 0; }
 .ask-answer .ask-open { margin-top: 6px; }
+.ask-answer .ask-open + .ask-open { margin-left: 6px; }
 
 /* Cash › history: a day row lights up under the pointer (was an inline mouseover, #89) */
 .cash-day-row { transition: background 0.2s; }

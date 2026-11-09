@@ -883,7 +883,6 @@ export default {
     'ui.ask.period_since_last_fy': "from the start of last financial year till today",
     'ui.ask.report_sheet_title': "Item purchases",
     'ui.ask.sheet_summary': "Summary",
-    'ui.ask.col_period': "Period",
     'ui.ask.col_kind': "Kind",
     'ui.ask.col_bills': "Bills",
     'ui.ask.col_weight': "Weight (kg)",

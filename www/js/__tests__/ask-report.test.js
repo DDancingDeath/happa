@@ -185,7 +185,7 @@ describe('spec, reads, sheets', () => {
         const purchases = [...PURCHASES, bill('pf', '2026-11-05T10:00:00', '16', [line('f', '=HYPERLINK("x") Lah', 1, 10)])];
         const kinds = matchKinds(reportKinds(items, purchases), 'lah').kinds;
         const report = itemPurchaseReport(purchases, items, kinds, ALL);
-        const sheets = reportSheets(report, { lang: 'en', stamp: [['Shop', 'Gupta']], period: 'all time' });
+        const sheets = reportSheets(report, { lang: 'en', stamp: [['Shop', 'Gupta'], ['Period', 'all time']] });
         expect(sheets.map(s => s.name)).toEqual(['Summary', '=HYPERLINK("x") Lah', 'Lah Chhuri', 'Lah Kusmi', 'Lah Old']);
         const kusmi = sheets[3].rows;
         expect(kusmi[1]).toEqual(['Bill no.', 'Date', 'Weight (kg)', 'Rate (₹/kg)', 'Amount (₹)', 'Labour (₹)', 'After labour (₹)']);
@@ -193,6 +193,6 @@ describe('spec, reads, sheets', () => {
         expect(kusmi[kusmi.length - 1]).toEqual(['Total', '', 150, 206.67, 31000, kusmi[kusmi.length - 1][5], kusmi[kusmi.length - 1][6]]);
         expect(sheets[0].rows.at(-1)[0]).toBe('All kinds');
         expect(reportCsv(sheets)).toContain(`"'=HYPERLINK(""x"") Lah"`);
-        expect(reportSheets(report, { lang: 'hi', stamp: [], period: '' })[3].name).toBe('लाह कुसमी');
+        expect(reportSheets(report, { lang: 'hi', stamp: [] })[3].name).toBe('लाह कुसमी');
     });
 });
