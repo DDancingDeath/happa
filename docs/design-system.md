@@ -118,8 +118,8 @@ Line icons on a 24 grid, 1.75 stroke, `currentColor`, from the sprite at the top
 
 Sizes: `.i-sm` 16, `.i` 20, `.i-lg` 24. An icon next to text is `aria-hidden`; an icon-only
 button has an `aria-label` (through `data-i18n-aria-label`). A new icon is a new `<symbol id="i-…">`
-in the sprite. `tests/ci/icon-sprite.test.js` checks that every literal `#i-*` in `index.html`,
-templates, scripts and CSS has a symbol, and that the sprite stays small.
+in the sprite. `tests/ci/icon-sprite.test.js` checks that every `href="#i-…"` (double quotes) in `index.html`,
+templates and scripts has a symbol, and that the sprite stays small.
 
 Scripts that draw an icon write the same markup with a constant icon name. The first module that
 needs this adds one shared helper (`icon(name)` in `www/js/ui/icons.js`) returning that constant
@@ -157,9 +157,10 @@ so its CSP hash never changes for a new theme). A theme ships no images or fonts
 font origin, and stacks must keep `"Nirmala UI", "Noto Sans Devanagari"` before the generic family
 so Hindi stays a legible sans.
 
-If tokens really cannot express a theme's look, it may add a **few** scoped rules in its own file
-(`[data-theme="<id>"] .input { … }`). They must not change any box size or layout, and they count
-toward the 1.5 KB.
+A theme file sets only custom properties and `color-scheme` (`themes.test.js` fails on anything else).
+If one component needs a different value in one theme, scope a token to it in the theme file
+(`[data-theme="<id>"] .input { --input-border: … }`); it must not change any box size or layout, and it
+counts toward the 1.5 KB. A look that tokens can't express needs a new token in `variables.css` first.
 
 ## 6. Do and don't
 
@@ -183,7 +184,7 @@ toward the 1.5 KB.
 |---|---|
 | `tests/ci/colour-guard.test.js` | a file gaining a hard-coded colour (baseline `tests/colour-baseline.json`, may only go down: `COLOUR_BASELINE=lower`) |
 | `tests/ci/type-guard.test.js` | a raw `font-size` / `font-weight` (baseline `tests/type-baseline.json`, `TYPE_BASELINE=lower`) |
-| `tests/ci/themes.test.js` | a theme missing from the registry, `styles.css` or i18n; a non-token rule or a colour outside `@media screen` in a theme file; a theme over 1.5 KB gzip; a rule in `www/css` or a template `<style>` that sets an accent, sale, wholesale or status fill and white text together |
+| `tests/ci/themes.test.js` | a theme missing from the registry, `styles.css` or i18n; a non-token rule or a colour outside `@media screen` in a theme file; a theme over 1.5 KB gzip; a rule in `www/css` or a template `<style>` that sets an accent, sale, wholesale, positive or negative fill and white text together |
 | `tests/ci/theme-contrast.test.js` | a text / background pair under 4.5:1 in any theme × mode |
 | `tests/ci/icon-sprite.test.js` | a missing `#i-*` symbol, or the sprite growing too large |
 | `www/js/__tests__/theme-manager.test.js`, `theme-boot.test.js` | Appearance, System, preview and the pre-paint boot |
