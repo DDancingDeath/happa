@@ -241,7 +241,7 @@ describe('Statements: CSV language, dates and permissions', () => {
 });
 
 describe('Statements page', () => {
-    const num = (s) => Number(String(s).replace(/[^\d.-]/g, ''));
+    const num = (s) => Number(String(s).replace(/−/g, '-').replace(/[^\d.-]/g, ''));
 
     test('the list opens a statement and Back returns to the list', () => {
         StatementsManager.init();
@@ -366,7 +366,7 @@ describe('Statements page', () => {
 });
 
 describe('payments on old bills with part of the history loaded (round-3 review)', () => {
-    const num = (s) => Number(String(s).replace(/[^\d.-]/g, ''));
+    const num = (s) => Number(String(s).replace(/−/g, '-').replace(/[^\d.-]/g, ''));
     const SESSION = {
         id: 's-2026-10-20', date: '2026-10-20', signedOut: true, closingBalance: 0,
         duePayments: [{ id: 'pay-old', billId: 'w-may', billType: 'wholesale', billNumber: 'W-MAY', type: 'received', customer: 'Old Buyer', cash: 500, online: 0, timestamp: '2026-10-20T11:00:00' }]

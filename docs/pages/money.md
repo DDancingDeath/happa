@@ -21,10 +21,10 @@ when it is not connected).
 | On screen | How it is worked out |
 |---|---|
 | Sales (M1) | Sum of sale bill totals. |
-| Cost of goods sold (M2) | Cost of what was sold, at average cost. |
-| Gross profit (M3) | Sales − cost of goods sold. |
+| Cost of what was sold (M2) | What the goods sold cost, at average cost. |
+| Gross profit (M3) | Sales − cost of what was sold. |
 | Business expenses (M4), bad debts (M5) | Expenses of the period; dues written off in it. |
-| **Profit (M6)** | Gross profit − business expenses − bad debts. Labour is **not** taken off (it is already off the purchase bills). |
+| **Profit (M6)** | Gross profit − business expenses − bad debts. Labour is **not** taken off (it is already off the purchase bills). It reads **"Profit (estimate)"** while some kg was sold before its purchase was written (its cost is not known yet); the warning under it says how many kg, once. |
 | Labour (M7, M20, M21, M18) | Labour deducted on purchases (M7); paid to labourers, the period's Labour expenses (M20, already in business expenses); paid − deducted (M21, shown only: profit does not change, owner decision 8 Nov 2026); labour to pay, an estimate worked out day by day (M18). |
 | Personal expenses, withdrawals (M8, M9) | Shown apart from profit. |
 | Expenses per ₹100 of sales (M19) | Spending says so when business expenses are more than ₹10 for every ₹100 of sales (personal expenses not counted). |
