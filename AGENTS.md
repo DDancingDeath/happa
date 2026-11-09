@@ -192,7 +192,12 @@ In order:
   alerts / confirms). Templates mark text with `data-i18n="key"` (and
   `data-i18n-placeholder|title|aria-label`); `setLang()` re-applies them and
   fires `aadhat:langchange` so open screens redraw without a reload. English is
-  the default; the choice is per device (`aadhat.lang`). Add every new key to
+  the default; the choice is per device (`aadhat.lang`). Only the app language's
+  catalogue is loaded at start (#59, `i18n/lang-catalogues.js`): `main.js` waits for it
+  before the first screen and loads the other one when the phone is idle; `setLang()`
+  loads a missing one first (it then returns a promise). Text in a chosen or in both
+  languages (`t(key, p, 'en')`, `{ en, hi }` records) that can run before that awaits
+  `loadAllCatalogues()` (the anomaly flags, receipts and Diagnostics do). Add every new key to
   both catalogues — `i18n-catalogue.test.js` fails on missing keys or on
   "staff"/"स्टाफ". Escape `t()` output that goes into `innerHTML`. Show one
   language at a time, never "English / हिंदी" together:
@@ -315,6 +320,11 @@ In order:
 
 - SheetJS (`XLSX`) is loaded on demand via `ensureXLSX()` in
   `www/js/utils/lazy-scripts.js`; don't add it back as a `<script>` tag.
+- Admin, Diagnostics, Anomalies, App health and the receipt drawing
+  (`services/receipt-drawing.js`, added to the printer manager by `loadReceiptDrawing()`)
+  are imported with `import()` on first use, and the anomalies code and receipt drawing
+  also when the phone is idle after the first screen (#59). They stay precached (offline);
+  `startup-weight.test.js` fails if start-up code imports them statically again.
 - `firebase.json` sends security headers and an **enforced** CSP on every
   path (#89, `docs/security.md`). A new external origin (fetch, script, image)
   goes into that CSP in the same PR: `security-headers.test.js` fails on an

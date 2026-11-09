@@ -397,7 +397,8 @@ describe('Hindi mode: no English UI words', () => {
     });
 
     test('printed receipts (bill and expense) are drawn in Hindi', async () => {
-        const { BluetoothPrinterManager } = jest.requireActual('../services/printer.js');
+        const { BluetoothPrinterManager, loadReceiptDrawing } = jest.requireActual('../services/printer.js');
+        await loadReceiptDrawing();
         const drawn = [];
         const ctx = new Proxy({}, {
             get: (target, prop) => {

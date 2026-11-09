@@ -10,8 +10,6 @@ import { todaySummary } from '../utils/calc/today.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { CashManagementManager } from './cash-management.js';
 import { sessionForDate } from '../utils/cash-session.js';
-import { AnomaliesManager } from './anomalies.js';
-import { HealthManager } from './health.js';
 import { t, tn, getLang } from '../i18n/index.js';
 import { canOpenPage } from '../utils/role-access.js';
 import { on, REFRESH } from '../utils/events.js';
@@ -213,18 +211,23 @@ export const DayManager = {
         this.renderItemWiseDetails(s.purchaseItems, 'purchase');
         this.renderItemWiseDetails(s.saleItems, 'sale');
 
-        // Day report (#187, #40): today's anomalies + review queue, shared with these totals
-        AnomaliesManager.renderDayReport({
+        // Day report (#187, #40): today's anomalies + review queue, shared with these totals.
+        // It and the App health banner are imported when Today first draws (#59).
+        const totals = {
             sales: s.sales, saleCount: s.saleCount,
             purchases: s.purchases, purchaseCount: s.purchaseCount,
             expenses: s.expenses, totalIn: s.totalIn, totalOut: s.totalOut,
             dueReceived: s.dueReceived, duePaid: s.duePaid,
             labourDeducted: labour.deducted.amount, labourDeductedBills: labour.deducted.bills,
             labourToPay: labour.toPay
-        }, session && session.date === todayIso ? session : null);
+        };
+        const todaySession = session && session.date === todayIso ? session : null;
+        import('./anomalies.js').then(({ AnomaliesManager }) => AnomaliesManager.renderDayReport(totals, todaySession))
+            .catch(e => console.warn('Day report failed:', e));
 
         // App health banner (#217): a live check below its target today (owner/manager)
-        HealthManager.renderTodayBanner().catch(e => console.warn('App health banner failed:', e));
+        import('./health.js').then(({ HealthManager }) => HealthManager.renderTodayBanner())
+            .catch(e => console.warn('App health banner failed:', e));
     },
 
     /**

@@ -4,8 +4,11 @@
  * it can't, when sharing fails or when it isn't offered. jsdom has no canvas, so the
  * canvas calls are mocked.
  */
-import { PrinterService } from '../services/printer.js';
+import { PrinterService, loadReceiptDrawing } from '../services/printer.js';
 import { UIManager } from '../ui/ui-manager.js';
+
+// The receipt drawing is imported on the first print (#59)
+beforeAll(() => loadReceiptDrawing());
 
 const BLOB = { size: 3, type: 'image/png' };
 let toast;

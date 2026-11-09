@@ -3,11 +3,13 @@
  * Templates mark text with data-i18n / data-i18n-placeholder / data-i18n-title /
  * data-i18n-aria-label; applyTranslations() fills them and setLang() re-applies
  * everything without a reload. English is the default; the choice is kept per device.
+ * Only the app language's catalogue is loaded at start (#59): main.js waits for
+ * loadCatalogue(getLang()) before the first screen and loads the other one when idle;
+ * setLang() loads a missing catalogue before it switches.
  * @module i18n
  */
 
-import en from './en.js';
-import hi from './hi.js';
+import { PRELOADED, importCatalogue } from './lang-catalogues.js';
 
 export const LANGS = ['en', 'hi'];
 export const DEFAULT_LANG = 'en';
@@ -16,7 +18,10 @@ export const LANG_STORAGE_KEY = 'aadhat.lang';
 export const LEGACY_WHATS_NEW_LANG_KEY = 'aadhat.whatsNewLang';
 export const LANG_CHANGE_EVENT = 'aadhat:langchange';
 
-const CATALOGUES = { en, hi };
+/** @type {Object<string, Object<string, string>>} */
+const CATALOGUES = { ...PRELOADED };
+/** @type {Object<string, Promise<Object<string, string>>>} */
+const loading = {};
 const ATTRS = [
     ['data-i18n-placeholder', 'placeholder'],
     ['data-i18n-title', 'title'],
@@ -24,6 +29,8 @@ const ATTRS = [
 ];
 
 let current = null;
+/** The language last asked for with setLang(). */
+let requested = null;
 
 function defaultStore() {
     try { return typeof localStorage !== 'undefined' ? localStorage : null; } catch (_) { return null; }
@@ -61,6 +68,32 @@ export function getLang() {
     return current;
 }
 
+/**
+ * Loads a language's catalogue (once; again after a failed try).
+ * @param {'en'|'hi'} lang
+ * @returns {Promise<Object<string, string>>}
+ */
+export function loadCatalogue(lang) {
+    const l = normalizeLang(lang);
+    if (CATALOGUES[l]) return Promise.resolve(CATALOGUES[l]);
+    if (!loading[l]) {
+        loading[l] = importCatalogue(l)
+            .then(m => (CATALOGUES[l] = m.default))
+            .finally(() => { delete loading[l]; });
+    }
+    return loading[l];
+}
+
+/** Both catalogues: for text written in both languages or in a chosen one. */
+export function loadAllCatalogues() {
+    return Promise.all(LANGS.map(loadCatalogue));
+}
+
+/** @param {'en'|'hi'} lang */
+export function hasCatalogue(lang) {
+    return !!CATALOGUES[normalizeLang(lang)];
+}
+
 /** True once a language has been saved on this device (explicitly or migrated). */
 export function hasSavedLang(store = defaultStore()) {
     try { return LANGS.includes(store?.getItem(LANG_STORAGE_KEY)); } catch (_) { return false; }
@@ -81,7 +114,7 @@ export function formatMessage(template, params) {
  * @returns {string}
  */
 export function t(key, params, lang = getLang()) {
-    const text = CATALOGUES[lang]?.[key] ?? en[key] ?? key;
+    const text = CATALOGUES[lang]?.[key] ?? CATALOGUES.en?.[key] ?? key;
     return formatMessage(text, params);
 }
 
@@ -96,7 +129,7 @@ export function t(key, params, lang = getLang()) {
  */
 export function tn(key, count, params, lang = getLang()) {
     const one = `${key}_one`;
-    const useOne = Number(count) === 1 && (one in (CATALOGUES[lang] || {}) || one in en);
+    const useOne = Number(count) === 1 && (one in (CATALOGUES[lang] || {}) || one in (CATALOGUES.en || {}));
     return t(useOne ? one : key, { count, n: count, ...params }, lang);
 }
 
@@ -119,13 +152,28 @@ export function applyTranslations(root = typeof document !== 'undefined' ? docum
 
 /**
  * Switches the app language without a reload: saves it, re-applies the templates and
- * tells the open screens (LANG_CHANGE_EVENT) to re-render.
+ * tells the open screens (LANG_CHANGE_EVENT) to re-render. A catalogue that isn't
+ * loaded yet is loaded first (precached, so offline too) and a promise is returned.
  * @param {'en'|'hi'} lang
+ * @param {{store?: Storage|null}} [options]
+ * @returns {'en'|'hi'|Promise<'en'|'hi'>}
+ */
+export function setLang(lang, options = {}) {
+    const next = normalizeLang(lang);
+    requested = next;
+    if (!CATALOGUES[next]) {
+        // A later choice made while this catalogue loads wins
+        return loadCatalogue(next).then(() => (requested === next ? switchLang(next, options) : getLang()));
+    }
+    return switchLang(next, options);
+}
+
+/**
+ * @param {'en'|'hi'} next
  * @param {{store?: Storage|null}} [options]
  * @returns {'en'|'hi'}
  */
-export function setLang(lang, { store = defaultStore() } = {}) {
-    const next = normalizeLang(lang);
+function switchLang(next, { store = defaultStore() } = {}) {
     const changed = next !== getLang();
     current = next;
     try { store?.setItem(LANG_STORAGE_KEY, next); } catch (_) { /* storage blocked */ }
