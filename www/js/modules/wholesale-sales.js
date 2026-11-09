@@ -7,7 +7,7 @@ import { PrinterService } from '../services/printer.js';
 import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
 import { computeShortfallsFrom, approxStockNote, stockWarnOnlyNote } from '../utils/stock-check.js';
-import { dataFreshness } from '../utils/data-freshness.js';
+import { awaitingServer } from '../utils/data-freshness.js';
 import { normalizeThresholds, stockCreditFor } from '../utils/bill-checks.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
 import { settlePendingLine } from '../ui/pending-line.js';
@@ -223,7 +223,7 @@ export class WholesaleSalesManager {
             stockCreditFor(AppState, 'wholesale', { draftId: pendingBill?.id }))
             .find(s => s.key === item.id);
         if (short && short.shortfall > oversellBlockKg + 1e-6) {
-            const approx = stockWarnOnlyNote({ stockApprox: AppState.stockApprox, dataFreshness: dataFreshness() });
+            const approx = stockWarnOnlyNote({ stockApprox: AppState.stockApprox, stockUnconfirmed: awaitingServer() });
             if (!approx) {
                 UIManager.showToast(t('msg.wholesale.insufficient_stock_available_kg', { available: formatKg(short.available) }));
                 return;

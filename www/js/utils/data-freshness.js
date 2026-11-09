@@ -23,6 +23,14 @@ let sealed = false;
 let state = null;
 /** @type {Array<function(boolean): void>} */
 let waiters = [];
+/** When this session's listeners started (ms). */
+let startedAt = 0;
+
+/**
+ * Longest time unconfirmed data counts as "the server's answer is on its way" (awaitingServer):
+ * after it, or offline, the phone works from its cache as it always did.
+ */
+export const AWAIT_SERVER_MAX_MS = 60 * 1000;
 let gen = 0;
 let seq = 0;
 
@@ -55,6 +63,7 @@ export function resetFreshness() {
 /** A new session's listeners start: 'cache' until every one of them heard from the server. */
 export function startFreshness() {
     resetFreshness();
+    startedAt = Date.now();
     setState('cache');
 }
 
@@ -81,6 +90,18 @@ export function sealFreshness() {
 
 /** @returns {Freshness} */
 export const dataFreshness = () => state;
+
+/**
+ * Online, the session's data not confirmed yet, and the server's answer still expected soon. Stock
+ * from such data may miss other phones' bills for a moment: oversell only warns, and a stock count
+ * or "set to" waits (#59). Offline, or after AWAIT_SERVER_MAX_MS, the cache is used as before.
+ * @param {number} [now]
+ * @param {boolean} [online]
+ * @returns {boolean}
+ */
+export function awaitingServer(now = Date.now(), online = typeof navigator === 'undefined' || navigator.onLine !== false) {
+    return state === 'cache' && online && now - startedAt < AWAIT_SERVER_MAX_MS;
+}
 
 /**
  * Resolves true once every listener of this session has heard from the server, or false when

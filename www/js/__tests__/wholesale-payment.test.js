@@ -343,6 +343,28 @@ describe('#129 approximate stock: adding a wholesale line warns instead of block
         expect(document.getElementById('toast').textContent).toContain('Insufficient stock');
     });
 
+    test('stock the server has not confirmed yet (#59): added with a warning; offline it is refused as before', async () => {
+        const { startFreshness, resetFreshness } = await import('../utils/data-freshness.js');
+        startFreshness();
+        try {
+            await WholesaleSalesManager.addToWholesaleBill();
+            expect(WholesaleSalesManager.getItems()).toHaveLength(1);
+            expect(document.getElementById('toast').textContent).toContain('stock not yet confirmed by the server');
+            WholesaleSalesManager.setItems([]);
+            jest.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+            document.getElementById('toast').textContent = '';
+            document.getElementById('sellItem').value = 'Rice';
+            document.getElementById('sellRate').value = '40';
+            document.getElementById('sellQuantity').value = '100';
+            await WholesaleSalesManager.addToWholesaleBill();
+            expect(WholesaleSalesManager.getItems()).toHaveLength(0);
+            expect(document.getElementById('toast').textContent).toContain('Insufficient stock');
+        } finally {
+            jest.restoreAllMocks();
+            resetFreshness();
+        }
+    });
+
     test('approximate stock: the line is added with a warning naming the approximate stock', async () => {
         AppState.stockApprox = { builtAt: Date.now() - 3600000, asOf: 0 };
         await WholesaleSalesManager.addToWholesaleBill();

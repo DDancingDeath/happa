@@ -25,7 +25,8 @@ import { lineItemIdentity } from '../utils/item-catalog.js';
 import { getLang, t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
 import { AUTO_ROLLBACK_REASON } from '../tip/scenarios/bill-save.js';
-import { dataFreshness } from '../utils/data-freshness.js';
+import { awaitingServer } from '../utils/data-freshness.js';
+import { on, DATA_FRESHNESS_CHANGED } from '../utils/events.js';
 
 export const CHECK_DEBOUNCE_MS = 250;
 
@@ -261,7 +262,7 @@ function evaluate(kind, overrides = null) {
     const base = cfg.getDraft();
     if (!base) return [];
     const draft = overrides ? { ...base, ...overrides } : base;
-    const ctx = buildCheckContext({ ...AppState, dataFreshness: dataFreshness() }, draft.kind, {
+    const ctx = buildCheckContext({ ...AppState, stockUnconfirmed: awaitingServer() }, draft.kind, {
         now: Date.now(), editingBill: draft.editingBill || null, draftId: draft.id || null
     });
     return evaluateBill(draft, ctx);
@@ -482,3 +483,6 @@ if (typeof document !== 'undefined') {
         });
     });
 }
+
+// The stock note and the oversell block follow the server's confirmation (#59)
+on(DATA_FRESHNESS_CHANGED, () => Object.keys(forms).forEach(kind => BillChecksUI.schedule(kind)));

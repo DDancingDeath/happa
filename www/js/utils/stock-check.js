@@ -38,12 +38,12 @@ export const UNCONFIRMED_STOCK_NOTE = Object.freeze({
 
 /**
  * Why an oversell may only warn now (warn, never block, on uncertain stock): approximate stock
- * (#129), or stock from data the server has not confirmed yet (AppState.dataFreshness 'cache', #59).
- * @param {?{stockApprox?: ?{builtAt: number}, dataFreshness?: ?string}} state AppState-like
+ * (#129), or stock from data the server is about to confirm (`stockUnconfirmed`, awaitingServer, #59).
+ * @param {?{stockApprox?: ?{builtAt: number}, stockUnconfirmed?: boolean}} state AppState-like
  * @returns {?{en: string, hi: string}} null when stock is exact and confirmed
  */
 export function stockWarnOnlyNote(state) {
-    return approxStockNote(state?.stockApprox || null) || (state?.dataFreshness === 'cache' ? UNCONFIRMED_STOCK_NOTE : null);
+    return approxStockNote(state?.stockApprox || null) || (state?.stockUnconfirmed ? UNCONFIRMED_STOCK_NOTE : null);
 }
 
 const normalize = (/** @type {*} */ s) => (s == null ? '' : String(s).trim().toLowerCase());

@@ -11,6 +11,9 @@ import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 import { defaultWindowStart } from '../utils/history-range.js';
 import { itemsSignature, STOCK_REPLAY_FORMAT } from '../utils/stock-replay.js';
 import { on, DATA_FRESHNESS_CHANGED } from '../utils/events.js';
+import {
+    AWAIT_SERVER_MAX_MS, awaitingServer, dataFreshness, expectServer, resetFreshness, sealFreshness, startFreshness
+} from '../utils/data-freshness.js';
 
 const NOW = Date.now();
 const ITEMS = [{ id: 'i1', name: 'Gehu' }];
@@ -40,7 +43,37 @@ async function startFromCache() {
     jest.useRealTimers();
 }
 
-describe('data freshness (#59)', () => {
+describe('utils/data-freshness (#59)', () => {
+    afterEach(() => resetFreshness());
+
+    it('"server" only once sealed and every registered listener answered; an old session never confirms a new one', () => {
+        startFreshness();
+        const oldAnswer = expectServer('Purchases');
+        startFreshness();
+        const a = expectServer('Items');
+        const b = expectServer('Purchases');
+        oldAnswer();
+        a();
+        b();
+        expect(dataFreshness()).toBe('cache');
+        sealFreshness();
+        expect(dataFreshness()).toBe('server');
+    });
+
+    it('awaitingServer: online and within AWAIT_SERVER_MAX_MS of the start; never offline or once confirmed', () => {
+        const t0 = Date.now();
+        startFreshness();
+        expect(awaitingServer(t0, true)).toBe(true);
+        expect(awaitingServer(t0, false)).toBe(false);
+        expect(awaitingServer(t0 + AWAIT_SERVER_MAX_MS + 1000, true)).toBe(false);
+        sealFreshness();
+        expect(awaitingServer(t0, true)).toBe(false);
+        resetFreshness();
+        expect(awaitingServer(t0, true)).toBe(false);
+    });
+});
+
+describe('data freshness of the listeners (#59)', () => {
     let events;
     let off;
     beforeEach(() => {

@@ -247,7 +247,7 @@ function oversellIssues(items, ctx, extraLine) {
     // confirmed yet (#59) may miss other phones' bills: warn, never block.
     const approx = stockWarnOnlyNote({
         stockApprox: ctx.stockApproximate ? (ctx.stockApprox || {}) : null,
-        dataFreshness: ctx.stockUnconfirmed ? 'cache' : null
+        stockUnconfirmed: !!ctx.stockUnconfirmed
     });
     // An item whose stock was never set (no purchase, no opening stock) can't be "more than stock" yet.
     return shortfalls.filter(s => !ctx.stocked || ctx.stocked.has(s.key)).map(s => {
@@ -557,7 +557,7 @@ export function buildCheckContext(state, kind, { now = Date.now(), editingBill =
         stockReady: s.stockReady !== false,
         stockApproximate: !!s.stockApprox,
         stockApprox: s.stockApprox || null,
-        stockUnconfirmed: s.dataFreshness === 'cache',
+        stockUnconfirmed: !!s.stockUnconfirmed,
         credit: stockCreditFor(s, kind, { editingBill, draftId }),
         stocked: kind === 'purchase' ? null : stockedItemKeys({ purchases: s.purchaseHistory, stockAdjustments: s.stockAdjustments }, s.items, s.stock),
         recentBills: Array.isArray(history) ? history : [],

@@ -27,6 +27,7 @@ import { StockManager } from '../modules/stock.js';
 import { planStockAdjustment, adjustReasonText, reversalPlan, canReverseAdjustment, stockCountPlan, restockCost, lastPurchaseRate } from '../utils/stock-adjust.js';
 import { lowStockItems, lowStockLevel } from '../utils/stock-check.js';
 import { computeStock } from '../utils/stock-replay.js';
+import { startFreshness, resetFreshness } from '../utils/data-freshness.js';
 
 describe('planStockAdjustment', () => {
     const base = { currentStock: 10, reasonCode: 'damage' };
@@ -122,6 +123,25 @@ describe('StockManager.applyStockAdjustment', () => {
         fill('add', '5', '');
         await StockManager.applyStockAdjustment();
         expect(FirebaseService.startSaveStockAdjustment).not.toHaveBeenCalled();
+    });
+
+    test('stock the server has not confirmed yet (#59): "set to" and a capped remove wait; add and remove do not', async () => {
+        startFreshness();
+        try {
+            fill('set', '4', 'count');
+            await StockManager.applyStockAdjustment();
+            fill('remove', '25');
+            await StockManager.applyStockAdjustment();
+            expect(FirebaseService.startSaveStockAdjustment).not.toHaveBeenCalled();
+            expect(UIManager.showToast).toHaveBeenLastCalledWith(expect.stringMatching(/still updating/i));
+            fill('remove', '3');
+            await StockManager.applyStockAdjustment();
+            fill('add', '5');
+            await StockManager.applyStockAdjustment();
+            expect(FirebaseService.startSaveStockAdjustment.mock.calls.map(c => c[0].adjustType)).toEqual(['remove', 'add']);
+        } finally {
+            resetFreshness();
+        }
     });
 
     test('set to 0 works; a blank quantity does not mean 0', async () => {

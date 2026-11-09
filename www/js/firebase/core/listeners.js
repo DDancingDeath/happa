@@ -200,8 +200,11 @@ export const listenerMethods = {
                 live.delivered = true;
                 // Before startup is ready only AppState is updated; startup
                 // computes stock and renders the initial views itself.
-                if (changed) onData(changes, ready);
-                if (!snapshot.metadata.fromCache) heardServer();
+                try {
+                    if (changed) onData(changes, ready);
+                } finally {
+                    if (!snapshot.metadata.fromCache) heardServer();
+                }
                 if (!ready) {
                     const source = snapshot.metadata.fromCache ? 'cache' : 'server';
                     listenerStartup[label] = listenerStartup[label] || { first: source, docs: snapshot.size };
@@ -377,8 +380,8 @@ export const listenerMethods = {
                 }
                 // Owner/manager phones keep the last week's personal day totals in step with the rows (#98)
                 // ...from the server's rows only: cached rows may miss other phones' changes (#59)
-                if (canManageCheckpoint() && FirebaseService.personalRowsLoaded() && navigator.onLine !== false) {
-                    whenServerConfirmed().then(ok => ok && gen === S.sessionGen && whenIdle(() => (gen === S.sessionGen
+                if (canManageCheckpoint() && FirebaseService.personalRowsLoaded()) {
+                    whenServerConfirmed().then(ok => ok && gen === S.sessionGen && whenIdle(() => (gen === S.sessionGen && navigator.onLine !== false
                         ? FirebaseService.rebuildPersonalExpenseDays([0, 1, 2, 3, 4, 5, 6].map(localISODaysAgo))
                             .catch(e => console.warn('Personal expense day totals not checked:', e?.code || e))
                         : undefined), { minDelayMs: LEGACY_SCAN_DELAY_MS }));
