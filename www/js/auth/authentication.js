@@ -744,6 +744,11 @@ const AuthManager = {
                 } else if (tabId === 'admin' && isOwner) {
                     item.style.display = '';
                 }
+
+                // Workers / Salaries (#373): owner only
+                if (tabId === 'workers') {
+                    item.style.display = isOwner ? '' : 'none';
+                }
                 
                 if (tabId === 'sales') {
                     item.style.display = mayOpen('wholesale-sales') ? '' : 'none';

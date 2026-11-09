@@ -44,6 +44,10 @@ describe('start-up imports (#59)', () => {
         const precached = readStaticAssets();
         expect(ON_DEMAND.map(f => `/${f}`).filter(u => !precached.includes(u))).toEqual([]);
     });
+
+    test('Workers / Salaries (#373) adds nothing to start-up: its code is imported when the page opens', () => {
+        expect(startupGraph().filter(f => ['js/modules/workers.js', 'js/utils/worker-pay.js', 'js/firebase/repos/workers.js'].includes(f))).toEqual([]);
+    });
 });
 
 describe('language catalogues load on demand (#59)', () => {

@@ -58,6 +58,7 @@ Each page has its own short file in `docs/pages/` (English and Hindi): what it s
 - [Ask](pages/ask.md)
 - [Rates](pages/rates.md)
 - [Rentals](pages/rentals.md)
+- [Workers / Salaries (owner)](pages/workers.md)
 - [Settings, Admin, App health](pages/settings.md)
 
 ---
