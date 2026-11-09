@@ -199,7 +199,7 @@ canDeleteBill    = owner && voided   // OD-14: void first, for everyone
     (the bill screen's own split check, `SPLIT_TOLERANCE`; "Cash"/"Due" fill in the total rounded to
     the rupee). The total is read as `billTotal()` reads it (`grandTotal`, `amountPayable`, `total`,
     `billTotal`, `saleTotal`). Only `tools/migrate` writes opening records (`openingBalance`); the
-    legacy `amountPaid` / top-level `due` / `dueAmount` (#126) are refused.
+    legacy `amountPaid` / top-level `due` are refused, and so is a value in `dueAmount` (#126; dropping an older bill's copy is allowed).
   - **Payments and write-offs** (`paymentMoneyOk`): the write sets `payment.cash`, `online` and `due`
     (as `applyPaymentTransaction` / `applyWriteOffTransaction` do); cash, online and written off never
     go down, each goes up by what the new `payments[]` entry (amount > 0) says (`entryParts`), and the
@@ -347,7 +347,7 @@ debt, M5, and it stays on the bill and in the customer's statement) or a recorde
 `openDue` follow the due (`clearFieldsOk`); `payments[]` is append-only; a bill is deleted only once
 voided. The owner may still change the notes, a bill's creator (`userId`) and `createdAt` without a
 record, and the owner's full edits skip the split check (old bills keep legacy money shapes) but never
-change the legacy `due`, `dueAmount`, `amountPaid` or `openingBalance`. Each app path writes its audit entry in
+change the legacy `due`, `amountPaid` or `openingBalance`, or set `dueAmount`. Each app path writes its audit entry in
 the same transaction or batch as the change (D-3): edit (`EDIT_BILL` / `EDIT_SALE`), void, delete,
 payment, write-off (`CLEAR_DUE`, id `wo_<entry id>`) and Complete all due. A refused edit says so
 plainly ("Not saved: the server refused this change…", or "Your phone's time is wrong…" when the

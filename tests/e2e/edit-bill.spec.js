@@ -45,7 +45,8 @@ test('edit a purchase from History keeps its money fields and records why; then 
     expect(doc.items).toHaveLength(1);
     expect(doc.items[0]).toMatchObject({ itemId: 'itm_wheat', qty: 50, total: 1100 });
     expect(doc.payment).toMatchObject({ cash: 600, due: 500 });
-    expect(doc.dueAmount).toBe(500);
+    // The seeded bill's legacy dueAmount copy is dropped by the edit (#126)
+    expect(doc).not.toHaveProperty('dueAmount');
     // The before/after and the reason are kept next to the bill (#121)
     expect(doc.editCount).toBe(1);
     const edit = await getDoc(`dev_purchases/${id}/edits`, '1');

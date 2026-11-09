@@ -31,7 +31,8 @@ test('bill → History → due payment → cash close', async ({ page, problems 
     await expectToast(page, /Sale completed successfully/);
 
     const sale = (await listDocs('dev_retailSales')).find(d => d.customerName === customer);
-    expect(sale).toMatchObject({ total: 360, dueAmount: 360, payment: { cash: 0, online: 0, due: 360, total: 360 } });
+    expect(sale).toMatchObject({ total: 360, payment: { cash: 0, online: 0, due: 360, total: 360 } });
+    expect(sale).not.toHaveProperty('dueAmount');
 
     // ---- 2. it shows in History ----
     await showTab(page, 'history');
@@ -54,7 +55,7 @@ test('bill → History → due payment → cash close', async ({ page, problems 
     await expectToast(page, /Payment of ₹160 recorded/);
     const paid = await getDoc('dev_retailSales', sale._id);
     expect(paid.payment).toMatchObject({ cash: 160, due: 200 });
-    expect(paid.dueAmount).toBe(200);
+    expect(paid).not.toHaveProperty('dueAmount');
     expect(paid.payments).toHaveLength(1);
 
     // ---- 4. open and close the cash drawer ----

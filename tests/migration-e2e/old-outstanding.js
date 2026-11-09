@@ -12,9 +12,11 @@
  * - age in IST calendar days from the bill's time (timestamp, else date, else
  *   createdAt) to `today`, in the groups 0–30, 31–60, 61–90 and 90+ (no date = 90+).
  */
-import { openDue, r2, timeOf } from '../oracle/oracle.js';
+import { openDue, r2, readingOldDues, timeOf } from '../oracle/oracle.js';
 
 const DUE_EPSILON = 0.005;
+/** The due as the old app read it (payment.due, else dueAmount), not as the app reads it since #126. */
+const oldDue = (b) => readingOldDues(() => openDue(b));
 export const BUCKETS = [['0-30', 30], ['31-60', 60], ['61-90', 90], ['90+', Infinity]];
 
 export const partyKey = (name) => String(name ?? '').normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -74,8 +76,8 @@ export function summarize(entries, today) {
  * @returns {{retail: Object, wholesale: Object, bills: Array<Object>}}
  */
 export function oldOutstanding(bills, today) {
-    const retail = (bills.retailSales || []).filter(b => !b.cleared && openDue(b) > DUE_EPSILON)
-        .map(b => ({ id: b.id, billType: 'retail', due: r2(openDue(b)), name: b.customerName, time: billTime(b), billNumber: String(b.billNumber || ''), date: b.date ?? null }));
+    const retail = (bills.retailSales || []).filter(b => !b.cleared && oldDue(b) > DUE_EPSILON)
+        .map(b => ({ id: b.id, billType: 'retail', due: r2(oldDue(b)), name: b.customerName, time: billTime(b), billNumber: String(b.billNumber || ''), date: b.date ?? null }));
     const wholesale = (bills.wholesaleSales || []).filter(b => b.source === 'sales-tab' && wholesaleDue(b) > DUE_EPSILON)
         .map(b => ({ id: b.id, billType: 'wholesale', due: r2(wholesaleDue(b)), name: b.customerName, time: billTime(b), billNumber: String(b.billNumber || ''), date: b.date ?? null }));
     return {

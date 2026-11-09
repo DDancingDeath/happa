@@ -131,8 +131,12 @@ service cloud.firestore {
       return !(key in m) || (m[key] is number && m[key] > -10000000000 && m[key] < 10000000000);
     }
 
+    function noDueAmount(keys) {
+      return !(keys.hasAny(['dueAmount']) && 'dueAmount' in request.resource.data);
+    }
+
     function changedMoneyOk(keys) {
-      return !keys.hasAny(['openingBalance', 'amountPaid', 'due', 'dueAmount'])
+      return !keys.hasAny(['openingBalance', 'amountPaid', 'due']) && noDueAmount(keys)
         && (keys.hasAny(['total', 'grandTotal', 'amountPayable', 'billTotal', 'saleTotal',
                          'payment', 'cashPayment', 'onlinePayment'])
             ? billMoneyOk(request.resource.data, request.resource.data.get('payment', {}))
@@ -252,7 +256,7 @@ service cloud.firestore {
                && withinBillWindowFor(usersCol, role)
                && d.get('createdAt', null) == resource.data.get('createdAt', null)))
           && (!changed.hasAny(editLoggedFields()) || changed.hasAny(['editCount']))
-          ? (role == 'owner' ? !changed.hasAny(['openingBalance', 'amountPaid', 'due', 'dueAmount']) : changedMoneyOk(changed))
+          ? (role == 'owner' ? !changed.hasAny(['openingBalance', 'amountPaid', 'due']) && noDueAmount(changed) : changedMoneyOk(changed))
             && clearFieldsOk(changed, d)
         : bookkeepingOnly(docId, changed) ? paymentEditOk(changed)
         : false;

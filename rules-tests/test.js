@@ -301,6 +301,21 @@ function defineSuite(prefix) {
             }
         }
     });
+    t('#126: a write may drop an older bill\'s dueAmount copy, never set one; a create never has one', async () => {
+        for (const coll of bills) {
+            for (const uid of ['legacyOwner', 'manager1', 'staff1']) {
+                await seedBill(coll, `old-${uid}`, { userId: 'staff1', total: 100, payment: { cash: 40, online: 0, due: 60, total: 100 }, dueAmount: 60, ...fresh() });
+                const ref = as(uid).collection(coll).doc(`old-${uid}`);
+                await assertFails(ref.update({ comments: 'x', dueAmount: 50 }));
+                await assertFails(ref.update({ comments: 'x', dueAmount: 60.5 }));
+                await assertSucceeds(ref.update({ comments: 'x', dueAmount: FieldValue.delete() }));
+            }
+            const c = as('staff1').collection(coll);
+            const bill = { userId: 'staff1', total: 100, payment: { cash: 100, online: 0, due: 0, total: 100 }, clientVersion: 5, createdAt: serverTimestamp(), timestamp: Date.now() };
+            await assertFails(c.doc('withCopy').set({ ...bill, dueAmount: 0 }));
+            await assertSucceeds(c.doc('noCopy').set(bill));
+        }
+    });
     t('members can\'t create a bill that is voided or has an edit count', async () => {
         const c = as('staff1').collection(purchases);
         await assertFails(c.doc('n1').set({ userId: 'staff1', total: 5, createdAt: serverTimestamp(), ...voidFields('staff1') }));
