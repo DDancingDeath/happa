@@ -212,6 +212,22 @@ describe('Ask page: item reports (ASK-5)', () => {
         expect(AskManager.answers[0].q).toMatchObject({ range: 'last-month', billType: 'purchase', groupBy: 'month', keys: ['k', 'g'] });
     });
 
+    test('a kind chip keeps the keyboard focus after it is turned on or off', async () => {
+        jest.spyOn(FirebaseService, 'isFullHistoryLoaded').mockReturnValue(true);
+        await AskManager.ask('is mahine lah kitna kharida');
+        await AskManager.toggleKind(AskManager.answers[0].id, 'g');
+        expect(document.activeElement.textContent).toBe('Garlic');
+        expect(document.activeElement.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    test('the estimate leaves out a bill type already read this session', async () => {
+        Object.assign(AppState, { retailSalesHistory: [], salesHistory: [] });
+        FirebaseService.reportBillsInMemory.mockImplementation((coll) => (coll === 'wholesaleSales' ? { bills: [], readAt: Date.now() } : null));
+        await AskManager.ask('lah kitna becha ab tak');
+        expect(AskManager.answers[0].answer.needsOlder).toBe(true);
+        expect(FirebaseService.oldestBillTime.mock.calls.map(x => x[0])).toEqual(['retailSales']);
+    });
+
     test('sales of all time: both sale collections are read after the one confirm', async () => {
         jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
         Object.assign(AppState, { retailSalesHistory: [], salesHistory: [] });

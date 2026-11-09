@@ -94,6 +94,7 @@ describe('ASK-6: sales by item = Insights › Items (I1, I2); every item by part
     ])('%s', (q, key) => {
         const a = ask(q);
         expect(a.spec).toBe('ASK-6');
+        expect(a.report.groups.filter(g => g.totals.amount > 0).length).toBeGreaterThan(0);
         a.report.groups.forEach(g => expect(g.totals.amount).toBe(m[key][g.key] ?? 0));
     });
     test('sales by party: each party\'s bills total = I3; all parties = M1, with its bill count', () => {
@@ -107,8 +108,11 @@ describe('ASK-6: sales by item = Insights › Items (I1, I2); every item by part
         expect([a.report.totals.billsTotal, a.report.totals.bills]).toEqual([m.M16_purchases, m.M16_purchaseCount]);
     });
     test('by month: each month\'s sales and purchases = M1 / M16 of that month', () => {
-        const sales = ask('ab tak ki bikri mahine wise').report.groups;
+        const s = ask('ab tak ki bikri mahine wise');
+        expect(s.period.preset).toBe('all');
+        const sales = s.report.groups;
         const buys = ask('ab tak ki kharid mahine wise').report.groups;
+        expect(O.r2(sales.reduce((a, g) => a + g.totals.billsTotal, 0))).toBe(m.M1_sales);
         expect(sales.length).toBeGreaterThan(1);
         sales.forEach(g => expect(g.totals.billsTotal).toBe(O.metrics(clean, O.monthRange(g.month)).M1_sales));
         buys.forEach(g => expect(g.totals.billsTotal).toBe(O.metrics(clean, O.monthRange(g.month)).M16_purchases));

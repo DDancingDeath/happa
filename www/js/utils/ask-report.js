@@ -234,14 +234,13 @@ export function itemReport(sources, items, { kinds, partyKey = null, groupBy = '
         return /** @type {*} */ (groups.get(key));
     };
     (kinds || []).forEach(k => { if (groupBy === 'item') group(k.key, k); });
-    /** @type {Map<string, string>} */
-    const partyName = new Map();
+    const ranged = sources.map(({ type, bills }) => ({ type, bills: billsInRange(bills || [], from, to) }));
+    // one spelling per party across all the bill types (the one used most)
+    const partyName = new Map(reportParties(ranged.flatMap(s => s.bills)).map(p => [p.key, p.name]));
     const all = { kg: 0, amount: 0, labour: 0, adjust: 0 };
     const allBills = new Set();
-    sources.forEach(({ type, bills }) => {
+    ranged.forEach(({ type, bills: inRange }) => {
         const purchase = type === 'purchase';
-        const inRange = billsInRange(bills || [], from, to);
-        reportParties(inRange).forEach(p => partyName.set(p.key, p.name));
         inRange.forEach(b => {
             const party = billParty(b);
             const pk = partyNameKey(party);

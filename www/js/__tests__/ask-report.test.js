@@ -51,6 +51,14 @@ describe('parseQuestion: item reports', () => {
         ['is mahine ki bikri item wise', R('sale', '', 'this-month')],
         ['pichle mahine ki kharid party wise', R('purchase', '', 'last-month', 'party')],
         ['kis bhav pe lah kharida', R('purchase', 'lah', 'this-month')],
+        ['ab tak ki bikri mahine wise', R('sale', '', 'all', 'month')],
+        ['aaj tak ki kharid monthly', R('purchase', '', 'all', 'month')],
+        ['mahine ke hisab se bikri is saal', R('sale', '', 'this-year', 'month')],
+        ["each month's sales this year", R('sale', '', 'this-year', 'month')],
+        ['lah ki bikri thok aur khudra', R('sale', 'lah', 'this-month')],
+        ['Mohan ne kya kya kharida', R('sale', 'mohan', 'this-month')],
+        ['lah kisne kharida', R('sale', 'lah', 'this-month', 'party')],
+        ['Ramesh ne kitna lah becha', R('purchase', 'ramesh lah', 'this-month')],
         ['this month lah purchase', R('purchase', 'lah', 'this-month')],
         ['aaj ki bikri', { intent: 'sales_today' }],
         ['aaj kitna bika', { intent: 'sales_today' }],
@@ -298,6 +306,26 @@ describe('sales, parties and months (ASK-6, ASK-5)', () => {
         expect(a.report.groups.map(g => [g.name, g.totals.kg, g.totals.amount])).toEqual([['Rice', 10, 400], ['Garlic', 3, 270], ['Lah Kusmi', 2, 500]]);
         expect(a.report.totals).toMatchObject({ amount: 1170, adjust: -5, billsTotal: 1165, bills: 2 });
         expect(ask('Ramesh ko lah kitna becha ab tak').report.totals).toMatchObject({ kg: 2, amount: 500, bills: 1, billsTotal: null });
+    });
+    test('a party whose name only starts with the words is offered, never counted', () => {
+        const s = { ...src, bills: { ...src.bills, retailSales: [...retail, sale('s8', '2026-11-03T10:00:00', 'R8', 'Bhairav Traders', [line('r', 'Rice', 1, 40)])] } };
+        const a = answerQuestion(parseQuestion('is mahine ki bikri bhai'), s, { role: 'owner', today });
+        expect(a).toMatchObject({ partyMatches: ['Bhairav Traders'] });
+        expect(a.report).toBeUndefined();
+    });
+    test('a party\'s name is the spelling used most across retail and wholesale', () => {
+        const s = { ...src, bills: { purchases: [], wholesaleSales: [sale('w9', '2026-11-03T10:00:00', 'W9', 'BHAIRAV TRADERS', [line('r', 'Rice', 1, 40)])],
+            retailSales: ['R7', 'R8'].map(n => sale(n, '2026-11-03T10:00:00', n, 'bhairav traders', [line('r', 'Rice', 1, 40)])) } };
+        expect(answerQuestion(parseQuestion('is mahine ki bikri party wise'), s, { role: 'owner', today }).report.groups.map(g => g.name)).toEqual(['bhairav traders']);
+    });
+    test('more kinds than chips: every counted kind has a chip, so turning one off keeps the rest', () => {
+        const many = Array.from({ length: 14 }, (_, i) => ({ id: `c${i}`, name: `Chawal ${String.fromCharCode(65 + i)}`, hindiName: '' }));
+        const s = { bills: { retailSales: many.map((it, i) => sale(`m${i}`, '2026-11-03T10:00:00', `M${i}`, 'Ramesh', [line(it.id, it.name, 1, 100)])) }, items: many };
+        const q = parseQuestion('chawal kitna becha is mahine');
+        const first = answerQuestion(q, s, { role: 'owner', today });
+        expect([first.kinds.length, first.pool.length, first.report.totals.amount]).toEqual([14, 14, 1400]);
+        const off = answerQuestion({ ...q, keys: first.kinds.map(k => k.key).filter(k => k !== 'c0') }, s, { role: 'owner', today });
+        expect([off.kinds.length, off.pool.length, off.report.totals.amount]).toEqual([13, 14, 1300]);
     });
     test('several parties match: which one; none: no figure', () => {
         const two = answerQuestion(parseQuestion('Ra ko kya becha'), { ...src, bills: { ...src.bills, retailSales: [...retail, sale('s9', '2026-11-03T10:00:00', 'R9', 'Rakesh', [line('r', 'Rice', 1, 40)])] } }, { role: 'owner', today });

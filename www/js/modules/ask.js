@@ -156,7 +156,8 @@ export const AskManager = {
         if (needOlder && covered) answer.readAt = Math.min(...held.map(h => h.readAt));
         if (answer.needsOlder) {
             answer.windowFrom = windowFrom;
-            answer.estimate = await this.estimate(types, { windowFrom, now: now.getTime(), from: loadFrom });
+            // bill types already read this session cost nothing more
+            answer.estimate = await this.estimate(types.filter((_, i) => !held[i]), { windowFrom, now: now.getTime(), from: loadFrom });
         }
         return answer;
     },
@@ -232,7 +233,9 @@ export const AskManager = {
         if (!a?.pool?.some(k => k.key === key) || entry.busy) return;
         const on = new Set((a.kinds || []).map(k => k.key));
         if (on.has(key)) on.delete(key); else on.add(key);
-        await this.rerun(entry, { ...entry.q, keys: a.pool.map(k => k.key).filter(k => on.has(k)) });
+        await this.rerun(entry, { ...entry.q, keys: [...on] });
+        const chips = [...document.querySelectorAll(`[data-ask-ctl="${entry.id}-kinds"] .ask-kind`)];
+        chips[(entry.answer?.pool || []).findIndex(k => k.key === key)]?.focus();
     },
 
     async rerun(entry, q, field) {
@@ -296,7 +299,7 @@ export const AskManager = {
             + select('range', a.period.preset, REPORT_PRESETS.map(p => [p, this.periodLabel(p)]))
             + select('groupBy', a.groupBy, REPORT_GROUPS.map(g => [g, t(`ui.ask.group_${g}`)]))
             + '</div>'
-            + (chips ? `<div class="ask-kinds" role="group" aria-label="${esc(t('ui.ask.change_kinds'))}">${chips}</div>` : '');
+            + (chips ? `<div class="ask-kinds" role="group" data-ask-ctl="${esc(`${id}-kinds`)}" aria-label="${esc(t('ui.ask.change_kinds'))}">${chips}</div>` : '');
     },
 
     /** One item report answer (ASK-5, ASK-6) as HTML. */

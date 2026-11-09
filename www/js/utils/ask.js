@@ -33,7 +33,7 @@ export const MEMBER_STOCK_LIMIT_KG = 100;
 export const ASK_MATCH_LIMIT = 5;
 /** @typedef {{key: string, name: string, hindiName: string}} Kind */
 
-/** Most kinds an item report offers to pick from by hand. */
+/** Most "not counted" kinds an item report offers to pick from by hand (every counted kind has a chip). */
 export const REPORT_POOL_LIMIT = 12;
 
 const words = (/** @type {string[]} */ list) => new Set(list);
@@ -99,12 +99,14 @@ const WHO_ALL = /(^|\s)(kis\s+kis|किस\s+किस)(?=[\s?!.,]|$)/;
 // "kis bhav pe", "kaun sa": question words, never a name
 const ITEM_WORDS = words(['item', 'items', 'itemwise', 'saman', 'samaan', 'cheez', 'cheeze', 'cheezen', 'kaun', 'kon', 'konsa', 'kaunsa', 'kaunse', 'konse',
     'kis', 'pe', 'par', 'सामान', 'चीज़', 'चीज़ें', 'चीजें', 'कौन', 'कौनसा', 'कौनसे', 'किस', 'पर', 'पे']);
-const BY_MONTH = /(^|\s)((month|mahine|mahina|महीने|महीना)\s*-?\s*(wise|vise|war|vaar|वार)|monthly|mahinewar|mahinevar|महीनेवार|(har|each|every|per|हर)\s+(mahine|mahina|month|महीने|महीना)|month\s+by\s+month)(?=[\s?!.,]|$)/g;
+const BY_MONTH = /(^|\s)((month|mahine|mahina|महीने|महीना)\s*-?\s*(wise|vise|war|vaar|वार)|monthly|mahinewar|mahinevar|महीनेवार|(har|each|every|per|हर)\s+(mahine|mahina|month|महीने|महीना)(['’]s)?|month\s+by\s+month|(mahine|mahina|month|महीने|महीना)\s+(ke|ki|के|की)\s+(hisab|hisaab|हिसाब)\s+(se|से))(?=[\s?!.,]|$)/g;
 const WHAT_ALL = /(^|\s)(kya\s+kya|क्या\s+क्या)(?=[\s?!.,]|$)/;
 // Words asking for a report even without an item or a period ("is mahine ki bikri item wise").
 const REPORT_ASK = words(['report', 'excel', 'xlsx', 'sheet', 'sheets', 'csv', 'list', 'download', 'wise', 'vise', 'kinds', 'types', 'kism', 'kisam',
     'kisme', 'kismen', 'prakar', 'varieties', 'item', 'items', 'itemwise', 'रिपोर्ट', 'एक्सेल', 'शीट', 'लिस्ट', 'किस्में', 'किस्मों', 'प्रकार']);
 const POINTERS = words(['this', 'that', 'ne', 'इस', 'उस', 'ने']);
+// "Mohan ne kharida", "lah kisne kharida": the party bought, so it was our sale (and "ne becha" our purchase)
+const BY_THEM = words(['ne', 'ने', 'kisne', 'किसने']);
 /** A report by month with no period named covers last month and this one: still on the phone. */
 const MONTHLY_DEFAULT = 'since-last-month';
 
@@ -212,9 +214,11 @@ function itemReportQuestion(text, sale) {
     const periodNamed = [MONTH, YEAR, FY, LAST].some(s => hasAny(tokens, s));
     const asked = subject || groupBy !== 'item' || WHAT_ALL.test(plain) || hasAny(tokens, REPORT_ASK);
     if (!asked && !periodNamed) return null;
-    const range = monthly && !periodNamed && !hasAny(tokens, TODAY) && !hasAny(tokens, ALL_TIME) ? MONTHLY_DEFAULT : reportRange(plain, tokens);
+    const range = monthly && !periodNamed && !SO_FAR.test(plain) && !hasAny(tokens, TODAY) && !hasAny(tokens, ALL_TIME) ? MONTHLY_DEFAULT : reportRange(plain, tokens);
     if (!range) return { intent: 'today_only' };
-    const billType = !sale ? 'purchase' : hasAny(tokens, WHOLESALE) ? 'wholesale' : hasAny(tokens, RETAIL) ? 'retail' : 'sale';
+    const sold = sale !== hasAny(tokens, BY_THEM);
+    const one = hasAny(tokens, WHOLESALE) !== hasAny(tokens, RETAIL);
+    const billType = !sold ? 'purchase' : !one ? 'sale' : hasAny(tokens, WHOLESALE) ? 'wholesale' : 'retail';
     return { intent: 'item_report', billType, subject, range, groupBy };
 }
 
@@ -363,15 +367,22 @@ export function answerQuestion(q, src = {}, { role = 'staff', wholesale = false,
         let partyKey = null;
         if (rs.item) {
             const m = matchKinds(reportKinds(src.items, all), rs.item.text);
-            const pool = [...m.kinds, ...m.near].slice(0, REPORT_POOL_LIMIT);
             const picked = rs.keys ? new Set(rs.keys) : null;
+            // every kind the words name, and the "not counted" ones picked by hand, always have a chip
+            const nearPicked = picked ? m.near.filter(k => picked.has(k.key)) : [];
+            const nearRest = m.near.filter(k => !nearPicked.includes(k)).slice(0, Math.max(0, REPORT_POOL_LIMIT - m.kinds.length - nearPicked.length));
+            const pool = [...m.kinds, ...nearPicked, ...nearRest];
             const kinds = picked ? pool.filter(k => picked.has(k.key)) : m.kinds;
             const near = picked ? pool.filter(k => !picked.has(k.key)) : m.near;
             Object.assign(base, { kinds, pool, picked: !!picked, near: near.slice(0, ASK_MATCH_LIMIT), nearMore: Math.max(0, near.length - ASK_MATCH_LIMIT) });
             if (m.unknown.length) {
                 // "Ramesh se lah kitna kharida", "Ramesh ko kya kya becha": the words that name no item name a party
-                const hits = matchNames(reportParties(all), p => [p.key, ...spellings(p.name)], spellings(m.unknown.join(' ')));
-                if (hits.length > 1) return { ...base, partyMatches: hits.slice(0, ASK_MATCH_LIMIT).map(h => h.name), partyMore: Math.max(0, hits.length - ASK_MATCH_LIMIT) };
+                const typed = spellings(m.unknown.join(' '));
+                const namesOf = (/** @type {{key: string, name: string}} */ p) => [p.key, ...spellings(p.name)];
+                const hits = matchNames(reportParties(all), namesOf, typed);
+                // only a name that starts with the words ("bhai" → Bhairav Traders) is offered, never counted
+                const exact = hits.length === 1 && namesOf(hits[0]).some(n => typed.includes(n));
+                if (hits.length > 1 || (hits.length && !exact)) return { ...base, partyMatches: hits.slice(0, ASK_MATCH_LIMIT).map(h => h.name), partyMore: Math.max(0, hits.length - ASK_MATCH_LIMIT) };
                 if (!hits.length) {
                     // A name only on bills older than this phone has may still be found once they are read
                     if (!covered) return { ...base, ...older };
