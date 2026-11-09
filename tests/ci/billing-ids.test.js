@@ -51,6 +51,16 @@ test('the list has every id the E2E specs use on Billing', () => {
     expect(missing).toEqual([]);
 });
 
+test('every <div> is closed, and Sale is not nested in Purchase', () => {
+    const depthAt = (marker) => {
+        const head = BILLING.slice(0, BILLING.indexOf(marker));
+        return (head.match(/<div\b/g) || []).length - (head.match(/<\/div>/g) || []).length;
+    };
+    expect(depthAt('<!-- SALE SECTION -->')).toBe(depthAt('<!-- PURCHASE SECTION -->'));
+    expect(depthAt('<!-- END SALE SECTION -->')).toBe(depthAt('<!-- PURCHASE SECTION -->'));
+    expect((BILLING.match(/<div\b/g) || []).length).toBe((BILLING.match(/<\/div>/g) || []).length);
+});
+
 test('the E2E code still uses every listed id', () => {
     const used = e2eIds();
     expect(BILLING_E2E_IDS.filter((id) => !used.has(id))).toEqual([]);
