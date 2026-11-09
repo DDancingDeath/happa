@@ -8,7 +8,8 @@ import { PurchaseManager } from '../modules/purchase.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { VoiceMic, VOICE_KEY, voiceEngine } from '../ui/voice-mic.js';
-import { VoiceBilling, listenNative, voiceErrorKey } from '../modules/voice-billing.js';
+import { VoiceBilling, listenNative, voiceErrorKey, canSpeak, Readback, READBACK_KEY } from '../modules/voice-billing.js';
+import { setLang } from '../i18n/index.js';
 
 jest.mock('../firebase/repos/bill-drafts.js', () => ({
     getAutoSave: jest.fn(),
@@ -21,6 +22,7 @@ jest.mock('../firebase/repos/bill-drafts.js', () => ({
 const DOM = `
   <input type="checkbox" id="settingVoiceBilling"><p id="voiceBillingUnavailable" hidden></p>
   <div id="purchaseSection">
+    <input id="customerName"><datalist id="customerOptions"><option value="Ramesh kumar"></option></datalist>
     <button class="voice-mic-btn" id="voiceMicPurchase" hidden></button>
     <select id="billItem"><option value="0">Rice</option><option value="1">Wheat</option></select>
     <input id="billRate"><datalist id="rateOptions"></datalist><input id="newWeight"><div id="weightsDisplay"></div>
@@ -55,6 +57,9 @@ afterEach(() => {
     jest.restoreAllMocks();
     delete window.webkitSpeechRecognition;
     delete window.Capacitor;
+    delete window.speechSynthesis;
+    delete window.SpeechSynthesisUtterance;
+    setLang('en');
 });
 
 describe('voiceEngine', () => {
@@ -201,5 +206,166 @@ describe('Android speech plugin', () => {
     test('engine errors map to plain messages', () => {
         expect(['no-speech', 'No match', 'not-allowed', 'network', 'Network error', 'aborted', 'unavailable', 'weird'].map(voiceErrorKey))
             .toEqual(['msg.voice.no_speech', 'msg.voice.no_speech', 'msg.voice.mic_denied', 'msg.voice.offline', 'msg.voice.offline', '', 'msg.voice.unavailable', 'msg.voice.failed']);
+    });
+});
+
+/** The real modal keeps its HTML after OK; this one puts it in the page, then `act` (the user, once it is open) ticks or unticks. */
+const dialog = (answer, act = () => {}) => jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async (html) => {
+    document.getElementById('modalMessage')?.remove();
+    document.body.insertAdjacentHTML('beforeend', `<div id="modalMessage">${html}</div>`);
+    await Promise.resolve();
+    act();
+    return answer;
+});
+const untick = (sel) => () => { document.querySelector(sel).checked = false; };
+
+describe('several lines in one sentence (#81 A2)', () => {
+    const billLines = () => PurchaseManager.getBillItems().map(({ name, qty, rate }) => [name, qty, rate]);
+
+    test('a list with ticks; OK adds the ticked lines to the bill, never saves', async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['wheat 10 kg 24 aur rice 5 kg 30 aur wheat 2 kg 25']);
+        const modal = dialog(true, untick('[data-voice-line="2"]'));
+        const save = jest.spyOn(BillingManager, 'saveBillToHistory');
+        await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(true);
+        expect(modal.mock.calls[0][0].match(/data-voice-line="\d"[^>]*checked/g)).toHaveLength(3);
+        expect(billLines()).toEqual([['Wheat', 10, 24], ['Rice', 5, 30]]);
+        expect(save).not.toHaveBeenCalled();
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('Lines added to the bill: 2. Check them, then save.', 4000);
+    });
+
+    test('a line missing its rate is shown but cannot be ticked', async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['wheat 10 kg 24, rice 5 kg']);
+        const modal = dialog(true);
+        await VoiceBilling.listenOnce('purchase', 'web');
+        expect(modal.mock.calls[0][0]).toMatch(/data-voice-line="1"[^>]*disabled/);
+        expect(modal.mock.calls[0][0]).toContain('this line can&#039;t be added. Type it.');
+        expect(billLines()).toEqual([['Wheat', 10, 24]]);
+    });
+
+    test('Cancel adds nothing', async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['wheat 10 kg 24 aur rice 5 kg 30']);
+        dialog(false);
+        await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(false);
+        expect(billLines()).toEqual([]);
+    });
+
+    test("a line the form's checks stop stays in the form, and the rest are not added", async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['wheat 10 kg 24 aur rice 5 kg 30 aur wheat 2 kg 25']);
+        dialog(true);
+        const real = PurchaseManager.addToBill.bind(PurchaseManager);
+        jest.spyOn(PurchaseManager, 'addToBill').mockImplementationOnce(() => real()).mockImplementationOnce(async () => {});
+        await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(true);
+        expect(billLines()).toEqual([['Wheat', 10, 24]]);
+        expect([document.getElementById('billItem').value, document.getElementById('billRate').value, document.getElementById('newWeight').value]).toEqual(['0', '30', '5']);
+        expect(UIManager.showToast).toHaveBeenLastCalledWith(expect.stringMatching(/^1 of 3 lines added/), 6000);
+    });
+
+    test('weights already entered (or typed) stop it before anything is added', async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['wheat 10 kg 24 aur rice 5 kg 30']);
+        dialog(true);
+        document.getElementById('newWeight').value = '7';
+        await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(false);
+        expect(billLines()).toEqual([]);
+        expect(UIManager.showToast).toHaveBeenLastCalledWith(expect.stringMatching(/weights already entered/), 4000);
+    });
+});
+
+describe('customer name (#81 A3)', () => {
+    const name = () => document.getElementById('customerName').value;
+
+    test('fills the customer box only after OK, with a known spelling', async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['customer RAMESH KUMAR 10 kg wheat 24']);
+        const modal = dialog(true);
+        await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(true);
+        expect(modal.mock.calls[0][0]).toContain('Ramesh kumar');
+        expect(name()).toBe('Ramesh kumar');
+        expect(document.getElementById('newWeight').value).toBe('10');
+    });
+
+    test('says which name it replaces; unticked, the name stays', async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['customer Suresh']);
+        document.getElementById('customerName').value = 'Old Name';
+        const modal = dialog(true, untick('#voiceCustomerTick'));
+        await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(false);
+        expect(modal.mock.calls[0][0]).toContain('Replaces “Old Name”');
+        expect(name()).toBe('Old Name');
+
+        dialog(true);
+        await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(true);
+        expect(name()).toBe('Suresh');
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('Customer name filled: Suresh.', 4000);
+    });
+
+    test('Cancel leaves the customer box alone', async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['customer Suresh 10 kg wheat 24']);
+        dialog(false);
+        await VoiceBilling.listenOnce('purchase', 'web');
+        expect(name()).toBe('');
+    });
+});
+
+describe('spoken readback (#81 A1)', () => {
+    const fakeSynth = (voices = []) => {
+        window.speechSynthesis = { speak: jest.fn(), cancel: jest.fn(), getVoices: () => voices };
+        window.SpeechSynthesisUtterance = function Utterance(text) { this.text = text; };
+        return window.speechSynthesis;
+    };
+
+    test('reads back what was understood while the dialog is open, then stops', async () => {
+        const synth = fakeSynth([{ lang: 'en_IN', name: 'en' }]);
+        window.webkitSpeechRecognition = fakeWebSpeech(['customer ramesh, wheat 10 kg 24 aur rice 5 kg 30']);
+        let open = null;
+        const modal = dialog(false, () => { open = synth.speak.mock.calls.length; });
+        await VoiceBilling.listenOnce('purchase', 'web');
+        expect(open).toBe(1);
+        expect(synth.speak).toHaveBeenCalledTimes(1);
+        const [u] = synth.speak.mock.calls[0];
+        expect(u).toMatchObject({ text: 'Customer Ramesh. Wheat, 10 kg, 24 rupees per kg. Rice, 5 kg, 30 rupees per kg', lang: 'en-IN', voice: { lang: 'en_IN' } });
+        expect(modal).toHaveBeenCalled();
+        expect(document.getElementById('voiceReadback').checked).toBe(true);
+        expect(synth.cancel).toHaveBeenCalled();
+    });
+
+    test('in Hindi, with the Hindi item name and hi-IN', async () => {
+        setLang('hi');
+        const synth = fakeSynth();
+        window.webkitSpeechRecognition = fakeWebSpeech(['गेहूं 10 kg 24 रुपये']);
+        dialog(false);
+        await VoiceBilling.listenOnce('purchase', 'web');
+        expect(synth.speak.mock.calls[0][0]).toMatchObject({ text: 'गेहूं, 10 kg, 24 रुपये प्रति kg', lang: 'hi-IN' });
+    });
+
+    test('the mute switch is kept on this device and stops or restarts the readback', async () => {
+        const synth = fakeSynth();
+        window.webkitSpeechRecognition = fakeWebSpeech(['wheat 10 kg 24']);
+        dialog(false, () => {
+            VoiceBilling.setReadback(false);
+            VoiceBilling.setReadback(true);
+        });
+        await VoiceBilling.listenOnce('purchase', 'web');
+        expect(synth.speak).toHaveBeenCalledTimes(2);
+        expect(localStorage.getItem(READBACK_KEY)).toBe('1');
+
+        VoiceBilling.setReadback(false);
+        expect(localStorage.getItem(READBACK_KEY)).toBe('0');
+        const muted = dialog(false);
+        await VoiceBilling.listenOnce('purchase', 'web');
+        expect(synth.speak).toHaveBeenCalledTimes(2);
+        expect(muted).toHaveBeenCalled();
+        expect(document.getElementById('voiceReadback').checked).toBe(false);
+    });
+
+    test('no speech engine (or the Android WebView with no voices): no readback, no switch, the dialog still works', async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['wheat 10 kg 24']);
+        const modal = dialog(true);
+        await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(true);
+        expect(modal.mock.calls[0][0]).not.toContain('voiceReadback');
+        expect(canSpeak('web', {})).toBe(false);
+        expect(canSpeak('web', { speechSynthesis: {} , SpeechSynthesisUtterance: function U() {} })).toBe(false);
+        const synth = { speak: () => {}, getVoices: () => [] };
+        expect(canSpeak('native', { speechSynthesis: synth, SpeechSynthesisUtterance: function U() {} })).toBe(false);
+        expect(canSpeak('web', { speechSynthesis: synth, SpeechSynthesisUtterance: function U() {} })).toBe(true);
+        expect(canSpeak('web', { get speechSynthesis() { throw new Error('blocked'); } })).toBe(false);
+        expect(Readback.speak('hello', 'en-IN', {})).toBe(false);
     });
 });

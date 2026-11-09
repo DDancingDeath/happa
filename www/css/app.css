@@ -3854,6 +3854,53 @@ input[type="number"] {
   border: 1px solid var(--danger-color);
 }
 
+/* ---- css/voice.css ---- */
+/* Voice billing check dialog (#81): several lines, the customer, the read-aloud switch */
+.voice-lines {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--sp-2) 0;
+}
+
+.voice-lines th,
+.voice-lines td {
+  padding: var(--sp-1) var(--sp-2) var(--sp-1) 0;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.voice-lines thead th {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+
+.voice-line-notes td {
+  padding-top: 0;
+}
+
+.voice-line-notes .voice-warn {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.voice-customer label,
+.voice-readback label {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.voice-dialog input[type="checkbox"] {
+  width: var(--sp-5);
+  height: var(--sp-5);
+  flex: none;
+}
+
+.voice-readback {
+  margin-top: var(--sp-3);
+  color: var(--text-secondary);
+}
+
 /* ---- css/totals.css ---- */
 /* -------------------- BILL TOTALS -------------------- */
 .bill-totals {
