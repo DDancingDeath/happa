@@ -35,7 +35,7 @@ import { tip, configureTip, startTipReporting, tipDeviceId } from './tip/index.j
 import { dayKeyOf } from './tip/tip.js';
 import { createSyncWatcher } from './tip/scenarios/sync.js';
 import { createWatchdog, TICK_MS as WATCHDOG_TICK_MS } from './tip/scenarios/main-thread.js';
-import { claimToday, numberChecksProps } from './tip/scenarios/number-checks.js';
+import { runNumberChecksOnce, numberChecksProps } from './tip/scenarios/number-checks.js';
 import { whenIdle } from './utils/background-tasks.js';
 import { APP_VERSION } from './version.js';
 import { AuditService } from './services/audit.js';
@@ -63,7 +63,7 @@ const langReady = loadCatalogue(getLang()).catch(e => console.error('Language ca
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261108bn-test-crash';
+const BUILD_ID = '20261108bo-numchecks-claim';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -194,18 +194,19 @@ watchdogOn();
 function scheduleTipNumberChecks() {
     if (AppState.userRole !== 'owner' && AppState.userRole !== 'manager') return;
     whenIdle(() => {
-        try {
-            if (!AppState.stockReady || !claimToday(localStorage, dayKeyOf(Date.now()))) return;
-            Promise.all([loadDiagnostics(), loadAnomalies()]).then(([diag, anom]) => {
+        if (!AppState.stockReady) return;
+        runNumberChecksOnce({
+            store: localStorage,
+            dayKey: dayKeyOf(Date.now()),
+            load: () => Promise.all([loadDiagnostics(), loadAnomalies()]),
+            run: ([diag, anom]) => {
                 const run = tip.start('NumberChecks');
                 const results = diag.numberCheckResults();
                 run.complete(numberChecksProps(results));
                 // #160: each mismatch also reaches Anomalies, once
                 anom.recordNumberChecks(results).catch(e => console.warn('Number-check flags failed:', e?.message || e));
-            }).catch(e => console.warn('TIP number checks failed:', e?.message || e));
-        } catch (e) {
-            console.warn('TIP number checks failed:', e?.message || e);
-        }
+            }
+        }).catch(e => console.warn('TIP number checks failed:', e?.message || e));
     }, { minDelayMs: 30000 });
 }
 

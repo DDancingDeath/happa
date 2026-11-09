@@ -53,3 +53,22 @@ export function claimToday(store, dayKey) {
         return false;
     }
 }
+
+/**
+ * The day's checks: their code is imported first (#59) and the day is claimed only once it
+ * has loaded, so a failed import is tried again at the next start.
+ * @template T
+ * @param {{store: Storage, dayKey: string, load: () => Promise<T>, run: (loaded: T) => void}} opts
+ * @returns {Promise<boolean>} true when the checks ran
+ */
+export async function runNumberChecksOnce({ store, dayKey, load, run }) {
+    try {
+        if (!store || store.getItem(STORE_KEY) === dayKey) return false;
+    } catch (_) {
+        return false;
+    }
+    const loaded = await load();
+    if (!claimToday(store, dayKey)) return false;
+    run(loaded);
+    return true;
+}
