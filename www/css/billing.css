@@ -528,6 +528,12 @@ input[type="number"] {
   align-items: end;
 }
 
+/* A live check message under Rate or Weight (bill-highlight.js) takes its own row below the three */
+#billing .bill-entry-grid > .bill-check-msg {
+  grid-column: 1 / -1;
+  order: 1;
+}
+
 #billing .bill-entry-grid > .quick-add-btn-inline {
   min-height: 48px;
   margin-bottom: var(--sp-3);
