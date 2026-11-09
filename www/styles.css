@@ -33,6 +33,7 @@
 /* Feature Modules */
 @import url('css/items.css');
 @import url('css/billing.css');
+@import url('css/voice.css');
 @import url('css/totals.css');
 @import url('css/bill-checks.css');
 @import url('css/history.css');
