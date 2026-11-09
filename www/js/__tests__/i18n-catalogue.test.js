@@ -8,6 +8,8 @@ const path = require('path');
 import en from '../i18n/en.js';
 import hi from '../i18n/hi.js';
 import { GROUPS, groupOptions } from '../utils/finance-breakdown.js';
+import { SITE_HOST } from '../utils/release-info.js';
+import { APP_IDENTITY } from '../config/app-identity.js';
 import {
     t, tn, formatMessage, loadLang, setLang, getLang, applyTranslations, resetLangForTests,
     LANG_STORAGE_KEY, LEGACY_WHATS_NEW_LANG_KEY, LANG_CHANGE_EVENT
@@ -71,6 +73,21 @@ describe('i18n catalogues', () => {
     it('never says "staff" (English) or "स्टाफ" (Hindi)', () => {
         expect(Object.entries(en).filter(([, v]) => /staff/i.test(v))).toEqual([]);
         expect(Object.entries(hi).filter(([, v]) => /स्टाफ|staff/i.test(v))).toEqual([]);
+    });
+
+    it('never hard-codes a site host or Firebase project (it comes from happa.config.json)', () => {
+        const HOST_RE = new RegExp(['\\.web\\.app', '\\.firebaseapp\\.com', 'happa-bfc07', 'happaapp',
+            SITE_HOST.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')].join('|'), 'i');
+        expect(Object.entries(en).filter(([, v]) => HOST_RE.test(v))).toEqual([]);
+        expect(Object.entries(hi).filter(([, v]) => HOST_RE.test(v))).toEqual([]);
+    });
+
+    it('the "needs the website" export message names the configured site', () => {
+        expect(SITE_HOST).toBe(new URL(APP_IDENTITY.siteUrl).host);
+        expect(t('msg.export.needs_website', { site: SITE_HOST }, 'en')).toContain(`(${SITE_HOST})`);
+        expect(t('msg.export.needs_website', { site: SITE_HOST }, 'hi')).toContain(`(${SITE_HOST})`);
+        expect(fs.readFileSync(path.join(WWW, 'js', 'services', 'exporter.js'), 'utf8'))
+            .toContain("t('msg.export.needs_website', { site: SITE_HOST })");
     });
 
     it('Hindi values are actually Hindi (not a copy of the English text)', () => {
