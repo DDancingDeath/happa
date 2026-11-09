@@ -39,7 +39,7 @@ import { withCanonicalDue } from '../firebase/repos/bill-due.js';
 
 const bill = (id, customerName, due, ts, extra = {}) => ({
     id, billNumber: `R-${id}`, customerName, total: due + 100, timestamp: ts, date: '01/10/2026',
-    payment: { cash: 100, online: 0, due, total: 100 }, dueAmount: due, payments: [], ...extra
+    payment: { cash: 100, online: 0, due, total: 100 }, payments: [], ...extra
 });
 
 /** Audit entries written by the payment transactions (D-3), by id. */
@@ -154,7 +154,7 @@ describe('receivePartyPayment (one transaction)', () => {
         expect(server.r1.paidAt).toBe(e1.at);
         expect(server.r1.payment.due).toBe(0);
         expect(server.r2.payment).toMatchObject({ due: 100, cash: 250 });
-        expect(server.r2.dueAmount).toBe(100);
+        expect(server.r2).not.toHaveProperty('dueAmount');
         expect(server.r1.cleared).toBeUndefined();
         expect(outstandingDue(server.r1) + outstandingDue(server.r2)).toBe(before - total);
         // The drawer counts these payments from the bill entries (no session legs)

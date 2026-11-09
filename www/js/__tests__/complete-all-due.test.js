@@ -37,7 +37,7 @@ import { toLocalISODate } from '../utils/dates.js';
 
 const bill = (id, customerName, due, extra = {}) => ({
     id, billNumber: `W-${id}`, source: 'sales-tab', customerName, total: due + 100, timestamp: Number(id.replace(/\D/g, '')) || 1,
-    payment: { cash: 100, online: 0, due, total: 100 }, dueAmount: due, payments: [], ...extra
+    payment: { cash: 100, online: 0, due, total: 100 }, payments: [], ...extra
 });
 
 /** Audit entries the transactions wrote (D-3: in the same commit as the bills). */
@@ -85,7 +85,7 @@ describe('pure parts (DUE-ALL)', () => {
             ok: true, due: 40,
             update: { payment: { cash: 140, online: 20, due: 40, total: 160 }, payments: [entry], paidAt: 5 }
         });
-        // The dueAmount mirror is the repository's (repos/bill-due.js), never the calc's
+        // No bill write carries a dueAmount copy (#126)
         const noTop = { payment: { cash: 0, online: 0, due: 10 } };
         expect(duePaymentUpdate(noTop, { cash: 9.999, online: 0 }, { at: 1 }).update).not.toHaveProperty('dueAmount');
         expect(duePaymentUpdate(noTop, { cash: 9.999, online: 0 }, { at: 1 }).due).toBe(0);
@@ -120,7 +120,8 @@ describe('OutstandingManager.settleAllDues', () => {
         expect(entries.map(e => [e.amount, e.cash, e.online, e.recordedById])).toEqual([[120, 120, 0, 'm1'], [300.5, 300.5, 0, 'm1']]);
         for (const b of [server.w1, server.w2]) {
             expect(readPayment(b).due).toBe(0);
-            expect(b).toMatchObject({ dueAmount: 0, cleared: true, clearedBy: 'm1', openDue: false, clientVersion: 4, paidAt: entries[0].at });
+            expect(b).not.toHaveProperty('dueAmount');
+            expect(b).toMatchObject({ cleared: true, clearedBy: 'm1', openDue: false, clientVersion: 4, paidAt: entries[0].at });
         }
         expect(server.w2.payments[0].id).toBe('old');
         // The drawer counts the bill entries (no session legs needed)
@@ -267,7 +268,7 @@ describe('Wholesale › Outstanding: "Complete all due" (owner / manager)', () =
     });
 
     test('settled elsewhere before this phone tried: "already settled", nothing recorded, no audit', async () => {
-        for (const id of ['w1', 'w2']) server[id] = { ...server[id], payment: { ...server[id].payment, due: 0 }, dueAmount: 0, cleared: true };
+        for (const id of ['w1', 'w2']) server[id] = { ...server[id], payment: { ...server[id].payment, due: 0 }, cleared: true };
         jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async () => {
             document.body.insertAdjacentHTML('beforeend', '<input type="radio" name="completeAllMethod" value="online" checked>');
             return true;

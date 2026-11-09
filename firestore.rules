@@ -52,7 +52,7 @@ service cloud.firestore {
 
     function editLoggedFields() {
       return ['items', 'customerName', 'grandTotal', 'amountPayable', 'total', 'billTotal', 'saleTotal',
-              'laborCharges', 'payment', 'cashPayment', 'onlinePayment', 'dueAmount', 'date', 'timestamp'];
+              'laborCharges', 'payment', 'cashPayment', 'onlinePayment', 'date', 'timestamp'];
     }
 
     function voidAwareBill() {
@@ -100,13 +100,13 @@ service cloud.firestore {
         && editFieldOk(f, before, after, 'total') && editFieldOk(f, before, after, 'billTotal')
         && editFieldOk(f, before, after, 'saleTotal') && editFieldOk(f, before, after, 'laborCharges')
         && editFieldOk(f, before, after, 'payment') && editFieldOk(f, before, after, 'cashPayment')
-        && editFieldOk(f, before, after, 'onlinePayment') && editFieldOk(f, before, after, 'dueAmount')
+        && editFieldOk(f, before, after, 'onlinePayment')
         && editFieldOk(f, before, after, 'date') && editFieldOk(f, before, after, 'timestamp');
     }
 
     function bookkeepingOnly(docId, changed) {
       return changed.hasOnly([
-          'payment', 'payments', 'dueAmount', 'openDue', 'clientVersion', 'paidAt',
+          'payment', 'payments', 'openDue', 'clientVersion', 'paidAt',
           'cleared', 'clearedAt', 'clearedBy', 'clearedByName',
           'timestamp', 'id'
         ])
@@ -132,9 +132,9 @@ service cloud.firestore {
     }
 
     function changedMoneyOk(keys) {
-      return !keys.hasAny(['openingBalance', 'amountPaid', 'due'])
+      return !keys.hasAny(['openingBalance', 'amountPaid', 'due', 'dueAmount'])
         && (keys.hasAny(['total', 'grandTotal', 'amountPayable', 'billTotal', 'saleTotal',
-                         'payment', 'cashPayment', 'onlinePayment', 'dueAmount'])
+                         'payment', 'cashPayment', 'onlinePayment'])
             ? billMoneyOk(request.resource.data, request.resource.data.get('payment', {}))
             : true);
     }
@@ -143,11 +143,11 @@ service cloud.firestore {
       return p is map
         && moneyOrAbsent(p, 'cash') && moneyOrAbsent(p, 'online') && moneyOrAbsent(p, 'due')
         && moneyOrAbsent(p, 'writtenOff') && moneyOrAbsent(p, 'total')
-        && moneyOrAbsent(d, 'cashPayment') && moneyOrAbsent(d, 'onlinePayment') && moneyOrAbsent(d, 'dueAmount')
+        && moneyOrAbsent(d, 'cashPayment') && moneyOrAbsent(d, 'onlinePayment')
         && totalOk(d, 'total') && totalOk(d, 'grandTotal') && totalOk(d, 'amountPayable')
         && totalOk(d, 'billTotal') && totalOk(d, 'saleTotal')
         && p.get('cash', d.get('cashPayment', 0)) + p.get('online', d.get('onlinePayment', 0))
-           + p.get('writtenOff', 0) + p.get('due', d.get('dueAmount', 0))
+           + p.get('writtenOff', 0) + p.get('due', 0)
            <= (d.get('grandTotal', 0) != 0 ? d.grandTotal
                : d.get('amountPayable', 0) != 0 ? d.amountPayable
                : d.get('total', 0) != 0 ? d.total
@@ -203,23 +203,21 @@ service cloud.firestore {
 
     function clearFieldsOk(changed, d) {
       return !changed.hasAny(['cleared', 'clearedBy', 'openDue'])
-        || clearOk(changed, d, d.get('payment', {}).get('due', d.get('dueAmount', d.get('due', null))));
+        || clearOk(changed, d, d.get('payment', {}).get('due', null));
     }
 
     function paymentEditOk(changed) {
       let d = request.resource.data;
       let p = resource.data.get('payment', {});
-      let due = (p is map && 'due' in p) ? p.due : resource.data.get('dueAmount', resource.data.get('due', null));
+      let due = p is map ? p.get('due', null) : null;
       let at = d.payments[d.payments.size() - 1].get('at', null);
-      return (!changed.hasAny(['dueAmount'])
-              || (moneyOk(d.dueAmount) && d.dueAmount == d.get('payment', {}).get('due', d.dueAmount)))
-        && (!changed.hasAny(['payments'])
+      return (!changed.hasAny(['payments'])
             || (appendsOneEntry('payments')
                 && at is number && at > request.time.toMillis() - 600000 && at < request.time.toMillis() + 600000))
         && (!changed.hasAny(['paidAt'])
             || (d.paidAt is number && changed.hasAny(['payments'])
                 && d.paidAt == d.payments[d.payments.size() - 1].get('at', null)))
-        && (changed.hasAny(['payment', 'payments', 'dueAmount'])
+        && (changed.hasAny(['payment', 'payments'])
             ? changed.hasAny(['payment'])
               && paymentMoneyOk(changed, d.payment, resource.data.get('payment', {}), due is number ? due : null)
             : true)
@@ -254,7 +252,7 @@ service cloud.firestore {
                && withinBillWindowFor(usersCol, role)
                && d.get('createdAt', null) == resource.data.get('createdAt', null)))
           && (!changed.hasAny(editLoggedFields()) || changed.hasAny(['editCount']))
-          ? (role == 'owner' ? !changed.hasAny(['openingBalance', 'amountPaid', 'due']) : changedMoneyOk(changed))
+          ? (role == 'owner' ? !changed.hasAny(['openingBalance', 'amountPaid', 'due', 'dueAmount']) : changedMoneyOk(changed))
             && clearFieldsOk(changed, d)
         : bookkeepingOnly(docId, changed) ? paymentEditOk(changed)
         : false;

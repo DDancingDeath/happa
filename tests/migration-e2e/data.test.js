@@ -141,7 +141,7 @@ test('opening dues equal the OLD Outstanding pages (totals, parties, age groups,
         assert.deepEqual(d.date, src.date ?? d.date, `${d.id}: old date as stored`);
         assert.equal(partyKey(d.customerName), src.partyKey, `${d.id}: party`);
         assert.equal(ageDays(billTime(d), cutoff), src.days, `${d.id}: original age`);
-        assert.equal(d.dueAmount, src.due);
+        assert.equal(d.payment.due, src.due, `${d.id}: the old page's due, stored in payment.due (#126)`);
         assert.equal(o.amount, src.due);
         assert.deepEqual({ total: d.total, items: d.items, openDue: d.openDue, cleared: d.cleared, cash: d.payment.cash, online: d.payment.online, paid: d.payment.total },
             { total: 0, items: [], openDue: true, cleared: false, cash: 0, online: 0, paid: 0 }, `${d.id}: a balance only, no sale`);
@@ -175,6 +175,18 @@ test('opening dues equal the OLD Outstanding pages (totals, parties, age groups,
         const partySet = new Set(all.map(d => `${d.openingBalance.billType}:${partyKey(d.customerName)}`));
         assert.deepEqual({ bills: all.length, parties: partySet.size, total: Math.round(all.reduce((a, d) => a + d.payment.due, 0)) }, { bills, parties, total }, 'MIGRATION_E2E_EXPECT');
     }
+});
+
+test('#126: every bill in the new project stores its due once, as a number in payment.due', () => {
+    let bills = 0;
+    for (const coll of ['purchases', 'retailSales', 'wholesaleSales']) {
+        for (const [id, d] of data[coll]?.entries() || []) {
+            bills++;
+            assert.ok(typeof d.payment?.due === 'number' && Number.isFinite(d.payment.due), `${coll}/${id}: payment.due is a number`);
+            assert.ok(!('dueAmount' in d), `${coll}/${id}: no legacy dueAmount`);
+        }
+    }
+    assert.ok(bills > 0, 'bills were carried');
 });
 
 test('items, users (with roles), rate history and item order are carried as is', () => {

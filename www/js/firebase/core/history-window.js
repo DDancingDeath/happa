@@ -34,7 +34,7 @@ import { backfillLegacyTimestamps } from './legacy-scan.js';
 //    path writes a numeric `timestamp` (FirebaseService.save*/update* add one
 //    when missing); legacy docs get one from the checkpoint rebuild backfill.
 //  * Old bills that still have money due are kept in memory by realtime
-//    listeners on `payment.due > 0` and `dueAmount > 0`.
+//    listeners on `openDue == true`.
 //  * Stock = replay(checkpoint.state, events with t >= checkpoint.asOf). The
 //    checkpoint (doc stockCheckpoints/current) is the running state after every
 //    event before asOf, so the result is identical to a full replay. It is

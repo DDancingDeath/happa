@@ -496,7 +496,6 @@ export class WholesaleSalesManager {
                 comments,
                 type: 'wholesale',
                 // Top-level copies keep readPayment(), the cash drawer and Outstanding in step
-                // (the dueAmount mirror is added by the repository, repos/bill-due.js)
                 onlinePayment: online,
                 cashPayment: cash,
                 payment: buildPaymentSplit(split),

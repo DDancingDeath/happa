@@ -3,7 +3,7 @@
  * @fileoverview Due (udhaar) payments recorded after a bill was saved (#95, #98, #104, #107).
  *
  * One record per payment lives on the bill (`payments[]`, written in a
- * transaction with `payment.*`; repos/bill-due.js keeps `dueAmount` equal). When an open cash session
+ * transaction with `payment.*`). When an open cash session
  * exists, the same payment is also added to the session's `duePayments` as a
  * drawer leg with the same `id`. Totals are computed from both places and
  * de-duplicated by that id, so:
@@ -228,8 +228,7 @@ export function sumDueEvents(events) {
  * (outstanding.js applyPaymentTransaction and "Complete all due"): cash and online
  * go up by the payment, the due goes down by it (to 0 under `tolerance`), the entry
  * is appended to `payments[]` and `paidAt` is its time (#163, rules: = entry.at).
- * The `dueAmount` mirror is added by the repository's writer (repos/bill-due.js). Refused when the
- * payment is more than the due + tolerance.
+ * Refused when the payment is more than the due + tolerance.
  * @param {Rec} fresh - bill data
  * @param {{cash: number, online: number}} parts - already in paise
  * @param {Rec} entry - the full payments[] entry (with `at`)

@@ -25,8 +25,8 @@ import { withCanonicalDue } from '../firebase/repos/bill-due.js';
 import * as billPayments from '../firebase/repos/bill-payments.js';
 import { forgetPaymentIntents } from '../services/payment-intents.js';
 
-/** The repository's part of a new bill's save: the dueAmount mirror of payment.due (repos/bill-due.js). */
-const asSaved = (b) => withCanonicalDue(b, null, { full: true });
+/** The repository's part of a new bill's save: no legacy dueAmount (repos/bill-due.js). */
+const asSaved = (b) => withCanonicalDue(b);
 
 const PURCHASE_DOM = `
   <select id="billItem"><option value=""></option><option value="0">Rice</option><option value="1">Wheat</option></select>
@@ -112,7 +112,7 @@ describe('new purchase save', () => {
         expect(document.getElementById('amountPayable').textContent).toBe('2568');
     });
 
-    test('saves a split payment with payment.due equal to dueAmount', async () => {
+    test('saves a split payment with the due in payment.due only (#126)', async () => {
         await buildBill();
         setVal('cashPayment', 1000);
         setVal('onlinePayment', 500);
@@ -128,12 +128,13 @@ describe('new purchase save', () => {
             billNumber: 'P20261021-001', type: 'purchase', isPurchase: true,
             billTotal: 2580, laborCharges: 12, totalPackets: 3,
             grandTotal: 2568, amountPayable: 2568,
-            cashPayment: 1000, onlinePayment: 500, dueAmount: 1068,
+            cashPayment: 1000, onlinePayment: 500,
             customerName: 'Ramesh',
             payment: { cash: 1000, online: 500, due: 1068, total: 2568 }
         });
         expect(saved.items.map(i => [i.itemId, i.qty, i.total])).toEqual([['item-rice', 60, 1530], ['item-wheat', 35, 1050]]);
-        expect(saved.payment.due).toBe(saved.dueAmount);
+        expect(saved.payment.due).toBe(1068);
+        expect(saved).not.toHaveProperty('dueAmount');
         expect(readPayment(saved)).toEqual({ total: 2568, cash: 1000, online: 500, due: 1068, paid: 1500 });
         // The editor is cleared after a successful save
         expect(PurchaseManager.getBillItems()).toEqual([]);
@@ -178,7 +179,7 @@ describe('new purchase save', () => {
 
         setVal('dueAmount', 0);
         setVal('cashPayment', 2568);
-        expect(await PurchaseManager.saveBillToHistory()).toMatchObject({ customerName: '', dueAmount: 0 });
+        expect(await PurchaseManager.saveBillToHistory()).toMatchObject({ customerName: '', payment: { due: 0 } });
         expect(savePurchase).toHaveBeenCalledTimes(1);
     });
 
@@ -212,7 +213,7 @@ describe('new purchase save', () => {
         expect(document.getElementById('purchaseSplitRemaining').textContent).toBe('✓ ₹0');
         setVal('dueAmount', 1567.4);
         // #129: typed amounts are saved in whole rupees (was 1567.5 saved as typed)
-        expect(await PurchaseManager.saveBillToHistory()).toMatchObject({ cashPayment: 1000, dueAmount: 1567, payment: { due: 1567 } });
+        expect(await PurchaseManager.saveBillToHistory()).toMatchObject({ cashPayment: 1000, payment: { due: 1567 } });
     });
 
     test('saved totals come from the items even if the on-screen total is stale', async () => {
@@ -313,7 +314,7 @@ describe('new retail sale save', () => {
         expect(document.querySelector('#saleTable tbody td').textContent).toBe('गेहूं');
     });
 
-    test('saves item totals and a cash + due split; payment.due equals dueAmount', async () => {
+    test('saves item totals and a cash + due split; the due in payment.due only (#126)', async () => {
         await addLine(0, 36, [12.5]);     // 450
         await addLine(1, 28.75, [9, 3]);  // 345
         expect(document.getElementById('saleTotal').textContent).toBe('795');
@@ -326,12 +327,13 @@ describe('new retail sale save', () => {
         expect(saveRetailSale).toHaveBeenCalledTimes(1);
         expect(sale).toMatchObject({
             billNumber: 'S20261021-001', type: 'retail', isPurchase: false,
-            total: 795, totalPackets: 3, cashPayment: 300, onlinePayment: 0, dueAmount: 495,
+            total: 795, totalPackets: 3, cashPayment: 300, onlinePayment: 0,
             customerName: 'Sita',
             payment: { cash: 300, online: 0, due: 495, total: 795 }
         });
         expect(sale.items.map(i => [i.itemId, i.qty, i.total])).toEqual([['item-rice', 12.5, 450], ['item-wheat', 12, 345]]);
-        expect(readPayment(sale).due).toBe(sale.dueAmount);
+        expect(readPayment(sale).due).toBe(495);
+        expect(sale).not.toHaveProperty('dueAmount');
     });
 
     test('asks before overselling and cancels when declined', async () => {
@@ -388,7 +390,7 @@ describe('new retail sale save', () => {
     test('a fully paid walk-in sale still saves without a name (#68)', async () => {
         await addLine(0, 36, [10]);
         setVal('saleCashPayment', 360);
-        expect(await RetailSaleManager.completeSale()).toMatchObject({ customerName: '', dueAmount: 0 });
+        expect(await RetailSaleManager.completeSale()).toMatchObject({ customerName: '', payment: { due: 0 } });
         expect(saveRetailSale).toHaveBeenCalledTimes(1);
     });
 
@@ -442,11 +444,11 @@ describe('recording a due payment (Outstanding)', () => {
 
     const RETAIL = {
         id: 'r1', billNumber: 'S1', customerName: 'Sita', total: 795,
-        cashPayment: 300, onlinePayment: 0, dueAmount: 495,
+        cashPayment: 300, onlinePayment: 0,
         payment: { cash: 300, online: 0, due: 495, total: 795 }
     };
 
-    test('a partial payment updates payment.due and the top-level dueAmount together', async () => {
+    test('a partial payment updates payment.due (no dueAmount copy, #126)', async () => {
         fake.seed('retailSales', [RETAIL]);
         AppState.retailSalesHistory = [{ ...RETAIL }];
         setVal('payment_r1', 200);
@@ -455,10 +457,10 @@ describe('recording a due payment (Outstanding)', () => {
 
         const doc = fake.raw('retailSales').get('r1');
         expect(doc.payment).toEqual({ cash: 500, online: 0, due: 295, total: 500 });
-        expect(doc.dueAmount).toBe(295);
+        expect(doc).not.toHaveProperty('dueAmount');
         expect(doc.payments).toEqual([expect.objectContaining({ amount: 200, recordedBy: 'Owner' })]);
         expect(doc.openDue).toBe(true);
-        expect(AppState.retailSalesHistory[0].dueAmount).toBe(295);
+        expect(AppState.retailSalesHistory[0].payment.due).toBe(295);
         expect(toast).toHaveBeenCalledWith('✓ Payment of ₹200 recorded');
     });
 
@@ -480,7 +482,7 @@ describe('recording a due payment (Outstanding)', () => {
         doc = fake.raw('retailSales').get('r1');
         expect(doc.payments).toHaveLength(1);
         expect(doc.payment.due).toBe(395);
-        expect(doc.dueAmount).toBe(395);
+        expect(doc).not.toHaveProperty('dueAmount');
     });
 
     /** The next transaction reaches the server and commits, but its answer never comes back (D-1, S4). */
@@ -602,7 +604,7 @@ describe('recording a due payment (Outstanding)', () => {
         fake.seed('retailSales', [RETAIL]);
         AppState.retailSalesHistory = [{ ...RETAIL }];
         jest.spyOn(fake.db, 'runTransaction').mockImplementationOnce(async () => {
-            fake.raw('retailSales').set('r1', { ...fake.raw('retailSales').get('r1'), dueAmount: 295, payment: { cash: 500, online: 0, due: 295, total: 500 }, payments: [{ id: 'other', amount: 200 }] });
+            fake.raw('retailSales').set('r1', { ...fake.raw('retailSales').get('r1'), payment: { cash: 500, online: 0, due: 295, total: 500 }, payments: [{ id: 'other', amount: 200 }] });
             throw Object.assign(new Error("evaluation error at L1665:24 for 'update' @ L1665, false for 'update'"), { code: 'permission-denied' });
         });
         setVal('payment_r1', 200);
@@ -614,14 +616,14 @@ describe('recording a due payment (Outstanding)', () => {
         expect(OutstandingManager.renderDue).toHaveBeenCalled();
     });
 
-    test('a full payment clears the due on both fields and closes openDue', async () => {
+    test('a full payment clears the due and closes openDue', async () => {
         fake.seed('retailSales', [RETAIL]);
         AppState.retailSalesHistory = [{ ...RETAIL }];
         setVal('payment_r1', 495);
         await OutstandingManager.recordPayment('r1', 'retail');
         const doc = fake.raw('retailSales').get('r1');
         expect(doc.payment.due).toBe(0);
-        expect(doc.dueAmount).toBe(0);
+        expect(doc).not.toHaveProperty('dueAmount');
         expect(doc.openDue).toBe(false);
         // Phones keep loading the settled bill while its payment is in their history window (#163).
         expect(doc.paidAt).toBe(doc.payments[0].at);
@@ -648,7 +650,7 @@ describe('recording a due payment (Outstanding)', () => {
     test('two phones paying the same bill: the second payment builds on the first', async () => {
         // Phone A already recorded ₹400; this phone still shows the old due of ₹495
         fake.seed('retailSales', [{
-            ...RETAIL, dueAmount: 95,
+            ...RETAIL,
             payment: { cash: 700, online: 0, due: 95, total: 700 },
             payments: [{ amount: 400, recordedBy: 'Staff' }]
         }]);
@@ -666,7 +668,7 @@ describe('recording a due payment (Outstanding)', () => {
         expect(doc.payments.map(p => p.amount)).toEqual([400, 95]);
     });
 
-    test('legacy purchase with only top-level fields: payment object is created, dueAmount kept in sync', async () => {
+    test('legacy purchase with only top-level fields: payment object is created; its old dueAmount is neither written nor read (#126)', async () => {
         const legacy = { id: 'p1', billNumber: 'P1', grandTotal: 1000, cashPayment: 400, dueAmount: 600 };
         fake.seed('purchases', [legacy]);
         AppState.purchaseHistory = [{ ...legacy }];
@@ -674,7 +676,7 @@ describe('recording a due payment (Outstanding)', () => {
         await OutstandingManager.recordPayment('p1', 'purchase');
         const doc = fake.raw('purchases').get('p1');
         expect(doc.payment).toEqual({ online: 0, cash: 1000, due: 0, total: 1000 });
-        expect(doc.dueAmount).toBe(0);
+        expect(doc.dueAmount).toBe(600);
     });
 });
 

@@ -7,7 +7,7 @@
  * numbers match what the Outstanding, Wholesale and Rate trends pages show.
  */
 import backupLib from '../../backup/backup-lib.js';
-import { isPersonalExpense, readPayment, round2, wholesaleOutstanding } from '../../../www/js/utils/money.js';
+import { isPersonalExpense, legacyDue, readPayment, round2, wholesaleOutstanding } from '../../../www/js/utils/money.js';
 import { buildAging } from '../../../www/js/utils/aging.js';
 import { parseAnyBillDate } from '../../../www/js/utils/dates.js';
 import { addBillToAcc, createCatalogueResolver, istDayKey, lineKg, lineRate, RATE_KINDS } from '../../../www/js/utils/rate-trends.js';
@@ -15,7 +15,7 @@ import { buildRateStatsDocs, rateStatsMeta } from './rate-stats.js';
 import { personalDayKey, personalDaysFromRows, PERSONAL_COLLECTION, PERSONAL_DAYS_COLLECTION } from '../../../www/js/utils/personal-expenses.js';
 import { PER_USER_COLLECTIONS, serviceAccountUids } from './service-accounts.js';
 import { buildTeamDirectory } from '../../../www/js/utils/team-directory.js';
-import { withCanonicalDue } from '../../../www/js/firebase/repos/bill-due.js';
+import { canonicalDueBill, withCanonicalDue } from '../../../www/js/firebase/repos/bill-due.js';
 
 export const BUNDLE_FORMAT = 'aadhat-migration-bundle-v1';
 export const OLD_PROJECT_ID = 'aadhat-management';
@@ -48,6 +48,8 @@ export const DEFAULT_OPTIONS = Object.freeze({
 const FULL_MODE_SKIP = new Set(['stockCheckpoints', 'rateStats', 'telemetry', 'tipHealth', 'tipFailures', 'autoSaves', 'drafts', 'anomalies']);
 const SETTINGS_APP_STRIP = ['minClientVersion', 'enforceClientVersion'];
 const BILL_COLLS = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' };
+/** Bills copied as they are (--mode full, --copy) are stored with their due in payment.due only (#126). */
+const COPIED_BILL_COLLS = new Set(Object.values(BILL_COLLS));
 const BILL_PREFIX = { purchase: 'P', retail: 'S', wholesale: 'W' };
 
 const isPlainObject = (v) => v && typeof v === 'object' && !Array.isArray(v);
@@ -123,9 +125,9 @@ export function parseOptions(raw = {}) {
 /**
  * One opening record per old unpaid bill: same bill number, date, party name
  * and phone, with the open amount as its due. No lines and no bill total, so
- * sales, profit and stock are untouched; the due sits in payment.due /
- * dueAmount, where Outstanding, reminders, statements, payments and write-offs
- * already read it.
+ * sales, profit and stock are untouched; the due sits in payment.due (the
+ * bill's one stored due, #126), where Outstanding, reminders, statements,
+ * payments and write-offs read it.
  */
 function openingDoc({ billType, kind, entry, party, src, cutoff, fromProject, warnings }) {
     const amount = round2(entry.due);
@@ -160,7 +162,7 @@ function openingDoc({ billType, kind, entry, party, src, cutoff, fromProject, wa
     if (phone) doc.customerPhone = phone;
     if (billType === 'wholesale') doc.source = 'sales-tab';
     if (billType === 'purchase' && src.supplierName) doc.supplierName = src.supplierName;
-    return { coll: BILL_COLLS[billType], id: `opening-${billType}-${src.__docId}`, data: withCanonicalDue(doc, null, { full: true }) };
+    return { coll: BILL_COLLS[billType], id: `opening-${billType}-${src.__docId}`, data: withCanonicalDue(doc) };
 }
 
 /** Open bills of one page, grouped and aged exactly as that page does. */
@@ -172,9 +174,9 @@ function dueSet(billType, bills, today, { hidden = false } = {}) {
             .map(b => withDue(b, wholesaleOutstanding(b)));
     } else if (hidden) {
         // Wholesale bills not made on the Wholesale page: no page lists them.
-        open = bills.filter(b => b && b.source !== 'sales-tab' && !b.cleared && readPayment(b).due > 0);
+        open = bills.filter(b => b && b.source !== 'sales-tab' && !b.cleared && legacyDue(b) > 0).map(withCanonicalBillDue);
     } else {
-        open = bills;
+        open = bills.map(withCanonicalBillDue);
     }
     const aging = buildAging(open, { today });
     const byId = new Map(open.map(b => [String(b.id), b]));
@@ -184,8 +186,16 @@ function dueSet(billType, bills, today, { hidden = false } = {}) {
     return { aging, entries };
 }
 
+/** The old bill read as the app reads it after #126 (canonicalDueBill), keeping its document id. */
+function withCanonicalBillDue(bill) {
+    const out = canonicalDueBill(bill);
+    Object.defineProperty(out, '__docId', { value: bill.__docId, enumerable: false });
+    return out;
+}
+
 function withDue(bill, due) {
-    const out = { ...bill, payment: { ...(bill.payment || {}), due: round2(due) }, dueAmount: round2(due) };
+    const out = { ...bill, payment: { ...(bill.payment || {}), due: round2(due) } };
+    delete out.dueAmount;
     Object.defineProperty(out, '__docId', { value: bill.__docId, enumerable: false });
     return out;
 }
@@ -343,7 +353,8 @@ export function buildPlan(backup, rawOptions = {}, { now = Date.now() } = {}) {
             return;
         }
         copied[name] = docs.length;
-        add(`copy:${name}`, docs.map(d => ({ coll: name, id: d.id, data: d.data })));
+        const bill = COPIED_BILL_COLLS.has(name);
+        add(`copy:${name}`, docs.map(d => ({ coll: name, id: d.id, data: bill ? canonicalDueBill(d.data) : d.data })));
     });
     // Managers read names and roles from settings/team, not the profiles (#87).
     if (copied.users !== undefined) {
@@ -406,7 +417,7 @@ export function buildPlan(backup, rawOptions = {}, { now = Date.now() } = {}) {
         warnings.push(`payables: ₹${dues.purchase.total} is still due to suppliers (${dues.purchase.bills} bills)`
             + (options.carryPayables ? '; carried as opening records' : '; NOT carried (the owner said none are due). Use --carry-payables to carry them'));
     }
-    const retailOutstanding = round2(bills.retail.filter(b => !b.cleared && readPayment(b).due > 0).reduce((a, b) => a + readPayment(b).due, 0));
+    const retailOutstanding = round2(bills.retail.filter(b => !b.cleared && legacyDue(b) > 0).reduce((a, b) => a + legacyDue(b), 0));
     if (Math.abs(retailOutstanding - dues.retail.total) > 0.01) {
         warnings.push(`retail: list total ₹${retailOutstanding} vs aging total ₹${dues.retail.total} (tiny dues below ₹0.005 are hidden by Outstanding)`);
     }

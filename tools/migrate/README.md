@@ -100,14 +100,15 @@ One bill-shaped document **per old unpaid bill**, in the collection the due live
   billNumber /* the old number */, customerName, customerPhone /* the bill's, else the party's: WhatsApp reminder */,
   date /* the old date, as stored */, timestamp /* the old bill time */, type, items: [],
   total: 0, cashPayment: 0, onlinePayment: 0,
-  dueAmount: <open amount>, payment: { cash: 0, online: 0, due: <open amount>, total: 0 },
+  payment: { cash: 0, online: 0, due: <open amount>, total: 0 },
   openDue: true, cleared: false, clientVersion: 3,
   openingBalance: { migrated: true, kind: 'receivable', billType, amount, billTotal, paidBefore,
                     asOf, fromProject, sourceBillId }
 }
 ```
 
-- Outstanding, its age groups, the party due under the name field, WhatsApp reminders, statements, payments and write-offs already read `payment.due` / `dueAmount` and the bill number and date, so they show exactly what the old app showed. Bills are picked and grouped as the pages do (`buildAging`; Wholesale uses the old app's Wholesale page rule, `wholesaleOutstanding`, so the carried due is what that page showed).
+- Outstanding, its age groups, the party due under the name field, WhatsApp reminders, statements, payments and write-offs read `payment.due` (a bill's one stored due, #126; no `dueAmount`) and the bill number and date, so they show exactly what the old app showed. The old bills are read the way the old app read them (`legacyDue()`: `payment.due`, else `dueAmount`, else `due`, else total − paid).
+- Bills copied as they are (`--mode full`, or a bill collection in `--copy`) are stored with `canonicalDueBill()`: `payment.due` = that old due, no `dueAmount`, every other field unchanged, so every figure reads the same from `payment.due` alone (the app no longer reads `dueAmount`). Bills are picked and grouped as the pages do (`buildAging`; Wholesale uses the old app's Wholesale page rule, `wholesaleOutstanding`, so the carried due is what that page showed).
 - `total` is 0 and there are no lines, so Finance, Reports and stock never count the old sales a second time. Money received later counts on the day it is received, as for any due.
 - The app leaves opening records out of every period and activity figure (Today, Reports, Finance, Analytics, bill counts, stock, rate trends, anomaly scans, Number checks) with one filter, `isOpeningRecord()` / `activityBills()` in `www/js/utils/money.js`, even when the old bill is dated today; they count only in the dues (`OPENING` in `docs/calculations.md`).
 - App change: Outstanding and Wholesale → Outstanding show the open amount as the bill total and a line "From the old app: bill total ₹…, paid before the move ₹…".

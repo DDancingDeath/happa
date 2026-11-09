@@ -170,7 +170,7 @@ describe('an auto-save of an edit (#93 a)', () => {
         await payCashAndSave();
         expect(savePurchase).not.toHaveBeenCalled();
         expect([...docs().keys()]).toEqual(['p1']);
-        expect(docs().get('p1')).toMatchObject({ editCount: 1, cashPayment: 100, dueAmount: 0 });
+        expect(docs().get('p1')).toMatchObject({ editCount: 1, cashPayment: 100, payment: { due: 0 } });
         expect(docs().get('p1').items.map(i => i.weights)).toEqual([[6, 4]]);
         // Unchanged since the auto-save: no question
         expect(modal.mock.calls.map(c => c[1])).not.toContain('Bill changed since');

@@ -149,7 +149,6 @@
         "total": 0,
         "cashPayment": 0,
         "onlinePayment": 0,
-        "dueAmount": 300,
         "payment": {
           "cash": 0,
           "online": 0,

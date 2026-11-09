@@ -62,14 +62,16 @@ describe('number checks on loaded data', () => {
         expect(r.totals).toEqual({ all: 1000, months: 300 });
     });
 
-    test('AC5: dueAmount and payment.due disagree (cleared bills ignored)', () => {
+    test('AC5: an open bill without payment.due whose old due differs from the one read now (#126)', () => {
         const r = checkDueFields({ retailSales: [
             { id: 'a', dueAmount: 250, payment: { due: 100 } },
-            { id: 'b', dueAmount: 80, payment: { due: 0 }, cleared: true },
-            { id: 'c', dueAmount: 50 }
+            { id: 'b', dueAmount: 80, cleared: true },
+            { id: 'c', total: 50, dueAmount: 50 },
+            { id: 'd', total: 500, cashPayment: 200, dueAmount: 300 }
         ] });
-        expect(r.checked).toBe(1);
-        expect(r.rows[0]).toMatchObject({ expected: 100, actual: 250, diff: -150 });
+        expect(r.checked).toBe(3);
+        expect(r.rows).toHaveLength(1);
+        expect(r.rows[0]).toMatchObject({ expected: 50, actual: 0, diff: 50 });
     });
 
     test('AC6: a closed session whose saved expected cash no longer matches the bills', () => {

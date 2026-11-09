@@ -7,7 +7,7 @@
  * @module utils/number-checks
  */
 
-import { readPayment, billTotal, round2, isOpeningRecord, activeBills } from './money.js';
+import { readPayment, billTotal, round2, isOpeningRecord, activeBills, legacyDue } from './money.js';
 import { saleTimePayment, entryParts } from './due-payments.js';
 import { collectEvents, createItemKeyResolver, purchaseLineValue, replayEvents } from './stock-replay.js';
 import { parseAnyBillDate } from './dates.js';
@@ -177,7 +177,9 @@ export function checkDates(data) {
 }
 
 /**
- * AC5: the due stored on the bill agrees in both places (top-level dueAmount and payment.due).
+ * AC5: each open bill's due is stored on the bill (`payment.due`, #126): a bill without it as a
+ * number, whose due read the old way (legacyDue: a legacy `dueAmount` / `due`) differs from the
+ * due the app reads now, is listed with both (expected = the old way).
  * @param {Rec} data
  * @returns {Rec}
  */
@@ -186,11 +188,12 @@ export function checkDueFields(data) {
     const rows = [];
     let checked = 0;
     eachBill(data, (bill, kind) => {
-        const nested = bill?.payment && typeof bill.payment === 'object' ? bill.payment.due : undefined;
-        if (bill?.cleared || nested === undefined || nested === null || bill.dueAmount === undefined || bill.dueAmount === null) return;
+        if (bill?.cleared) return;
         checked++;
-        const a = round2(Number(nested) || 0);
-        const b = round2(Number(bill.dueAmount) || 0);
+        const stored = bill?.payment && typeof bill.payment === 'object' ? bill.payment.due : undefined;
+        if (typeof stored === 'number' && Number.isFinite(stored)) return;
+        const a = legacyDue(bill);
+        const b = readPayment(bill).due;
         if (Math.abs(a - b) > 0.01) rows.push({ ref: billRef(bill, kind), expected: a, actual: b, diff: round2(a - b) });
     });
     return result('AC5', 'ui.numchecks.ac5', rows, checked);

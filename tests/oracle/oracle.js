@@ -111,16 +111,37 @@ function laterPayments(bill) {
     });
 }
 
+let oldDueFields = false;
+
+/**
+ * #126: runs `fn` with the oracle reading a bill's due as the app did before the cut-over
+ * (`payment.due`, else the legacy `dueAmount`, else `due`), to compare old and migrated bills.
+ * @template T
+ * @param {() => T} fn
+ * @returns {T}
+ */
+export function readingOldDues(fn) {
+    oldDueFields = true;
+    try {
+        return fn();
+    } finally {
+        oldDueFields = false;
+    }
+}
+
 /**
  * BILL-PAY: the bill's current payment state. Nested `payment.*` wins over the
- * top-level fields; very old bills only have `amountPaid` (cash).
+ * top-level fields; very old bills only have `amountPaid` (cash). The due is
+ * `payment.due` only (#126); without it, total − paid when something was paid.
+ * Inside readingOldDues() the due is read as before the cut-over: `payment.due`,
+ * else `dueAmount`, else `due`.
  */
 export function payState(bill) {
     const p = bill.payment || {};
     const pick = (...vs) => { for (const v of vs) if (has(v)) return n(v); return null; };
     const cash = pick(p.cash, bill.cashPayment, bill.amountPaid);
     const online = pick(p.online, bill.onlinePayment);
-    let due = pick(p.due, bill.dueAmount, bill.due);
+    let due = oldDueFields ? pick(p.due, bill.dueAmount, bill.due) : pick(p.due);
     if (due === null) due = (cash !== null || online !== null) ? Math.max(0, billValue(bill) - (cash || 0) - (online || 0)) : 0;
     return { cash: cash || 0, online: online || 0, due };
 }

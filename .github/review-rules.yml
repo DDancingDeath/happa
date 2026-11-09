@@ -93,12 +93,12 @@ rules:
   - id: due-amount-vs-payment-due-drift
     pattern: "(^\\s*|[{,]\\s*)dueAmount\\s*:|\\.dueAmount\\s*=[^=]"
     applies_to: ["www/js/**/*.js"]
-    excludes: ["www/js/__tests__/**", "www/js/firebase/repos/bill-due.js", "www/js/utils/bill-share.js"]
+    excludes: ["www/js/__tests__/**"]
     message: |
       payment.due is a bill's one stored due (#126). Set payment.due only: the legacy
-      top-level dueAmount mirror is written by withCanonicalDue() in
-      www/js/firebase/repos/bill-due.js, which every bill write of the repositories
-      goes through. Read a due with readPayment() / outstandingDue() (utils/money.js).
+      top-level dueAmount is neither written nor read (withCanonicalDue() in
+      www/js/firebase/repos/bill-due.js leaves it out of every bill write, and the
+      rules no longer check it). Read a due with readPayment() / outstandingDue() (utils/money.js).
     severity: block
     learned_at: 2026-11-03
 

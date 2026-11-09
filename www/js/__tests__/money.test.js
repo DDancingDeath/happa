@@ -1,7 +1,7 @@
 /**
  * @fileoverview Tests for money helpers / payment schema normalisation
  */
-import { round2, sumMoney, readPayment, billTotal, billLineTotal, outstandingDue, paymentSplitMessage, dueNeedsName, isOpeningBalance, openingAmount, openingOldTotals, wholesaleOutstanding } from '../utils/money.js';
+import { round2, sumMoney, readPayment, billTotal, billLineTotal, outstandingDue, legacyDue, paymentSplitMessage, dueNeedsName, isOpeningBalance, openingAmount, openingOldTotals, wholesaleOutstanding } from '../utils/money.js';
 import { perUnitRate, normalizePackageKg, normalizeLabourSettings, toMoney, readLineItem, formatAmount, formatRupees, formatRate, formatKg } from '../utils/money.js';
 
 describe('round2', () => {
@@ -43,9 +43,23 @@ describe('readPayment', () => {
         expect(readPayment(sale)).toEqual({ total: 2500, cash: 0, online: 0, due: 2500, paid: 0 });
     });
 
-    test('legacy top-level only schema uses dueAmount', () => {
-        const bill = { total: 900, cashPayment: 400, onlinePayment: 100, dueAmount: 400 };
+    test('#126: the due is payment.due only; a legacy dueAmount / due copy is not read', () => {
+        const bill = { total: 900, cashPayment: 400, onlinePayment: 100, dueAmount: 250 };
         expect(readPayment(bill)).toEqual({ total: 900, cash: 400, online: 100, due: 400, paid: 500 });
+        expect(readPayment({ total: 500, dueAmount: 500 }).due).toBe(0);
+        expect(readPayment({ total: 500, due: 500 }).due).toBe(0);
+        expect(readPayment({ total: 500, dueAmount: 999, payment: { due: 500 } }).due).toBe(500);
+    });
+
+    test('legacyDue: the due the app read before #126 (tools/migrate, the due backfill, AC5)', () => {
+        expect(legacyDue({ total: 900, cashPayment: 400, onlinePayment: 100, dueAmount: 250 })).toBe(250);
+        expect(legacyDue({ total: 500, dueAmount: '500' })).toBe(500);
+        expect(legacyDue({ total: 500, due: 120 })).toBe(120);
+        expect(legacyDue({ total: 500, payment: { cash: 100, due: null }, dueAmount: 400 })).toBe(400);
+        expect(legacyDue({ total: 500, dueAmount: 999, payment: { due: 500 } })).toBe(500);
+        expect(legacyDue({ grandTotal: 970, amountPaid: 500 })).toBe(470);
+        expect(legacyDue({ total: 500 })).toBe(0);
+        expect(legacyDue(null)).toBe(0);
     });
 
     test('amountPaid = 0 does not fall through to cashPayment incorrectly / cashPayment kept', () => {
@@ -83,7 +97,7 @@ describe('billTotal / outstandingDue', () => {
     test('cleared or overpaid bills have no outstanding', () => {
         expect(outstandingDue({ payment: { due: 300 }, cleared: true })).toBe(0);
         expect(outstandingDue({ payment: { due: -5 } })).toBe(0);
-        expect(outstandingDue({ dueAmount: 300 })).toBe(300);
+        expect(outstandingDue({ dueAmount: 300 })).toBe(0);
     });
 });
 

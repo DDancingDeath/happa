@@ -168,7 +168,7 @@ export async function saveBill(collKey, record, label, { retry = false, createOn
     if (!record.userName && AppState.userName) record.userName = AppState.userName;
     const previous = record.id ? findRecord(collKey, record.id) : null;
     prepareStockRecord(collKey, record, !previous);
-    withCanonicalDue(record, null, { full: true });
+    withCanonicalDue(record);
     if (!record.id) record.id = getDb().collection(col(collKey)).doc().id;
     const docRef = getDb().collection(col(collKey)).doc(String(record.id));
     const key = `${collKey}/${record.id}`;

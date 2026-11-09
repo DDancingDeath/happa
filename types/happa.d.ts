@@ -52,7 +52,7 @@ interface Bill {
     cashPayment?: Amount;
     onlinePayment?: Amount;
     amountPaid?: Amount;
-    /** Legacy mirror of payment.due, written only by firebase/repos/bill-due.js (#126). */
+    /** Legacy copy of the due on older bills: no longer written or read by the app (#126; legacyDue only). */
     dueAmount?: Amount;
     due?: Amount;
     payment?: Payment;

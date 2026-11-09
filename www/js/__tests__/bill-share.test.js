@@ -70,7 +70,7 @@ describe('buildReprintPayload', () => {
         expect(p).toMatchObject({
             isCopy: true, isPurchase: false, type: 'wholesale', date: WHOLESALE.date,
             total: 4000, saleTotal: 4000, amountPayable: 4000,
-            payment: { cash: 1000, online: 500, due: 2500 }, dueAmount: 2500
+            payment: { cash: 1000, online: 500, due: 2500 }
         });
         expect(p.items[0]).toMatchObject({ name: 'Rice', qty: 100, rate: 40, total: 4000 });
     });
