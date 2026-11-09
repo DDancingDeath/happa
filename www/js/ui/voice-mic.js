@@ -57,5 +57,10 @@ export const VoiceMic = {
         const engine = voiceEngine();
         if (!engine || !this.isOn()) return Promise.resolve(false);
         return import('../modules/voice-billing.js').then(m => m.VoiceBilling.listenOnce(mode, engine));
+    },
+
+    /** The check dialog's "Read aloud" switch (the dialog is open, so the module is loaded). */
+    setReadback(on) {
+        return import('../modules/voice-billing.js').then(m => m.VoiceBilling.setReadback(on));
     }
 };

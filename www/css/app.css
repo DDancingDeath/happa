@@ -3111,8 +3111,6 @@ body.typing .bottom-nav {
   font-size: var(--fs-caption);
   font-weight: var(--w-label);
   color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 #billTable tbody tr, #saleTable tbody tr {
@@ -3535,53 +3533,48 @@ input[type="number"] {
 
 
 .weights-compact {
-  margin: 12px 0;
+  margin: var(--sp-1) 0 var(--sp-2);
+}
+
+.weights-compact:empty {
+  display: none;
 }
 
 .weights-compact-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 14px;
-  background: var(--card-bg);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow);
-  min-height: 50px;
-  border: 1px solid var(--border-color);
+  gap: var(--sp-2);
 }
 
+/* Weight chips (redesign 3.1a): the weights typed for the line, × takes one off */
 .weight-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background: var(--primary-soft);
-  padding: 8px 12px;
-  border-radius: var(--radius-full);
-  border: 2px solid var(--primary-border);
-  font-size: 14px;
-  font-weight: var(--w-strong);
-  color: var(--on-primary-soft);
-  box-shadow: none;
+  min-height: 36px;
+  padding-left: var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: var(--fs-body);
+  font-variant-numeric: tabular-nums;
 }
 
 .weight-chip-remove {
-  background: var(--btn-danger);
-  color: white;
-  border: none;
-  width: 22px;
-  height: 22px;
-  border-radius: var(--radius-full);
-  font-size: 14px;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: var(--w-strong);
-  transition: all var(--transition);
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-3);
+  font-size: var(--fs-lead);
+  cursor: pointer;
 }
 
 .weight-chip-remove:hover {
-  transform: scale(1.1);
+  color: var(--negative);
 }
 
 .bill-summary {
@@ -3852,6 +3845,236 @@ input[type="number"] {
   background: var(--card-bg);
   color: var(--danger-color);
   border: 1px solid var(--danger-color);
+}
+
+/* ---------- Billing entry (redesign 3.1a): labels above, ₹ / kg in the field, one line panel ---------- */
+#billing > .filter-buttons {
+  margin-bottom: var(--sp-3);
+}
+
+.bill-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-3);
+}
+
+#billing .bill-toolbar .draft-btn {
+  flex: none;
+  min-width: 0;
+  padding: 0 var(--sp-3);
+  border-color: transparent;
+  background-color: transparent;
+  box-shadow: none;
+  color: var(--ink-2);
+}
+
+#billing .bill-toolbar .draft-clear-btn {
+  margin-left: auto;
+  color: var(--negative);
+}
+
+.bill-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-full);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+#billing .form-row.field {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: var(--sp-3);
+}
+
+#billing .form-row.field > label {
+  width: auto;
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
+}
+
+#billing .form-row.field .input {
+  flex: 1;
+  min-width: 0;
+  border-color: var(--input-border);
+  background-color: var(--input-bg);
+  color: var(--ink);
+}
+
+.bill-customer-box {
+  position: relative;
+}
+
+#billing .adorn > .adorn-pre + .input {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+#billing .adorn > .input:has(+ .adorn-post) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+#billing .bill-customer-box > .input {
+  width: 100%;
+  padding-right: 52px;
+}
+
+#billing .bill-customer-box > .contact-pick-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  min-width: 48px;
+  border: none;
+  background: transparent;
+  color: var(--ink-3);
+  text-shadow: none;
+}
+
+#billing .bill-customer-box > .contact-pick-btn:hover {
+  color: var(--accent-text);
+}
+
+#billing .bill-section-title {
+  margin: var(--sp-5) 0 var(--sp-2);
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
+}
+
+.bill-entry {
+  margin-bottom: var(--sp-4);
+}
+
+/* Rate | Weight | Add on one line */
+.bill-entry-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  column-gap: var(--sp-2);
+  align-items: end;
+}
+
+/* A live check message under Rate or Weight (bill-highlight.js) takes its own row below the three */
+#billing .bill-entry-grid > .bill-check-msg {
+  grid-column: 1 / -1;
+  order: 1;
+}
+
+#billing .bill-entry-grid > .quick-add-btn-inline {
+  min-height: 48px;
+  margin-bottom: var(--sp-3);
+  border-color: var(--line-strong);
+  background-color: var(--surface);
+  box-shadow: none;
+  color: var(--ink);
+}
+
+#billing .bill-summary {
+  justify-content: flex-start;
+  gap: var(--sp-4);
+  margin: var(--sp-1) 0 0;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+
+#billing .bill-summary strong {
+  color: var(--ink);
+  font-weight: var(--w-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Add to bill is tonal: Save is the screen's one primary button */
+#billing .add-to-bill-btn {
+  margin: var(--sp-3) 0 0;
+  border-color: transparent;
+  background-color: var(--accent-soft);
+  box-shadow: none;
+  color: var(--accent-text);
+}
+
+#billing #saleSection .add-to-bill-btn {
+  background-color: var(--positive-soft);
+  color: var(--positive);
+}
+
+.bill-breakdown:not(:empty) {
+  margin: var(--sp-5) 0;
+}
+
+.bill-items-foot {
+  margin-top: var(--sp-2);
+  padding: var(--sp-2) 0;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  text-align: right;
+}
+
+.bill-items-foot strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- css/voice.css ---- */
+/* Voice billing check dialog (#81): several lines, the customer, the read-aloud switch */
+.voice-lines {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--sp-2) 0;
+}
+
+.voice-lines th,
+.voice-lines td {
+  padding: var(--sp-1) var(--sp-2) var(--sp-1) 0;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.voice-lines thead th {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+
+.voice-line-notes td {
+  padding-top: 0;
+}
+
+.voice-line-notes .voice-warn {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.voice-customer label,
+.voice-readback label {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.voice-dialog input[type="checkbox"] {
+  width: var(--sp-5);
+  height: var(--sp-5);
+  flex: none;
+}
+
+.voice-readback {
+  margin-top: var(--sp-3);
+  color: var(--text-secondary);
 }
 
 /* ---- css/totals.css ---- */
@@ -9913,25 +10136,14 @@ body.dark-mode .notif-panel-actions {
     margin-top: 0;
   }
 
-  #billing .bill-col-entry > .bill-totals,
   #wholesale-sales .bill-col-entry > .bill-totals {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 16px;
   }
 
-  #billing .bill-col-entry > .bill-totals > *,
   #wholesale-sales .bill-col-entry > .bill-totals > * {
     grid-column: 1 / -1;
-  }
-
-  #billing .bill-col-entry > .bill-totals > .form-row:nth-child(1),
-  #billing .bill-col-entry > .bill-totals > .form-row:nth-child(2) {
-    grid-column: auto;
-  }
-
-  #billing .bill-col-entry > .bill-totals > .form-row:nth-child(2) label {
-    width: auto;
   }
 
   #billTable,

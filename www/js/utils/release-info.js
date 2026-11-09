@@ -7,6 +7,7 @@
 import { APP_IDENTITY } from '../config/app-identity.js';
 
 export const APP_NAME = APP_IDENTITY.appName;
+export const SITE_HOST = String(APP_IDENTITY.siteUrl).replace(/^https?:\/\//, '').replace(/\/+$/, '');
 export const DOWNLOAD_PAGE_URL = APP_IDENTITY.downloadPageUrl;
 export const APK_DOWNLOAD_URL = APP_IDENTITY.apkDownloadUrl;
 export const LATEST_RELEASE_API = APP_IDENTITY.latestReleaseApi;

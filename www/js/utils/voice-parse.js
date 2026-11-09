@@ -12,8 +12,11 @@ import { isArchivedItem, normalizeItemName } from './item-catalog.js';
 // Hindi words are kept apart from Latin ones (one script per string), and the Hindi
 // word for kilo is written with escapes: it is only understood here, never shown.
 const HI_KILO = '\u0915\u093F\u0932\u094B';
-/** Speech text is NFC-normalised (ड़ / ज़ become two code points), so every word list is too. */
-const nfc = (/** @type {string} */ w) => w.normalize('NFC');
+/**
+ * Speech text is NFC-normalised (ड़ / ज़ become two code points), so every word list is too;
+ * chandrabindu is read as anusvara (गेहूँ = गेहूं), as recognisers write either.
+ */
+const nfc = (/** @type {string} */ w) => w.normalize('NFC').replace(/\u0901/g, '\u0902');
 const wordSet = (/** @type {string[]} */ words) => new Set(words.map(nfc));
 
 const HINDI_NUMBER_WORDS = [
@@ -106,10 +109,21 @@ const TOTAL_AFTER_A_WEIGHT = wordSet(['mein', 'me', 'mai', 'में', 'in']);
 /** "de do" / "दो" at the end means "give", not 2. */
 const GIVE_WORDS = wordSet(['do', 'दो']);
 const GIVE_BEFORE = wordSet(['de', 'दे', 'dena', 'देना']);
+/** Before a customer's name: "customer Ramesh", "ग्राहक का नाम रमेश" (#81 A3). */
+const CUSTOMER_WORDS = wordSet(['customer', 'grahak', 'graahak', 'ग्राहक', 'party', 'पार्टी', 'kisan', 'kisaan', 'किसान', 'naam', 'name', 'नाम']);
 /** Words never taken as the start of an item name. */
 const NOT_ITEM_WORDS = wordSet([...WEIGHT_UNITS, ...PRICE_AFTER, ...PRICE_BEFORE, ...NUMBER_MODIFIERS.keys(), ...GRAM_UNITS,
-    ...PER_WORDS, ...OTHER_UNITS, ...TOTAL_BEFORE, ...TOTAL_AFTER_A_WEIGHT,
-    'and', 'aur', 'also', 'then', 'phir', 'with', 'wala', 'wale', 'वाला', 'वाले', 'और', 'फिर']);
+    ...PER_WORDS, ...OTHER_UNITS, ...TOTAL_BEFORE, ...TOTAL_AFTER_A_WEIGHT, ...CUSTOMER_WORDS,
+    'and', 'aur', 'also', 'then', 'phir', 'with', 'wala', 'wale', 'वाला', 'वाले', 'और', 'फिर', 'plus']);
+/** Between two bill lines: "… aur …", "… and …" (#81 A2). */
+const LINE_SEPARATORS = wordSet(['and', 'aur', 'और', 'phir', 'फिर', 'then', 'also', 'plus']);
+/** Between the customer word and the name: "customer ka naam", "name is". */
+const NAME_FILLER = wordSet(['ka', 'ke', 'ki', 'का', 'के', 'की', 'naam', 'name', 'नाम', 'is', 'hai', 'है']);
+/** Words that end a name: "Ramesh ke liye", "रमेश है". */
+const NAME_END = wordSet(['hai', 'है', 'ko', 'को', 'liye', 'लिए', 'se', 'से', 'ka', 'ke', 'ki', 'का', 'के', 'की']);
+const NAME_MAX_WORDS = 3;
+/** Marks where the text had a comma, full stop or । (a likely line break). */
+const BREAK = '\u241E';
 
 const toAsciiDigits = (/** @type {string} */ s) => s.replace(/[\u0966-\u096F]/g, (d) => String(d.charCodeAt(0) - 0x0966));
 
@@ -120,7 +134,7 @@ const toAsciiDigits = (/** @type {string} */ s) => s.replace(/[\u0966-\u096F]/g,
  * @returns {string[]}
  */
 export function voiceTokens(text) {
-    const s = toAsciiDigits(String(text || '').normalize('NFC').toLowerCase())
+    const s = toAsciiDigits(nfc(String(text || '')).toLowerCase())
         .replace(/₹/g, ' ₹ ')
         .replace(/@/g, ' @ ')
         .replace(/(\d)(?=[^\d.,\s])/g, '$1 ')
@@ -206,15 +220,54 @@ function matchItem(tokens, items) {
     });
     if (best) return best;
     for (let i = 0; i < tokens.length; i++) {
-        const w = tokens[i];
-        if (w.length < 4 || numberOf(w) !== undefined || NOT_ITEM_WORDS.has(w)) continue;
-        const index = (items || []).findIndex(item => item && !isArchivedItem(item) && [item.name, item.hindiName].some(name => {
-            const n = normalizeItemName(name);
-            return n.length >= 4 && !n.includes(' ') && (w.startsWith(n) || n.startsWith(w));
-        }));
+        const index = closeItem(tokens[i], items);
         if (index !== -1) return { index, start: i, end: i + 1 };
     }
     return null;
+}
+
+/** A word that starts like a one-word item name (3+ letters in common), or -1. */
+function closeItem(/** @type {string} */ w, /** @type {Array<{name?: string, hindiName?: string}>} */ items) {
+    if (!w || w.length < 4 || numberOf(w) !== undefined || NOT_ITEM_WORDS.has(w)) return -1;
+    return (items || []).findIndex(item => item && !isArchivedItem(item) && [item.name, item.hindiName].some(name => {
+        const n = nfc(normalizeItemName(name));
+        return n.length >= 4 && !n.includes(' ') && (w.startsWith(n) || n.startsWith(w));
+    }));
+}
+
+/**
+ * Every item named in the words, in spoken order: at each word the longest whole
+ * name, else a close one-word name. One item said twice in a row ("wheat गेहूं") is one.
+ * @param {string[]} tokens
+ * @param {Array<{name?: string, hindiName?: string}>} items
+ * @returns {Array<{index: number, start: number, end: number}>}
+ */
+function itemSpans(tokens, items) {
+    /** @type {Array<{index: number, start: number, end: number}>} */
+    const spans = [];
+    for (let i = 0; i < tokens.length;) {
+        /** @type {?{index: number, start: number, end: number}} */
+        let at = null;
+        (items || []).forEach((item, index) => {
+            if (!item || isArchivedItem(item)) return;
+            for (const name of [item.name, item.hindiName]) {
+                const words = voiceTokens(normalizeItemName(name));
+                if (words.length > 0 && words.every((w, k) => tokens[i + k] === w) && (!at || i + words.length > at.end)) {
+                    at = { index, start: i, end: i + words.length };
+                }
+            }
+        });
+        if (!at) {
+            const index = closeItem(tokens[i], items);
+            if (index !== -1) at = { index, start: i, end: i + 1 };
+        }
+        if (!at) { i++; continue; }
+        const last = spans[spans.length - 1];
+        if (last && last.index === at.index && last.end === at.start) last.end = at.end;
+        else spans.push(at);
+        i = at.end;
+    }
+    return spans;
 }
 
 /**
@@ -396,3 +449,142 @@ export function pickVoiceLine(alternatives, items = []) {
  * @returns {boolean}
  */
 export const hasVoiceValues = (p) => !!p && (p.itemIndex !== null || p.weight !== null || p.rate !== null);
+/** Latin words get a capital first letter ("ramesh kumar" → "Ramesh Kumar"); Hindi stays as heard. */
+const nameCase = (/** @type {string[]} */ words) => words.map(w => (/^[a-z]/.test(w) ? w[0].toUpperCase() + w.slice(1) : w)).join(' ');
+const sameName = (/** @type {string} */ s) => nfc(String(s || '')).toLowerCase().replace(/\s+/g, ' ').trim();
+
+/**
+ * The customer named after "customer" / "ग्राहक" / "naam" (up to 3 words, ending at a
+ * number, an item, a unit or a line break), as a known name when it is one.
+ * @param {string[]} tokens
+ * @param {Array<Rec>} items
+ * @param {string[]} knownNames
+ * @returns {?{name: string, start: number, end: number}}
+ */
+function findCustomer(tokens, items, knownNames) {
+    const itemStarts = new Set(itemSpans(tokens, items).map(s => s.start));
+    for (let i = 0; i < tokens.length; i++) {
+        if (!CUSTOMER_WORDS.has(tokens[i])) continue;
+        let k = i + 1;
+        while (k < tokens.length && NAME_FILLER.has(tokens[k])) k++;
+        /** @type {string[]} */
+        const words = [];
+        let end = k;
+        for (; end < tokens.length && words.length < NAME_MAX_WORDS; end++) {
+            const w = tokens[end];
+            if (w === BREAK || itemStarts.has(end) || numberOf(w) !== undefined || /\d/.test(w) || NOT_ITEM_WORDS.has(w)
+                || LINE_SEPARATORS.has(w) || NAME_END.has(w) || w === '₹' || w === '@') break;
+            words.push(w);
+        }
+        if (words.length === 0) continue;
+        while (NAME_END.has(tokens[end])) end++;
+        const heard = nameCase(words);
+        const known = (knownNames || []).find(n => sameName(n) === sameName(heard));
+        return { name: known || heard, start: i, end };
+    }
+    return null;
+}
+
+/** How well some words read as one bill line (for where to cut between two items). */
+function lineScore(/** @type {string[]} */ tokens, /** @type {Array<Rec>} */ items) {
+    const p = parseVoiceLine(tokens.join(' '), items);
+    const leansBack = WEIGHT_UNITS.has(tokens[0]) || GRAM_UNITS.has(tokens[0]) || PRICE_AFTER.has(tokens[0]) || POSSESSIVE.has(tokens[0]);
+    return (p.weight !== null ? 2 : 0) + (p.rate !== null ? 1 : 0) - (p.extraNumbers ? 3 : 0) - (leansBack ? 1 : 0);
+}
+
+/**
+ * Words naming two or more items with no "aur" / comma between them are cut between
+ * each pair where both sides read best as a line ("गेहूं 50 kg 25 रुपये सरसों 30 kg 55 रुपये",
+ * "10 kg aloo 30 rupees 5 kg pyaaz 25").
+ * @param {string[]} tokens
+ * @param {Array<Rec>} items
+ * @returns {string[][]}
+ */
+function splitByItems(tokens, items) {
+    const spans = itemSpans(tokens, items);
+    if (spans.length < 2) return [tokens];
+    /** @type {string[][]} */
+    const out = [];
+    let from = 0;
+    for (let k = 0; k + 1 < spans.length; k++) {
+        const until = k + 2 < spans.length ? spans[k + 2].start : tokens.length;
+        let best = { cut: spans[k + 1].start, score: -Infinity };
+        for (let cut = spans[k].end; cut <= spans[k + 1].start; cut++) {
+            const score = lineScore(tokens.slice(from, cut), items) + lineScore(tokens.slice(cut, until), items);
+            if (score >= best.score) best = { cut, score };
+        }
+        out.push(tokens.slice(from, best.cut));
+        from = best.cut;
+    }
+    out.push(tokens.slice(from));
+    return out;
+}
+
+/**
+ * Parses one spoken utterance into bill lines and a customer (#81 A2, A3): lines are
+ * split at "aur" / "and" / "phir", a comma or a full stop, or between two items; a
+ * part that names no item stays with the line before it ("one hundred and fifty kg",
+ * "aloo 10 kilo aur 30 rupaye"). Each line is parseVoiceLine (VB-1).
+ * @param {string} text what the speech recogniser heard
+ * @param {Array<Rec>} items AppState.items
+ * @param {string[]} [knownNames] customer names already used (a heard name matching one takes its spelling)
+ * @returns {{heard: string, customer: ?string, lines: Array<ReturnType<typeof parseVoiceLine>>}}
+ */
+export function parseVoiceBill(text, items = [], knownNames = []) {
+    const heard = String(text || '').trim();
+    /** @type {string[]} */
+    const tokens = [];
+    heard.split(/[;।|\n]|,(?!\d{3}(?!\d))|\.(?!\d)/).forEach((piece, p) => {
+        if (p > 0) tokens.push(BREAK);
+        tokens.push(...voiceTokens(piece));
+    });
+    const customer = findCustomer(tokens, items, knownNames);
+    if (customer) tokens.splice(customer.start, customer.end - customer.start);
+
+    /** @type {Array<{words: string[], sep: ?string}>} */
+    const parts = [{ words: [], sep: null }];
+    for (const w of tokens) {
+        if (w === BREAK || LINE_SEPARATORS.has(w)) parts.push({ words: [], sep: w === BREAK ? null : w });
+        else parts[parts.length - 1].words.push(w);
+    }
+    /** @type {string[][]} */
+    const units = [];
+    /** @type {?string[]} */
+    let lead = null;
+    for (const part of parts.filter(x => x.words.length > 0)) {
+        const glued = [...(part.sep ? [part.sep] : []), ...part.words];
+        if (matchItem(part.words, items) !== null) {
+            units.push([...(lead || []), ...(lead ? glued : part.words)]);
+            lead = null;
+        } else if (units.length > 0) units[units.length - 1].push(...glued);
+        else lead = [...(lead || []), ...(lead ? glued : part.words)];
+    }
+    if (lead) units.push(lead);
+    const segments = units.flatMap(u => splitByItems(u, items));
+    const lines = segments.length === 1 && !customer
+        ? [parseVoiceLine(heard, items)]
+        : segments.map(s => parseVoiceLine(s.join(' '), items));
+    return { heard, customer: customer ? customer.name : null, lines };
+}
+
+/**
+ * True when the utterance gives a customer or anything to fill.
+ * @param {?{customer: ?string, lines: Array<{itemIndex: ?number, weight: ?number, rate: ?number}>}|undefined} bill parseVoiceBill()
+ */
+export const hasVoiceBillValues = (bill) => !!bill && (!!bill.customer || bill.lines.some(hasVoiceValues));
+
+/**
+ * The best of the recogniser's alternatives for a whole utterance: the one with the most
+ * lines naming an item and a weight, then any value; the first on a tie.
+ * @param {string[]} alternatives
+ * @param {Array<Rec>} items
+ * @param {string[]} [knownNames]
+ */
+export function pickVoiceBill(alternatives, items = [], knownNames = []) {
+    const parsed = (alternatives || []).filter(a => String(a || '').trim()).map(a => parseVoiceBill(a, items, knownNames));
+    const score = (/** @type {ReturnType<typeof parseVoiceBill>} */ b) => 10 * b.lines.filter(l => l.itemIndex !== null && l.weight !== null).length
+        + (hasVoiceBillValues(b) ? 1 : 0);
+    let best = parsed[0];
+    for (const b of parsed) if (score(b) > score(best)) best = b;
+    return best || parseVoiceBill('', items);
+}
