@@ -30,6 +30,22 @@ export function approxStockNote(approx) {
     return { en: `≈ approximate stock (updated ${when('en')})`, hi: `≈ अनुमानित स्टॉक (अपडेट ${when('hi')})` };
 }
 
+/** Stock worked out while some data has not been confirmed by the server yet (#59). */
+export const UNCONFIRMED_STOCK_NOTE = Object.freeze({
+    en: 'stock not yet confirmed by the server',
+    hi: 'स्टॉक अभी सर्वर से पक्का नहीं हुआ'
+});
+
+/**
+ * Why an oversell may only warn now (warn, never block, on uncertain stock): approximate stock
+ * (#129), or stock from data the server has not confirmed yet (AppState.dataFreshness 'cache', #59).
+ * @param {?{stockApprox?: ?{builtAt: number}, dataFreshness?: ?string}} state AppState-like
+ * @returns {?{en: string, hi: string}} null when stock is exact and confirmed
+ */
+export function stockWarnOnlyNote(state) {
+    return approxStockNote(state?.stockApprox || null) || (state?.dataFreshness === 'cache' ? UNCONFIRMED_STOCK_NOTE : null);
+}
+
 const normalize = (/** @type {*} */ s) => (s == null ? '' : String(s).trim().toLowerCase());
 // Legacy bill lines store the name as `item`.
 const lineName = (/** @type {Rec} */ item) => item.name || item.item;

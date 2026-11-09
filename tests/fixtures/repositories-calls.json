@@ -7022,17 +7022,6 @@
     ],
     [
       "collection",
-      "dev_settings"
-    ],
-    [
-      "doc",
-      "app"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
       "dev_stockCheckpoints"
     ],
     [
@@ -7046,6 +7035,17 @@
     [
       "tx.get",
       "ref(dev_stockCheckpoints/current)"
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "app"
+    ],
+    [
+      "get"
     ],
     [
       "tx.set",

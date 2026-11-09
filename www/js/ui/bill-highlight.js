@@ -25,6 +25,7 @@ import { lineItemIdentity } from '../utils/item-catalog.js';
 import { getLang, t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
 import { AUTO_ROLLBACK_REASON } from '../tip/scenarios/bill-save.js';
+import { dataFreshness } from '../utils/data-freshness.js';
 
 export const CHECK_DEBOUNCE_MS = 250;
 
@@ -260,7 +261,7 @@ function evaluate(kind, overrides = null) {
     const base = cfg.getDraft();
     if (!base) return [];
     const draft = overrides ? { ...base, ...overrides } : base;
-    const ctx = buildCheckContext(AppState, draft.kind, {
+    const ctx = buildCheckContext({ ...AppState, dataFreshness: dataFreshness() }, draft.kind, {
         now: Date.now(), editingBill: draft.editingBill || null, draftId: draft.id || null
     });
     return evaluateBill(draft, ctx);

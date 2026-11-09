@@ -21,7 +21,7 @@ import {
 import { rateConfirmed, validatePaymentSplit, wholesaleCostRate } from './calc/billing.js';
 import { parseAnyBillDate, startOfLocalDay } from './dates.js';
 import { t } from '../i18n/index.js';
-import { computeShortfallsFrom, stockKeyFor, approxStockNote, stockedItemKeys } from './stock-check.js';
+import { computeShortfallsFrom, stockKeyFor, stockWarnOnlyNote, stockedItemKeys } from './stock-check.js';
 import { duplicateCheckNameKey } from './parties.js';
 
 /**
@@ -243,8 +243,12 @@ function oversellIssues(items, ctx, extraLine) {
     const lines = extraLine ? [...items, extraLine] : items;
     const shortfalls = computeShortfallsFrom(lines,
         { items: ctx.catalogue, stock: ctx.stock, stockReady: ctx.stockReady }, ctx.credit);
-    // Approximate stock (#129) may be off by older edits: warn, never block.
-    const approx = ctx.stockApproximate ? approxStockNote(ctx.stockApprox || {}) : null;
+    // Approximate stock (#129) may be off by older edits, and stock from data the server has not
+    // confirmed yet (#59) may miss other phones' bills: warn, never block.
+    const approx = stockWarnOnlyNote({
+        stockApprox: ctx.stockApproximate ? (ctx.stockApprox || {}) : null,
+        dataFreshness: ctx.stockUnconfirmed ? 'cache' : null
+    });
     // An item whose stock was never set (no purchase, no opening stock) can't be "more than stock" yet.
     return shortfalls.filter(s => !ctx.stocked || ctx.stocked.has(s.key)).map(s => {
         const block = ctx.oversellCanBlock && !approx && s.shortfall > ctx.thresholds.oversellBlockKg + 1e-6;
@@ -553,6 +557,7 @@ export function buildCheckContext(state, kind, { now = Date.now(), editingBill =
         stockReady: s.stockReady !== false,
         stockApproximate: !!s.stockApprox,
         stockApprox: s.stockApprox || null,
+        stockUnconfirmed: s.dataFreshness === 'cache',
         credit: stockCreditFor(s, kind, { editingBill, draftId }),
         stocked: kind === 'purchase' ? null : stockedItemKeys({ purchases: s.purchaseHistory, stockAdjustments: s.stockAdjustments }, s.items, s.stock),
         recentBills: Array.isArray(history) ? history : [],

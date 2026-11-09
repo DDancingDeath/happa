@@ -6,7 +6,8 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { PrinterService } from '../services/printer.js';
 import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
-import { computeShortfallsFrom, approxStockNote } from '../utils/stock-check.js';
+import { computeShortfallsFrom, approxStockNote, stockWarnOnlyNote } from '../utils/stock-check.js';
+import { dataFreshness } from '../utils/data-freshness.js';
 import { normalizeThresholds, stockCreditFor } from '../utils/bill-checks.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
 import { settlePendingLine } from '../ui/pending-line.js';
@@ -222,12 +223,12 @@ export class WholesaleSalesManager {
             stockCreditFor(AppState, 'wholesale', { draftId: pendingBill?.id }))
             .find(s => s.key === item.id);
         if (short && short.shortfall > oversellBlockKg + 1e-6) {
-            const approx = approxStockNote(AppState.stockApprox);
+            const approx = stockWarnOnlyNote({ stockApprox: AppState.stockApprox, dataFreshness: dataFreshness() });
             if (!approx) {
                 UIManager.showToast(t('msg.wholesale.insufficient_stock_available_kg', { available: formatKg(short.available) }));
                 return;
             }
-            // Approximate stock (#129) may be off by older edits: warn only.
+            // Approximate stock (#129) may be off by older edits, unconfirmed stock (#59) may miss other phones' bills: warn only.
             UIManager.showToast(t('msg.wholesale.approx_stock_warning', { itemName, available: formatKg(short.available), note: getLang() === 'hi' ? approx.hi : approx.en }), 6000);
         }
         
