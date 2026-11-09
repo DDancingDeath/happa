@@ -22,6 +22,12 @@
             </div>
             <p class="setting-description" data-i18n="ui.settings.appearance_hint">System follows this device's light or dark setting. Saved on this device.</p>
 
+            <h4 class="theme-gallery-title" data-i18n="ui.settings.theme">Theme</h4>
+            <div class="theme-gallery" id="themeGallery" role="group" aria-label="Theme" data-i18n-aria-label="ui.settings.theme"></div>
+            <p class="setting-description" id="themeDarkHint" hidden></p>
+            <p class="setting-description" data-i18n="ui.settings.theme_hint">Tap a theme to preview it. Saved on this device.</p>
+            <button type="button" class="btn btn-ghost btn-sm theme-reset" data-onclick="settings.resetTheme()" data-i18n="ui.settings.theme_reset">Reset to default</button>
+
             <label class="checkbox-label">
                 <input type="checkbox" id="settingShowHindi" data-onchange="settings.save()">
                 <span data-i18n="ui.settings.show_item_names_in">Show item names in Hindi</span>

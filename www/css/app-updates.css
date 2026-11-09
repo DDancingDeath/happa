@@ -90,7 +90,7 @@
 
 .app-update-download {
   background: var(--btn-success);
-  color: #fff;
+  color: var(--btn-sale-ink);
   border: 0;
   border-radius: 8px;
   padding: 8px 12px;

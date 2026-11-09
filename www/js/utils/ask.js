@@ -11,7 +11,8 @@
 
 import { todaySummary } from './calc/today.js';
 import { stockRows } from './calc/stock.js';
-import { buildAging, dueRows, normalizePartyName } from './aging.js';
+import { buildAging, dueRows } from './aging.js';
+import { partyNameKey } from './parties.js';
 import { devanagariToLatin, latinToDevanagari, suggestEnglishName, suggestHindiName } from './item-name-autofill.js';
 
 /** Answer → its spec ID in docs/calculations.md. */
@@ -119,11 +120,11 @@ export function parseQuestion(text) {
  * @returns {string[]}
  */
 function spellings(text) {
-    const key = normalizePartyName(text);
+    const key = partyNameKey(text);
     if (!key) return [];
     const parts = key.split(' ');
     const other = DEVANAGARI.test(key) ? parts.map(devanagariToLatin).join(' ') : parts.map(latinToDevanagari).join(' ');
-    return [...new Set([key, normalizePartyName(other)].filter(Boolean))];
+    return [...new Set([key, partyNameKey(other)].filter(Boolean))];
 }
 
 /**
@@ -156,9 +157,9 @@ function matchItems(items, rows, text) {
         ...(rows || []).filter(r => r.isOrphan).map(r => ({ itemId: r.itemId, name: r.name, hindiName: '' }))
     ];
     const namesOf = (/** @type {{name: string, hindiName: string}} */ e) => [e.name, e.hindiName, suggestHindiName(e.name), suggestEnglishName(e.hindiName)]
-        .map(normalizePartyName).filter(Boolean);
-    const subject = normalizePartyName(text);
-    const typed = [...new Set([subject, normalizePartyName(suggestHindiName(subject)), normalizePartyName(suggestEnglishName(subject))].filter(Boolean))];
+        .map(partyNameKey).filter(Boolean);
+    const subject = partyNameKey(text);
+    const typed = [...new Set([subject, partyNameKey(suggestHindiName(subject)), partyNameKey(suggestEnglishName(subject))].filter(Boolean))];
     return matchNames(entries, namesOf, typed);
 }
 

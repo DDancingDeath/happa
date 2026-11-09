@@ -51,7 +51,7 @@
 
 .rt-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
 .rt-tab { flex: 1; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--card-bg); font-size: 14px; font-weight: var(--w-label); color: var(--text-secondary); cursor: pointer; }
-.rt-tab.active { background: var(--btn-primary); border-color: var(--btn-primary); color: #fff; }
+.rt-tab.active { background: var(--btn-primary); border-color: var(--btn-primary); color: var(--btn-primary-ink); }
 .rt-line { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--text-secondary); margin-right: 4px; vertical-align: middle; }
 .rt-line-dashed { border-top-style: dashed; }
 .rt-warn-inline { color: var(--on-warning-soft); }

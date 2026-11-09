@@ -413,8 +413,8 @@
 }
 
 .modal-close:hover {
-    background: var(--danger-color);
-    color: white;
+    background: var(--btn-danger);
+    color: var(--btn-danger-ink);
 }
 
 .modal-body {

@@ -11,7 +11,7 @@ import { billsInRange } from './finance-calc.js';
 import { activeBills, activeExpenses, activityBills, billLabour, billTotal, isOpeningRecord, isOnlineExpense, isPersonalExpense, openingAmount, outstandingDue, readLineItem, round2, soldBelowCost } from './money.js';
 import { saleTimePayment, entryParts, entryTime, dueEvents } from './due-payments.js';
 import { collectEvents, createItemKeyResolver, replayWithValues, eventTime } from './stock-replay.js';
-import { normalizePartyName } from './aging.js';
+import { partyNameKey } from './parties.js';
 import { parseAnyBillDate } from './dates.js';
 
 const num = (/** @type {*} */ v) => {
@@ -111,7 +111,7 @@ export function accountantLines(src, range, { sessions = [] } = {}) {
  * balance = what the shop owes. Old-app balances (OPENING) start as their
  * carried amount. Bills marked cleared without a payment close their rest.
  * @param {Rec} src {purchases, wholesaleSales, retailSales}
- * @param {string} partyKey normalizePartyName() key
+ * @param {string} partyKey partyNameKey() key
  * @param {'customer'|'supplier'} kind
  * @param {{from?: number, to?: number}} [range]
  * @returns {{name: string, opening: number, rows: Array<Rec>, closing: number, due: number, count: number}}
@@ -119,7 +119,7 @@ export function accountantLines(src, range, { sessions = [] } = {}) {
  */
 export function partyLedger(src, partyKey, kind, { from = -Infinity, to = Infinity } = {}) {
     const bills = activeBills(kind === 'supplier' ? src.purchases : [...(src.retailSales || []), ...(src.wholesaleSales || [])])
-        .filter(b => normalizePartyName(partyOf(b)) === partyKey);
+        .filter(b => partyNameKey(partyOf(b)) === partyKey);
     /** @type {Array<{t: number, kind: string, billNo: string, debit: number, credit: number}>} */
     const entries = [];
     let name = '';
@@ -180,7 +180,7 @@ export function partyChoices(src, kind) {
     const map = new Map();
     bills.forEach(b => {
         const raw = partyOf(b);
-        const key = normalizePartyName(raw);
+        const key = partyNameKey(raw);
         if (!key) return;
         const r = map.get(key) || { key, name: raw, count: 0 };
         r.count++;

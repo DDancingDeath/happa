@@ -5,9 +5,12 @@
  * its own, and the user's Disconnect. Uses a fake Bluetooth transport.
  */
 import { PrinterLink, LINK_TIMEOUTS } from '../services/printer-link.js';
-import { PrinterService, BILL_PRINT_TRIES } from '../services/printer.js';
+import { PrinterService, BILL_PRINT_TRIES, loadReceiptDrawing } from '../services/printer.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
+
+// The receipt drawing is imported on the first print (#59)
+beforeAll(() => loadReceiptDrawing());
 
 const never = () => new Promise(() => {});
 const flush = () => new Promise((resolve) => setTimeout(resolve, 5));

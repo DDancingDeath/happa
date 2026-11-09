@@ -4,7 +4,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { PrinterService } from '../services/printer.js';
+import { PrinterService, loadReceiptDrawing } from '../services/printer.js';
 import { SettingsManager } from '../modules/settings.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
@@ -18,6 +18,9 @@ import {
     effectiveReceipt, hasOwnReceipt, LOGO_BITS_MAX, logoSize, normalizeLogo, normalizeReceiptOptions, normalizeSharedReceipt,
     rasterThreshold, receiptLang, setReceiptOptions, usePrinter
 } from '../utils/printer-settings.js';
+
+// The receipt drawing is imported on the first print (#59)
+beforeAll(() => loadReceiptDrawing());
 
 const TEMPLATE = fs.readFileSync(path.join(__dirname, '..', '..', 'templates', 'settings.html'), 'utf8');
 

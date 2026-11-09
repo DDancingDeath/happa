@@ -19,7 +19,7 @@
 .rent-kind { font-size: 12px; font-weight: 500; background: var(--surface-muted); color: var(--text-secondary); border-radius: 10px; padding: 2px 8px; margin-left: 6px; }
 .rent-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .rent-btn { border: 1px solid var(--border-color); background: var(--surface-muted); color: inherit; border-radius: 8px; padding: 8px 12px; font-size: 14px; cursor: pointer; }
-.rent-btn-primary { background: var(--btn-primary); border-color: var(--btn-primary); color: #fff; }
+.rent-btn-primary { background: var(--btn-primary); border-color: var(--btn-primary); color: var(--btn-primary-ink); }
 .rent-btn-wa { background: var(--success-soft); border-color: var(--success-soft); color: var(--on-success-soft); }
 .rent-btn-small { padding: 4px 8px; font-size: 12px; }
 .rent-badge { display: inline-block; border-radius: 10px; padding: 2px 8px; font-size: 12px; font-weight: 600; }

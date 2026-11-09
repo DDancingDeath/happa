@@ -23,6 +23,7 @@
   --accent-hover: #4338ca;
   /* Deep fill for hero cards: their translucent white text keeps AA in both modes */
   --accent-strong: #4338ca;
+  --on-accent-strong: #ffffff;
   --accent-text: #4338ca;
   --accent-soft: #eef0ff;
   --accent-line: #c9cdfb;
@@ -33,6 +34,7 @@
   --on-mode-sale: #ffffff;
   --mode-wholesale: #6d28d9;
   --mode-wholesale-soft: #f3effe;
+  --on-mode-wholesale: #ffffff;
   --mode-rentals: #0e7490;
   --mode-rentals-soft: #e5f5f8;
 
@@ -108,6 +110,8 @@
   --btn-sale-bg: var(--mode-sale);
   --btn-sale-ink: var(--on-mode-sale);
   --btn-danger-bg: var(--negative-fill);
+  --btn-danger-ink: #ffffff;
+  --preview-apply-line: transparent;
 
   /* Old names (32 stylesheets and script-written styles use them); new code uses the tokens above */
   --primary-color: var(--accent-text);
@@ -646,6 +650,283 @@ input[type="number"],
   color: var(--info-dark);
 }
 
+/* ---- css/themes/nordic.css ---- */
+/* Nordic (redesign 2.6, DIRECTION 4.2): airy off-white, fjord blue, borderless soft panels.
+   Colours are screen-only, so printing from any theme uses the Modern light values (black on white). */
+[data-theme="nordic"] {
+  --r-control: 12px;
+  --r-panel: 18px;
+  --r-sheet: 24px;
+}
+
+@media screen {
+  [data-theme="nordic"]:not([data-mode="dark"]) {
+    color-scheme: light;
+    --bg: #f4f6f6;
+    --surface: #fdfefe;
+    --surface-2: #ebf0f0;
+    --surface-3: #dfe6e7;
+    --line: #e2e8e9;
+    --line-strong: #cbd5d7;
+    --ink: #1d2a30;
+    --ink-2: #45555c;
+    --ink-3: #5c6c73;
+    --ink-placeholder: #5f6f76;
+    --accent: #3a6a8a;
+    --accent-hover: #2f5a76;
+    --accent-strong: #2f5a76;
+    --accent-text: #2f5a76;
+    --accent-soft: #e3eef4;
+    --accent-line: #b9d0de;
+    --mode-sale: #46745a;
+    --mode-sale-soft: #e3efe7;
+    --mode-wholesale: #6f5f97;
+    --mode-wholesale-soft: #ece8f4;
+    --mode-rentals: #3a7a80;
+    --positive: #3f6e52;
+    --negative: #a83a3a;
+    --warning: #8a5a14;
+    --warning-dot: #d9a441;
+    --panel-border: transparent;
+    --panel-shadow: 0 1px 2px rgba(30, 50, 60, 0.04);
+    --input-bg: #f7f9f9;
+    --input-border: #cbd5d7;
+    --seg-on: #fdfefe;
+    --btn-primary-shadow: none;
+  }
+
+  [data-theme="nordic"][data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #1a1f24;
+    --surface: #21282e;
+    --surface-2: #283038;
+    --surface-3: #313a43;
+    --line: rgba(220, 235, 245, 0.07);
+    --line-strong: rgba(220, 235, 245, 0.14);
+    --ink: #e9eef1;
+    --ink-2: #b4c0c7;
+    --ink-3: #94a2aa;
+    --ink-placeholder: #8a98a0;
+    --accent: #86aac6;
+    --accent-hover: #9cbad2;
+    --accent-strong: #2f5a76;
+    --accent-text: #a3c2da;
+    --accent-soft: rgba(134, 170, 198, 0.16);
+    --accent-line: rgba(134, 170, 198, 0.4);
+    --on-accent: #0f1a22;
+    --mode-sale: #8cbf9f;
+    --on-mode-sale: #0f1f15;
+    --mode-sale-soft: rgba(140, 191, 159, 0.14);
+    --mode-wholesale: #b3a6d9;
+    --on-mode-wholesale: #17122a;
+    --mode-wholesale-soft: rgba(179, 166, 217, 0.14);
+    --mode-rentals: #84c2c8;
+    --positive: #8cbf9f;
+    --positive-soft: rgba(140, 191, 159, 0.14);
+    --negative: #ec9a9a;
+    --negative-soft: rgba(236, 154, 154, 0.12);
+    --warning: #e6c07a;
+    --warning-soft: rgba(230, 192, 122, 0.12);
+    --input-bg: #1d2329;
+    --input-border: rgba(220, 235, 245, 0.18);
+    --seg-on: #39434d;
+    --toast-bg: #313a43;
+  }
+}
+
+/* ---- css/themes/nature.css ---- */
+/* Nature (redesign 2.6, DIRECTION 4.2): oat paper, moss and clay, soft organic corners.
+   Colours are screen-only, so printing from any theme uses the Modern light values (black on white). */
+[data-theme="nature"] {
+  --r-control: 10px;
+  --r-panel: 20px;
+  --r-sheet: 26px;
+}
+
+@media screen {
+  [data-theme="nature"]:not([data-mode="dark"]) {
+    color-scheme: light;
+    --bg: #f1eee4;
+    --surface: #fbfaf5;
+    --surface-2: #e9e5d7;
+    --surface-3: #ddd7c5;
+    --line: #e0d9c8;
+    --line-strong: #c8bfa8;
+    --ink: #1f2a1e;
+    --ink-2: #465243;
+    --ink-3: #5b6657;
+    --ink-placeholder: #6a7465;
+    --accent: #9c4a2a;
+    --accent-hover: #873e22;
+    --accent-strong: #873e22;
+    --accent-text: #8a4024;
+    --accent-soft: #f2e1d6;
+    --accent-line: #dcb39d;
+    --mode-sale: #3f6f3a;
+    --mode-sale-soft: #e1ecd9;
+    --mode-wholesale: #7a5c12;
+    --mode-wholesale-soft: #f1e7c8;
+    --mode-rentals: #2f6a6a;
+    --positive: #3f6f3a;
+    --positive-soft: #e1ecd9;
+    --negative: #a3322a;
+    --negative-soft: #f6dfd9;
+    --warning: #85570c;
+    --warning-soft: #f3e5c3;
+    --warning-dot: #c9932a;
+    --panel-border: #e6e0cf;
+    --panel-shadow: 0 2px 10px -6px rgba(60, 50, 20, 0.18);
+    --seg-on: #fbfaf5;
+    --toast-bg: #24301f;
+    --toast-ink: #eef2e6;
+    --btn-primary-shadow: none;
+  }
+
+  [data-theme="nature"][data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #10160f;
+    --surface: #172015;
+    --surface-2: #1e291c;
+    --surface-3: #273425;
+    --line: rgba(220, 235, 200, 0.08);
+    --line-strong: rgba(220, 235, 200, 0.16);
+    --ink: #ecf0e4;
+    --ink-2: #bcc6b2;
+    --ink-3: #9ba68f;
+    --ink-placeholder: #8f9a84;
+    --accent: #e09a6b;
+    --accent-hover: #e8ab82;
+    --accent-strong: #873e22;
+    --accent-text: #ebb08b;
+    --accent-soft: rgba(224, 154, 107, 0.15);
+    --accent-line: rgba(224, 154, 107, 0.4);
+    --on-accent: #2a1408;
+    --mode-sale: #9fcf8a;
+    --on-mode-sale: #13240c;
+    --mode-sale-soft: rgba(159, 207, 138, 0.14);
+    --mode-wholesale: #d9bf6a;
+    --on-mode-wholesale: #241a04;
+    --mode-wholesale-soft: rgba(217, 191, 106, 0.14);
+    --mode-rentals: #7cc4c4;
+    --positive: #9fcf8a;
+    --positive-soft: rgba(159, 207, 138, 0.14);
+    --negative: #f09a8c;
+    --negative-soft: rgba(240, 154, 140, 0.13);
+    --warning: #e7c06c;
+    --warning-soft: rgba(231, 192, 108, 0.12);
+    --panel-border: rgba(220, 235, 200, 0.07);
+    --panel-shadow: none;
+    --seg-on: #2c3a29;
+    --toast-bg: #273425;
+  }
+}
+
+/* ---- css/themes/dark.css ---- */
+/* Dark (redesign 2.6, DIRECTION 4.2): always dark. Monochrome charcoal, white primary, colour only
+   for modes and status. Screen-only, so printing uses the Modern light values (black on white). */
+@media screen {
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0f0f0f;
+    --surface: #171717;
+    --surface-2: #1f1f1f;
+    --surface-3: #2a2a2a;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.15);
+    --ink: #f5f5f5;
+    --ink-2: #b8b8b8;
+    --ink-3: #9a9a9a;
+    --ink-placeholder: #8f8f8f;
+    --scrim: rgba(0, 0, 0, 0.6);
+    --accent: #f5f5f5;
+    --accent-hover: #ffffff;
+    --accent-strong: #333333;
+    --accent-text: #ffffff;
+    --accent-soft: rgba(255, 255, 255, 0.09);
+    --accent-line: rgba(255, 255, 255, 0.3);
+    --on-accent: #0f0f0f;
+    --mode-sale: #4ade80;
+    --on-mode-sale: #0f0f0f;
+    --mode-sale-soft: rgba(74, 222, 128, 0.12);
+    --mode-wholesale: #c084fc;
+    --on-mode-wholesale: #0f0f0f;
+    --mode-wholesale-soft: rgba(192, 132, 252, 0.12);
+    --mode-rentals: #22d3ee;
+    --positive: #4ade80;
+    --positive-soft: rgba(74, 222, 128, 0.12);
+    --negative: #ff7a85;
+    --negative-soft: rgba(255, 122, 133, 0.12);
+    --warning: #fbbf24;
+    --warning-soft: rgba(251, 191, 36, 0.12);
+    --info: #7dd3fc;
+    --info-soft: rgba(125, 211, 252, 0.12);
+    --e1: 0 0 0 1px rgba(255, 255, 255, 0.06);
+    --e2: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 12px 32px -8px rgba(0, 0, 0, 0.8);
+    --e3: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 24px 56px -12px rgba(0, 0, 0, 0.85);
+    --highlight: 0 0 #0000;
+    --focus: 0 0 0 2px #0f0f0f, 0 0 0 4px #f5f5f5;
+    --btn-primary-shadow: none;
+    --seg-on: #2a2a2a;
+    --toast-bg: #f5f5f5;
+    --toast-ink: #0f0f0f;
+    --preview-apply-line: #0f0f0f;
+    --toast-pos: #15803d;
+    --toast-neg: #be123c;
+    --toast-warn: #b45309;
+    --toast-info: #4338ca;
+  }
+}
+
+/* ---- css/themes/midnight.css ---- */
+/* Midnight (redesign 2.6, DIRECTION 4.2): always dark. Deep navy-black with a sky-blue accent and
+   dark text on it. Screen-only, so printing uses the Modern light values (black on white). */
+@media screen {
+  [data-theme="midnight"] {
+    color-scheme: dark;
+    --bg: #050814;
+    --surface: #0b1122;
+    --surface-2: #111a30;
+    --surface-3: #18233d;
+    --line: rgba(148, 180, 255, 0.09);
+    --line-strong: rgba(148, 180, 255, 0.18);
+    --ink: #e6edf9;
+    --ink-2: #a9b6d0;
+    --ink-3: #8a98b5;
+    --ink-placeholder: #7d8bab;
+    --scrim: rgba(2, 4, 12, 0.66);
+    --accent: #7cc4fa;
+    --accent-hover: #95d0fb;
+    --accent-strong: #1b5a86;
+    --accent-text: #9fd3fb;
+    --accent-soft: rgba(124, 196, 250, 0.12);
+    --accent-line: rgba(124, 196, 250, 0.35);
+    --on-accent: #04121f;
+    --mode-sale: #4ade80;
+    --on-mode-sale: #04170b;
+    --mode-sale-soft: rgba(74, 222, 128, 0.12);
+    --mode-wholesale: #c4b5fd;
+    --on-mode-wholesale: #04121f;
+    --mode-wholesale-soft: rgba(196, 181, 253, 0.12);
+    --mode-rentals: #5eead4;
+    --positive: #4ade80;
+    --positive-soft: rgba(74, 222, 128, 0.12);
+    --negative: #fb7185;
+    --negative-soft: rgba(251, 113, 133, 0.12);
+    --warning: #fcd34d;
+    --warning-soft: rgba(252, 211, 77, 0.1);
+    --info: #7dd3fc;
+    --info-soft: rgba(125, 211, 252, 0.1);
+    --e1: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --e2: 0 0 0 1px rgba(148, 180, 255, 0.1), 0 12px 32px -8px rgba(0, 0, 0, 0.8);
+    --e3: 0 0 0 1px rgba(148, 180, 255, 0.12), 0 24px 56px -12px rgba(0, 0, 0, 0.85);
+    --focus: 0 0 0 3px rgba(124, 196, 250, 0.35);
+    --input-bg: #080d1b;
+    --seg-on: #1c2946;
+    --toast-bg: #18233d;
+    --toast-ink: #e6edf9;
+  }
+}
+
 /* ---- css/icons.css ---- */
 /* Line icons (redesign 2.4, DIRECTION 3.5): 24 grid, 1.75 stroke, currentColor. Sprite in templates/navigation.html */
 .icon-sprite {
@@ -744,7 +1025,7 @@ input[type="number"],
 .btn.danger {
   border-color: transparent;
   background-color: var(--btn-danger-bg);
-  color: var(--on-accent);
+  color: var(--btn-danger-ink);
 }
 
 .btn-success {
@@ -2713,10 +2994,12 @@ body.typing .bottom-nav {
 .save-btn[data-cash-save="open"],
 .save-btn[data-cash-save="entry"] {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 .save-btn[data-cash-save="close"] {
   background: var(--btn-danger);
+  color: var(--btn-danger-ink);
 }
 
 /* -------------------- PRINT BUTTON -------------------- */
@@ -3213,6 +3496,7 @@ input[type="number"] {
 
 .tab.sale-theme .quick-add-btn-inline {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 
@@ -3342,6 +3626,7 @@ input[type="number"] {
 #wholesale-sales .add-to-bill-btn,
 .items-add-btn {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 
@@ -3360,6 +3645,7 @@ input[type="number"] {
 
 .tab.sale-theme .add-to-bill-btn {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 .tab.purchase-theme .bill-totals {
@@ -3444,14 +3730,17 @@ input[type="number"] {
 
 .add-rate-plus.purchase {
   background: var(--btn-primary);
+  color: var(--btn-primary-ink);
 }
 
 .add-rate-plus.wholesale {
   background: var(--wholesale-color);
+  color: var(--on-mode-wholesale);
 }
 
 .add-rate-plus.sale {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 .add-rate-plus:hover {
@@ -3499,7 +3788,7 @@ input[type="number"] {
 .autosave-restore {
   background: var(--btn-primary);
   border: 1px solid var(--btn-primary);
-  color: #fff;
+  color: var(--btn-primary-ink);
 }
 
 .autosave-discard {
@@ -4247,7 +4536,7 @@ body.dark-mode .party-due-line.party-due-old {
   border: none;
   border-radius: 8px;
   background: var(--btn-primary);
-  color: white;
+  color: var(--btn-primary-ink);
   font-weight: var(--w-strong);
   font-size: 14px;
   cursor: pointer;
@@ -4590,11 +4879,11 @@ body.dark-mode .party-due-line.party-due-old {
 
 .bill-action-btn.btn-share {
   background: var(--btn-success);
-  color: #fff;
+  color: var(--btn-sale-ink);
 }
 
 .bill-action-btn.btn-share:hover {
-  background: #065f46;
+  background-image: linear-gradient(var(--state-hover), var(--state-hover));
 }
 
 @media (max-width: 480px) {
@@ -5001,7 +5290,7 @@ body.dark-mode .party-due-line.party-due-old {
 .aging-sort-btn.active {
     background: var(--btn-primary);
     border-color: var(--btn-primary);
-    color: #fff;
+    color: var(--btn-primary-ink);
 }
 
 .aging-party {
@@ -5057,7 +5346,7 @@ body.dark-mode .party-due-line.party-due-old {
 .aging-btn.aging-remind {
     background: var(--btn-success);
     border-color: var(--btn-success);
-    color: #fff;
+    color: var(--btn-sale-ink);
 }
 
 .aging-badge {
@@ -5388,8 +5677,8 @@ body.dark-mode .stock-row__qty {
 }
 
 .export-btn.csv:hover {
-    background: var(--success-color);
-    color: white;
+    background: var(--btn-success);
+    color: var(--btn-sale-ink);
 }
 
 .export-btn.pdf {
@@ -5398,8 +5687,8 @@ body.dark-mode .stock-row__qty {
 }
 
 .export-btn.pdf:hover {
-    background: var(--danger-color);
-    color: white;
+    background: var(--btn-danger);
+    color: var(--btn-danger-ink);
 }
 
 /* Tab Navigation */
@@ -5536,6 +5825,7 @@ body.dark-mode .stock-row__qty {
 
 .reports-hero-card.sale-theme {
     background: var(--btn-success);
+    color: var(--btn-sale-ink);
 }
 
 .hero-stat {
@@ -6003,7 +6293,7 @@ body.dark-mode .stock-row__qty {
 
 .compare-card.sale {
     background: var(--btn-success);
-    color: white;
+    color: var(--btn-sale-ink);
 }
 
 .compare-icon {
@@ -6395,7 +6685,7 @@ html {
 /* -------------------- MODE TOGGLE BUTTON -------------------- */
 .mode-toggle-btn {
   background: var(--btn-success);
-  color: white;
+  color: var(--btn-sale-ink);
   border: none;
   padding: 10px 20px;
   border-radius: var(--radius-full);
@@ -6417,6 +6707,7 @@ html {
 
 .mode-toggle-btn.sale-mode {
   background: var(--btn-primary);
+  color: var(--btn-primary-ink);
 }
 
 /* -------------------- MODAL POPUP -------------------- */
@@ -6523,6 +6814,7 @@ body:has(.tab.purchase-theme.active) .modal-btn-confirm:hover {
 
 body:has(.tab.sale-theme.active) .modal-btn-confirm {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 body:has(.tab.sale-theme.active) .modal-btn-confirm:hover {
@@ -6751,7 +7043,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .bill-action-btn.btn-edit {
   background: var(--btn-primary);
-  color: white;
+  color: var(--btn-primary-ink);
 }
 
 .bill-action-btn.btn-edit:hover {
@@ -6965,7 +7257,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .lang-switch-btn[aria-pressed="true"] {
   background: var(--btn-primary);
-  color: white;
+  color: var(--btn-primary-ink);
 }
 
 /* Roles & access (#84): sections switched off for this role */
@@ -7097,6 +7389,173 @@ body.no-perm-contacts [data-perm~="contacts"] {
   color: inherit;
   font-size: var(--fs-title);
   cursor: pointer;
+}
+
+/* Theme gallery (redesign 2.6): each preview is real DOM scoped with data-theme / data-mode */
+.theme-gallery-title {
+  margin: var(--sp-5) 0 var(--sp-2);
+  font-size: var(--fs-body);
+  font-weight: var(--w-strong);
+}
+
+.theme-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: var(--sp-3);
+}
+
+.theme-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.theme-card[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.theme-card[data-previewing] {
+  border-color: var(--warning-dot);
+  box-shadow: 0 0 0 1px var(--warning-dot);
+}
+
+.theme-card:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+.theme-card-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 84px;
+  padding: 8px;
+  overflow: hidden;
+  border-radius: var(--r-control);
+  background: var(--bg);
+}
+
+.tcp-bar {
+  height: 8px;
+  width: 40%;
+  border-radius: var(--r-full);
+  background: var(--ink-3);
+}
+
+.tcp-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px;
+  border: 1px solid var(--panel-border);
+  border-radius: calc(var(--r-control) - 2px);
+  background: var(--panel-bg);
+}
+
+.tcp-line {
+  height: 5px;
+  width: 80%;
+  border-radius: var(--r-full);
+  background: var(--ink);
+}
+
+.tcp-line-short {
+  width: 50%;
+  background: var(--ink-3);
+}
+
+.tcp-dots {
+  height: 6px;
+  width: 34px;
+  border-radius: var(--r-full);
+  background: linear-gradient(90deg, var(--positive) 0 30%, transparent 30% 35%, var(--negative) 35% 65%, transparent 65% 70%, var(--warning-dot) 70%);
+}
+
+.tcp-btn {
+  height: 12px;
+  width: 55%;
+  align-self: flex-end;
+  border-radius: calc(var(--r-control) - 4px);
+  background: var(--btn-primary-bg);
+}
+
+.theme-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 2px 2px;
+}
+
+.theme-card-name {
+  font-weight: var(--w-strong);
+}
+
+.theme-card-desc {
+  color: var(--ink-3);
+  font-size: var(--fs-caption);
+  line-height: 1.35;
+}
+
+.theme-card-badge {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 1px 8px;
+  border-radius: var(--r-full);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--fs-caption);
+  font-weight: var(--w-strong);
+}
+
+.theme-reset {
+  margin-top: var(--sp-2);
+}
+
+/* Preview bar: near-black like the toast, above the phone tab bar */
+.theme-preview-bar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: min(560px, calc(100% - 24px));
+  padding: 8px 8px 8px 14px;
+  border-radius: calc(var(--r-control) + 2px);
+  background: var(--toast-bg);
+  color: var(--toast-ink);
+  box-shadow: var(--e3);
+  transform: translateX(-50%);
+}
+
+.theme-preview-bar[hidden] {
+  display: none;
+}
+
+.theme-preview-text {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--w-strong);
+}
+
+.theme-preview-bar .theme-preview-cancel {
+  color: var(--toast-ink);
+}
+
+.theme-preview-bar .theme-preview-apply {
+  border-color: var(--preview-apply-line);
 }
 
 /* ---- css/day.css ---- */
@@ -7566,7 +8025,7 @@ body.dark-mode .today-labour-diff {
   border: none;
   border-radius: 10px;
   background: var(--btn-success);
-  color: #fff;
+  color: var(--btn-sale-ink);
   font-size: var(--fs-body);
   font-weight: var(--w-strong);
   cursor: pointer;
@@ -8248,8 +8707,8 @@ body.dark-mode .today-cash-prompt {
 }
 
 .modal-close:hover {
-    background: var(--danger-color);
-    color: white;
+    background: var(--btn-danger);
+    color: var(--btn-danger-ink);
 }
 
 .modal-body {
@@ -8581,7 +9040,7 @@ tr.finance-tappable td:first-child::after {
 
 .rt-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
 .rt-tab { flex: 1; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--card-bg); font-size: 14px; font-weight: var(--w-label); color: var(--text-secondary); cursor: pointer; }
-.rt-tab.active { background: var(--btn-primary); border-color: var(--btn-primary); color: #fff; }
+.rt-tab.active { background: var(--btn-primary); border-color: var(--btn-primary); color: var(--btn-primary-ink); }
 .rt-line { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--text-secondary); margin-right: 4px; vertical-align: middle; }
 .rt-line-dashed { border-top-style: dashed; }
 .rt-warn-inline { color: var(--on-warning-soft); }
@@ -8718,7 +9177,7 @@ tr.finance-tappable td:first-child::after {
 
 .app-update-download {
   background: var(--btn-success);
-  color: #fff;
+  color: var(--btn-sale-ink);
   border: 0;
   border-radius: 8px;
   padding: 8px 12px;
@@ -9016,7 +9475,7 @@ body.dark-mode .notif-panel-actions {
 
 .ins-tab.active {
     background: var(--btn-primary);
-    color: #fff;
+    color: var(--btn-primary-ink);
 }
 
 .ins-subtabs { margin-top: 8px; }
@@ -9333,7 +9792,7 @@ body.dark-mode .notif-panel-actions {
     height: 40px;
     border-color: transparent;
     background: rgba(255, 255, 255, 0.18);
-    color: var(--on-accent);
+    color: var(--on-accent-strong);
     box-shadow: none;
   }
 
@@ -9974,4 +10433,11 @@ body.dark-mode .notif-panel-actions {
   .st-view > .st-actions { grid-column: 1; grid-row: 3; grid-template-columns: 1fr; }
   .st-view > .st-csv-option { grid-column: 1; grid-row: 4; }
   .st-view > .st-doc { grid-column: 2; grid-row: 2 / span 3; margin-top: 0; min-width: 0; }
+}
+
+@media (min-width: 1024px) {
+  .theme-preview-bar {
+    bottom: 24px;
+    left: calc(50% + var(--desktop-nav-width) / 2);
+  }
 }

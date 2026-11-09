@@ -22,6 +22,7 @@ import { rateConfirmed, validatePaymentSplit, wholesaleCostRate } from './calc/b
 import { parseAnyBillDate, startOfLocalDay } from './dates.js';
 import { t } from '../i18n/index.js';
 import { computeShortfallsFrom, stockKeyFor, approxStockNote, stockedItemKeys } from './stock-check.js';
+import { duplicateCheckNameKey } from './parties.js';
 
 /**
  * Defaults from the owner questionnaire (#106; blank answer = default).
@@ -315,7 +316,7 @@ function itemsSignature(items) {
 function duplicateIssue(draft, ctx) {
     if (draft.isEdit) return null;
     const windowMs = ctx.thresholds.duplicateWindowSec * 1000;
-    const party = normalize(draft.partyName);
+    const party = duplicateCheckNameKey(draft.partyName);
     const sig = itemsSignature(draft.items);
     const total = round2(draft.total);
     const ref = Number(draft.enteredAt) || ctx.now;
@@ -325,7 +326,7 @@ function duplicateIssue(draft, ctx) {
         const ts = Number(b.enteredAt) || Number(b.timestamp) || parseAnyBillDate(b.date)?.getTime();
         if (!ts || Math.abs(ref - ts) > windowMs) return false;
         const bTotal = billTotal(b);
-        return normalize(b.customerName) === party && bTotal === total && itemsSignature(b.items) === sig;
+        return duplicateCheckNameKey(b.customerName) === party && bTotal === total && itemsSignature(b.items) === sig;
     });
     if (!dup) return null;
     const secs = Math.max(1, Math.round(Math.abs(ref - (Number(dup.enteredAt) || Number(dup.timestamp) || ref)) / 1000));

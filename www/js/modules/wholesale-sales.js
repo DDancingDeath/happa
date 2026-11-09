@@ -22,7 +22,7 @@ import { billPool, HistoryManager } from './history.js';
 import { todayLocalISO } from '../utils/dates.js';
 import { historyCutoff } from '../utils/role-access.js';
 import { OutstandingManager } from './outstanding.js';
-import { normalizePartyName } from '../utils/aging.js';
+import { partyNameKey } from '../utils/parties.js';
 import { partyDues } from '../utils/due-payments.js';
 import { getLang, t } from '../i18n/index.js';
 import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
@@ -738,7 +738,7 @@ export class WholesaleSalesManager {
 
     /** One payment from a party spread over their bills, oldest first (#152). */
     static receiveFromParty(name) {
-        return OutstandingManager.receiveFromParty(normalizePartyName(name), 'wholesale');
+        return OutstandingManager.receiveFromParty(partyNameKey(name), 'wholesale');
     }
 
     /** "Complete all due" is for the owner and managers (#150, Q36). */
@@ -758,7 +758,7 @@ export class WholesaleSalesManager {
             UIManager.showToast(t('msg.common.access_denied'), 'error');
             return;
         }
-        const group = partyDues((AppState.salesHistory || []).filter(s => s.source === 'sales-tab'), normalizePartyName(name), normalizePartyName);
+        const group = partyDues((AppState.salesHistory || []).filter(s => s.source === 'sales-tab'), partyNameKey(name), partyNameKey);
         if (!group.bills.length) {
             UIManager.showToast(t('msg.outstanding.nothing_due_party'));
             return;
@@ -769,7 +769,7 @@ export class WholesaleSalesManager {
         }
         const chosen = group.bills.slice(0, COMPLETE_ALL_MAX);
         const bills = chosen.map(x => x.bill);
-        const shown = bills.length < group.bills.length ? partyDues(bills, normalizePartyName(name), normalizePartyName) : group;
+        const shown = bills.length < group.bills.length ? partyDues(bills, partyNameKey(name), partyNameKey) : group;
         const esc = (v) => Helpers.escapeHtml(v);
         const amount = Helpers.formatCurrency(shown.total);
         const html = `
@@ -798,7 +798,7 @@ export class WholesaleSalesManager {
      * entries, so it is reported (and audited) as done, never recorded twice.
      */
     static settleEntryIds(name, method, bills) {
-        const key = [normalizePartyName(name), method, ...bills.map(b => (FirebaseService.documentIdOf ? FirebaseService.documentIdOf(b) : String(b.id)))].join('|');
+        const key = [partyNameKey(name), method, ...bills.map(b => (FirebaseService.documentIdOf ? FirebaseService.documentIdOf(b) : String(b.id)))].join('|');
         if (this.pendingSettle?.key !== key) this.pendingSettle = { key, ids: bills.map(() => Helpers.generateId()) };
         return this.pendingSettle.ids;
     }
@@ -860,7 +860,7 @@ export class WholesaleSalesManager {
     static showOutstandingParty(name) {
         const outstandingBtn = document.querySelectorAll('#wholesale-sales .filter-btn')[1];
         this.filterSalesTab('outstanding', outstandingBtn ? { target: outstandingBtn } : undefined);
-        const key = normalizePartyName(name);
+        const key = partyNameKey(name);
         if (!key) return;
         this.outstandingParty = { key, name: String(name).trim() };
         this.renderSalesOutstanding();
@@ -882,7 +882,7 @@ export class WholesaleSalesManager {
             .filter(sale => {
                 if (sale.source !== 'sales-tab') return false;
                 if (sale.cleared) return false;
-                if (party && normalizePartyName(sale.customerName) !== party.key) return false;
+                if (party && partyNameKey(sale.customerName) !== party.key) return false;
                 return outstandingDue(sale) > 0;
             })
             .map(sale => {

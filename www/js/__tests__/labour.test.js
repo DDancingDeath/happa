@@ -259,8 +259,9 @@ describe('Today Labour card (single language)', () => {
         expect(box.textContent).toContain('₹174 (1,000 kg ÷ 35 kg = 29 packages × ₹6)');
     });
 
-    test('day report (WhatsApp / image) has both lines, in one language', () => {
+    test('day report (WhatsApp / image) has both lines, in one language', async () => {
         render('en');
+        for (let i = 0; i < 10; i++) await Promise.resolve();
         const totals = AnomaliesManager.renderDayReport.mock.calls.at(-1)[0];
         const en = buildDayReportText({ dayKey: todayLocalISO(), totals });
         expect(en).toContain('Labour deducted from farmers: ₹72 (1 bill)');

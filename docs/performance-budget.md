@@ -28,6 +28,26 @@ worker, signed out, median of 10 (PR #209):
 
 These are relative numbers for comparing changes, not phone timings.
 
+**Start-up weight (#59, PR #403).** Only the app language's catalogue is loaded before
+the first screen (the other one when the phone is idle, or on a switch); Admin,
+Diagnostics, Anomalies, App health and the receipt drawing are imported on first use
+(the anomalies code and receipt drawing also when idle after the first screen). All of
+them stay precached, so they open offline. `startup-perf.spec.js` (E2E, signed-in owner
+reopening the app 5 times, CPU slowed 4×, no service worker, median; the JavaScript is
+what was fetched before `app-shown`, at its size in the repository):
+
+| | Before | After (CI) | Host, 3 runs each (before → after) |
+|---|---|---|---|
+| First contentful paint | 1,008 ms | 816 ms | 904 → 784 ms |
+| Sign-in check (`auth`) | 1,269 ms | 1,099 ms | 1,177 → 1,098 ms |
+| Profile read | 1,377 ms | 1,193 ms | 1,315 → 1,235 ms |
+| First screen (`app-shown`) | 2,384 ms | 2,112 ms | 2,160 → 2,148 ms |
+| JavaScript before the first screen | 198 files, 3,372 KB | 181 files, 2,739 KB | |
+
+The CI columns are one run each on different runners. On one machine the first screen
+moved within noise: after the sign-in it waits for the data listeners' first answers
+(above), which this PR doesn't change.
+
 ## Item picker: no 200-item cap
 
 The issue proposed capping the item autocomplete at the 200 most-used items.
@@ -95,8 +115,46 @@ Probe on one CI runner (reopen, 4x CPU): cache answers 3.4 s → 1.9 s, first sc
 - Reads: the E2E smoke fails a page that reads more than its baseline + 25 % (at
   least 1 read), or more than 300.
 - Start-up shape: `load-perf.test.js` fails if `index.html` links more than the
-  one stylesheet again.
+  one stylesheet again; `startup-weight.test.js` fails if start-up code statically
+  imports a language catalogue, Admin, Diagnostics, Anomalies, App health or the
+  receipt drawing again (#59).
 - Field timings: TIP `AppStart`, `BillSave` and `SessionReads` show slow or heavy
   versions in App health, and repeated failures open `tip-auto` issues.
+- Lab timings: the nightly multi-year benchmark (`bench.yml`, see below) fails on a
+  large slowdown.
 - jsdom timing checks were left out on purpose: CI machines vary too much for
   millisecond limits to be reliable, so they would fail at random.
+
+### Nightly benchmark gate (#120)
+
+The nightly benchmark (`npm run bench`, `.github/workflows/bench.yml`) adds a row to
+`bench-trend.csv` on the `bench-trend` branch and checks `firstTodayMs`,
+`historyLoadMs` and `startupReads` (`tools/bench/budgets.json`):
+
+- **Over its budget:** a warning only.
+- **Over its hard limit:** a warning the first night. If the next run is over it
+  too, the job fails (after it has pushed the trend). The hard limit is the
+  lower of:
+  - 1.5× the figure's budget;
+  - 1.5× the median of that figure in the last 7 runs, used once at least 5 of
+    them have it.
+
+  The limits are set in `_gate` in `budgets.json`.
+
+**Why 1.5× and two runs in a row.** The trend from 2 to 9 Nov 2026 was noisy on the
+same code: `firstTodayMs` ran from 4.0 to 8.2 s and `historyLoadMs` from 5.6 to
+14.0 s. Against the median of the previous 7 runs, the worst single night was
+1.35×. A limit of 1.25× would already have failed on 9 Nov: `historyLoadMs` was
+1.34× and then 1.26× on two nights in a row, still below the 14.0 s of 4 Nov. At 1.5×, a
+real slowdown of about half again or more fails within two nights, and no night so
+far comes close. A lasting slowdown that is accepted stops failing once it has
+become the median (after about four nights), unless it is over 1.5× the budget. Change the limits only after
+re-checking them against the trend (`tests/ci/bench-record.test.js` replays it).
+
+**Checking the gate.** Run the benchmark by hand (Actions › Multi-year load
+benchmark › Run workflow) with `simulate_slowdown` set. It sets the timings of this
+run and of the last trend row to that many times their recent median, whatever the
+runner measured: with `2` the job must fail, with `1.3` (or without the input) it
+must pass. A manual run on a branch other than
+`main`, or with `simulate_slowdown`, is checked against a copy of the trend and
+never pushes it.

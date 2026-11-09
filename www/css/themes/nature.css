@@ -1,0 +1,85 @@
+/* Nature (redesign 2.6, DIRECTION 4.2): oat paper, moss and clay, soft organic corners.
+   Colours are screen-only, so printing from any theme uses the Modern light values (black on white). */
+[data-theme="nature"] {
+  --r-control: 10px;
+  --r-panel: 20px;
+  --r-sheet: 26px;
+}
+
+@media screen {
+  [data-theme="nature"]:not([data-mode="dark"]) {
+    color-scheme: light;
+    --bg: #f1eee4;
+    --surface: #fbfaf5;
+    --surface-2: #e9e5d7;
+    --surface-3: #ddd7c5;
+    --line: #e0d9c8;
+    --line-strong: #c8bfa8;
+    --ink: #1f2a1e;
+    --ink-2: #465243;
+    --ink-3: #5b6657;
+    --ink-placeholder: #6a7465;
+    --accent: #9c4a2a;
+    --accent-hover: #873e22;
+    --accent-strong: #873e22;
+    --accent-text: #8a4024;
+    --accent-soft: #f2e1d6;
+    --accent-line: #dcb39d;
+    --mode-sale: #3f6f3a;
+    --mode-sale-soft: #e1ecd9;
+    --mode-wholesale: #7a5c12;
+    --mode-wholesale-soft: #f1e7c8;
+    --mode-rentals: #2f6a6a;
+    --positive: #3f6f3a;
+    --positive-soft: #e1ecd9;
+    --negative: #a3322a;
+    --negative-soft: #f6dfd9;
+    --warning: #85570c;
+    --warning-soft: #f3e5c3;
+    --warning-dot: #c9932a;
+    --panel-border: #e6e0cf;
+    --panel-shadow: 0 2px 10px -6px rgba(60, 50, 20, 0.18);
+    --seg-on: #fbfaf5;
+    --toast-bg: #24301f;
+    --toast-ink: #eef2e6;
+    --btn-primary-shadow: none;
+  }
+
+  [data-theme="nature"][data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #10160f;
+    --surface: #172015;
+    --surface-2: #1e291c;
+    --surface-3: #273425;
+    --line: rgba(220, 235, 200, 0.08);
+    --line-strong: rgba(220, 235, 200, 0.16);
+    --ink: #ecf0e4;
+    --ink-2: #bcc6b2;
+    --ink-3: #9ba68f;
+    --ink-placeholder: #8f9a84;
+    --accent: #e09a6b;
+    --accent-hover: #e8ab82;
+    --accent-strong: #873e22;
+    --accent-text: #ebb08b;
+    --accent-soft: rgba(224, 154, 107, 0.15);
+    --accent-line: rgba(224, 154, 107, 0.4);
+    --on-accent: #2a1408;
+    --mode-sale: #9fcf8a;
+    --on-mode-sale: #13240c;
+    --mode-sale-soft: rgba(159, 207, 138, 0.14);
+    --mode-wholesale: #d9bf6a;
+    --on-mode-wholesale: #241a04;
+    --mode-wholesale-soft: rgba(217, 191, 106, 0.14);
+    --mode-rentals: #7cc4c4;
+    --positive: #9fcf8a;
+    --positive-soft: rgba(159, 207, 138, 0.14);
+    --negative: #f09a8c;
+    --negative-soft: rgba(240, 154, 140, 0.13);
+    --warning: #e7c06c;
+    --warning-soft: rgba(231, 192, 108, 0.12);
+    --panel-border: rgba(220, 235, 200, 0.07);
+    --panel-shadow: none;
+    --seg-on: #2c3a29;
+    --toast-bg: #273425;
+  }
+}

@@ -9,7 +9,8 @@
  * @module utils/party-due
  */
 
-import { buildAging, normalizePartyName } from './aging.js';
+import { buildAging } from './aging.js';
+import { partyNameKey } from './parties.js';
 import { formatINR } from './due-reminder.js';
 import { getLang, t } from '../i18n/index.js';
 
@@ -36,10 +37,10 @@ export function billsForKind(state, kind) {
  *   null when the name is blank or nothing is owed
  */
 export function partyDue(bills, name, { excludeId = null, today = new Date() } = {}) {
-    const key = normalizePartyName(name);
+    const key = partyNameKey(name);
     if (!key) return null;
     const skip = excludeId === null || excludeId === undefined ? null : String(excludeId);
-    const mine = (bills || []).filter(b => b && normalizePartyName(b.customerName) === key
+    const mine = (bills || []).filter(b => b && partyNameKey(b.customerName) === key
         && (skip === null || String(b.id) !== skip));
     const party = buildAging(/** @type {Bill[]} */ (mine), { today }).parties.find(p => p.key === key);
     if (!party || !(party.total > 0)) return null;
