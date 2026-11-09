@@ -119,7 +119,7 @@ Line icons on a 24 grid, 1.75 stroke, `currentColor`, from the sprite at the top
 Sizes: `.i-sm` 16, `.i` 20, `.i-lg` 24. An icon next to text is `aria-hidden`; an icon-only
 button has an `aria-label` (through `data-i18n-aria-label`). A new icon is a new `<symbol id="i-…">`
 in the sprite. `tests/ci/icon-sprite.test.js` checks that every `href="#i-…"` (double quotes) in `index.html`,
-templates and scripts has a symbol, and that the sprite stays small.
+templates, scripts and CSS (not `__tests__`) has a symbol, and that the sprite stays small.
 
 Scripts that draw an icon write the same markup with a constant icon name. The first module that
 needs this adds one shared helper (`icon(name)` in `www/js/ui/icons.js`) returning that constant
