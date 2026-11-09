@@ -146,7 +146,7 @@ the migration. **Inline** = computed inside a page module.
 | BILL-COUNT | `business-metrics.billCount`; Today counts with `.length` (calc/today.js) | `billCount` |
 | BILL-TIME | `business-metrics.billTime`, `recordTime`; copy in `anomalies.billTime` | `business-metrics.billTime` |
 | CMP | `business-metrics.comparisonRanges`, `change` | same |
-| PARTY | `aging.normalizePartyName`, `pickPartyName`; identical copy `due-payments.normalizeParty` | one of them, the other re-exports |
+| PARTY | `parties.partyNameKey`, `sameParty`, `pickPartyName` (#139; `aging.normalizePartyName` and `due-payments.normalizeParty` / `sameParty` re-export them). The duplicate-bill warning keeps its own trim + lower-case key (`parties.duplicateCheckNameKey`) | `utils/parties.js` |
 | MONEY-TEXT | `money.formatRupees` / `formatAmount`; pages also print raw `₹${x}` (cash-management.js:619-694) and `Math.round` | `money.formatRupees` |
 | DATE-TEXT | `dates.formatDay`, `formatDayTime` | same |
 | T1, T2, T4, T5, T6, T7, T8, T9, T10, T11, T12, T15, T16, T17 | `calc/today.todaySummary` (#185) on top of `saleTimePayment`, `outstandingDue`; day.js only renders | same |
@@ -246,7 +246,7 @@ Each claim of the combined review checked against `main` `ca6f2ba`.
 | Profit / margin | ◐ live profit is pure (`computeWholesaleTotals`, current average rate from `AppState.stock`) | Differs from I1/M6 (AVG-COST at the moment of sale) once an earlier-dated record is saved later. No spec ID. |
 | Stock value | ✅ stock.js:159-191, 257, 583 vs `stock-replay` / `moneySummary().stockNow` | Same inputs today; two code paths. |
 | Rent totals | ◐ rent-views.js:33-40 vs `rent-math.monthSummary` | Agree (same rounding). One copy since phase 2i: `rent-math.rentTotals`. |
-| Other copies found | `checkPaymentSplit` exists twice with different signatures (money.js:292, due-payments.js:194; since 2f `calc/billing.validatePaymentSplit` / `validateDuePayment`); `normalizeParty` = `normalizePartyName` (due-payments.js:28, aging.js:54); `istDayKey` (anomalies.js:103, rate-trends.js:52); month step (insights / money) | Identical today; one copy should go. |
+| Other copies found | `checkPaymentSplit` exists twice with different signatures (money.js:292, due-payments.js:194; since 2f `calc/billing.validatePaymentSplit` / `validateDuePayment`); `istDayKey` (anomalies.js:103, rate-trends.js:52); month step (insights / money) | Identical today; one copy should go. |
 | Found by the full-scope ratchet | firestore-service.js:1197-1198 repeats `wholesaleOutstanding`'s `payment.due ‖ total − received`; main.js:527-695 (`debugStockForName`) re-implements AVG-COST; services/printer.js:350-431 recomputes payable (its own field order, then `subtotal − labour`), received and due for the receipt, with `‖` so `payment.cash: 0` falls back to the top-level `cashPayment` (`readPayment` keeps the 0) | The first disagrees with BILL-DUE as above; the receipt rounds to the rupee (₹988 for the ₹987.50 bill above) and can show a stale cash figure. |
 
 "No spec ID" list: wholesale live profit / margin ✅, stock adjustment value ✅,

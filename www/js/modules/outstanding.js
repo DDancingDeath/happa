@@ -36,8 +36,9 @@ function ageKey(days) {
     return [days === 1 ? 'ui.outstanding.day_one' : 'ui.outstanding.days_many', { count: days }];
 }
 import {
-    AGING_BUCKETS, DUE_FILTERS, ageInDays, bucketIndex, buildAging, chaseFirst, dueRows, filterBillsByBucket, normalizePartyName, sortParties
+    AGING_BUCKETS, DUE_FILTERS, ageInDays, bucketIndex, buildAging, chaseFirst, dueRows, filterBillsByBucket, sortParties
 } from '../utils/aging.js';
+import { partyNameKey } from '../utils/parties.js';
 import { can } from '../utils/role-access.js';
 import {
     buildReminderText, buildStatement, formatINR, normalizePhone, whatsAppReminderUrl
@@ -164,7 +165,7 @@ export class OutstandingManager {
         
         // Aging summary + per-party rows for the same bills (#46)
         const party = this.partyFilter;
-        const partyBills = party ? dueTransactions.filter(t => normalizePartyName(t.customerName) === party.key) : dueTransactions;
+        const partyBills = party ? dueTransactions.filter(t => partyNameKey(t.customerName) === party.key) : dueTransactions;
         this.renderAging(partyBills, currentDueFilter === 'purchase' ? 'payable' : 'receivable');
         this.renderPartyFilterNote();
         const shownTransactions = filterBillsByBucket(partyBills, this.agingBucket);
@@ -286,7 +287,7 @@ export class OutstandingManager {
         // Receive payment works on one list's bills; a party with retail and wholesale dues pays on either list.
         const kinds = new Map();
         bills.forEach(b => {
-            const k = normalizePartyName(b.customerName);
+            const k = partyNameKey(b.customerName);
             if (!kinds.has(k)) kinds.set(k, new Set());
             kinds.get(k).add(b.transactionType);
         });
@@ -354,7 +355,7 @@ export class OutstandingManager {
      * @param {string} name Party name as typed on the bill
      */
     static showParty(filter, name) {
-        const key = normalizePartyName(name);
+        const key = partyNameKey(name);
         this.filterDue(DUE_FILTERS.includes(filter) ? filter : 'sale');
         if (!key) return;
         this.partyFilter = { key, name: String(name).trim() };
@@ -1091,7 +1092,7 @@ export class OutstandingManager {
 
     /** A party's open bills of one kind, oldest first (DUE-ALL list): the first PARTY_PAY_MAX and how many in all. */
     static partyOpenBills(billType, partyKey) {
-        const group = partyDues(this.partyPayList(billType), partyKey, normalizePartyName);
+        const group = partyDues(this.partyPayList(billType), partyKey, partyNameKey);
         return { chosen: group.bills.slice(0, PARTY_PAY_MAX), all: group.bills.length };
     }
 
@@ -1099,7 +1100,7 @@ export class OutstandingManager {
      * One payment from (or to) a party spread over their open bills (#152): the
      * amount fills the oldest bills first (DUE-FIFO); each bill's part can be
      * changed by hand before saving. All bills are written in one transaction.
-     * @param {string} partyKey - normalizePartyName of the party
+     * @param {string} partyKey - partyNameKey of the party
      * @param {'purchase'|'retail'|'wholesale'} [billType] - default: the Outstanding list shown
      */
     static async receiveFromParty(partyKey, billType = ({ purchase: 'purchase', wholesale: 'wholesale' })[this.dueFilter()] || 'retail') {
@@ -1207,7 +1208,7 @@ export class OutstandingManager {
      * once a lost payment lands, the same amount fills the bills differently (DUE-FIFO).
      */
     static partyPayKey(billType, name, picked, method) {
-        return paymentIntentKey({ kind: 'party', billType, billId: normalizePartyName(name), cash: sumMoney(picked, x => x.amount), parts: [method] });
+        return paymentIntentKey({ kind: 'party', billType, billId: partyNameKey(name), cash: sumMoney(picked, x => x.amount), parts: [method] });
     }
 
     /** Document id of a bill (a legacy doc may carry another `id` field). */

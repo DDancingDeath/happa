@@ -14,6 +14,7 @@
 
 import { round2 } from './money.js';
 import { toLocalISODate } from './dates.js';
+import { partyNameKey } from './parties.js';
 
 /** Rows shown per "page" in the sheet. */
 export const PAGE_SIZE = 50;
@@ -234,7 +235,7 @@ export function groupRows(rows, by, { lang = 'en' } = {}) {
             label = lang === 'hi' ? (r.itemHi || r.item || '') : (r.item || '');
         } else if (by === 'party') {
             label = String(r.party || '').trim();
-            key = norm(label).replace(/\s+/g, ' ');
+            key = partyNameKey(label);
         } else if (by === 'day') {
             key = r.t != null ? toLocalISODate(new Date(r.t)) : '';
             label = key;
