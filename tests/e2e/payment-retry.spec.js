@@ -73,7 +73,7 @@ test('D-1: the network dies right after the commit lands: "could not confirm", a
     const doc = await getDoc('dev_retailSales', sale._id);
     expect(doc.payments).toHaveLength(1);
     expect(doc.payment).toMatchObject({ cash: 100, due: 260 });
-    expect(doc.dueAmount).toBe(260);
+    expect(doc).not.toHaveProperty('dueAmount');
     expect(await paymentAudits(sale.billNumber)).toHaveLength(1);
     expect(errors).toEqual([]);
 });

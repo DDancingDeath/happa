@@ -26,8 +26,8 @@ import { buildDraftShareText } from '../utils/bill-share.js';
 import { sampleItems } from '../../../tests/fixtures/sample-items.js';
 import { withCanonicalDue } from '../firebase/repos/bill-due.js';
 
-/** The repository's part of a new bill's save: the dueAmount mirror of payment.due (repos/bill-due.js). */
-const asSaved = (b) => withCanonicalDue(b, null, { full: true });
+/** The repository's part of a new bill's save: no legacy dueAmount (repos/bill-due.js). */
+const asSaved = (b) => withCanonicalDue(b);
 
 const PURCHASE_DOM = `
   <select id="billItem"><option value=""></option><option value="0">Rice</option><option value="1">Wheat</option></select>
@@ -78,9 +78,9 @@ const pick = (obj, keys) => Object.fromEntries(keys.map(k => [k, obj[k]]));
 
 /** Money fields of a saved bill document that the move must not change. */
 const PURCHASE_KEYS = ['billTotal', 'laborCharges', 'laborCalc', 'totalPackets', 'grandTotal', 'amountPayable',
-    'onlinePayment', 'cashPayment', 'dueAmount', 'payment', 'type', 'isPurchase', 'customerName'];
-const RETAIL_KEYS = ['total', 'totalPackets', 'onlinePayment', 'cashPayment', 'dueAmount', 'payment', 'type', 'isPurchase', 'customerName'];
-const WHOLESALE_KEYS = ['total', 'expenses', 'profit', 'profitPercent', 'onlinePayment', 'cashPayment', 'dueAmount', 'payment',
+    'onlinePayment', 'cashPayment', 'payment', 'type', 'isPurchase', 'customerName'];
+const RETAIL_KEYS = ['total', 'totalPackets', 'onlinePayment', 'cashPayment', 'payment', 'type', 'isPurchase', 'customerName'];
+const WHOLESALE_KEYS = ['total', 'expenses', 'profit', 'profitPercent', 'onlinePayment', 'cashPayment', 'payment',
     'type', 'source', 'customerName', 'comments'];
 const lineKeys = (items) => items.map(i => pick(i, Object.keys(i).filter(k => k !== 'timestamp')));
 
@@ -191,7 +191,7 @@ describe('purchase form', () => {
             // #129: was laborCharges 12.5, grandTotal / amountPayable 1940.5, cash 1941
             billTotal: 1953, laborCharges: 13, laborCalc: null, totalPackets: 3,
             grandTotal: 1940, amountPayable: 1940,
-            onlinePayment: 0, cashPayment: 1940, dueAmount: 0,
+            onlinePayment: 0, cashPayment: 1940,
             payment: { online: 0, cash: 1940, due: 0, total: 1940 },
             type: 'purchase', isPurchase: true, customerName: ''
         });
@@ -217,7 +217,7 @@ describe('purchase form', () => {
         expect(pick(bill, PURCHASE_KEYS)).toEqual({
             billTotal: 2130, laborCharges: 13, laborCalc: '6.25 × 2', totalPackets: 3,
             grandTotal: 2117, amountPayable: 2117,
-            onlinePayment: 0, cashPayment: 2000, dueAmount: 117,
+            onlinePayment: 0, cashPayment: 2000,
             payment: { online: 0, cash: 2000, due: 117, total: 2117 },
             type: 'purchase', isPurchase: true, customerName: 'Ramesh'
         });
@@ -252,7 +252,7 @@ describe('purchase form', () => {
         const bill = await PurchaseManager.saveBillToHistory();
         expect(pick(bill, PURCHASE_KEYS)).toMatchObject({
             billTotal: 1953, laborCharges: 7, grandTotal: 1946, amountPayable: 1946,
-            onlinePayment: 500, cashPayment: 1000, dueAmount: 446,
+            onlinePayment: 500, cashPayment: 1000,
             payment: { online: 500, cash: 1000, due: 446, total: 1946 }
         });
 
@@ -355,7 +355,7 @@ describe('retail sale form', () => {
 
         expect(saveRetailSale).toHaveBeenCalledTimes(1);
         expect(pick(sale, RETAIL_KEYS)).toEqual({
-            total: 2753, totalPackets: 4, onlinePayment: 999, cashPayment: 1001, dueAmount: 753,
+            total: 2753, totalPackets: 4, onlinePayment: 999, cashPayment: 1001,
             payment: { online: 999, cash: 1001, due: 753, total: 2753 },
             type: 'retail', isPurchase: false, customerName: 'Sita'
         });
@@ -514,7 +514,7 @@ describe('wholesale sale form', () => {
         expect(pick(sale, WHOLESALE_KEYS)).toEqual({
             // #129: was expenses 20.5, online 100.25, due 305.75
             total: 706, expenses: 21, profit: 190, profitPercent: 26.9,
-            onlinePayment: 100, cashPayment: 300, dueAmount: 306,
+            onlinePayment: 100, cashPayment: 300,
             payment: { online: 100, cash: 300, due: 306, total: 706 },
             type: 'wholesale', source: 'sales-tab', customerName: 'Mohan', comments: 'truck 2'
         });

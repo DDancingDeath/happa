@@ -62,7 +62,7 @@ describe('#46 aging bucket math', () => {
         const bills = [
             bill({ customerName: 'A', timestamp: at(2026, 10, 20), payment: { due: 150.5 } }),
             bill({ customerName: 'B', timestamp: at(2026, 9, 1), dueAmount: 999, payment: { due: 200 } }), // nested due wins
-            bill({ customerName: 'C', timestamp: at(2026, 8, 10), payment: undefined, dueAmount: 300 }), // legacy top-level only
+            bill({ customerName: 'C', timestamp: at(2026, 8, 10), payment: { due: 300 } }),
             bill({ customerName: 'D', timestamp: at(2026, 5, 1), payment: { due: 400 } }),
             bill({ customerName: 'E', timestamp: at(2026, 5, 1), payment: { due: 50 }, cleared: true }),
             bill({ customerName: 'F', timestamp: at(2026, 5, 1), payment: { due: 0 } })

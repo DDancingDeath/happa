@@ -10,7 +10,7 @@ import {
 import { dueBackfillChanges, dueBackfillFields } from '../firebase/repos/bill-due.js';
 import { legacyBill, SHAPES, TYPES } from '../../../tests/fixtures/due-shapes.js';
 import { t } from '../i18n/index.js';
-import { activeBills, activityBills, isActiveBill, outstandingDue } from '../utils/money.js';
+import { activeBills, activityBills, formatRupees, isActiveBill, outstandingDue } from '../utils/money.js';
 import { saleTimePayment, dueEvents } from '../utils/due-payments.js';
 import { buildAging } from '../utils/aging.js';
 import { collectEvents, stockFingerprint, changeInvalidatesCheckpoint } from '../utils/stock-replay.js';
@@ -172,13 +172,15 @@ describe('the due backfill\'s edit record (#126) reads as one line, not as a due
         });
     });
 
-    test('every record the backfill writes is one line, except where the record cannot show the old due (a top-level due, a due worked out from amountPaid)', () => {
+    test('#126: a record the backfill writes now holds payment only (the rules no longer take dueAmount), so it cannot show the old due and is described in full', () => {
         TYPES.forEach(type => SHAPES.forEach(shape => {
             const bill = legacyBill({ id: 'x', type, shape, total: 1000, cash: 300, online: 100 });
             const need = dueBackfillFields(bill);
             if (!need?.fields) return;
             const edit = editRecord({ n: 1, at: 1, by: 'o1', reason: REASON_EN, changes: dueBackfillChanges(bill, need.fields) });
-            expect([type, shape, isDueBackfillEdit(edit)]).toEqual([type, shape, !['topDue', 'amountPaid'].includes(shape)]);
+            expect(Object.keys(edit.fields)).toEqual(['payment']);
+            expect([type, shape, isDueBackfillEdit(edit)]).toEqual([type, shape, false]);
+            expect(describeEdit(edit, 'en')).toEqual([`Due: — → ${formatRupees(need.fields.payment.due)}`]);
         }));
     });
 

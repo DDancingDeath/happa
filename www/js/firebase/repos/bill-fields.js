@@ -16,7 +16,7 @@ export const BILL_EDITS = 'edits';
 export const billEditsRef = (billRef) => billRef.collection(BILL_EDITS);
 
 /** Bill fields that Outstanding / other devices change after a bill is created. */
-export const BILL_MONEY_FIELDS = ['payment', 'payments', 'dueAmount', 'cashPayment', 'onlinePayment', 'openDue', 'cleared'];
+export const BILL_MONEY_FIELDS = ['payment', 'payments', 'cashPayment', 'onlinePayment', 'openDue', 'cleared'];
 
 export const withServerCreatedAt = (record) => ({ ...record, createdAt: serverCreatedAt() });
 

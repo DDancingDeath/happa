@@ -53,7 +53,7 @@ export async function updateBillInTransaction(collKey, billId, sessionId, change
         if (!snap.exists) return null;
         const data = snap.data() || {};
         const out = change(data, sessionSnap && sessionSnap.exists ? sessionSnap.data() : null);
-        if (out.bill) tx.update(ref, withCanonicalDue(out.bill, data));
+        if (out.bill) tx.update(ref, withCanonicalDue(out.bill));
         if (out.session) tx.update(sessionRef, out.session);
         setAudit(tx, out.audit);
         return out.result;
@@ -92,7 +92,7 @@ export async function updateBillsInTransaction(collKey, billIds, change) {
         if (missing.length) throw Object.assign(new Error('Bill not found'), { code: 'not-found', ids: missing });
         const data = snaps.map(s => s.data() || {});
         const out = change(data);
-        (out.bills || []).forEach((fields, i) => { if (fields) tx.update(refs[i], withCanonicalDue(fields, data[i])); });
+        (out.bills || []).forEach((fields, i) => { if (fields) tx.update(refs[i], withCanonicalDue(fields)); });
         setAudit(tx, out.audit);
         return out.result;
     });

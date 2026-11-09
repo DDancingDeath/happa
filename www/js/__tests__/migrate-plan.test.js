@@ -12,8 +12,10 @@ import { buildPlan, parseOptions, revive, splitPersonalExpenses, CLIENT_VERSION 
 import { formatReport } from '../../../tools/migrate/lib/report.js';
 import { isServiceAccountEmail } from '../../../tools/migrate/lib/service-accounts.js';
 import { buildAging } from '../utils/aging.js';
+import { canonicalDueBill } from '../firebase/repos/bill-due.js';
 import { billTotal, isActiveBill, outstandingDue, readPayment, wholesaleOutstanding } from '../utils/money.js';
 import { computeFinanceSummary } from '../utils/finance-calc.js';
+import { outstandingTotals } from '../utils/business-metrics.js';
 import {
     aggregateBills, billsToYearDocs, clampWindowToMigration, finalizeStats, monthBuckets, planRollForward, rollForwardWindow, weekBuckets
 } from '../utils/rate-trends.js';
@@ -36,9 +38,11 @@ describe('plan: receivables as Outstanding shows them', () => {
         const byNo = Object.fromEntries(retail.map(w => [w.data.billNumber, w]));
         // dueAmount-only legacy bill with a DD/MM date and a Hindi name with extra spaces
         expect(byNo['S-OLD-7'].id).toBe('opening-retail-r2');
-        expect(byNo['S-OLD-7'].data).toMatchObject({ customerName: 'रामू', customerPhone: '9876500001', date: '05/07/2026, 11:30:00 am', dueAmount: 140 });
+        expect(byNo['S-OLD-7'].data).toMatchObject({ customerName: 'रामू', customerPhone: '9876500001', date: '05/07/2026, 11:30:00 am', payment: { due: 140 } });
         expect(byNo['S-OLD-7'].data.timestamp).toBe(Date.UTC(2026, 6, 5, 6, 0));
-        expect(byNo['S20260815-001'].data).toMatchObject({ dueAmount: 200, openingBalance: { billTotal: 300, paidBefore: 100 } });
+        expect(byNo['S20260815-001'].data).toMatchObject({ payment: { due: 200 }, openingBalance: { billTotal: 300, paidBefore: 100 } });
+        // the bill's one stored due (#126): no legacy dueAmount copy
+        retail.forEach(w => expect(w.data).not.toHaveProperty('dueAmount'));
         // payment.due (300) wins over a drifted dueAmount (400); the written-off bill is not carried
         expect(byNo['S20261020-001'].data.openingBalance).toMatchObject({ amount: 300, billTotal: 600, paidBefore: 300 });
         expect(byNo['S20260901-002']).toBeUndefined();
@@ -48,7 +52,8 @@ describe('plan: receivables as Outstanding shows them', () => {
     });
 
     test('the new app reads the records exactly like the old bills: totals, parties, age groups', () => {
-        const old = load().collections.retailSales.map(d => ({ id: d.id, ...revive(d.data) }));
+        // The old bills as the old app read them (a dueAmount-only bill's due in payment.due)
+        const old = load().collections.retailSales.map(d => canonicalDueBill({ id: d.id, ...revive(d.data) }));
         const docs = opening(bundle, 'retailSales').map(w => ({ id: w.id, ...revive(w.data) }));
         const before = buildAging(old, { today });
         const after = buildAging(docs, { today });
@@ -108,7 +113,7 @@ describe('plan: receivables as Outstanding shows them', () => {
         expect(formatReport(summary)).toMatch(/Not carried \(owner to decide\)\n- Wholesale bills not made on the Wholesale page.*1 bills, 1 parties, ₹300/);
         const withHidden = plan({ includeHiddenWholesaleDues: true });
         const rec = withHidden.bundle.writes.find(w => w.id === 'opening-wholesale-w3');
-        expect(rec.data).toMatchObject({ source: 'sales-tab', billNumber: 'W-OLD-4', dueAmount: 300 });
+        expect(rec.data).toMatchObject({ source: 'sales-tab', billNumber: 'W-OLD-4', payment: { due: 300 } });
         expect(withHidden.summary.hiddenWholesaleDues).toMatchObject({ carried: true, records: 1, matches: true });
     });
 
@@ -137,7 +142,7 @@ describe('plan: payables', () => {
         const carried = plan({ carryPayables: true }, backup);
         const docs = opening(carried.bundle, 'purchases');
         expect(docs).toHaveLength(1);
-        expect(docs[0].data).toMatchObject({ customerName: 'सप्लायर बी', billNumber: 'P-OLD-1', isPurchase: true, dueAmount: 1000, date: '01/06/2026' });
+        expect(docs[0].data).toMatchObject({ customerName: 'सप्लायर बी', billNumber: 'P-OLD-1', isPurchase: true, payment: { due: 1000 }, date: '01/06/2026' });
         expect(carried.summary.dues.purchase.matches).toBe(true);
     });
 });
@@ -211,6 +216,56 @@ describe('plan: copies, settings, counters, dev_', () => {
         expect(writesOf(full, 'opening')).toHaveLength(0);
         expect(writesOf(full, 'copy:retailSales')).toHaveLength(7);
         expect(full.writes.some(w => w.coll === 'stockCheckpoints' || w.coll === 'telemetry')).toBe(false);
+    });
+
+    test('#126: every copied bill stores the due the old app showed in payment.due, and no dueAmount', () => {
+        const line = (qty, rate) => ({ name: 'Wheat', qty, rate, total: qty * rate });
+        // [id, stored bill, the due the old app read (payment.due, else dueAmount, else due, else total − paid)]
+        const cases = {
+            purchases: [
+                ['p-paid-labour', { billTotal: 5000, laborCharges: 60, grandTotal: 4940, payment: { cash: 4940, online: 0, due: 0 } }, 0],
+                ['p-part-labour', { billTotal: 2500, laborCharges: 12, grandTotal: 2488, cashPayment: 1488, dueAmount: 1000 }, 1000],
+                ['p-amountpaid-labour', { billTotal: 1000, laborCharges: 30, grandTotal: 970, amountPaid: 500 }, 470]
+            ],
+            retailSales: [
+                ['r-paid', { items: [line(10, 30)], total: 300, cashPayment: 300, dueAmount: 0 }, 0],
+                ['r-part-drift', { items: [line(10, 30)], total: 300, payment: { cash: 100, online: 50, due: 150 }, dueAmount: 400 }, 150],
+                ['r-return', { items: [line(5, 40), line(-1, 40)], total: 160, cashPayment: 60, dueAmount: 100 }, 100],
+                ['r-overpaid', { items: [line(10, 50)], total: 500, payment: { cash: 700, online: 0, due: -200 }, dueAmount: -200 }, -200],
+                ['r-strings', { items: [line(5, 50)], total: '250', cashPayment: '50', dueAmount: '200' }, 200],
+                ['r-top-due', { items: [line(3, 30)], total: 90, cashPayment: 40, due: 50 }, 50],
+                ['r-cleared', { items: [line(10, 80)], total: 800, dueAmount: 800, cleared: true }, 800]
+            ],
+            wholesaleSales: [
+                ['w-part-paid-later', { source: 'sales-tab', items: [line(50, 30)], total: 1500,
+                    payment: { cash: 1000, online: 0, due: 500 }, payments: [{ id: 'x1', amount: 200, cash: 200, at: 1 }] }, 500],
+                ['w-written-off', { source: 'sales-tab', items: [line(10, 30)], total: 300,
+                    payment: { cash: 0, online: 0, due: 0, writtenOff: 300 }, dueAmount: 0, cleared: true }, 0]
+            ]
+        };
+        const backup = load();
+        Object.entries(cases).forEach(([coll, list]) => {
+            backup.collections[coll] = list.map(([id, data]) => ({ id, data: { billNumber: id, customerName: 'Ravi', date: '2026-10-20', ...data } }));
+        });
+        const full = plan({ mode: 'full' }, backup).bundle;
+        const docs = {};
+        Object.entries(cases).forEach(([coll, list]) => {
+            const written = writesOf(full, `copy:${coll}`);
+            expect(written.map(w => w.id)).toEqual(list.map(([id]) => id));
+            docs[coll] = written.map(w => ({ id: w.id, ...revive(w.data) }));
+            list.forEach(([id, stored, due], i) => {
+                const data = written[i].data;
+                expect([id, data.payment.due]).toEqual([id, due]);
+                expect(data).not.toHaveProperty('dueAmount');
+                const { dueAmount, ...rest } = { billNumber: id, customerName: 'Ravi', date: '2026-10-20', ...stored };
+                expect(data).toEqual({ ...rest, payment: { ...(stored.payment || {}), due } });
+                expect(readPayment(docs[coll][i]).due).toBe(due);
+                expect(outstandingDue(docs[coll][i])).toBe(stored.cleared ? 0 : Math.max(0, due));
+            });
+        });
+        // Outstanding / Money from the copies alone: 150 + 100 + 200 + 50 to receive on retail, 500 on wholesale; 1000 + 470 to pay
+        const totals = outstandingTotals(docs);
+        expect([totals.receivable.total, totals.payable.total]).toEqual([1000, 1470]);
     });
 
     test('Rentals collections are never carried, in any mode: Happa\'s Rentals data is the real one', () => {

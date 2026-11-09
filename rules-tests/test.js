@@ -114,7 +114,7 @@ function defineSuite(prefix) {
     // edit record edits/{n} in one batch (firestore-service.js updateBillChecked). The record
     // names the logged fields the change touches (validEditCreate checks it).
     const LOGGED = ['items', 'customerName', 'grandTotal', 'amountPayable', 'total', 'billTotal', 'saleTotal',
-        'laborCharges', 'payment', 'cashPayment', 'onlinePayment', 'dueAmount', 'date', 'timestamp'];
+        'laborCharges', 'payment', 'cashPayment', 'onlinePayment', 'date', 'timestamp'];
     const stored = async (coll, id) => {
         let data = {};
         await env.withSecurityRulesDisabled(async (ctx) => {
@@ -257,7 +257,7 @@ function defineSuite(prefix) {
 
     t('a voided bill never changes again: no un-void, edit, payment or second void, the owner included; only the owner deletes it', async () => {
         for (const coll of bills) {
-            await seedBill(coll, 'v', { userId: 'staff1', total: 100, payment: { cash: 0, online: 0, due: 100 }, dueAmount: 100,
+            await seedBill(coll, 'v', { userId: 'staff1', total: 100, payment: { cash: 0, online: 0, due: 100 },
                 clientVersion: 3, openDue: false, voided: true, voidedAt: Timestamp.now(), voidedBy: 'staff1', voidReason: 'Entered twice', ...fresh() });
             for (const uid of ['staff1', 'manager1', 'legacyOwner']) {
                 const ref = as(uid).collection(coll).doc('v');
@@ -265,7 +265,7 @@ function defineSuite(prefix) {
                 await assertFails(ref.update({ voided: FieldValue.delete(), voidedAt: FieldValue.delete(), voidedBy: FieldValue.delete(), voidReason: FieldValue.delete() }));
                 await assertFails(ref.update({ customerName: 'X' }));
                 await assertFails(ref.update({ voidReason: 'Changed my mind' }));
-                await assertFails(ref.update({ 'payment.cash': 40, 'payment.online': 0, 'payment.due': 60, dueAmount: 60,
+                await assertFails(ref.update({ 'payment.cash': 40, 'payment.online': 0, 'payment.due': 60,
                     payments: [{ amount: 40, cash: 40, online: 0, at: Date.now() }], paidAt: Date.now() }));
             }
             await assertFails(as('staff1').collection(coll).doc('v').delete());
@@ -276,31 +276,59 @@ function defineSuite(prefix) {
     // ---- due backfill (#126: the owner stores each bill's due once, in payment.due) ----
 
     // The rules don't single out the backfill: it is an edit-logged write. The app offers it to the owner only.
-    t('due backfill: the owner writes payment.due (and its dueAmount mirror) on any bill, with its edit record; a manager, or a member on their own bill, only inside the edit window', async () => {
+    t('due backfill: the owner writes payment.due on any bill, with its edit record; a manager, or a member on their own bill, only inside the edit window; a dueAmount is only ever the mirror (#126)', async () => {
         for (const coll of bills) {
             await seedBill(coll, 'legacy', { total: 1000, cashPayment: 400, onlinePayment: 0, dueAmount: '600' });
-            await seedBill(coll, 'drift', { userId: 'staff1', total: 1000, payment: { cash: 400, online: 0, due: 600, total: 1000 }, dueAmount: 650, ...fresh() });
-            const fix = { payment: { due: 600 }, dueAmount: 600, clientVersion: 5 };
-            const mirror = { payment: { cash: 400, online: 0, due: 600, total: 1000 }, dueAmount: 600, clientVersion: 5 };
-            for (const uid of ['staff1', 'manager1']) {
-                await assertFails(as(uid).collection(coll).doc('legacy').update(fix));
-                await assertFails(as(uid).collection(coll).doc('drift').update(mirror));
-            }
-            // As the app writes it: with its edit record (#121)
-            await assertSucceeds(logged('legacyOwner', coll, 'legacy', 1, fix, { cv: 5 }));
-            await assertSucceeds(logged('legacyOwner', coll, 'drift', 1, mirror, { cv: 5 }));
-            // The app's record also holds the unchanged payment (it proves which due the bill showed)
-            const pay = { cash: 400, online: 0, due: 600, total: 1000 };
-            await seedBill(coll, 'drift2', { userId: 'staff1', total: 1000, payment: pay, dueAmount: 650, ...fresh() });
-            await assertSucceeds(logged('legacyOwner', coll, 'drift2', 1, { dueAmount: 600 }, { cv: 5,
-                rec: { fields: { dueAmount: { before: 650, after: 600 }, payment: { before: pay, after: pay } } } }));
+            const fix = { payment: { due: 600 }, clientVersion: 5 };
+            for (const uid of ['staff1', 'manager1']) await assertFails(as(uid).collection(coll).doc('legacy').update(fix));
+            // As the app writes it: with its edit record (#121), payment only
             await seedBill(coll, 'legacy2', { total: 1000, cashPayment: 400, onlinePayment: 0, dueAmount: '600' });
             for (const uid of ['staff1', 'manager1']) await assertFails(logged(uid, coll, 'legacy2', 1, fix, { cv: 5 }));
+            await assertFails(logged('legacyOwner', coll, 'legacy2', 1, { ...fix, dueAmount: 650 }, { cv: 5 }));
+            await assertSucceeds(logged('legacyOwner', coll, 'legacy', 1, fix, { cv: 5 }));
+            // An old client's backfill (main before #126) sets the mirror equal to payment.due: tolerated for one release
+            const pay = { cash: 400, online: 0, due: 600, total: 1000 };
+            await seedBill(coll, 'drift', { userId: 'staff1', total: 1000, payment: pay, dueAmount: 650, ...fresh() });
+            await assertFails(as('legacyOwner').collection(coll).doc('drift').update({ dueAmount: 640, clientVersion: 5 }));
+            await assertSucceeds(logged('legacyOwner', coll, 'drift', 1, { dueAmount: 600 }, { cv: 5,
+                rec: { fields: { dueAmount: { before: 650, after: 600 }, payment: { before: pay, after: pay } } } }));
             // Inside the edit window the same logged write is an ordinary edit: a member on their own bill, a manager on any
             for (const uid of ['staff1', 'manager1']) {
-                await seedBill(coll, `in-${uid}`, { userId: 'staff1', total: 1000, payment: { cash: 400, online: 0, due: 600, total: 1000 }, dueAmount: 650, ...fresh() });
-                await assertSucceeds(logged(uid, coll, `in-${uid}`, 1, { dueAmount: 600 }, { cv: 5 }));
+                await seedBill(coll, `in-${uid}`, { userId: 'staff1', total: 1000, cashPayment: 400, onlinePayment: 0, ...fresh() });
+                await assertSucceeds(logged(uid, coll, `in-${uid}`, 1, fix, { cv: 5 }));
+                await seedBill(coll, `copy-${uid}`, { userId: 'staff1', total: 1000, payment: pay, ...fresh() });
+                await assertFails(logged(uid, coll, `copy-${uid}`, 1, { dueAmount: 500 }, { cv: 5 }));
             }
+        }
+    });
+    t('#126 (one release): an old client\'s dueAmount mirror is tolerated only equal to payment.due; a write may drop it', async () => {
+        for (const coll of bills) {
+            for (const uid of ['legacyOwner', 'manager1', 'staff1']) {
+                await seedBill(coll, `old-${uid}`, { userId: 'staff1', total: 100, payment: { cash: 40, online: 0, due: 60, total: 100 }, dueAmount: 60, ...fresh() });
+                const ref = as(uid).collection(coll).doc(`old-${uid}`);
+                await assertFails(ref.update({ comments: 'x', dueAmount: 50 }));
+                await assertFails(ref.update({ comments: 'x', dueAmount: 60.5 }));
+                await assertSucceeds(ref.update({ comments: 'x', dueAmount: FieldValue.delete() }));
+            }
+            const c = as('staff1').collection(coll);
+            const bill = { userId: 'staff1', total: 100, payment: { cash: 100, online: 0, due: 0, total: 100 }, clientVersion: 5, createdAt: serverTimestamp(), timestamp: Date.now() };
+            // A bill from an app before #126: dueAmount = payment.due
+            await assertSucceeds(c.doc('withCopy').set({ ...bill, dueAmount: 0 }));
+            await assertFails(c.doc('badCopy').set({ ...bill, dueAmount: 5 }));
+            await assertSucceeds(c.doc('noCopy').set(bill));
+            // An old client's due payment on a bill that has the copy
+            const at = Date.now();
+            await seedBill(coll, 'pay', { userId: 'manager1', total: 100, payment: { cash: 0, online: 0, due: 100, total: 0 }, dueAmount: 100, openDue: true, clientVersion: 3 });
+            const pay = (dueAmount) => ({ payment: { cash: 40, online: 0, due: 60, total: 40 }, dueAmount, openDue: true, clientVersion: 3,
+                payments: [{ id: 'p1', amount: 40, cash: 40, online: 0, at }], paidAt: at });
+            await assertFails(as('staff1').collection(coll).doc('pay').update(pay(70)));
+            await assertSucceeds(as('staff1').collection(coll).doc('pay').update(pay(60)));
+            // An old client's money edit: the bill with its mirror, the record with dueAmount before/after
+            await seedBill(coll, 'edit', { userId: 'staff1', total: 100, payment: { cash: 40, online: 0, due: 60, total: 100 }, dueAmount: 60, ...fresh() });
+            await assertFails(logged('staff1', coll, 'edit', 1, { total: 90, 'payment.due': 50, dueAmount: 55 }, { cv: 5,
+                rec: { fields: { total: { before: 100, after: 90 }, payment: { before: { cash: 40, online: 0, due: 60, total: 100 }, after: { cash: 40, online: 0, due: 50, total: 100 } }, dueAmount: { before: 60, after: 55 } } } }));
+            await assertSucceeds(logged('staff1', coll, 'edit', 1, { total: 90, 'payment.due': 50, dueAmount: 50 }, { cv: 5,
+                rec: { fields: { total: { before: 100, after: 90 }, payment: { before: { cash: 40, online: 0, due: 60, total: 100 }, after: { cash: 40, online: 0, due: 50, total: 100 } }, dueAmount: { before: 60, after: 50 } } } }));
         }
     });
     t('members can\'t create a bill that is voided or has an edit count', async () => {
@@ -493,12 +521,12 @@ function defineSuite(prefix) {
 
     t('staff can record a payment and clear another user\'s bill', async () => {
         for (const coll of bills) {
-            await seedBill(coll, 'b', { ...otherBill, dueAmount: 100 });
+            await seedBill(coll, 'b', { ...otherBill });
             const ref = as('staff1').collection(coll).doc('b');
             // outstanding.js applyPaymentTransaction
             await assertSucceeds(ref.update({
                 payment: { online: 0, cash: 40, due: 60, total: 40 }, payments: [{ amount: 40, recordedBy: 'S', at: PAID_AT }],
-                dueAmount: 60, openDue: true, clientVersion: 3
+                openDue: true, clientVersion: 3
             }));
             // #65: clearing without settling the due (money or write-off) is refused
             await assertFails(ref.update({
@@ -508,7 +536,7 @@ function defineSuite(prefix) {
             await assertSucceeds(ref.update({
                 payment: { online: 0, cash: 100, due: 0, total: 100 },
                 payments: [{ amount: 40, recordedBy: 'S', at: PAID_AT }, { amount: 60, cash: 60, online: 0, settlesDue: true, at: PAID_AT }],
-                dueAmount: 0, openDue: false, clientVersion: 3,
+                openDue: false, clientVersion: 3,
                 cleared: true, clearedAt: 'x', clearedBy: 'staff1', clearedByName: 'S'
             }));
         }
@@ -591,7 +619,7 @@ function defineSuite(prefix) {
     t('OD-14: the owner\'s own changes keep a record like everyone\'s: an edit record, a payment or a write-off entry', async () => {
         const PAID = Date.now();
         for (const coll of bills) {
-            const bill = { ...otherBill, userId: 'staff1', dueAmount: 100, createdAt: savedAgo(30 * DAY) };
+            const bill = { ...otherBill, userId: 'staff1', createdAt: savedAgo(30 * DAY) };
             await seedBill(coll, 'o', bill);
             const ref = as('legacyOwner').collection(coll).doc('o');
             // notes, the creator and the first-save time need none (not money)
@@ -600,11 +628,11 @@ function defineSuite(prefix) {
             // a total, the items or the due changed without its edit record: refused, any app version
             for (const cv of [3, 4, 5]) {
                 await assertFails(ref.update({ total: 1, clientVersion: cv }));
-                await assertFails(ref.update({ 'payment.due': 0, dueAmount: 0, clientVersion: cv }));
+                await assertFails(ref.update({ 'payment.due': 0, clientVersion: cv }));
                 await assertFails(ref.set({ ...bill, total: 1, clientVersion: cv }));
             }
-            await assertFails(ref.update({ 'payment.due': 0, dueAmount: 0, cleared: true, clearedBy: 'legacyOwner', openDue: false, clientVersion: 5 }));
-            await assertFails(ref.update({ 'payment.cash': 100, 'payment.due': 0, dueAmount: 0, openDue: false, clientVersion: 5 }));
+            await assertFails(ref.update({ 'payment.due': 0, cleared: true, clearedBy: 'legacyOwner', openDue: false, clientVersion: 5 }));
+            await assertFails(ref.update({ 'payment.cash': 100, 'payment.due': 0, openDue: false, clientVersion: 5 }));
             // ...or by a fields-shaped record that doesn't match the change
             await assertFails(logged('legacyOwner', coll, 'o', 1, { total: 1 }, { rec: { fields: { total: { before: 100, after: 2 } } } }));
             // legacy due fields are never changed, a record or not
@@ -612,16 +640,16 @@ function defineSuite(prefix) {
                 await assertFails(logged('legacyOwner', coll, 'o', 1, { ...f, total: 99 }));
             }
             // a recorded payment, then a write-off of the rest (M5) and the bill marked cleared
-            await assertSucceeds(ref.update({ 'payment.cash': 40, 'payment.online': 0, 'payment.due': 60, dueAmount: 60,
+            await assertSucceeds(ref.update({ 'payment.cash': 40, 'payment.online': 0, 'payment.due': 60,
                 payments: [{ id: 'p1', amount: 40, cash: 40, online: 0, at: PAID }], paidAt: PAID, clientVersion: 5 }));
             // payments[] is append-only for the owner too
-            await assertFails(ref.update({ payments: [], 'payment.cash': 0, 'payment.due': 100, dueAmount: 100, clientVersion: 5 }));
-            await assertSucceeds(ref.update({ 'payment.writtenOff': 60, 'payment.due': 0, dueAmount: 0, openDue: false,
+            await assertFails(ref.update({ payments: [], 'payment.cash': 0, 'payment.due': 100, clientVersion: 5 }));
+            await assertSucceeds(ref.update({ 'payment.writtenOff': 60, 'payment.due': 0, openDue: false,
                 payments: [{ id: 'p1', amount: 40, cash: 40, online: 0, at: PAID }, { id: 'w', kind: 'writeOff', amount: 60, reason: 'gone', at: PAID }],
                 paidAt: PAID, cleared: true, clearedAt: 'x', clearedBy: 'legacyOwner', clearedByName: 'O', clientVersion: 5 }));
             // a recorded edit (the reason and before/after kept) may lower a total or a due
             await seedBill(coll, 'e', bill);
-            await assertSucceeds(logged('legacyOwner', coll, 'e', 1, { total: 80, 'payment.due': 80, dueAmount: 80 }, { cv: 5 }));
+            await assertSucceeds(logged('legacyOwner', coll, 'e', 1, { total: 80, 'payment.due': 80}, { cv: 5 }));
         }
     });
 
@@ -655,10 +683,10 @@ function defineSuite(prefix) {
 
     t('edit window: payments can still be recorded on an old bill', async () => {
         for (const coll of bills) {
-            await seedBill(coll, 'old', { ...otherBill, userId: 'staff1', dueAmount: 100, createdAt: savedAgo(30 * DAY) });
+            await seedBill(coll, 'old', { ...otherBill, userId: 'staff1', createdAt: savedAgo(30 * DAY) });
             await assertSucceeds(as('staff1').collection(coll).doc('old').update({
                 payment: { online: 0, cash: 40, due: 60, total: 40 }, payments: [{ amount: 40, recordedBy: 'S', at: PAID_AT }],
-                dueAmount: 60, openDue: true, clientVersion: 3
+                openDue: true, clientVersion: 3
             }));
         }
     });
@@ -756,7 +784,7 @@ function defineSuite(prefix) {
         const yesterday = now - DAY;
         // 20:00 IST yesterday: a bill entered then (offline) and synced now
         const evening = now - ((now + 19800000) % DAY) - 4 * HOUR;
-        const pay = (cash, online, due) => ({ payment: { cash, online, due, total: cash + online + due }, cashPayment: cash, onlinePayment: online, dueAmount: due });
+        const pay = (cash, online, due) => ({ payment: { cash, online, due, total: cash + online + due }, cashPayment: cash, onlinePayment: online });
         const bill = (id, timestamp, enteredAt, money) => ({ userId: id, total: 100, clientVersion: 4, createdAt: serverTimestamp(), timestamp, ...(enteredAt === undefined ? {} : { enteredAt }), ...money });
         for (const coll of bills) {
             const db = as('staff1').collection(coll);
@@ -1805,12 +1833,12 @@ function defineSuite(prefix) {
 
     t('older apps can\'t edit bills, the owner\'s included; they still record payments (#75)', async () => {
         for (const coll of bills) {
-            await seedBill(coll, 'o', { userId: 'staff1', total: 100, payment: { cash: 0, online: 0, due: 100 }, dueAmount: 100, clientVersion: 3, ...fresh() });
+            await seedBill(coll, 'o', { userId: 'staff1', total: 100, payment: { cash: 0, online: 0, due: 100 }, clientVersion: 3, ...fresh() });
             const ref = (uid) => as(uid).collection(coll).doc('o');
             await assertFails(ref('legacyOwner').update({ total: 90, clientVersion: 3 }));
             await assertFails(ref('legacyOwner').set({ userId: 'staff1', total: 90, clientVersion: 3, ...fresh() }));
             await assertSucceeds(ref('legacyOwner').update({ comments: 'old app note' }));
-            await assertSucceeds(ref('staff1').update({ 'payment.cash': 40, 'payment.online': 0, 'payment.due': 60, dueAmount: 60,
+            await assertSucceeds(ref('staff1').update({ 'payment.cash': 40, 'payment.online': 0, 'payment.due': 60,
                 payments: [{ amount: 40, cash: 40, online: 0, at: PAID_AT }], openDue: true, clientVersion: 3 }));
             await assertFails(ref('legacyOwner').update({ total: 90, clientVersion: 4 }));
             await assertSucceeds(logged('legacyOwner', coll, 'o', 1, { total: 90 }));
@@ -1838,14 +1866,14 @@ function defineSuite(prefix) {
         await assertSucceeds(as('staff1').collection(col).doc('opening-retail-r4').update({
             payment: { ...rec.payment, cash: 100, due: due - 100, total: 100 },
             payments: [{ id: 'm1', amount: 100, cash: 100, online: 0, at: PAID_AT }],
-            dueAmount: due - 100, openDue: true, clientVersion: 3
+            openDue: true, clientVersion: 3
         }));
         await assertFails(as('staff1').collection(col).doc('opening-retail-r4').update({ dueAmount: due + 1, payment: { ...rec.payment, due: due + 1 } }));
     });
     // ---- bill payment edits (#19) ----
 
     const dueBill = { userId: 'manager1', total: 100, items: [{ name: 'Rice', qty: 10 }], timestamp: 1760000000000,
-        payment: { online: 0, cash: 0, due: 100, total: 0 }, dueAmount: 100, payments: [{ id: 'p0', amount: 0 }],
+        payment: { online: 0, cash: 0, due: 100, total: 0 }, payments: [{ id: 'p0', amount: 0 }],
         openDue: true, clientVersion: 3 };
     // What outstanding.js applyPaymentTransaction writes for a cash payment.
     // Payment entries carry their time within 10 minutes of the server's (#65)
@@ -1853,7 +1881,7 @@ function defineSuite(prefix) {
     const paid = (cash, extra = {}) => ({
         payment: { online: 0, cash, due: 100 - cash, total: cash },
         payments: [...dueBill.payments, { id: 'p1', amount: cash, cash, online: 0, at: PAID_AT }],
-        dueAmount: 100 - cash, openDue: 100 - cash > 0, clientVersion: 3, ...extra
+        openDue: 100 - cash > 0, clientVersion: 3, ...extra
     });
 
     t('payment edits (#229): a manager settles in full bills saved with createdAt, Roles & access set (1 bill, many, Mark as cleared)', async () => {
@@ -1861,7 +1889,7 @@ function defineSuite(prefix) {
         const settle = (id) => ({
             payment: { online: 0, cash: 100, due: 0, total: 100 },
             payments: [...dueBill.payments, { id: `s-${id}`, amount: 100, cash: 100, online: 0, at: PAID_AT, settlesDue: true }],
-            dueAmount: 0, openDue: false, paidAt: PAID_AT, clientVersion: 4
+            openDue: false, paidAt: PAID_AT, clientVersion: 4
         });
         const cleared = { cleared: true, clearedAt: 'x', clearedBy: 'manager1', clearedByName: 'M' };
         for (const coll of bills) {
@@ -1879,7 +1907,7 @@ function defineSuite(prefix) {
             await assertSucceeds(batch.commit());
             // The same routing still refuses a manager's payment that moves no due
             await seedBill(coll, 'bad', saved);
-            await assertFails(db.collection(coll).doc('bad').update({ ...settle('bad'), payment: { online: 0, cash: 100, due: 100, total: 100 }, dueAmount: 100, openDue: true }));
+            await assertFails(db.collection(coll).doc('bad').update({ ...settle('bad'), payment: { online: 0, cash: 100, due: 100, total: 100 }, openDue: true }));
             // and a full edit that also touches payments
             await assertFails(db.collection(coll).doc('bad').update({ ...settle('bad'), total: 90 }));
         }
@@ -1892,7 +1920,7 @@ function defineSuite(prefix) {
             await assertSucceeds(ref.update(paid(40, { paidAt: PAID_AT })));
             // applyWriteOffTransaction: due to 0, writtenOff raised, one payments[] entry
             await assertSucceeds(ref.update({
-                payment: { online: 0, cash: 40, due: 0, total: 40, writtenOff: 60 }, dueAmount: 0, openDue: false,
+                payment: { online: 0, cash: 40, due: 0, total: 40, writtenOff: 60 }, openDue: false,
                 payments: [...paid(40).payments, { id: 'w', kind: 'writeOff', amount: 60, reason: 'gone', at: PAID_AT + 60000 }],
                 cleared: true, clearedAt: 'x', clearedBy: 'staff1', clearedByName: 'S', clientVersion: 3, paidAt: PAID_AT + 60000
             }));
@@ -1903,7 +1931,7 @@ function defineSuite(prefix) {
         const settle = (at, extra = {}) => ({
             payment: { online: 0, cash: 100, due: 0, total: 100 },
             payments: [...dueBill.payments, { id: `s${at}`, amount: 100, cash: 100, online: 0, at, settlesDue: true, bulk: true }],
-            dueAmount: 0, openDue: false, paidAt: at,
+            openDue: false, paidAt: at,
             cleared: true, clearedAt: 'x', clearedBy: 'manager1', clearedByName: 'M', clientVersion: 4, ...extra
         });
         for (const coll of bills) {
@@ -1951,7 +1979,7 @@ function defineSuite(prefix) {
             await assertSucceeds(ref.update(paid(40)));
             // Write-off on top: its entry's `at` again.
             const writeOff = (at, paidAt) => ({
-                payment: { online: 0, cash: 40, due: 0, total: 40, writtenOff: 60 }, dueAmount: 0, openDue: false,
+                payment: { online: 0, cash: 40, due: 0, total: 40, writtenOff: 60 }, openDue: false,
                 payments: [...paid(40).payments, { id: 'w', kind: 'writeOff', amount: 60, reason: 'gone', at }],
                 cleared: true, clearedAt: 'x', clearedBy: 'staff1', clearedByName: 'S', clientVersion: 3, paidAt
             });
@@ -1995,7 +2023,7 @@ function defineSuite(prefix) {
             await seedBill(coll, 'b', { ...noList, dueAmount: 0 });
             await assertSucceeds(as('staff1').collection(coll).doc('b').update({
                 payment: { online: 0, cash: 40, due: 60, total: 40 }, payments: [{ id: 'p1', amount: 40, at: PAID_AT }],
-                dueAmount: 60, openDue: true, clientVersion: 3
+                openDue: true, clientVersion: 3
             }));
         }
     });
@@ -2008,17 +2036,17 @@ function defineSuite(prefix) {
             const ref = as('staff1').collection(coll).doc('b');
             await assertSucceeds(ref.update(paid(40)));
             await assertSucceeds(ref.update({
-                payment: { online: 25.5, cash: 40, due: 34.5, total: 65.5 }, dueAmount: 34.5, openDue: true, clientVersion: 3,
+                payment: { online: 25.5, cash: 40, due: 34.5, total: 65.5 }, openDue: true, clientVersion: 3,
                 payments: [...paid(40).payments, { id: 'p2', amount: 25.5, cash: 0, online: 25.5, at: PAID_AT + 2000 }], paidAt: PAID_AT + 2000
             }));
             const after = [...paid(40).payments, { id: 'p2', amount: 25.5, cash: 0, online: 25.5, at: PAID_AT + 2000 }];
             await assertSucceeds(ref.update({
-                payment: { online: 25.5, cash: 74.51, due: 0, total: 100.01 }, dueAmount: 0, openDue: false, clientVersion: 3,
+                payment: { online: 25.5, cash: 74.51, due: 0, total: 100.01 }, openDue: false, clientVersion: 3,
                 payments: [...after, { id: 'p3', amount: 34.51, cash: 34.51, online: 0, at: PAID_AT + 3000 }]
             }));
             const done = [...after, { id: 'p3', amount: 34.51, cash: 34.51, online: 0, at: PAID_AT + 3000 }];
             await assertFails(ref.update({
-                payment: { online: 25.5, cash: 84.51, due: 0, total: 110.01 }, dueAmount: 0, clientVersion: 3,
+                payment: { online: 25.5, cash: 84.51, due: 0, total: 110.01 }, clientVersion: 3,
                 payments: [...done, { id: 'p4', amount: 10, cash: 10, online: 0, at: PAID_AT + 4000 }]
             }));
         }
@@ -2030,42 +2058,42 @@ function defineSuite(prefix) {
             const ref = as('staff1').collection(coll).doc('b');
             const entry = (amount, extra = {}) => [...dueBill.payments, { id: 'p1', amount, cash: amount, online: 0, at: PAID_AT, ...extra }];
             // more than the due (due 0, or due kept)
-            await assertFails(ref.update({ payment: { online: 0, cash: 150, due: 0, total: 150 }, dueAmount: 0, payments: entry(150), clientVersion: 3 }));
+            await assertFails(ref.update({ payment: { online: 0, cash: 150, due: 0, total: 150 }, payments: entry(150), clientVersion: 3 }));
             await assertFails(ref.update({ payment: { online: 0, cash: 40, due: 100, total: 40 }, payments: entry(40), clientVersion: 3 }));
             // the due goes down by more or less than the money
-            await assertFails(ref.update({ payment: { online: 0, cash: 40, due: 0, total: 40 }, dueAmount: 0, payments: entry(40), clientVersion: 3 }));
-            await assertFails(ref.update({ payment: { online: 0, cash: 40, due: 70, total: 40 }, dueAmount: 70, payments: entry(40), clientVersion: 3 }));
+            await assertFails(ref.update({ payment: { online: 0, cash: 40, due: 0, total: 40 }, payments: entry(40), clientVersion: 3 }));
+            await assertFails(ref.update({ payment: { online: 0, cash: 40, due: 70, total: 40 }, payments: entry(40), clientVersion: 3 }));
             // the due lowered with no money at all
-            await assertFails(ref.update({ payment: { online: 0, cash: 0, due: 0, total: 0 }, dueAmount: 0, clientVersion: 3 }));
-            await assertFails(ref.update({ 'payment.due': 50, dueAmount: 50, clientVersion: 3 }));
+            await assertFails(ref.update({ payment: { online: 0, cash: 0, due: 0, total: 0 }, clientVersion: 3 }));
+            await assertFails(ref.update({ 'payment.due': 50, clientVersion: 3 }));
             // money without a payments[] entry, or an entry that says something else
-            await assertFails(ref.update({ payment: { online: 0, cash: 40, due: 60, total: 40 }, dueAmount: 60, clientVersion: 3 }));
-            await assertFails(ref.update({ payment: { online: 0, cash: 40, due: 60, total: 40 }, dueAmount: 60, payments: entry(30), clientVersion: 3 }));
-            await assertFails(ref.update({ payment: { online: 0, cash: 40, due: 60, total: 40 }, dueAmount: 60, payments: entry(40, { cash: 0, online: 40 }), clientVersion: 3 }));
-            await assertFails(ref.update({ payment: { online: 0, cash: 40, due: 60, total: 40 }, dueAmount: 60, payments: entry(40, { kind: 'writeOff' }), clientVersion: 3 }));
-            await assertFails(ref.update({ payment: { online: 0, cash: 0, due: 60, total: 0, writtenOff: 40 }, dueAmount: 60, payments: entry(40), clientVersion: 3 }));
+            await assertFails(ref.update({ payment: { online: 0, cash: 40, due: 60, total: 40 }, clientVersion: 3 }));
+            await assertFails(ref.update({ payment: { online: 0, cash: 40, due: 60, total: 40 }, payments: entry(30), clientVersion: 3 }));
+            await assertFails(ref.update({ payment: { online: 0, cash: 40, due: 60, total: 40 }, payments: entry(40, { cash: 0, online: 40 }), clientVersion: 3 }));
+            await assertFails(ref.update({ payment: { online: 0, cash: 40, due: 60, total: 40 }, payments: entry(40, { kind: 'writeOff' }), clientVersion: 3 }));
+            await assertFails(ref.update({ payment: { online: 0, cash: 0, due: 60, total: 0, writtenOff: 40 }, payments: entry(40), clientVersion: 3 }));
         }
     });
 
     t('payment edits (#65): no money moves without an entry, not even a paisa at a time', async () => {
         for (const coll of bills) {
-            await seedBill(coll, 'b', { ...dueBill, payment: { online: 0, cash: 20, due: 80, total: 20 }, dueAmount: 80 });
+            await seedBill(coll, 'b', { ...dueBill, payment: { online: 0, cash: 20, due: 80, total: 20 } });
             const ref = as('staff1').collection(coll).doc('b');
-            await assertFails(ref.update({ 'payment.due': 79.99, dueAmount: 79.99, clientVersion: 3 }));
+            await assertFails(ref.update({ 'payment.due': 79.99, clientVersion: 3 }));
             await assertFails(ref.update({ 'payment.cash': 19.99, clientVersion: 3 }));
-            await assertFails(ref.update({ payment: { online: 0.01, cash: 20.01, due: 79.98, total: 20.02 }, dueAmount: 79.98, clientVersion: 3 }));
+            await assertFails(ref.update({ payment: { online: 0.01, cash: 20.01, due: 79.98, total: 20.02 }, clientVersion: 3 }));
             await assertFails(ref.update({
-                payment: { online: 0, cash: 20, due: 79.99, total: 20 }, dueAmount: 79.99, clientVersion: 3,
+                payment: { online: 0, cash: 20, due: 79.99, total: 20 }, clientVersion: 3,
                 payments: [...dueBill.payments, { id: 'z', amount: 0, cash: 0, online: 0 }]
             }));
             await assertFails(ref.update({
-                payment: { online: 50, cash: 10, due: 40, total: 60 }, dueAmount: 40, clientVersion: 3,
+                payment: { online: 50, cash: 10, due: 40, total: 60 }, clientVersion: 3,
                 payments: [...dueBill.payments, { id: 'n', amount: 40, cash: -10, online: 50 }]
             }));
             // a due under 1 paisa is written off to 0 without an entry (applyWriteOffTransaction)
-            await seedBill(coll, 't', { ...dueBill, payment: { online: 0, cash: 99.99, due: 0.01, total: 99.99 }, dueAmount: 0.01 });
+            await seedBill(coll, 't', { ...dueBill, payment: { online: 0, cash: 99.99, due: 0.01, total: 99.99 } });
             await assertSucceeds(as('staff1').collection(coll).doc('t').update({
-                payment: { online: 0, cash: 99.99, due: 0, total: 99.99, writtenOff: 0 }, dueAmount: 0, openDue: false,
+                payment: { online: 0, cash: 99.99, due: 0, total: 99.99, writtenOff: 0 }, openDue: false,
                 cleared: true, clearedAt: 'x', clearedBy: 'staff1', clearedByName: 'S', clientVersion: 3
             }));
         }
@@ -2073,15 +2101,15 @@ function defineSuite(prefix) {
 
     t('payment edits (#65): cash, online and written off never go down', async () => {
         for (const coll of bills) {
-            await seedBill(coll, 'b', { ...dueBill, payment: { online: 30, cash: 20, due: 50, total: 50 }, dueAmount: 50 });
+            await seedBill(coll, 'b', { ...dueBill, payment: { online: 30, cash: 20, due: 50, total: 50 } });
             const ref = as('staff1').collection(coll).doc('b');
             await assertFails(ref.update({ payment: { online: 0, cash: 50, due: 50, total: 50 }, clientVersion: 3 }));
             await assertFails(ref.update({ payment: { online: 30, cash: 0, due: 50, total: 30 }, clientVersion: 3 }));
             await assertFails(ref.update({
-                payment: { online: 0, cash: 60, due: 40, total: 60 }, dueAmount: 40, clientVersion: 3,
+                payment: { online: 0, cash: 60, due: 40, total: 60 }, clientVersion: 3,
                 payments: [...dueBill.payments, { id: 'p1', amount: 10, cash: 10, online: 0 }]
             }));
-            await seedBill(coll, 'w', { ...dueBill, payment: { online: 0, cash: 40, due: 0, total: 40, writtenOff: 60 }, dueAmount: 0, cleared: true, openDue: false });
+            await seedBill(coll, 'w', { ...dueBill, payment: { online: 0, cash: 40, due: 0, total: 40, writtenOff: 60 }, cleared: true, openDue: false });
             await assertFails(as('staff1').collection(coll).doc('w').update({ payment: { online: 0, cash: 40, due: 0, total: 40 }, clientVersion: 3 }));
         }
     });
@@ -2091,7 +2119,7 @@ function defineSuite(prefix) {
             await seedBill(coll, 'b', dueBill);
             const ref = as('staff1').collection(coll).doc('b');
             const pay = (cash, due, amount = cash) => ({
-                payment: { online: 0, cash, due, total: cash }, dueAmount: due, clientVersion: 3,
+                payment: { online: 0, cash, due, total: cash }, clientVersion: 3,
                 payments: [...dueBill.payments, { id: 'p1', amount, cash: amount, online: 0, at: PAID_AT }]
             });
             await assertFails(ref.update(pay(10.001, 89.999)));
@@ -2105,7 +2133,7 @@ function defineSuite(prefix) {
 
     t('payment edits (#65): a bill whose Due was the total rounded to the rupee is paid in full; an opening record up to its amount', async () => {
         for (const coll of bills) {
-            await seedBill(coll, 'r', { ...dueBill, total: 99.6, payment: { online: 0, cash: 0, due: 100, total: 0 }, dueAmount: 100 });
+            await seedBill(coll, 'r', { ...dueBill, total: 99.6, payment: { online: 0, cash: 0, due: 100, total: 0 } });
             await assertSucceeds(as('staff1').collection(coll).doc('r').update(paid(100)));
         }
         const col = `${prefix}retailSales`;
@@ -2114,25 +2142,35 @@ function defineSuite(prefix) {
         const due = rec.payment.due;
         const ref = as('staff1').collection(col).doc('o');
         await assertFails(ref.update({
-            payment: { ...rec.payment, cash: due + 50, due: 0, total: due + 50 }, dueAmount: 0, openDue: false, clientVersion: 3,
+            payment: { ...rec.payment, cash: due + 50, due: 0, total: due + 50 }, openDue: false, clientVersion: 3,
             payments: [{ id: 'm1', amount: due + 50, cash: due + 50, online: 0, at: PAID_AT }]
         }));
         await assertSucceeds(ref.update({
-            payment: { ...rec.payment, cash: due, due: 0, total: due }, dueAmount: 0, openDue: false, clientVersion: 3,
+            payment: { ...rec.payment, cash: due, due: 0, total: due }, openDue: false, clientVersion: 3,
             payments: [{ id: 'm1', amount: due, cash: due, online: 0, at: PAID_AT }]
         }));
     });
 
-    t('payment edits (#65): a bill with only top-level money fields takes a payment the app\'s way', async () => {
+    t('payment edits (#65, #126): a bill with top-level money fields takes a payment the app\'s way; the due is payment.due only', async () => {
+        const write = {
+            payment: { online: 0, cash: 40, due: 60, total: 40 }, openDue: true, clientVersion: 3,
+            payments: [{ id: 'p1', amount: 40, cash: 40, online: 0, at: PAID_AT }]
+        };
         for (const coll of bills) {
-            const flat = { userId: 'manager1', total: 100, cashPayment: 0, onlinePayment: 0, dueAmount: 100, timestamp: 1, clientVersion: 3 };
+            // As tools/migrate copies an old bill (canonicalDueBill): its due in payment.due, no dueAmount
+            const flat = { userId: 'manager1', total: 100, cashPayment: 0, onlinePayment: 0, payment: { due: 100 }, timestamp: 1, clientVersion: 3 };
             await seedBill(coll, 'f', flat);
             const ref = as('staff1').collection(coll).doc('f');
+            await assertFails(ref.update({ 'payment.due': 0, clientVersion: 3 }));
             await assertFails(ref.update({ dueAmount: 0, clientVersion: 3 }));
-            await assertSucceeds(ref.update({
-                payment: { online: 0, cash: 40, due: 60, total: 40 }, dueAmount: 60, openDue: true, clientVersion: 3,
-                payments: [{ id: 'p1', amount: 40, cash: 40, online: 0, at: PAID_AT }]
-            }));
+            await assertFails(ref.update({ ...write, dueAmount: 61 }));
+            await seedBill(coll, 'f', flat);
+            await assertSucceeds(ref.update({ ...write, dueAmount: 60 }));
+            await seedBill(coll, 'f', flat);
+            await assertSucceeds(ref.update(write));
+            // A legacy copy alone is not read: no due to pay against
+            await seedBill(coll, 'legacy', { userId: 'manager1', total: 100, cashPayment: 0, onlinePayment: 0, dueAmount: 100, timestamp: 1, clientVersion: 3 });
+            await assertFails(as('staff1').collection(coll).doc('legacy').update(write));
         }
     });
 
@@ -2144,7 +2182,7 @@ function defineSuite(prefix) {
             await assertFails(ref.update({ openDue: false, clientVersion: 3 }));
             await assertSucceeds(ref.update({ openDue: true, clientVersion: 3 }));
             const writeOff = (clearedBy) => ({
-                payment: { online: 0, cash: 0, due: 0, total: 0, writtenOff: 100 }, dueAmount: 0, openDue: false,
+                payment: { online: 0, cash: 0, due: 0, total: 0, writtenOff: 100 }, openDue: false,
                 payments: [...dueBill.payments, { id: 'w', kind: 'writeOff', amount: 100, reason: 'gone', at: PAID_AT + 5000 }],
                 cleared: true, clearedAt: 'x', clearedBy, clearedByName: 'S', clientVersion: 3, paidAt: PAID_AT + 5000
             });
@@ -2210,7 +2248,7 @@ function defineSuite(prefix) {
     t('cleared (#126): legacy bills whose due is a top-level due, worked out from the total or not a number are not cleared or hidden by the flags', async () => {
         const allowed = [];
         const legacy = {
-            top: { userId: 'manager1', total: 100, due: 100, timestamp: 1, clientVersion: 3 },
+            top: { userId: 'manager1', total: 100, due: 100, timestamp: 1, openDue: true, clientVersion: 3 },
             derived: { userId: 'manager1', total: 100, cashPayment: 40, timestamp: 1, openDue: true, clientVersion: 3 },
             paid: { userId: 'manager1', total: 100, amountPaid: 10, timestamp: 1, openDue: true, clientVersion: 3 },
             text: { userId: 'manager1', total: 100, payment: { due: '100' }, timestamp: 1, openDue: true, clientVersion: 3 },
@@ -2255,11 +2293,11 @@ function defineSuite(prefix) {
         const settle = (uid) => ({
             payment: { online: 0, cash: 100, due: 0, total: 100 },
             payments: [...dueBill.payments, { id: 's', amount: 100, cash: 100, online: 0, at: PAID_AT, settlesDue: true }],
-            dueAmount: 0, openDue: false, paidAt: PAID_AT,
+            openDue: false, paidAt: PAID_AT,
             cleared: true, clearedAt: 'x', clearedBy: uid, clearedByName: 'S', clientVersion: 4
         });
         const writeOff = (uid) => ({
-            payment: { online: 0, cash: 0, due: 0, total: 0, writtenOff: 100 }, dueAmount: 0, openDue: false,
+            payment: { online: 0, cash: 0, due: 0, total: 0, writtenOff: 100 }, openDue: false,
             payments: [...dueBill.payments, { id: 'w', kind: 'writeOff', amount: 100, reason: 'gone', at: PAID_AT }],
             cleared: true, clearedAt: 'x', clearedBy: uid, clearedByName: 'S', clientVersion: 4, paidAt: PAID_AT
         });
@@ -2287,18 +2325,18 @@ function defineSuite(prefix) {
                 b.update(as(uid).collection(coll).doc('all2'), settle(uid));
                 await step(`${coll} ${uid} complete all`, b.commit());
                 await ok('paisa', ref => ref.update({
-                    payment: { online: 0, cash: 99.99, due: 0, total: 99.99, writtenOff: 0 }, dueAmount: 0, openDue: false,
+                    payment: { online: 0, cash: 99.99, due: 0, total: 99.99, writtenOff: 0 }, openDue: false,
                     cleared: true, clearedAt: 'x', clearedBy: uid, clearedByName: 'S', clientVersion: 4
-                }), { ...windowBill(HOUR), payment: { online: 0, cash: 99.99, due: 0.01, total: 99.99 }, dueAmount: 0.01 });
+                }), { ...windowBill(HOUR), payment: { online: 0, cash: 99.99, due: 0.01, total: 99.99 } });
                 // a part payment (party payment) keeps the bill open
                 await ok('part', ref => ref.update({
-                    payment: { online: 0, cash: 40, due: 60, total: 40 }, dueAmount: 60, openDue: true, clientVersion: 4,
+                    payment: { online: 0, cash: 40, due: 60, total: 40 }, openDue: true, clientVersion: 4,
                     payments: [...dueBill.payments, { id: 'pp', amount: 40, cash: 40, online: 0, at: PAID_AT, bulk: true }], paidAt: PAID_AT
                 }));
                 // a logged edit that settles the due may close it; openDue follows the due (prepareStockRecord)
                 await seedBill(coll, `edit-${uid}`, windowBill(HOUR));
                 await step(`${coll} ${uid} edit`, logged(uid, coll, `edit-${uid}`, 1, {
-                    payment: { online: 0, cash: 100, due: 0, total: 100 }, dueAmount: 0, openDue: false
+                    payment: { online: 0, cash: 100, due: 0, total: 100 }, openDue: false
                 }));
                 await seedBill(coll, `edit2-${uid}`, windowBill(HOUR));
                 await step(`${coll} ${uid} edit2`, logged(uid, coll, `edit2-${uid}`, 1, { total: 120, openDue: true }));
@@ -2308,7 +2346,7 @@ function defineSuite(prefix) {
                 // the legacy backfill sets openDue to the due
                 await ok('bf', ref => ref.update({ openDue: true, clientVersion: 4 }), { ...windowBill(HOUR), openDue: false });
                 await ok('bf0', ref => ref.update({ openDue: false, clientVersion: 4 }),
-                    { ...windowBill(HOUR), payment: { online: 0, cash: 100, due: 0, total: 100 }, dueAmount: 0 });
+                    { ...windowBill(HOUR), payment: { online: 0, cash: 100, due: 0, total: 100 } });
             }
             // void: own bill only, no payments since it was saved
             const noPay = { ...windowBill(HOUR) };
@@ -2324,7 +2362,7 @@ function defineSuite(prefix) {
             const c = as('staff1').collection(coll);
             // cash on a non-owner's bill needs a timestamp from today (#147, noBackdatedCash)
             const bill = (payment, extra = {}) => ({ userId: 'staff1', total: 99.6, payment, clientVersion: 3, createdAt: serverTimestamp(), timestamp: Date.now(), ...extra });
-            await assertSucceeds(c.doc('rounded').set(bill({ cash: 100, online: 0, due: 0, total: 100 }, { cashPayment: 100, onlinePayment: 0, dueAmount: 0 })));
+            await assertSucceeds(c.doc('rounded').set(bill({ cash: 100, online: 0, due: 0, total: 100 }, { cashPayment: 100, onlinePayment: 0 })));
             await assertSucceeds(c.doc('split').set(bill({ cash: 50, online: 20.6, due: 29, total: 99.6 })));
             await assertFails(c.doc('over').set(bill({ cash: 101, online: 0, due: 0, total: 101 })));
             await assertFails(c.doc('overDue').set(bill({ cash: 0, online: 0, due: 500, total: 500 })));
@@ -2351,9 +2389,9 @@ function defineSuite(prefix) {
     t('bill create (#65): no payments[], paidAt or cleared on a new bill (non-owners)', async () => {
         for (const coll of bills) {
             const c = as('staff1').collection(coll);
-            const bill = { userId: 'staff1', total: 100, payment: { cash: 0, online: 0, due: 100, total: 0 }, dueAmount: 100, clientVersion: 3, createdAt: serverTimestamp(), timestamp: Date.now() };
+            const bill = { userId: 'staff1', total: 100, payment: { cash: 0, online: 0, due: 100, total: 0 }, clientVersion: 3, createdAt: serverTimestamp(), timestamp: Date.now() };
             await assertSucceeds(c.doc('ok').set(bill));
-            await assertFails(c.doc('p').set({ ...bill, payment: { cash: 100, online: 0, due: 0, total: 100 }, dueAmount: 0,
+            await assertFails(c.doc('p').set({ ...bill, payment: { cash: 100, online: 0, due: 0, total: 100 },
                 payments: [{ id: 'x', amount: 100, cash: 100, online: 0, at: Date.now() - 5 * DAY }] }));
             await assertFails(c.doc('pa').set({ ...bill, paidAt: Date.now() }));
             await assertFails(c.doc('cl').set({ ...bill, cleared: false }));
@@ -2366,7 +2404,7 @@ function defineSuite(prefix) {
             await seedBill(coll, 'b', dueBill);
             const ref = as('staff1').collection(coll).doc('b');
             const at = (ms) => ({
-                payment: { online: 0, cash: 40, due: 60, total: 40 }, dueAmount: 60, openDue: true, clientVersion: 3,
+                payment: { online: 0, cash: 40, due: 60, total: 40 }, openDue: true, clientVersion: 3,
                 payments: [...dueBill.payments, { id: 'p1', amount: 40, cash: 40, online: 0, at: ms }]
             });
             await assertFails(ref.update(at(Date.now() - DAY)));
@@ -2377,7 +2415,7 @@ function defineSuite(prefix) {
             // a back-dated write-off is refused too
             await seedBill(coll, 'w', dueBill);
             await assertFails(as('staff1').collection(coll).doc('w').update({
-                payment: { online: 0, cash: 0, due: 0, total: 0, writtenOff: 100 }, dueAmount: 0, openDue: false,
+                payment: { online: 0, cash: 0, due: 0, total: 0, writtenOff: 100 }, openDue: false,
                 payments: [...dueBill.payments, { id: 'w', kind: 'writeOff', amount: 100, reason: 'gone', at: Date.now() - 3 * DAY }],
                 cleared: true, clearedAt: 'x', clearedBy: 'staff1', clearedByName: 'S', clientVersion: 3
             }));
@@ -2387,9 +2425,9 @@ function defineSuite(prefix) {
     t('bill full edit (#65): the creator cannot pay more than the total', async () => {
         for (const coll of bills) {
             await seedBill(coll, 'b', { ...dueBill, userId: 'staff1', ...fresh() });
-            await assertFails(logged('staff1', coll, 'b', 1, { 'payment.cash': 200, 'payment.due': 0, dueAmount: 0, clientVersion: 3 }));
+            await assertFails(logged('staff1', coll, 'b', 1, { 'payment.cash': 200, 'payment.due': 0, clientVersion: 3 }));
             await assertFails(logged('staff1', coll, 'b', 1, { total: 50, clientVersion: 3 }));
-            await assertSucceeds(logged('staff1', coll, 'b', 1, { 'payment.cash': 100, 'payment.due': 0, dueAmount: 0, clientVersion: 3 }));
+            await assertSucceeds(logged('staff1', coll, 'b', 1, { 'payment.cash': 100, 'payment.due': 0, clientVersion: 3 }));
         }
     });
 

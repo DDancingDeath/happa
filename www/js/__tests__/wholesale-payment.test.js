@@ -146,7 +146,7 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
         jest.spyOn(console, 'error').mockImplementation(() => {});
         jest.spyOn(Helpers, 'generateBillNumber').mockResolvedValue('W20261022-001');
         saved = [];
-        // The repository adds the dueAmount mirror to the record it saves (repos/bill-due.js)
+        // No dueAmount copy is saved (#126)
         FirebaseService.saveWholesaleSale = jest.fn(async (sale) => { saved.push(withCanonicalDue(sale, null, { full: true })); return sale; });
         AppState.items = [{ id: 'rice', name: 'Rice' }];
         AppState.stock = { rice: { quantity: 500, rate: 30.5 } };
@@ -176,7 +176,7 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
 
         expect(sale).toMatchObject({
             total: 4025, expenses: 25, profit: 950, profitPercent: 23.6,
-            cashPayment: 2000, onlinePayment: 1000, dueAmount: 1025,
+            cashPayment: 2000, onlinePayment: 1000,
             payment: { cash: 2000, online: 1000, due: 1025, total: 4025 }
         });
         expect(readPayment(sale)).toEqual({ total: 4025, cash: 2000, online: 1000, due: 1025, paid: 3000 });
@@ -310,7 +310,8 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
     test('a fully paid cash sale needs no name and its cash reaches the drawer', async () => {
         setVal('wholesaleCashPayment', 4025);
         const sale = await WholesaleSalesManager.completeSale();
-        expect(sale).toMatchObject({ customerName: '', cashPayment: 4025, dueAmount: 0, payment: { due: 0 } });
+        expect(sale).toMatchObject({ customerName: '', cashPayment: 4025, payment: { due: 0 } });
+        expect(sale).not.toHaveProperty('dueAmount');
         expect(readPayment(sale).cash).toBe(4025);
     });
 });

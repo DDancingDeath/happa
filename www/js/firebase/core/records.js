@@ -68,7 +68,7 @@ export const paymentSignature = (d) => {
     return stableJson([
         p.due ?? null, p.cash ?? null, p.online ?? null, p.total ?? null,
         payments.length, payments.length ? payments[payments.length - 1] : null,
-        d.dueAmount ?? null, !!d.cleared
+        !!d.cleared
     ]);
 };
 

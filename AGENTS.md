@@ -73,9 +73,9 @@ and is wrapped in **Capacitor** for Android distribution.
    (`.npmrc`), run `node scripts/check-lockfile.js --fix` before committing.
 6. **Money-related changes get extra care.** A bill's one stored due is
    `payment.due` (#126). Set only `payment.due`: the legacy top-level
-   `dueAmount` mirror is written by `withCanonicalDue()`
-   (`www/js/firebase/repos/bill-due.js`) on every bill write of the
-   repositories; read a due with `readPayment()` / `outstandingDue()` and
+   `dueAmount` is neither written nor read (`withCanonicalDue()` in
+   `www/js/firebase/repos/bill-due.js` leaves it out of every bill write of the
+   repositories); read a due with `readPayment()` / `outstandingDue()` and
    round with `round2()` (`www/js/utils/money.js`). Multi-device updates to the same document
    (payments, cash sessions, counters) must use transactions, `arrayUnion`
    or `FieldValue.increment`, never read-modify-write of the whole doc.
@@ -262,12 +262,19 @@ In order:
 - **Money and weight text (#129)**: write ₹ only through `formatRupees()` / `formatRate()` /
   `formatAmount()` and kg through `formatKg()` (`utils/money.js`; calculations.md MONEY-TEXT,
   KG-TEXT). An inline `₹${…}` or `'₹' +` in `www/js` fails `check:review` and `review-rules.test.js`.
-- **Money fields**: `payment.due` is a bill's one stored due (#126). Older
-  bills may also (or only) carry a top-level `dueAmount`, a legacy `due` or
-  only `amountPaid`: `readPayment()` reads every shape (BILL-PAY). Writers set
-  `payment.due` only; `withCanonicalDue()` (`firebase/repos/bill-due.js`) writes
-  the `dueAmount` mirror, and the review rule `due-amount-vs-payment-due-drift`
-  blocks any other `dueAmount` write.
+- **Money fields**: `payment.due` is a bill's one stored due (#126). The app
+  reads the due from `payment.due` only (`readPayment()`, BILL-PAY); the legacy
+  top-level `dueAmount` / `due` of older bills are not read, and `tools/migrate`
+  stores every bill it copies with its old due in `payment.due`
+  (`canonicalDueBill()`, `legacyDue()`: only the migration, the due backfill and
+  number check AC5 read the old fields). Writers set `payment.due` only; no code
+  writes `dueAmount` (`withCanonicalDue()` leaves it out, and the review rule
+  `due-amount-vs-payment-due-drift` blocks a write). **For one release the rules
+  tolerate the mirror** an app from before #126 still writes (`dueMirrorOk()`:
+  `dueAmount` absent, dropped or equal to `payment.due`; also in edit records and
+  payments), so a phone on the old code never has a bill refused. Tighten it to
+  "never set" in a later PR, once every phone is on the post-cut-over APK; the rules
+  tests "#126 (one release)" pin the tolerance until then.
 - **One tap = one write (#70, #95)**: every button that saves money or stock
   runs its write through `Helpers.runExclusive(key, buttonSelector, fn)`, which
   ignores a second tap and disables the buttons (`aria-busy`) until the save

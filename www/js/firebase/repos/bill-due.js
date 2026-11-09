@@ -1,26 +1,16 @@
 /**
- * @fileoverview DUE-WRITE (#126): the one writer of a bill's stored due. `payment.due` is the
- * canonical field (BILL-PAY's due, docs/calculations.md); the top-level `dueAmount` is a legacy
- * mirror that only this module writes, always equal to `payment.due`. Every bill write of the
- * repositories (new bills, checked edits, due payments, write-offs, settle-all, party payments)
- * and tools/migrate pass their fields through `withCanonicalDue()` just before writing; the code
- * that builds those fields sets `payment.due` only. `dueBackfillFields()` is what the owner's one-time
- * backfill (DUE-BACKFILL) writes on an older bill. Pure: no Firestore, so tools/migrate imports it.
- *
- * The mirror goes on the same bills as before #126, so no stored shape changes:
- *  - a whole-bill write (new bill, edit) that sets the money: always;
- *  - a whole-bill write that keeps every money field as stored (a name or note edit): `dueAmount`
- *    stays as it is;
- *  - a partial update (payment, write-off): only when the stored bill has `dueAmount`.
+ * @fileoverview DUE-WRITE (#126): a bill's one stored due is `payment.due` (BILL-PAY's due,
+ * docs/calculations.md). The legacy top-level `dueAmount` copy is neither written nor read: every
+ * bill write of the repositories (new bills, checked edits, due payments, write-offs, settle-all,
+ * party payments) passes its fields through `withCanonicalDue()` just before writing, which leaves
+ * `dueAmount` out. tools/migrate stores each bill it copies with `canonicalDueBill()` (the due the
+ * old app read, in `payment.due`); `dueBackfillFields()` is what the owner's one-time backfill
+ * (DUE-BACKFILL) writes on an older bill. Pure: no Firestore, so tools/migrate imports it.
  * @module firebase/repos/bill-due
  */
 
-import { outstandingDue, readPayment } from '../../utils/money.js';
+import { legacyDue, readPayment } from '../../utils/money.js';
 import { billEditChanges, withUnchangedFields } from '../../utils/bill-edits.js';
-
-/** Money fields a bill edit sets together with its payment (bill-edits EDIT_FIELDS without dueAmount and the date). */
-const MONEY_FIELDS = ['items', 'grandTotal', 'amountPayable', 'total', 'billTotal', 'saleTotal', 'laborCharges',
-    'payment', 'cashPayment', 'onlinePayment'];
 
 const isMap = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
@@ -30,69 +20,68 @@ const canonical = (v) => {
     return JSON.stringify(v ?? null);
 };
 
-const setsMoney = (record, stored) => !stored || MONEY_FIELDS.some(k => canonical(record[k]) !== canonical(stored[k]));
-
 /**
- * Sets the `dueAmount` mirror of the `payment.due` this write stores (in place). A write
- * that stores no numeric `payment.due` (a void, a legacy bill kept as it was) is unchanged.
- * @param {Object} fields - the whole bill (`full`) or the fields of a partial update
- * @param {?Object} stored - the bill as stored now (null for a new bill)
- * @param {{full?: boolean}} [opts] - `full`: fields is the whole bill (set), else an update
+ * Leaves the legacy `dueAmount` out of a bill write (in place): the due is `payment.due` only. A
+ * whole-bill set() then drops a `dueAmount` an older bill still has; an update never touches it.
+ * @param {Object} fields - the whole bill or the fields of a partial update
  * @returns {Object} fields
  */
-export function withCanonicalDue(fields, stored, { full = false } = {}) {
-    const due = fields?.payment?.due;
-    if (!isMap(fields?.payment) || typeof due !== 'number' || !Number.isFinite(due)) return fields;
-    const mirror = full
-        ? setsMoney(fields, stored)
-        : isMap(stored) && Object.prototype.hasOwnProperty.call(stored, 'dueAmount');
-    if (mirror) fields.dueAmount = due;
+export function withCanonicalDue(fields) {
+    if (isMap(fields)) delete fields.dueAmount;
     return fields;
 }
 
+/**
+ * The copy of a stored bill tools/migrate writes (#126): `payment.due` = the due the old app read
+ * (legacyDue: `payment.due`, else `dueAmount`, else `due`, else total − paid), `dueAmount` left
+ * out, every other field as stored, so every figure reads the same from `payment.due` alone.
+ * @param {Object} bill - the bill as stored in the old project
+ * @returns {Object} a new object
+ */
+export function canonicalDueBill(bill) {
+    if (!isMap(bill)) return bill;
+    const out = { ...bill, payment: { ...(isMap(bill.payment) ? bill.payment : {}), due: legacyDue(bill) } };
+    delete out.dueAmount;
+    return out;
+}
+
 /** Why a stored bill needs the backfill (DUE-BACKFILL). */
-export const DUE_BACKFILL_REASONS = Object.freeze(['missing', 'notNumber', 'mirror']);
+export const DUE_BACKFILL_REASONS = Object.freeze(['missing', 'notNumber']);
 
 /**
  * DUE-BACKFILL (#126): the fields the owner's one-time backfill writes on a stored bill so its due
- * is stored once, as a number in `payment.due`, with `dueAmount` (where the bill has it) equal to
- * it. The value is the due every screen shows now (BILL-PAY: `payment.due` when it is a number,
- * else `readPayment()`), so no figure moves. Null when nothing is needed: the due is already a
- * number in `payment.due` and `dueAmount` is absent or equal, or the bill is voided (it counts
- * nowhere and the rules refuse any change to it). `fields: null` with reason `changes`: a bill
- * whose figures the write would move, or whose `payment` is not a map; never written (none is known).
+ * is stored as a number in `payment.due`: the due the bill showed before #126's cut-over (legacyDue),
+ * so no figure moves from what the old app showed. Null when nothing is needed: the due is already
+ * a number in `payment.due`, nothing is owed either way, or the bill is voided (it counts nowhere and
+ * the rules refuse any change to it). `fields: null` with reason `changes`: a bill whose figures the
+ * write would move, or whose `payment` is not a map; never written (none is known).
  * @param {Object} bill - the bill as stored
- * @returns {?{reason: 'missing'|'notNumber'|'mirror'|'changes', fields: ?Object}}
+ * @returns {?{reason: 'missing'|'notNumber'|'changes', fields: ?Object}}
  */
 export function dueBackfillFields(bill) {
     if (!isMap(bill) || bill.voided === true) return null;
     const p = isMap(bill.payment) ? bill.payment : null;
     const stored = p && Object.prototype.hasOwnProperty.call(p, 'due') ? p.due : undefined;
-    const numeric = typeof stored === 'number' && Number.isFinite(stored);
-    const due = numeric ? stored : readPayment(bill).due;
-    const mirrorOff = Object.prototype.hasOwnProperty.call(bill, 'dueAmount') && bill.dueAmount !== due;
-    if (numeric && !mirrorOff) return null;
-    // Nothing owed and no other copy: storing `due: 0` changes nothing anyone reads
-    if (!numeric && due === 0 && !Object.prototype.hasOwnProperty.call(bill, 'dueAmount')) return null;
+    if (typeof stored === 'number' && Number.isFinite(stored)) return null;
+    const due = legacyDue(bill);
+    if (due === 0 && readPayment(bill).due === 0) return null;
     // A `payment` stored as something else than a map, or a NaN / Infinity where the write goes (no
     // edit record can match it: the rules see NaN != NaN), is left for a person to look at
     const nonFinite = (v) => typeof v === 'number' && !Number.isFinite(v);
     if ((bill.payment != null && !p) || nonFinite(bill.dueAmount) || (p && Object.values(p).some(nonFinite))) return { reason: 'changes', fields: null };
-    const reason = numeric ? 'mirror' : stored === undefined ? 'missing' : 'notNumber';
-    const fields = withCanonicalDue({ payment: { ...(p || {}), due } }, bill);
-    const after = { ...bill, ...fields };
-    const same = canonical(readPayment(after)) === canonical(readPayment(bill)) && outstandingDue(after) === outstandingDue(bill);
+    const reason = stored === undefined ? 'missing' : 'notNumber';
+    const fields = { payment: { ...(p || {}), due } };
+    const same = canonical(readPayment({ ...bill, ...fields })) === canonical({ ...readPayment(bill), due });
     return same ? { reason, fields } : { reason: 'changes', fields: null };
 }
 
 /**
- * DUE-BACKFILL's edit record fields (#121): what `fields` changes on `bill`, with `payment` and
- * `dueAmount` recorded even when unchanged, so the record proves which due the bill showed before
- * and reads as one line (bill-edits isDueBackfillEdit).
+ * DUE-BACKFILL's edit record fields (#121): what `fields` changes on `bill`, with `payment`
+ * recorded even when unchanged (bill-edits isDueBackfillEdit).
  * @param {Object} bill - the bill as stored
  * @param {Object} fields - dueBackfillFields(bill).fields (and what goes with them)
  * @returns {{fields: Object}}
  */
 export function dueBackfillChanges(bill, fields) {
-    return withUnchangedFields(billEditChanges(bill, { ...bill, ...fields }), bill, ['payment', 'dueAmount']);
+    return withUnchangedFields(billEditChanges(bill, { ...bill, ...fields }), bill, ['payment']);
 }

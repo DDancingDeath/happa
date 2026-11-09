@@ -244,8 +244,8 @@ const ownerOnly = () => {
  * One DUE-BACKFILL write, in its own transaction (a bill update with its edit record costs the
  * rules about 60 expressions and 5 document reads; several bills in one request would pass their
  * limits): re-reads the bill and, when it still needs it (dueBackfillFields, from this fresh copy),
- * writes the due fields with clientVersion and its edit record (#121: before/after of payment /
- * dueAmount, the owner, a fixed reason), so what was replaced stays on the bill.
+ * writes payment.due with clientVersion and its edit record (#121: before/after of payment, the
+ * owner, a fixed reason), so what was replaced stays on the bill.
  * @returns {Promise<?Object>} the bill as stored now when written; null when gone or not needed
  */
 async function writeDueBill(collKey, id) {
@@ -280,7 +280,7 @@ export const dueBackfillMethods = {
     async checkDueFields() {
         ownerOnly();
         const db = getDb();
-        const out = { checked: 0, todo: [], byReason: { missing: 0, notNumber: 0, mirror: 0 }, changes: [] };
+        const out = { checked: 0, todo: [], byReason: { missing: 0, notNumber: 0 }, changes: [] };
         const docs = [];
         for (const spec of HISTORY_COLLECTIONS.filter(s => s.dues)) {
             const snap = await getWithRetry(a => (a ? db.collection(col(spec.key)).limit(RETRY_LIMIT_BASE + a) : db.collection(col(spec.key))), `${spec.label} due check`);

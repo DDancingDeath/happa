@@ -26,7 +26,7 @@ export const REASON_MAX = 300;
  */
 export const EDIT_FIELDS = Object.freeze([
     'items', 'customerName', 'grandTotal', 'amountPayable', 'total', 'billTotal', 'saleTotal', 'laborCharges',
-    'payment', 'cashPayment', 'onlinePayment', 'dueAmount', 'date', 'timestamp'
+    'payment', 'cashPayment', 'onlinePayment', 'date', 'timestamp'
 ]);
 
 /** Fields written when a bill is voided (firestore.rules voidOk). */

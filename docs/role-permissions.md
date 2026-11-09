@@ -194,12 +194,12 @@ canDeleteBill    = owner && voided   // OD-14: void first, for everyone
 - Money on bills (#65), for everyone but the owner (since OD-14 the payment, write-off and clearing
   checks below hold for the owner too; only the split check on creates and full edits does not):
   - **Creates and full edits** (`changedMoneyOk`): payment amounts (`payment.cash|online|due|writtenOff|total`,
-    `cashPayment`, `onlinePayment`, `dueAmount`) are numbers ≥ 0 in whole paise (no NaN or Infinity),
+    `cashPayment`, `onlinePayment`) are numbers ≥ 0 in whole paise (no NaN or Infinity),
     totals are finite numbers, and cash + online + written off + due is at most the bill total + ₹1
     (the bill screen's own split check, `SPLIT_TOLERANCE`; "Cash"/"Due" fill in the total rounded to
     the rupee). The total is read as `billTotal()` reads it (`grandTotal`, `amountPayable`, `total`,
     `billTotal`, `saleTotal`). Only `tools/migrate` writes opening records (`openingBalance`); the
-    legacy `amountPaid` / top-level `due` are refused.
+    legacy `amountPaid` / top-level `due` are refused, and a `dueAmount` must equal `payment.due` (#126: an app from before it still writes that mirror; tolerated for one release, nothing reads it; dropping it is allowed).
   - **Payments and write-offs** (`paymentMoneyOk`): the write sets `payment.cash`, `online` and `due`
     (as `applyPaymentTransaction` / `applyWriteOffTransaction` do); cash, online and written off never
     go down, each goes up by what the new `payments[]` entry (amount > 0) says (`entryParts`), and the
@@ -215,7 +215,7 @@ canDeleteBill    = owner && voided   // OD-14: void first, for everyone
   - **New bills** never carry `payments`, `paidAt` or `cleared` (the app doesn't send them; they come only
     with payments).
   - **Clearing** (`clearOk`, through `clearFieldsOk`): `cleared` only becomes true with the due settled
-    (≤ 1 paisa, read as `payment.due`, else `dueAmount`, else `due`; a bill with none of them as a
+    (≤ 1 paisa, read as `payment.due` only, #126; a bill without it as a
     number is not cleared, and `openDue` on it goes false only if it wasn't true) in the same write,
     `clearedBy` is the caller, and `openDue` goes false only when cleared or
     settled. This holds inside the edit window too: `cleared` / `openDue` are not edit-logged fields, so a
@@ -318,7 +318,7 @@ greyed with a "Voided" chip and the reason, and its details show who voided it, 
 and stores what changed: `<bills>/{id}/edits/{n}` with `n`, `at` (server time), `by` (uid),
 `byName`, `reason` and `fields`: each changed field (bill-edits `EDIT_FIELDS` = rules
 `editLoggedFields()`: `items`, `customerName`, the totals, `laborCharges`, `payment`,
-`cashPayment`, `onlinePayment`, `dueAmount`, `date`, `timestamp`) as `{before, after}`, the item
+`cashPayment`, `onlinePayment`, `date`, `timestamp`; no `dueAmount` since #126) as `{before, after}`, the item
 list whole (the screen diffs it line by line, `editLines`). The notes (`comments`,
 `printComments`) are not recorded: a notes-only change needs no reason and writes no record. The
 bill's `editCount` goes up by one in the same transaction (`updateBillChecked`). The bill details
@@ -347,7 +347,7 @@ debt, M5, and it stays on the bill and in the customer's statement) or a recorde
 `openDue` follow the due (`clearFieldsOk`); `payments[]` is append-only; a bill is deleted only once
 voided. The owner may still change the notes, a bill's creator (`userId`) and `createdAt` without a
 record, and the owner's full edits skip the split check (old bills keep legacy money shapes) but never
-change the legacy `due`, `amountPaid` or `openingBalance`. Each app path writes its audit entry in
+change the legacy `due`, `amountPaid` or `openingBalance`, or set a `dueAmount` other than `payment.due`. Each app path writes its audit entry in
 the same transaction or batch as the change (D-3): edit (`EDIT_BILL` / `EDIT_SALE`), void, delete,
 payment, write-off (`CLEAR_DUE`, id `wo_<entry id>`) and Complete all due. A refused edit says so
 plainly ("Not saved: the server refused this change…", or "Your phone's time is wrong…" when the

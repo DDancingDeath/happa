@@ -1,45 +1,50 @@
 /**
- * @fileoverview DUE-WRITE (#126): withCanonicalDue, the one writer of a bill's `dueAmount`
- * mirror of `payment.due` (tests/property/due-writer.test.js checks it against what the app
- * stored before, on every due shape). Here: its rules, and that nothing else writes dueAmount.
+ * @fileoverview DUE-WRITE (#126): a bill's one stored due is `payment.due`. withCanonicalDue leaves
+ * the legacy `dueAmount` out of every bill write; canonicalDueBill is the copy tools/migrate writes
+ * (tests/property/due-writer.test.js checks both against what the app stored and showed before, on
+ * every due shape). Here: their rules, and that nothing in the app writes dueAmount.
  */
 import fs from 'fs';
 import path from 'path';
-import { withCanonicalDue } from '../firebase/repos/bill-due.js';
+import { canonicalDueBill, withCanonicalDue } from '../firebase/repos/bill-due.js';
 
 const bill = { id: 'b1', total: 1000, items: [{ name: 'Rice', qty: 10, rate: 100, total: 1000 }], cashPayment: 400, onlinePayment: 0, dueAmount: 600, payment: { cash: 400, online: 0, due: 600, total: 1000 } };
 
 describe('withCanonicalDue', () => {
-    test('a partial update mirrors payment.due only on a bill that has dueAmount', () => {
-        expect(withCanonicalDue({ payment: { cash: 500, online: 0, due: 500 } }, bill)).toEqual({ payment: { cash: 500, online: 0, due: 500 }, dueAmount: 500 });
-        const { dueAmount, ...noMirror } = bill;
+    test('a partial update or a whole bill never carries dueAmount; everything else is kept', () => {
+        expect(withCanonicalDue({ payment: { cash: 500, online: 0, due: 500 }, dueAmount: 500 })).toEqual({ payment: { cash: 500, online: 0, due: 500 } });
+        const { dueAmount, ...rest } = bill;
         expect(dueAmount).toBe(600);
-        expect(withCanonicalDue({ payment: { due: 0 } }, noMirror)).toEqual({ payment: { due: 0 } });
-    });
-
-    test('a new bill always gets the mirror; an edit gets it when it sets money, else keeps dueAmount as stored', () => {
-        expect(withCanonicalDue({ payment: { cash: 0, online: 0, due: 70, total: 70 } }, null, { full: true }).dueAmount).toBe(70);
-        const drifted = { ...bill, dueAmount: 650 };
-        expect(withCanonicalDue({ ...drifted, customerName: 'Ravi', note: undefined }, drifted, { full: true }).dueAmount).toBe(650);
-        expect(withCanonicalDue({ ...drifted, items: [{ name: 'Rice', qty: 11, rate: 100, total: 1100 }] }, drifted, { full: true }).dueAmount).toBe(600);
-        expect(withCanonicalDue({ ...drifted, payment: { ...bill.payment, due: 500, cash: 500 } }, drifted, { full: true }).dueAmount).toBe(500);
-    });
-
-    test('a write without a numeric payment.due (a void, a legacy bill kept as it was) is left alone', () => {
-        const voidFields = { voided: true, openDue: false };
-        expect(withCanonicalDue(voidFields, bill)).toEqual({ voided: true, openDue: false });
-        const legacy = { total: 500, dueAmount: '200', payment: { cash: 300, due: null } };
-        expect(withCanonicalDue({ ...legacy }, null, { full: true })).toEqual(legacy);
-        expect(withCanonicalDue({ ...legacy, payment: { cash: 300, due: '200' } }, legacy, { full: true }).dueAmount).toBe('200');
-        expect(withCanonicalDue({ payment: 'cash' }, bill)).toEqual({ payment: 'cash' });
-        expect(withCanonicalDue(null, bill)).toBeNull();
+        expect(withCanonicalDue({ ...bill, customerName: 'Ravi' })).toEqual({ ...rest, customerName: 'Ravi' });
+        expect(withCanonicalDue({ voided: true, openDue: false })).toEqual({ voided: true, openDue: false });
+        expect(withCanonicalDue(null)).toBeNull();
     });
 });
 
-test('only firebase/repos/bill-due.js writes dueAmount (the review rule due-amount-vs-payment-due-drift checks new lines)', () => {
+describe('canonicalDueBill (tools/migrate)', () => {
+    test('payment.due = the due the old app read; dueAmount dropped; nothing else changes', () => {
+        const { dueAmount, ...rest } = bill;
+        expect(dueAmount).toBe(600);
+        expect(canonicalDueBill(bill)).toEqual(rest);
+        // payment.due wins over a drifted copy
+        expect(canonicalDueBill({ ...bill, dueAmount: 650 })).toEqual(rest);
+        expect(canonicalDueBill({ total: 500, cashPayment: '300', dueAmount: '200' })).toEqual({ total: 500, cashPayment: '300', payment: { due: 200 } });
+        expect(canonicalDueBill({ total: 500, payment: { cash: 300, due: null }, dueAmount: 200 })).toEqual({ total: 500, payment: { cash: 300, due: 200 } });
+        expect(canonicalDueBill({ total: 90, cashPayment: 40, due: 50 })).toEqual({ total: 90, cashPayment: 40, due: 50, payment: { due: 50 } });
+        expect(canonicalDueBill({ grandTotal: 970, amountPaid: 500 })).toEqual({ grandTotal: 970, amountPaid: 500, payment: { due: 470 } });
+        expect(canonicalDueBill({ total: 500, payment: { cash: 700, due: -200 }, dueAmount: -200 })).toEqual({ total: 500, payment: { cash: 700, due: -200 } });
+        expect(canonicalDueBill(null)).toBeNull();
+    });
+
+    test('does not change the bill it copies', () => {
+        const stored = JSON.parse(JSON.stringify(bill));
+        canonicalDueBill(stored);
+        expect(stored).toEqual(bill);
+    });
+});
+
+test('nothing in the app writes dueAmount (the review rule due-amount-vs-payment-due-drift checks new lines)', () => {
     const root = path.join(__dirname, '..');
-    // bill-share.js: a reprint payload, never stored
-    const allowed = { 'firebase/repos/bill-due.js': 1, 'utils/bill-share.js': 1 };
     const found = {};
     const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).forEach(e => {
         const full = path.join(dir, e.name);
@@ -51,5 +56,5 @@ test('only firebase/repos/bill-due.js writes dueAmount (the review rule due-amou
         }
     });
     walk(root);
-    expect(found).toEqual(allowed);
+    expect(found).toEqual({});
 });

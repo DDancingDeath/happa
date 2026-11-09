@@ -562,7 +562,7 @@ const AdminManager = {
                 const count = check.todo.length;
                 box.innerHTML = `<p>${tx('ui.duefix.checked', { checked: check.checked })}</p>`
                     + (count
-                        ? `<p>${tx('ui.duefix.todo', { count, missing: check.byReason.missing, notNumber: check.byReason.notNumber, mirror: check.byReason.mirror })}</p>
+                        ? `<p>${tx('ui.duefix.todo', { count, missing: check.byReason.missing, notNumber: check.byReason.notNumber })}</p>
                            <button class="add-item-btn" data-onclick="admin.backfillDueFields()" style="padding: 8px 16px;">✅ ${tx('ui.duefix.run', { count })}</button>`
                         : `<p>${tx('ui.duefix.none')}</p>`)
                     + (check.changes.length ? `<p>${tx('ui.duefix.changes', { count: check.changes.length })}</p>` : '');

@@ -7,7 +7,7 @@
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
-import { readPayment } from '../utils/money.js';
+import { legacyDue, readPayment } from '../utils/money.js';
 import { dueBackfillFields } from '../firebase/repos/bill-due.js';
 import { describeEdit } from '../utils/bill-edits.js';
 import { legacyBill } from '../../../tests/fixtures/due-shapes.js';
@@ -27,7 +27,7 @@ beforeEach(() => {
     AppState.userName = 'Owner';
     const bill = (id, type, shape, extra = {}) => ({ ...legacyBill({ id, type, shape, total: 1000, cash: 300, online: 100 }), ...extra });
     fake.seed('dev_retailSales', [bill('r-modern', 'retail', 'modern'), bill('r-top', 'retail', 'topOnly'), bill('r-str', 'retail', 'stringDue'),
-        bill('r-void', 'retail', 'topOnly', { voided: true })]);
+        bill('r-void', 'retail', 'topOnly', { voided: true }), bill('r-due', 'retail', 'dueOnly')]);
     fake.seed('dev_purchases', [bill('p-drift', 'purchase', 'drift'), bill('p-null', 'purchase', 'nullDue'), bill('p-open', 'purchase', 'opening')]);
     fake.seed('dev_wholesaleSales', [bill('w-paid', 'wholesale', 'amountPaid'), bill('w-pay', 'wholesale', 'paymentOnly')]);
 });
@@ -43,40 +43,45 @@ const stored = (coll) => [...fake.raw(`dev_${coll}`).entries()].map(([id, d]) =>
 const all = () => ['retailSales', 'purchases', 'wholesaleSales'].flatMap(stored);
 
 test('check lists the bills to fix and writes nothing; the backfill stores each due once; a second run writes nothing', async () => {
-    const before = all().map(b => [b.id, readPayment(b)]);
+    // What the old app showed (#126: the app now reads payment.due only; r-due shows ₹0 until it is backfilled)
+    const shown = (b) => (b.voided ? readPayment(b) : { ...readPayment(b), due: legacyDue(b) });
+    const before = all().map(b => [b.id, shown(b)]);
+    expect(readPayment(fake.raw('dev_retailSales').get('r-due')).due).toBe(0);
     const check = await FirebaseService.checkDueFields();
-    expect(check.checked).toBe(9);
+    expect(check.checked).toBe(10);
     expect(check.todo.map(t => [t.id, t.reason]).sort()).toEqual([
-        ['p-drift', 'mirror'], ['p-null', 'notNumber'], ['r-str', 'missing'], ['r-top', 'missing'], ['w-paid', 'missing']]);
-    expect(check.byReason).toEqual({ missing: 3, notNumber: 1, mirror: 1 });
+        ['p-null', 'notNumber'], ['r-due', 'missing'], ['r-str', 'missing'], ['r-top', 'missing'], ['w-paid', 'missing']]);
+    expect(check.byReason).toEqual({ missing: 4, notNumber: 1 });
     expect(check.changes).toEqual([]);
-    expect(all().map(b => [b.id, readPayment(b)])).toEqual(before);
+    expect(all().map(b => [b.id, shown(b)])).toEqual(before);
 
     expect(await FirebaseService.backfillDueFields(check.todo, check.checked)).toEqual({ written: 5, failed: 0 });
     const after = all();
     expect(after.map(b => [b.id, readPayment(b)])).toEqual(before);
-    expect(fake.raw('dev_retailSales').get('r-top')).toMatchObject({ payment: { due: 600 }, dueAmount: 600, clientVersion: 5 });
-    expect(fake.raw('dev_retailSales').get('r-str')).toMatchObject({ payment: { due: 600 }, dueAmount: 600, cashPayment: '300' });
-    expect(fake.raw('dev_purchases').get('p-drift')).toMatchObject({ payment: { due: 600 }, dueAmount: 600, editCount: 1 });
-    // What was replaced stays on the bill: its edit record (#121)
-    expect(fake.raw('dev_purchases/p-drift/edits').get('1')).toMatchObject({
-        n: 1, by: 'o1', reason: 'Due stored in one place; no amount changed', fields: { dueAmount: { before: 650, after: 600 } }
+    expect(fake.raw('dev_retailSales').get('r-top')).toMatchObject({ payment: { due: 600 }, clientVersion: 5 });
+    expect(fake.raw('dev_retailSales').get('r-str')).toMatchObject({ payment: { due: 600 }, cashPayment: '300' });
+    expect(fake.raw('dev_retailSales').get('r-due')).toMatchObject({ payment: { due: 600 }, editCount: 1 });
+    // A drifted dueAmount is read by nothing any more: left as it is
+    expect(fake.raw('dev_purchases').get('p-drift')).not.toHaveProperty('editCount');
+    // What was replaced stays on the bill: its edit record (#121), payment only (the rules take no dueAmount)
+    expect(fake.raw('dev_retailSales/r-due/edits').get('1')).toMatchObject({
+        n: 1, by: 'o1', reason: 'Due stored in one place; no amount changed', fields: { payment: { before: null, after: { due: 600 } } }
     });
-    expect(Object.keys(fake.raw('dev_purchases/p-drift/edits').get('1').fields).sort()).toEqual(['dueAmount', 'payment']);
-    expect(describeEdit(fake.raw('dev_purchases/p-drift/edits').get('1'), 'en')).toEqual(['Due stored in one place — no amount changed']);
+    expect(Object.keys(fake.raw('dev_retailSales/r-due/edits').get('1').fields)).toEqual(['payment']);
+    expect(describeEdit(fake.raw('dev_retailSales/r-due/edits').get('1'), 'en')).toEqual(['Due: — → ₹600']);
     expect(fake.raw('dev_purchases/p-null/edits').get('1').fields.payment).toEqual({
         before: { cash: 300, online: 100, due: null }, after: { cash: 300, online: 100, due: 600 } });
     expect(fake.raw('dev_wholesaleSales').get('w-paid').payment).toEqual({ due: 600 });
     expect(fake.raw('dev_wholesaleSales').get('w-paid')).not.toHaveProperty('dueAmount');
     expect(fake.raw('dev_retailSales').get('r-void')).not.toHaveProperty('payment');
     after.forEach(b => expect(dueBackfillFields(b)).toBeNull());
-    expect(fake.raw('dev_stockCheckpoints').get('legacyScan').dueFields).toMatchObject({ v: 1, checked: 9, written: 5, failed: 0, complete: true, byUserId: 'o1' });
+    expect(fake.raw('dev_stockCheckpoints').get('legacyScan').dueFields).toMatchObject({ v: 1, checked: 10, written: 5, failed: 0, complete: true, byUserId: 'o1' });
     expect(FirebaseService.dueBackfillState()).toMatchObject({ written: 5 });
 
     expect((await FirebaseService.checkDueFields()).todo).toEqual([]);
     expect(await FirebaseService.backfillDueFields(check.todo, check.checked)).toEqual({ written: 0, failed: 0 });
     expect(all()).toEqual(after);
-    expect(fake.raw('dev_purchases/p-drift/edits').size).toBe(1);
+    expect(fake.raw('dev_retailSales/r-due/edits').size).toBe(1);
 });
 
 test('a payment recorded after the check is kept: the bill is re-read and left alone when it no longer needs it', async () => {

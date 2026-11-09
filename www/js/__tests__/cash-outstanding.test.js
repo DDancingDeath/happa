@@ -266,9 +266,9 @@ function useFakeShop() {
 }
 
 // Yesterday's credit sale (₹1000, ₹600 due) and today's (₹795, ₹495 due); a supplier bill with ₹1,068 to pay.
-const OLD_SALE = { id: 'r0', billNumber: 'S0', customerName: 'Sita', date: '20/10/2026', total: 1000, cashPayment: 400, dueAmount: 600, payment: { cash: 400, online: 0, due: 600, total: 400 } };
-const TODAY_SALE = { id: 'r1', billNumber: 'S1', customerName: 'Sita', date: '2026-10-21T09:00:00', total: 795, cashPayment: 300, dueAmount: 495, payment: { cash: 300, online: 0, due: 495, total: 300 } };
-const PURCHASE = { id: 'p1', billNumber: 'P1', customerName: 'Ram', date: '2026-10-19T09:00:00', grandTotal: 2568, cashPayment: 1500, dueAmount: 1068, payment: { cash: 1500, online: 0, due: 1068, total: 1500 } };
+const OLD_SALE = { id: 'r0', billNumber: 'S0', customerName: 'Sita', date: '20/10/2026', total: 1000, cashPayment: 400, payment: { cash: 400, online: 0, due: 600, total: 400 } };
+const TODAY_SALE = { id: 'r1', billNumber: 'S1', customerName: 'Sita', date: '2026-10-21T09:00:00', total: 795, cashPayment: 300, payment: { cash: 300, online: 0, due: 495, total: 300 } };
+const PURCHASE = { id: 'p1', billNumber: 'P1', customerName: 'Ram', date: '2026-10-19T09:00:00', grandTotal: 2568, cashPayment: 1500, payment: { cash: 1500, online: 0, due: 1068, total: 1500 } };
 const OPEN_SESSION = { id: 's21', date: '2026-10-21', openingBalance: 1000, signedOut: false, duePayments: [] };
 
 describe('#98 one due-payment path for Outstanding and Cash', () => {
@@ -291,12 +291,12 @@ describe('#98 one due-payment path for Outstanding and Cash', () => {
         return CashManagementManager.todayTransactions;
     };
 
-    test('Outstanding cash payment reduces the bill (both due fields) and adds a drawer leg to today\'s open session', async () => {
+    test('Outstanding cash payment reduces the bill\'s due and adds a drawer leg to today\'s open session', async () => {
         setVal('payment_r0', 250);
         await OutstandingManager.recordPayment('r0', 'retail');
         const bill = ctx.fake.raw('retailSales').get('r0');
         expect(bill.payment).toMatchObject({ cash: 650, online: 0, due: 350 });
-        expect(bill.dueAmount).toBe(350);
+        expect(bill).not.toHaveProperty('dueAmount');
         expect(bill.payments).toEqual([expect.objectContaining({ amount: 250, cash: 250, online: 0 })]);
         const legs = ctx.fake.raw('cashManagement').get('s21').duePayments;
         expect(legs).toEqual([expect.objectContaining({ id: bill.payments[0].id, billId: 'r0', type: 'received', method: 'cash', amount: 250, cash: 250 })]);
@@ -338,7 +338,7 @@ describe('#98 one due-payment path for Outstanding and Cash', () => {
 
         const bill = ctx.fake.raw('retailSales').get('r0');
         expect(bill.payment.due).toBe(500);
-        expect(bill.dueAmount).toBe(500);
+        expect(bill).not.toHaveProperty('dueAmount');
         const legs = ctx.fake.raw('cashManagement').get('s21').duePayments;
         expect(legs).toHaveLength(1);
         expect(legs[0]).toMatchObject({ billId: 'r0', cash: 100, type: 'received' });
@@ -435,7 +435,7 @@ describe('#107 Outstanding: cash + online split', () => {
 
         const bill = ctx.fake.raw('retailSales').get('r0');
         expect(bill.payment).toMatchObject({ cash: 500, online: 200, due: 300 });
-        expect(bill.dueAmount).toBe(300);
+        expect(bill).not.toHaveProperty('dueAmount');
         const pay = readPayment(bill);
         expect(pay.cash + pay.online + pay.due).toBe(bill.total); // M1
         expect(bill.payments[0]).toMatchObject({ amount: 300, cash: 100, online: 200 });
@@ -690,13 +690,13 @@ describe('#104 "Mark as cleared" asks how and records it (no silent write-off)',
         expect([...list.querySelectorAll('button')].map(b => b.textContent.trim())).toContain('Mark as Cleared…');
     });
 
-    test('write-off: both due fields to 0, a write-off entry with amount/reason/who/when, not counted as money', async () => {
+    test('write-off: the due to 0, a write-off entry with amount/reason/who/when, not counted as money', async () => {
         answer('writeOff', 'Customer moved away');
         const ok = await OutstandingManager.markAsCleared('r1', 'retail');
         expect(ok).toBe(true);
         const bill = ctx.fake.raw('retailSales').get('r1');
         expect(bill.payment).toMatchObject({ cash: 300, online: 0, due: 0, writtenOff: 495 });
-        expect(bill.dueAmount).toBe(0);
+        expect(bill).not.toHaveProperty('dueAmount');
         expect(bill).toMatchObject({ cleared: true, clearedBy: 'u1', clearedByName: 'Owner', openDue: false });
         expect(bill.payments).toEqual([expect.objectContaining({ kind: 'writeOff', amount: 495, reason: 'Customer moved away', recordedBy: 'Owner', recordedById: 'u1' })]);
         expect(typeof bill.payments[0].at).toBe('number');
@@ -774,7 +774,7 @@ describe('#104 "Mark as cleared" asks how and records it (no silent write-off)',
         expect(await OutstandingManager.markAsCleared('r0', 'retail')).toBe(true);
         const bill = ctx.fake.raw('retailSales').get('r0');
         expect(bill.payment).toMatchObject({ cash: 1000, due: 0 });
-        expect(bill.dueAmount).toBe(0);
+        expect(bill).not.toHaveProperty('dueAmount');
         expect(bill.cleared).toBe(true);
         expect(bill.payments[0]).toMatchObject({ amount: 600, cash: 600, online: 0, settlesDue: true });
         expect(ctx.fake.raw('cashManagement').get('s21').duePayments[0]).toMatchObject({ cash: 600, method: 'cash' });
@@ -839,9 +839,9 @@ describe('#89 expenses appear / disappear at once, before the server answers', (
 
 describe('#98 review: the Cash-tab bill picker never guesses the bill', () => {
     const ctx = useFakeShop();
-    const RAMESH = { id: 'r9', billNumber: 'S9', customerName: 'Ramesh', date: '19/10/2026', total: 500, dueAmount: 500, payment: { cash: 0, online: 0, due: 500 } };
-    const RAM_P = { id: 'p9', billNumber: 'P9', customerName: 'Ram', date: '18/10/2026', grandTotal: 900, dueAmount: 900, payment: { cash: 0, online: 0, due: 900 } };
-    const HINDI = { id: 'r8', billNumber: 'S8', customerName: 'सीता  देवी', date: '18/10/2026', total: 300, dueAmount: 300, payment: { cash: 0, online: 0, due: 300 } };
+    const RAMESH = { id: 'r9', billNumber: 'S9', customerName: 'Ramesh', date: '19/10/2026', total: 500, payment: { cash: 0, online: 0, due: 500 } };
+    const RAM_P = { id: 'p9', billNumber: 'P9', customerName: 'Ram', date: '18/10/2026', grandTotal: 900, payment: { cash: 0, online: 0, due: 900 } };
+    const HINDI = { id: 'r8', billNumber: 'S8', customerName: 'सीता  देवी', date: '18/10/2026', total: 300, payment: { cash: 0, online: 0, due: 300 } };
     beforeEach(() => {
         ctx.fake.seed('retailSales', [OLD_SALE, TODAY_SALE, RAMESH, HINDI]);
         ctx.fake.seed('cashManagement', [OPEN_SESSION]);

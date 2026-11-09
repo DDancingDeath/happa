@@ -14,8 +14,8 @@ import { t } from '../i18n/index.js';
 import { withCanonicalDue } from '../firebase/repos/bill-due.js';
 import * as clockSkew from '../utils/clock-skew.js';
 
-/** What the repository writes for an edit: the record with its dueAmount mirror (repos/bill-due.js). */
-const asRepo = (b, list) => withCanonicalDue(b, (list || []).find(x => x.id === b.id) || null, { full: true });
+/** What the repository writes for an edit: the record without the legacy dueAmount (repos/bill-due.js). */
+const asRepo = (b) => withCanonicalDue(b);
 
 const BILL = { id: 'b1', userId: 'creator', items: [{ itemId: 'x', qty: 1, rate: 1 }], payment: { due: 0 } };
 
@@ -334,8 +334,9 @@ describe('#129: editing a bill saved with paise', () => {
         setVal('customerName', 'Ramesh Kumar');
         const saved = await BillingManager.saveEditedBill();
         expect(update).toHaveBeenCalledTimes(1);
-        const money = ['items', 'billTotal', 'laborCharges', 'laborCalc', 'totalPackets', 'grandTotal', 'amountPayable', 'cashPayment', 'onlinePayment', 'dueAmount', 'payment'];
+        const money = ['items', 'billTotal', 'laborCharges', 'laborCalc', 'totalPackets', 'grandTotal', 'amountPayable', 'cashPayment', 'onlinePayment', 'payment'];
         money.forEach(k => expect(saved[k]).toEqual(bill[k]));
+        expect(saved).not.toHaveProperty('dueAmount');
         expect(saved.customerName).toBe('Ramesh Kumar');
     });
 
@@ -345,7 +346,7 @@ describe('#129: editing a bill saved with paise', () => {
         PurchaseManager.updateTotals();
         // ₹988 payable; the legs 488 + 500 already add up to it
         const saved = await BillingManager.saveEditedBill();
-        expect(saved).toMatchObject({ laborCharges: 12, grandTotal: 988, cashPayment: 488, onlinePayment: 500, dueAmount: 0 });
+        expect(saved).toMatchObject({ laborCharges: 12, grandTotal: 988, cashPayment: 488, onlinePayment: 500 });
         expect(saved.payment).toEqual({ cash: 488, online: 500, due: 0, total: 988 });
     });
 
@@ -367,7 +368,7 @@ describe('#129: editing a bill saved with paise', () => {
         const saved = await BillingManager.saveEditedBill();
         expect(update).toHaveBeenCalledTimes(1);
         expect(saved.payment).toEqual({ cash: 301, online: 301, due: 385, total: 987 });
-        expect([saved.cashPayment, saved.onlinePayment, saved.dueAmount]).toEqual([301, 301, 385]);
+        expect([saved.cashPayment, saved.onlinePayment, saved.payment.due]).toEqual([301, 301, 385]);
     });
 
     test('a retail sale with a ₹0.50 old due: a money edit leaves ₹0 due, not ₹1', async () => {
@@ -398,7 +399,7 @@ describe('#129: editing a bill saved with paise', () => {
         setVal('saleDueAmount', 0.5);
         const saved = await BillingManager.saveEditedBill();
         expect(updateSale).toHaveBeenCalledTimes(2);
-        expect(saved).toMatchObject({ total: 1000, dueAmount: 0 });
+        expect(saved).toMatchObject({ total: 1000, payment: { due: 0 } });
         expect(saved.payment).toEqual({ cash: 1000, online: 0, due: 0, total: 1000 });
     });
 });

@@ -2,8 +2,9 @@
 /**
  * @fileoverview Money helpers shared by finance/outstanding/reports screens.
  * Bills exist in several schemas:
- *   - payment: { cash, online, due, total }        (current; payment.total may be bill total or amount paid)
- *   - cashPayment / onlinePayment / dueAmount      (top-level, written alongside payment by newer bills)
+ *   - payment: { cash, online, due, total }        (current; payment.total may be bill total or amount paid;
+ *                                                   payment.due is the bill's one stored due, #126)
+ *   - cashPayment / onlinePayment                  (top-level, written alongside payment by newer bills)
  *   - amountPaid                                   (legacy, non-online amount paid)
  *   - grandTotal / amountPayable / total / billTotal / saleTotal for the bill total
  * @module utils/money
@@ -186,7 +187,9 @@ export function billLineTotal(bill, isPurchase) {
 /**
  * Normalised payment view of a bill across all known schemas.
  * The payment object wins over top-level fields because outstanding/wholesale
- * payment recording only updates payment.*.
+ * payment recording only updates payment.*. The due is `payment.due` only (#126); a bill
+ * without it (never written by this app or tools/migrate) owes total − paid when it
+ * records a payment, else nothing.
  * @param {Bill|null|undefined} bill
  * @returns {{total: number, cash: number, online: number, due: number, paid: number}}
  */
@@ -200,11 +203,8 @@ export function readPayment(bill) {
     const online = firstPresent(p.online, bill.onlinePayment);
     const paid = round2((cash || 0) + (online || 0));
 
-    let due = firstPresent(p.due, bill.dueAmount, bill.due);
-    if (due === null) {
-        // Legacy docs with only amountPaid/cash/online: derive due from total.
-        due = (cash !== null || online !== null) ? Math.max(0, total - paid) : 0;
-    }
+    let due = toMoney(p.due);
+    if (due === null) due = (cash !== null || online !== null) ? Math.max(0, total - paid) : 0;
 
     return {
         total,
@@ -213,6 +213,21 @@ export function readPayment(bill) {
         due: round2(due),
         paid
     };
+}
+
+/**
+ * The due the app read before #126's cut-over: `payment.due`, else the legacy top-level
+ * `dueAmount`, else `due`, else total − paid as readPayment works it out. Only tools/migrate
+ * (it stores this as `payment.due` on every bill it copies), the owner's due backfill and
+ * number check AC5 use it; screens read readPayment() / outstandingDue().
+ * @param {Bill|null|undefined} bill
+ * @returns {number}
+ */
+export function legacyDue(bill) {
+    if (!bill || typeof bill !== 'object') return 0;
+    const p = bill.payment && typeof bill.payment === 'object' ? bill.payment : {};
+    const stored = firstPresent(p.due, bill.dueAmount, bill.due);
+    return stored === null ? readPayment(bill).due : round2(stored);
 }
 
 /**

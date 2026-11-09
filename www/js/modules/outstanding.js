@@ -485,8 +485,7 @@ export class OutstandingManager {
 
     /**
      * The one way to record a due payment (#98), used by Outstanding and the
-     * Cash tab: reduces the bill's due (payment.due + payments[]; the dueAmount mirror
-     * follows, repos/bill-due.js)
+     * Cash tab: reduces the bill's due (payment.due + payments[])
      * and, when a cash session is open today, adds the payment to it as a
      * drawer leg — all in one transaction, with its audit entry (D-3). The payment's id
      * belongs to services/payment-intents.js (same bill, amounts and action = same id until
@@ -644,7 +643,7 @@ export class OutstandingManager {
     static takeServerPayment(billType, billId, server) {
         const local = this.findBill(billType, billId);
         if (!local || !server) return;
-        ['payment', 'payments', 'dueAmount', 'openDue', 'paidAt', 'cleared', 'clearedAt', 'clearedBy', 'clearedByName']
+        ['payment', 'payments', 'openDue', 'paidAt', 'cleared', 'clearedAt', 'clearedBy', 'clearedByName']
             .forEach(k => { if (Object.prototype.hasOwnProperty.call(server, k)) local[k] = server[k]; });
     }
 
@@ -769,8 +768,7 @@ export class OutstandingManager {
     /**
      * Record a payment against a bill inside a Firestore transaction.
      * Re-reads the bill from the server, recomputes due from the fresh doc and
-     * writes only payment fields (payment.*, payments[], and dueAmount if
-     * present). When today's cash session is open, the same payment (same id)
+     * writes only payment fields (payment.*, payments[]). When today's cash session is open, the same payment (same id)
      * is added to its duePayments in the same transaction.
      * @param {string} transactionType 'purchase' | 'retail' | 'wholesale'
      * @param {Object} bill
@@ -816,9 +814,7 @@ export class OutstandingManager {
             if (entry?.id && entries.some(p => p && p.id === entry.id)) {
                 tipInfo.retried = true;
                 // The stored payment state as it is, for this phone's copy (nothing is written)
-                const { dueAmount } = fresh;
-                const current = { payment: fresh.payment, payments: entries, openDue: fresh.openDue,
-                    ...(Object.prototype.hasOwnProperty.call(fresh, 'dueAmount') ? { dueAmount } : {}) };
+                const current = { payment: fresh.payment, payments: entries, openDue: fresh.openDue };
                 return { result: current };
             }
 
@@ -1366,8 +1362,8 @@ export class OutstandingManager {
         return { settled, total: sumMoney(settled, s => s.amount) };
     }
     /**
-     * Write off the remaining due in one transaction: payment.due to 0 (and its
-     * dueAmount mirror, repos/bill-due.js), payment.writtenOff raised by the amount, and a payments[] entry
+     * Write off the remaining due in one transaction: payment.due to 0,
+     * payment.writtenOff raised by the amount, and a payments[] entry
      * { kind: 'writeOff', amount, reason, who, when } — never counted as money; a due to receive
      * counts as a bad debt (M5). Its CLEAR_DUE audit entry (`auditLogs/wo_<entry id>`) is
      * written by the same transaction (D-3); a run that finds nothing due writes neither.

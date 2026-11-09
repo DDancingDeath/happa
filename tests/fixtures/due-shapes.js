@@ -1,7 +1,9 @@
 /**
  * @fileoverview Bills in every due shape stored by the app and its predecessors (#126), and the
  * figures the screens show from them. Shared by the due-writer and due-backfill tests: a change
- * to how a due is written or backfilled must leave every one of these figures as it was.
+ * to how a due is written, migrated or backfilled must leave every one of these figures as the
+ * app showed them before #126's cut-over (shownBefore: each bill with the due the old app read,
+ * known from how it was generated, in payment.due).
  */
 import fc from 'fast-check';
 import { outstandingTotals } from '../../www/js/utils/business-metrics.js';
@@ -29,9 +31,11 @@ const DAY = 86400000;
  *  stringDue    top-level amounts stored as strings, no payment object
  *  topDue       cashPayment + a top-level `due`
  *  amountPaid   only amountPaid (cash): the due is derived as total − paid
+ *  dueOnly      only dueAmount, no paid amounts at all (an unpaid credit bill of an older app)
+ *  topDueOnly   only a top-level `due`
  *  opening      opening record carried from the old app (tools/migrate)
  */
-export const SHAPES = ['modern', 'drift', 'paymentOnly', 'topOnly', 'paymentNoDue', 'nullDue', 'stringDue', 'topDue', 'amountPaid', 'opening'];
+export const SHAPES = ['modern', 'drift', 'paymentOnly', 'topOnly', 'paymentNoDue', 'nullDue', 'stringDue', 'topDue', 'amountPaid', 'dueOnly', 'topDueOnly', 'opening'];
 export const TYPES = ['purchase', 'retail', 'wholesale'];
 const PARTIES = ['Ravi', ' ravi ', 'Sita Devi', 'Gupta Traders'];
 
@@ -58,6 +62,8 @@ export function legacyBill({ id, type, shape, total, cash, online, party = 'Ravi
         case 'stringDue': Object.assign(b, { cashPayment: String(cash), onlinePayment: String(online), dueAmount: String(due) }); break;
         case 'topDue': Object.assign(b, { cashPayment: cash + online, due }); break;
         case 'amountPaid': Object.assign(b, { amountPaid: cash + online }); break;
+        case 'dueOnly': Object.assign(b, { dueAmount: due }); break;
+        case 'topDueOnly': Object.assign(b, { due }); break;
         case 'opening':
             Object.assign(b, {
                 total: 0, cashPayment: 0, onlinePayment: 0, dueAmount: due, payment: { cash: 0, online: 0, due, total: 0 },
@@ -69,7 +75,22 @@ export function legacyBill({ id, type, shape, total, cash, online, party = 'Ravi
     }
     if (cleared) Object.assign(b, { cleared: true, clearedAt: b.date, clearedBy: 'u0' });
     if (voided) Object.assign(b, { voided: true, voidReason: 'test' });
+    // Every shape stands for the same bill: the app read this due on it before #126
+    Object.defineProperty(b, 'oldDue', { value: due, enumerable: false });
     return b;
+}
+
+/**
+ * The bill as the app showed it before #126: its generated due in payment.due (not worked out by
+ * app code), no dueAmount. The current readers read on it every figure the old app read on `bill`.
+ * @param {Object} bill - from legacyBill / billArb, before any copy
+ * @returns {Object}
+ */
+export function shownBefore(bill) {
+    if (typeof bill.oldDue !== 'number') throw new Error(`${bill.id}: no oldDue (copied?)`);
+    const out = { ...bill, payment: { ...(bill.payment && typeof bill.payment === 'object' ? bill.payment : {}), due: bill.oldDue } };
+    delete out.dueAmount;
+    return out;
 }
 
 /** A generated bill of any shape (amounts whole rupees, now and then with paise as saved before #129). */

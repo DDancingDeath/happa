@@ -94,8 +94,7 @@ export function buildReprintPayload(bill, type) {
         type: kind,
         isPurchase: kind === 'purchase',
         isCopy: true,
-        payment: { ...(bill?.payment || {}), cash: pay.cash, online: pay.online, due },
-        dueAmount: due
+        payment: { ...(bill?.payment || {}), cash: pay.cash, online: pay.online, due }
     };
     if (kind === 'wholesale') {
         const total = billTotal(bill);
