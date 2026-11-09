@@ -39,3 +39,19 @@ Seed (E2E emulator, today): the usual bills plus a purchase with ₹240 labour d
 | Money › Spending › Labour | [before](od03/money-labour-before-en.png) | [after](od03/money-labour-after-en.png) | [hi](od03/money-labour-after-hi.png) |
 
 After: Paid to labourers ₹350 (2 expenses; Tea is not labour), "₹110 more paid than deducted" (350 − 240). "To pay labour" is now labelled "(estimate)"; its figures are unchanged (₹684 today, ₹702 this month).
+
+## P1.9: Profit (estimate), caveat once, "vs 1–9 Oct", plurals (`p1-9/`)
+
+Seed: the usual bills, plus a Dal sale of 12 kg (3 h ago) before its purchase (30 min ago), a Wheat sale below cost (5 kg at ₹20, cost ₹22) and a Rice sale on 9 Oct.
+
+| Screen | Before | After (en) | After (hi) |
+|---|---|---|---|
+| Money › Profit | [before](p1-9/money-profit-before-en.png) | [after](p1-9/money-profit-after-en.png) | [hi](p1-9/money-profit-after-hi.png) |
+| Money › How we got here | [before](p1-9/money-ladder-before-en.png) | [after](p1-9/money-ladder-after-en.png) | [hi](p1-9/money-ladder-after-hi.png) |
+| Insights › To do (below cost) | [before](p1-9/insights-below-cost-before-en.png) | [after](p1-9/insights-below-cost-after-en.png) | [hi](p1-9/insights-below-cost-after-hi.png) |
+
+The figure is the same ₹4,170 before and after.
+- Before: "Profit", "▲ 109% vs Oct", and the 12 kg caveat said twice.
+- After: "Profit (estimate)", "▲ 109% vs 1–9 Oct", and the caveat once.
+
+Insights: "1 times …, ₹ lost: ₹10" becomes "once (5 kg), losing ₹10".
