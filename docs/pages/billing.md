@@ -4,6 +4,14 @@ Part of the [owner guide](../owner-guide.md) (one file per page). Hindi: [billin
 
 While a bill is being typed:
 
+- **Customer / supplier name**: typing lists the names already on the bills on this phone
+  (purchases for a supplier, retail sales for a customer), newest first, with what is open
+  on them, the same amount as the "Already owes" line (PARTY). Latin and Hindi spellings
+  find each other ("ramesh" finds "रमेश कुमार"). Tap a name, or pick it with ↓ ↑ and Enter
+  (Esc closes the list). Nothing extra is read from the internet. After you leave the
+  field, a new name close to a known one ("Seeta Devi", "Sita Devi Ji") shows "Did you mean
+  Sita Devi?": **Use** takes the known name, "Yes, it's right" keeps yours. It never stops
+  the bill.
 - **Line amount** (BF-LINE) = kg × rate, rounded to the rupee.
 - **Bill total** (BF-TOTAL) = the sum of the lines.
 - **Labour** (BF-LAB) = labour rate × heavy packets (above 30 kg by default),

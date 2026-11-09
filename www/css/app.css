@@ -4290,6 +4290,87 @@ input[type="number"] {
   color: var(--accent-text);
 }
 
+/* Name suggestions while typing a customer / supplier (#139 phase 1) */
+.party-suggest {
+  position: absolute;
+  top: calc(100% + var(--sp-1));
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 50vh;
+  margin: 0;
+  padding: var(--sp-1) 0;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-control);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.party-suggest[hidden] {
+  display: none;
+}
+
+.party-suggest-option {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-height: 44px;
+  padding: var(--sp-2) var(--sp-3);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.party-suggest-option:hover,
+.party-suggest-option[aria-selected="true"] {
+  background: var(--accent-soft);
+}
+
+.party-suggest-option[aria-selected="true"] {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.party-suggest-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--fs-body);
+}
+
+.party-suggest-due {
+  flex: none;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+.party-suggest-due.has-due {
+  color: var(--on-warning-soft);
+}
+
+/* "Did you mean …?" under the name: a warning, never a stop */
+.party-name-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--warning-border);
+  border-radius: var(--r-control);
+  background: var(--warning-soft);
+  color: var(--on-warning-soft);
+  font-size: var(--fs-sm);
+}
+
+.party-name-hint[hidden] {
+  display: none;
+}
+
+.party-name-hint-text {
+  flex: 1 1 12em;
+}
+
 #billing .bill-section-title {
   margin: var(--sp-5) 0 var(--sp-2);
   font-family: var(--font-display);

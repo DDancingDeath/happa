@@ -16,6 +16,7 @@ import { Helpers } from '../utils/helpers.js';
 import { billLabour, isActiveBill, readPayment, sumMoney } from '../utils/money.js';
 import { buildPaymentSplit, computeRetailTotals, editKeepsMoney } from '../utils/calc/billing.js';
 import { BillChecksUI } from '../ui/bill-highlight.js';
+import { bindPartySuggest } from '../ui/party-suggest.js';
 import { findBillIndex } from '../utils/history-window.js';
 import { TIME_MS, AUTO_SAVE_DELAY } from '../utils/constants.js';
 import { PurchaseManager } from './purchase.js';
@@ -2021,6 +2022,8 @@ if (typeof window !== 'undefined') {
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') BillingManager.prepareBillDates();
     });
+    // Name suggestions on the customer / supplier fields (#139 phase 1)
+    bindPartySuggest();
 }
 
 on(REFRESH.billingDropdown, () => {
