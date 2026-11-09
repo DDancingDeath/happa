@@ -63,7 +63,7 @@ const langReady = loadCatalogue(getLang()).catch(e => console.error('Language ca
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261108bm-ux-92-polish';
+const BUILD_ID = '20261108bn-test-crash';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -1462,7 +1462,7 @@ window.app = {
     diagnostics: {
         ...Object.fromEntries(['init', 'runNumberChecks', 'showTab', 'loadData', 'loadAuditLogs', 'filterByType',
         'filterAuditLogs', 'deleteError', 'clearAll', 'runSpeedCheck', 'copyStatus', 'shareStatus', 'exportAuditCsv', 'printAudit',
-        'exportErrorReport']
+        'exportErrorReport', 'sendTestError', 'sendTestCrash']
             .map(name => [name, (...args) => loadDiagnostics().then(m => m[name](...args))]))
     },
     

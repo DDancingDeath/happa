@@ -12,6 +12,9 @@ import { DiagnosticsManager } from '../modules/diagnostics.js';
 import { AppState } from '../utils/state.js';
 import { SyncStatus } from '../ui/sync-status.js';
 import { PrinterService } from '../services/printer.js';
+import { TelemetryService, TEST_ERROR_REF } from '../services/telemetry.js';
+import { CrashReports } from '../services/crash-reports.js';
+import { UIManager } from '../ui/ui-manager.js';
 
 const baseStatus = (over = {}) => ({
     appVersion: '1.0.0', buildId: '20261101a-x', deviceId: 'abc123', online: true, connection: '4g',
@@ -140,5 +143,138 @@ describe('Diagnostics › Status tab', () => {
         await DiagnosticsManager.showTab('status');
         expect(document.querySelector('[data-status-row]')).toBeNull();
         expect(document.getElementById('diagnosticsTabsContainer').textContent).not.toContain('Status');
+    });
+});
+
+describe('Diagnostics › Status: test error reports (#122)', () => {
+    const plugin = () => ({ recordException: jest.fn(async () => {}), crash: jest.fn(async () => {}) });
+    const native = (p) => {
+        window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: (n) => n === 'FirebaseCrashlytics', Plugins: { FirebaseCrashlytics: p } };
+    };
+    const card = () => document.querySelector('.diag-errtest');
+
+    beforeEach(() => {
+        document.body.innerHTML = '<div id="diagnosticsSubtitle"></div><div id="diagnosticsTabsContainer"></div><div id="diagnosticsContainer"></div>';
+        AppState.userRole = 'owner';
+        AppState.currentUser = { uid: 'u1' };
+        localStorage.clear();
+    });
+    afterEach(() => {
+        AppState.userRole = null;
+        AppState.currentUser = null;
+        CrashReports.state = 'unavailable';
+        delete window.Capacitor;
+        delete global.firebase;
+        TelemetryService.errorBuffer = [];
+        TelemetryService.backoffUntil = 0;
+        jest.restoreAllMocks();
+    });
+
+    test('website: the owner sends a test error through the error telemetry; no crash button', async () => {
+        const set = jest.fn(async () => {});
+        global.firebase = { firestore: () => ({ collection: () => ({ doc: (id) => ({ set: (d) => set(id, d) }) }) }) };
+        await DiagnosticsManager.showTab('status');
+        expect(card().dataset.crashReach).toBe('web');
+        expect(card().querySelector('[data-errtest="crash"]')).toBeNull();
+        expect(card().querySelector('[data-errtest-note]').textContent).toMatch(/only in the Android app/);
+        const errorsBefore = TelemetryService.sessionErrors;
+        await DiagnosticsManager.sendTestError();
+        expect(TelemetryService.sessionErrors).toBe(errorsBefore);
+        expect(set).toHaveBeenCalledTimes(1);
+        const [id, doc] = set.mock.calls[0];
+        expect(id.startsWith(`${TEST_ERROR_REF}-`)).toBe(true);
+        expect(doc).toMatchObject({ type: 'manual', fingerprint: TEST_ERROR_REF, userId: 'u1', count: 1 });
+        expect(doc.message).toMatch(/^Test error sent by the owner from Diagnostics/);
+        expect(card().querySelector('[data-errtest-result]').textContent).toBe('Test error sent. Open the Errors tab to see it.');
+    });
+
+    test('offline, the test error waits on the phone and says so', async () => {
+        global.firebase = { firestore: () => ({ collection: () => ({ doc: () => ({ set: () => new Promise(() => {}) }) }) }) };
+        expect(await TelemetryService.sendTestError(20)).toBe('queued');
+        jest.spyOn(TelemetryService, 'sendTestError').mockResolvedValue('queued');
+        await DiagnosticsManager.showTab('status');
+        await DiagnosticsManager.sendTestError();
+        expect(card().querySelector('[data-errtest-result]').textContent).toMatch(/saved on this phone/);
+    });
+
+    test("a refused write says it was not sent; an earlier failure's pause does not hold the test back", async () => {
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const set = jest.fn(async () => { throw Object.assign(new Error('denied'), { code: 'permission-denied' }); });
+        global.firebase = { firestore: () => ({ collection: () => ({ doc: () => ({ set }) }) }) };
+        TelemetryService.backoffUntil = Date.now() + 60 * 60 * 1000;
+        await DiagnosticsManager.showTab('status');
+        await DiagnosticsManager.sendTestError();
+        expect(set).toHaveBeenCalledTimes(1);
+        expect(card().querySelector('[data-errtest-result]').textContent).toMatch(/could not be sent/);
+        set.mockResolvedValue();
+        expect(await TelemetryService.sendTestError(1000)).toBe('sent');
+    });
+
+    test('APK without the Firebase config: a clear "not set up" message, no crash button, never crashes', async () => {
+        const p = plugin();
+        native(p);
+        CrashReports.state = 'not-set-up';
+        localStorage.setItem('aadhat.crashReports', '1');
+        jest.spyOn(TelemetryService, 'sendTestError').mockResolvedValue('sent');
+        await DiagnosticsManager.showTab('status');
+        expect(card().dataset.crashReach).toBe('not-set-up');
+        expect(card().querySelector('[data-errtest="crash"]')).toBeNull();
+        expect(card().querySelector('[data-errtest-note]').textContent).toMatch(/not set up in this version of the app/);
+        await DiagnosticsManager.sendTestError();
+        expect(await DiagnosticsManager.sendTestCrash()).toBe(false);
+        expect(p.recordException).not.toHaveBeenCalled();
+        expect(p.crash).not.toHaveBeenCalled();
+    });
+
+    test('APK with crash reports on: a non-fatal test, and the test crash only after the confirm', async () => {
+        const p = plugin();
+        native(p);
+        CrashReports.state = 'on';
+        localStorage.setItem('aadhat.crashReports', '1');
+        jest.spyOn(TelemetryService, 'sendTestError').mockResolvedValue('sent');
+        await DiagnosticsManager.showTab('status');
+        expect(card().querySelector('[data-errtest="crash"]').textContent).toMatch(/test crash \(closes the app\)/);
+        await DiagnosticsManager.sendTestError();
+        expect(p.recordException).toHaveBeenCalledTimes(1);
+        expect(card().querySelector('[data-errtest-result]').textContent).toMatch(/Crashlytics: the test error was recorded/);
+
+        const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+        expect(await DiagnosticsManager.sendTestCrash()).toBe(false);
+        expect(p.crash).not.toHaveBeenCalled();
+        expect(await DiagnosticsManager.sendTestCrash()).toBe(true);
+        expect(modal.mock.calls[0][2]).toBe(true);
+        expect(p.crash).toHaveBeenCalledTimes(1);
+    });
+
+    test('Hindi text on the card', async () => {
+        setLang('hi');
+        try {
+            await DiagnosticsManager.showTab('status');
+            expect(card().querySelector('[data-errtest="error"]').textContent).toBe('टेस्ट गड़बड़ी भेजें');
+        } finally {
+            setLang('en');
+        }
+    });
+
+    test('Errors still loading when Status opens: the late list does not replace the card', async () => {
+        let release;
+        jest.spyOn(TelemetryService, 'getTelemetryData').mockImplementation(() => new Promise(r => { release = r; }));
+        const errors = DiagnosticsManager.showTab('errors');
+        await DiagnosticsManager.showTab('status');
+        release([]);
+        await errors;
+        expect(card()).not.toBeNull();
+        expect(document.getElementById('diagTypeFilter')).toBeNull();
+    });
+
+    test('a manager never sees it and cannot send', async () => {
+        AppState.userRole = 'manager';
+        const send = jest.spyOn(TelemetryService, 'sendTestError');
+        await DiagnosticsManager.showTab('status');
+        expect(card()).toBeNull();
+        expect(await DiagnosticsManager.sendTestError()).toBeUndefined();
+        expect(await DiagnosticsManager.sendTestCrash()).toBe(false);
+        expect(send).not.toHaveBeenCalled();
+        await expect(TelemetryService.sendTestError()).rejects.toThrow('Unauthorized');
     });
 });
