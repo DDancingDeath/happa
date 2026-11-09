@@ -17,6 +17,7 @@ import { partyDisplayNames, partyNameKey, partyNameSpelling } from './parties.js
 import { devanagariToLatin, suggestEnglishName, suggestHindiName } from './item-name-autofill.js';
 import { csvCell } from './statements.js';
 import { endOfLocalDayExclusive, formatMonth, toLocalISODate } from './dates.js';
+import { aggregateBills, finalizeStats, monthBuckets } from './rate-trends.js';
 import { t } from '../i18n/index.js';
 
 /** Periods an item report can cover (business-metrics periodRange presets). */
@@ -406,6 +407,58 @@ export function estimateReportReads({ loaded, windowFrom, now, oldest, from }) {
     const span = Math.max(now - windowFrom, 1);
     const older = Math.max(0, windowFrom - start);
     return Math.max(1, inWindow + Math.ceil(inWindow * older / span));
+}
+
+/** Local 'YYYY-MM' of an instant. */
+const localMonth = (/** @type {number} */ ms) => {
+    const d = new Date(ms);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
+/**
+ * ASK-7: the quick figure of an item report over older bills, with no bill read: each kind's
+ * kg, amount, average rate and bills summed over the months of the period from Insights ›
+ * Seasons' month stats (RT4, PT1: amount = Σ kg × rate of RT-LINEs), the months from the first
+ * whole month of the loaded window on worked out from the bills on the phone the same way (as
+ * the roll-forward stores them). Only catalogue kinds have stats: the others are in `left`.
+ * @param {{kinds: Array<{key: string, name: string, hindiName: string}>, items: ?Array<{id: string, name?: string, hindiName?: string}>|undefined,
+ *   stats: Array<Rec>, sources: Array<{type: 'purchase'|'retail'|'wholesale', bills: ?Array<Rec>|undefined}>,
+ *   period: {from: number, to: number}, windowFrom: number}} a stats: the kinds' rateStats year docs
+ */
+export function quickItemSummary({ kinds, items, stats, sources, period, windowFrom }) {
+    const ids = new Set((items || []).map(i => i.id));
+    const counted = kinds.filter(k => ids.has(k.key));
+    const wanted = new Set(counted.map(k => k.key));
+    const start = new Date(windowFrom);
+    // the first whole month the phone has every bill of
+    const splitAt = start.getDate() === 1 && start.getHours() === 0 && start.getMinutes() === 0 ? windowFrom : new Date(start.getFullYear(), start.getMonth() + 1, 1).getTime();
+    const split = localMonth(splitAt);
+    const from = Number.isFinite(period.from) ? localMonth(period.from) : '';
+    const last = Number.isFinite(period.to) ? localMonth(period.to - 1) : '9999-12';
+    /** @type {Object<string, Array<Rec>>} */
+    const phone = { purchase: [], retail: [], wholesale: [] };
+    sources.forEach(s => { phone[s.type] = s.bills || []; });
+    const recent = monthBuckets(Object.values(finalizeStats(aggregateBills(phone, items, { fromMs: splitAt })))).filter(b => b.month >= split);
+    const older = monthBuckets(stats).filter(b => b.month < split);
+    /** @type {Map<string, {kg: number, amount: number, bills: number}>} */
+    const sums = new Map(counted.map(k => [k.key, { kg: 0, amount: 0, bills: 0 }]));
+    [...older, ...recent].forEach(b => {
+        if (!wanted.has(b.itemId) || b.month < from || b.month > last) return;
+        const s = /** @type {{kg: number, amount: number, bills: number}} */ (sums.get(b.itemId));
+        sources.forEach(({ type }) => {
+            const x = b[type] || {};
+            s.kg += Number(x.kg) || 0;
+            s.amount += Number(x.amount) || 0;
+            s.bills += Number(x.bills) || 0;
+        });
+    });
+    const figure = (/** @type {{kg: number, amount: number}} */ x) => ({ kg: round2(x.kg), amount: round2(x.amount), avgRate: x.kg > 0 ? round2(x.amount / x.kg) : null });
+    const groups = counted.map(k => {
+        const s = /** @type {{kg: number, amount: number, bills: number}} */ (sums.get(k.key));
+        return { key: k.key, name: k.name, hindiName: k.hindiName, totals: { ...figure(s), bills: s.bills } };
+    }).filter(g => g.totals.kg > 0);
+    const all = [...sums.values()].reduce((a, s) => ({ kg: a.kg + s.kg, amount: a.amount + s.amount }), { kg: 0, amount: 0 });
+    return { groups, totals: figure(all), left: kinds.filter(k => !ids.has(k.key)) };
 }
 
 /**

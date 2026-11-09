@@ -5,11 +5,12 @@
  * (Lahsun / Garlic never counted). The Excel file has a Summary sheet and one sheet per kind
  * ending in a totals row. Sales by party: changed by hand (grouping, a kind off), with an Excel
  * sheet per party. A manager sees kg only. Screenshots of each step and of the workbook go to
- * the test's output folder.
+ * the test's output folder. With Insights › Seasons' stats built, the same question answers at once
+ * from them (ASK-7) before any bill is read, and Excel is made with no CDN (offline-capable).
  */
 const fs = require('fs');
 const { test, expect, login, showTab } = require('./support/app');
-const { commit, deleteDocs } = require('./support/emulator');
+const { commit, deleteAll, deleteDocs } = require('./support/emulator');
 const { XLSX_URL } = require('./support/xlsx-url');
 
 const DAY = 86400000;
@@ -137,6 +138,59 @@ for (const c of CASES) {
     });
 }
 
+// Insights › Seasons' stats of the two older bills, as the history from bills stores them (IST months).
+const istMonth = (t) => new Date(t + 330 * 60000).toISOString().slice(0, 7);
+const EMPTY = { kg: 0, amount: 0, min: null, max: null, avg: 0, bills: 0 };
+const STATS = [
+    ...[BILLS[2], BILLS[3]].map((b) => {
+        const l = b.items[0];
+        const m = istMonth(b.timestamp);
+        const purchase = { kg: l.qty, amount: l.qty * l.rate, min: l.rate, max: l.rate, avg: l.rate, bills: 1 };
+        return { id: `${l.itemId}_${m.slice(0, 4)}`, itemId: l.itemId, year: m.slice(0, 4), weeks: {}, months: { [`m${m}`]: { purchase, retail: EMPTY, wholesale: EMPTY, bills: 1 } } };
+    }),
+    { id: '_meta', backfillDone: true, backfillAt: Date.now() - 100 * DAY, bills: 2 }
+];
+
+test('owner: Lah till today answers at once from the item stats (ASK-7); the bills after the confirm; Excel without the CDN', async ({ page, browser, problems }, testInfo) => {
+    await commit(STATS.map(d => ['dev_rateStats', d.id, d]));
+    try {
+        const cdn = [];
+        const writer = [];
+        await page.route('https://cdn.sheetjs.com/**', (route) => { cdn.push(route.request().url()); return route.abort(); });
+        page.on('request', (r) => { if (r.url().includes('/vendor/sheetjs/')) writer.push(r.url()); });
+        await login(page, 'owner');
+        await showTab(page, 'ask');
+        await page.fill('#askInput', 'What all kinds of Lah were bought till today, as an Excel sheet');
+        await page.press('#askInput', 'Enter');
+        const answer = page.locator('.ask-answer').first();
+        await expect(answer).toContainText('Quick figure from Insights › Seasons');
+        await expect(answer).toContainText('Lah Kusmi: 220 kg · average ₹205.45/kg · ₹45,200 (2 bills)');
+        await expect(answer).toContainText('Rangeeni Lah: 130 kg · average ₹178.38/kg · ₹23,190 (2 bills)');
+        await expect(answer).toContainText('All kinds: 350 kg · average ₹195.40/kg · ₹68,390');
+        await expect(answer.locator('.ask-load')).toHaveCount(1);
+        await expect(answer.locator('.ask-xlsx')).toHaveCount(0);
+        await page.evaluate(() => document.getElementById('toast')?.classList.remove('show'));
+        await answer.screenshot({ path: testInfo.outputPath(`${testInfo.project.name}-quick-figure.png`) });
+
+        await answer.locator('.ask-load').click();
+        await page.click('#modalConfirm');
+        await expect(answer).not.toContainText('Quick figure');
+        await expect(answer).toContainText('All kinds: 350 kg · average ₹195.40/kg · ₹68,390 (4 bills)');
+
+        const [download] = await Promise.all([page.waitForEvent('download'), answer.locator('.ask-xlsx').click()]);
+        const file = testInfo.outputPath(`${testInfo.project.name}-offline-${download.suggestedFilename()}`);
+        await download.saveAs(file);
+        const { view, book } = await readBook(browser, file);
+        expect(book.names).toEqual(['Summary', 'Lah Kusmi', 'Rangeeni Lah']);
+        expect(book.rows[0].at(-1).slice(1, 5)).toEqual([4, 350, 195.4, 68390]);
+        await view.close();
+        expect(cdn).toEqual([]);
+        expect(writer).toEqual([expect.stringMatching(/\/vendor\/sheetjs\/0\.20\.1\/xlsx\.mini\.min\.js$/)]);
+        expect(problems.pageErrors).toEqual([]);
+    } finally {
+        await deleteAll('dev_rateStats');
+    }
+});
 const SALES = [
     { lang: 'en', question: 'lah kisko becha pichle mahine se ab tak', traders: 'Ask Traders: 50 kg · average ₹240.00/kg · ₹12,000 (1 bill)',
         ramesh: 'Ask Ramesh: 10 kg · average ₹250.00/kg · ₹2,500 (1 bill)', all: 'All parties: 64 kg · average ₹239.06/kg · ₹15,300 (3 bills)',
