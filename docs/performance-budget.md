@@ -130,8 +130,9 @@ become the median (after about four nights), unless it is over 1.5× the budget.
 re-checking them against the trend (`tests/ci/bench-record.test.js` replays it).
 
 **Checking the gate.** Run the benchmark by hand (Actions › Multi-year load
-benchmark › Run workflow) with `simulate_slowdown` set, for example to `2`. This
-multiplies the timings of this run and of the last trend row, and the job must
-fail. A run without the input must pass. A manual run on a branch other than
+benchmark › Run workflow) with `simulate_slowdown` set. It sets the timings of this
+run and of the last trend row to that many times their recent median, whatever the
+runner measured: with `2` the job must fail, with `1.3` (or without the input) it
+must pass. A manual run on a branch other than
 `main`, or with `simulate_slowdown`, is checked against a copy of the trend and
 never pushes it.

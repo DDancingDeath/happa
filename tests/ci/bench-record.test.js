@@ -91,6 +91,7 @@ describe('main', () => {
         files['r.json'] = JSON.stringify({ ...RESULT, firstTodayMs: 5900, historyLoadMs: 9700, startupReads: 1650 });
         files['b.json'] = JSON.stringify(BUDGETS);
         files['t.csv'] = REAL;
+        delete files.out;
         main(['--result', 'r.json', '--trend', 't.csv', '--budgets', 'b.json', ...extra], { GITHUB_OUTPUT: 'out' });
         return files.out;
     };
@@ -100,11 +101,12 @@ describe('main', () => {
         expect(files['t.csv'].trim().split('\n')).toHaveLength(11);
     });
 
-    test('--simulate-slowdown 2 slows this run and the last row, and fails', () => {
+    test('--simulate-slowdown sets this run and the last row to x times their median', () => {
         expect(run(['--simulate-slowdown', '2'])).toBe('regressed=true\n');
         const rows = files['t.csv'].trim().split('\n');
-        expect(rows[9].split(',')[6]).toBe('11642');
-        expect(rows[10].split(',')[6]).toBe('11800');
+        expect(rows[9].split(',')[6]).toBe('11964');
+        expect(rows[10].split(',')[6]).toBe('12188');
         expect(rows[10].split(',')[7]).toBe('1650');
+        expect(run(['--simulate-slowdown', '1.3'])).toBe('regressed=false\n');
     });
 });

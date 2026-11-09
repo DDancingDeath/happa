@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       simulate_slowdown:
-        description: 'Gate self-test: multiply the timings of this run and of the last trend row by this factor (e.g. 2). The trend is not pushed.'
+        description: 'Gate self-test: set the timings of this run and of the last trend row to this many times their recent median (2 must fail, 1.3 must pass). The trend is not pushed.'
         required: false
         default: ''
 

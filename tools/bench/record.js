@@ -10,8 +10,9 @@
  *
  *   node tools/bench/record.js --result <bench-result.json> --trend <trend.csv> --budgets <budgets.json> [--sha <commit>] [--simulate-slowdown <x>]
  *
- * --simulate-slowdown (gate self-test, never on the live trend): multiplies the timings
- * of this result and of the trend's last row by x.
+ * --simulate-slowdown (gate self-test, never on the live trend): the timings of this result
+ * and of the trend's last row become x times their recent median, so x = 2 must fail and
+ * x = 1.3 must pass whatever the runner measured.
  */
 const fs = require('fs');
 
@@ -103,14 +104,31 @@ function regressions(trend, budgets, gate = DEFAULT_GATE) {
     return { slow, failed };
 }
 
-/** The trend with its last row's timings (…Ms) multiplied by `factor` (gate self-test). */
-function slowLastRow(trend, factor) {
-    const lines = (trend || '').trim().split(/\r?\n/);
-    if (lines.length < 2) return trend;
-    const cols = lines[0].split(',');
-    const cells = lines[lines.length - 1].split(',');
-    lines[lines.length - 1] = cells.map((v, i) => (/Ms$/.test(cols[i]) && v.trim() !== '' && Number.isFinite(Number(v)) ? String(Math.round(Number(v) * factor)) : v)).join(',');
-    return `${lines.join('\n')}\n`;
+/**
+ * Gate self-test: the timings (…Ms) of the trend's last row and of `result` become `factor` ×
+ * the median of the trendWindow rows before each (× their own value with fewer than
+ * trendMinRows). Returns { trend, result }.
+ */
+function simulateSlowdown(trend, result, factor, gate = DEFAULT_GATE) {
+    const g = { ...DEFAULT_GATE, ...gate };
+    const slowed = (rows, i, name, value) => {
+        const earlier = rows.slice(Math.max(0, i - g.trendWindow), i).map((r) => r[name]).filter(Number.isFinite);
+        return Math.round((earlier.length >= g.trendMinRows ? median(earlier) : value) * factor);
+    };
+    let text = trend || '';
+    const lines = text.trim().split(/\r?\n/).filter(Boolean);
+    if (lines.length >= 2) {
+        const rows = parseTrend(text);
+        const last = rows[rows.length - 1];
+        const cols = lines[0].split(',');
+        const cells = lines[lines.length - 1].split(',');
+        lines[lines.length - 1] = cells.map((v, k) => (/Ms$/.test(cols[k]) && Number.isFinite(last[cols[k]]) ? String(slowed(rows, rows.length - 1, cols[k], last[cols[k]])) : v)).join(',');
+        text = `${lines.join('\n')}\n`;
+    }
+    const rows = parseTrend(text);
+    const out = { ...result };
+    for (const [k, v] of Object.entries(result)) if (/Ms$/.test(k) && Number.isFinite(v)) out[k] = slowed(rows, rows.length, k, v);
+    return { trend: text, result: out };
 }
 
 /** Job summary: the last rows of the trend, any figure over budget and any hard-limit breach. */
@@ -142,9 +160,8 @@ function main(argv = process.argv.slice(2), env = process.env) {
     const factor = Number(arg('simulate-slowdown', argv) || 1);
     if (!(factor > 0)) throw new Error('--simulate-slowdown needs a number above 0');
     if (factor !== 1) {
-        console.log(`::notice title=Simulated slowdown::timings of this run and the trend's last row × ${factor} (gate self-test)`);
-        result = Object.fromEntries(Object.entries(result).map(([k, v]) => [k, /Ms$/.test(k) && Number.isFinite(v) ? Math.round(v * factor) : v]));
-        existing = slowLastRow(existing, factor);
+        console.log(`::notice title=Simulated slowdown::timings of this run and the trend's last row set to ${factor} × their recent median (gate self-test)`);
+        ({ trend: existing, result } = simulateSlowdown(existing, result, factor, budgets._gate));
     }
     const trend = appendRow(existing, trendRow(result, arg('sha', argv) || env.GITHUB_SHA || ''));
     fs.writeFileSync(trendPath, trend);
@@ -161,6 +178,6 @@ function main(argv = process.argv.slice(2), env = process.env) {
     else if (gate.failed.length) process.exitCode = 1;
 }
 
-module.exports = { COLUMNS, DEFAULT_GATE, trendRow, appendRow, overBudget, parseTrend, breaches, regressions, slowLastRow, summary, main };
+module.exports = { COLUMNS, DEFAULT_GATE, trendRow, appendRow, overBudget, parseTrend, breaches, regressions, simulateSlowdown, summary, main };
 
 if (require.main === module) main();
