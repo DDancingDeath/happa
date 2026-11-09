@@ -13,6 +13,9 @@ import { t } from '../i18n/index.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 import { SITE_HOST } from '../utils/release-info.js';
 import { exportStamp, exportAuditDetails } from '../utils/export-stamp.js';
+import { ensureXLSX } from '../utils/lazy-scripts.js';
+
+const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 export const Exporter = {
     /** Only the owner exports (#103). */
@@ -95,6 +98,26 @@ export const Exporter = {
         document.body.removeChild(link);
         setTimeout(() => URL.revokeObjectURL(url), 10000);
         return true;
+    },
+
+    /**
+     * Saves sheets as one Excel (.xlsx) file through saveBlob (SheetJS, loaded on demand;
+     * never XLSX.writeFile, whose download the Android app's WebView drops).
+     * @param {Array<{name: string, rows: Array<Array<*>>, widths?: number[]}>} sheets
+     * @param {string} filename
+     * @returns {Promise<boolean>} as saveBlob
+     */
+    async saveWorkbook(sheets, filename) {
+        await ensureXLSX();
+        const X = window.XLSX;
+        const book = X.utils.book_new();
+        sheets.forEach(s => {
+            const ws = X.utils.aoa_to_sheet(s.rows);
+            if (s.widths) ws['!cols'] = s.widths.map(wch => ({ wch }));
+            X.utils.book_append_sheet(book, ws, s.name);
+        });
+        const data = X.write(book, { bookType: 'xlsx', type: 'array', compression: true });
+        return this.saveBlob(new Blob([data], { type: XLSX_TYPE }), filename, { shareFirst: false });
     },
 
     /** True in the Android app when it has the file-sharing plugins (@capacitor/share + filesystem). */
