@@ -1,0 +1,367 @@
+{
+  "format": "aadhat-backup-v1",
+  "mode": "full",
+  "exportedAt": "2026-10-25T08:30:00.000Z",
+  "project": "demo-parties",
+  "collections": {
+    "retailSales": [
+      {
+        "id": "r1",
+        "data": {
+          "billNumber": "R-1",
+          "type": "retail",
+          "date": "2026-09-01",
+          "timestamp": 1788238800000,
+          "customerName": "Ramesh",
+          "total": 500,
+          "payment": {
+            "cash": 200,
+            "online": 0,
+            "due": 300,
+            "total": 500
+          },
+          "dueAmount": 300,
+          "customerPhone": "9876500011"
+        }
+      },
+      {
+        "id": "r2",
+        "data": {
+          "billNumber": "R-2",
+          "type": "retail",
+          "date": "2026-10-01",
+          "timestamp": 1790830800000,
+          "customerName": "ramesh ",
+          "total": 200,
+          "payment": {
+            "cash": 100,
+            "online": 0,
+            "due": 100,
+            "total": 200
+          },
+          "dueAmount": 100
+        }
+      },
+      {
+        "id": "r3",
+        "data": {
+          "billNumber": "R-3",
+          "type": "retail",
+          "date": "2026-10-05",
+          "timestamp": 1791176400000,
+          "customerName": "Ramesh Ji",
+          "total": 400,
+          "payment": {
+            "cash": 200,
+            "online": 0,
+            "due": 200,
+            "total": 400
+          },
+          "dueAmount": 200
+        }
+      },
+      {
+        "id": "r4",
+        "data": {
+          "billNumber": "R-4",
+          "type": "retail",
+          "date": "2026-10-10",
+          "timestamp": 1791608400000,
+          "customerName": "रमेश",
+          "total": 150,
+          "payment": {
+            "cash": 0,
+            "online": 0,
+            "due": 150,
+            "total": 150
+          },
+          "dueAmount": 150
+        }
+      },
+      {
+        "id": "r5",
+        "data": {
+          "billNumber": "R-5",
+          "type": "retail",
+          "date": "2026-08-20",
+          "timestamp": 1787202000000,
+          "customerName": "Sita Devi",
+          "total": 300,
+          "payment": {
+            "cash": 180,
+            "online": 0,
+            "due": 120,
+            "total": 300
+          },
+          "dueAmount": 120
+        }
+      },
+      {
+        "id": "r6",
+        "data": {
+          "billNumber": "R-6",
+          "type": "retail",
+          "date": "2026-10-12",
+          "timestamp": 1791781200000,
+          "customerName": "Seeta Devi",
+          "total": 90,
+          "payment": {
+            "cash": 0,
+            "online": 0,
+            "due": 90,
+            "total": 90
+          },
+          "dueAmount": 90
+        }
+      },
+      {
+        "id": "r7",
+        "data": {
+          "billNumber": "R-7",
+          "type": "retail",
+          "date": "2026-10-02",
+          "timestamp": 1790917200000,
+          "customerName": "Ram Lal",
+          "total": 250,
+          "payment": {
+            "cash": 200,
+            "online": 0,
+            "due": 50,
+            "total": 250
+          },
+          "dueAmount": 50
+        }
+      },
+      {
+        "id": "r8",
+        "data": {
+          "billNumber": "R-8",
+          "type": "retail",
+          "date": "2026-10-03",
+          "timestamp": 1791003600000,
+          "customerName": "Ramlal",
+          "total": 80,
+          "payment": {
+            "cash": 0,
+            "online": 0,
+            "due": 80,
+            "total": 80
+          },
+          "dueAmount": 80
+        }
+      },
+      {
+        "id": "r9",
+        "data": {
+          "billNumber": "R-9",
+          "type": "retail",
+          "date": "2026-10-04",
+          "timestamp": 1791090000000,
+          "customerName": "Mohan",
+          "total": 60,
+          "payment": {
+            "cash": 0,
+            "online": 0,
+            "due": 60,
+            "total": 60
+          },
+          "dueAmount": 60
+        }
+      },
+      {
+        "id": "r10",
+        "data": {
+          "billNumber": "R-10",
+          "type": "retail",
+          "date": "2026-10-06",
+          "timestamp": 1791262800000,
+          "customerName": "Gopal",
+          "total": 700,
+          "payment": {
+            "cash": 700,
+            "online": 0,
+            "due": 0,
+            "total": 700
+          },
+          "dueAmount": 0
+        }
+      },
+      {
+        "id": "r11",
+        "data": {
+          "billNumber": "R-11",
+          "type": "retail",
+          "date": "2026-10-07",
+          "timestamp": 1791349200000,
+          "customerName": "Voided Guy",
+          "total": 100,
+          "payment": {
+            "cash": 0,
+            "online": 0,
+            "due": 100,
+            "total": 100
+          },
+          "dueAmount": 100,
+          "voided": true
+        }
+      },
+      {
+        "id": "r12",
+        "data": {
+          "billNumber": "R-12",
+          "type": "retail",
+          "date": "2026-10-08",
+          "timestamp": 1791435600000,
+          "customerName": "",
+          "total": 50,
+          "payment": {
+            "cash": 0,
+            "online": 0,
+            "due": 50,
+            "total": 50
+          },
+          "dueAmount": 50
+        }
+      },
+      {
+        "id": "r13",
+        "data": {
+          "billNumber": "R-13",
+          "type": "retail",
+          "date": "2026-10-09",
+          "timestamp": 1791522000000,
+          "customerName": "Ramesh Kumar",
+          "total": 40,
+          "payment": {
+            "cash": 0,
+            "online": 0,
+            "due": 40,
+            "total": 40
+          },
+          "dueAmount": 40
+        }
+      }
+    ],
+    "wholesaleSales": [
+      {
+        "id": "w14",
+        "data": {
+          "billNumber": "W-14",
+          "type": "wholesale",
+          "date": "2026-09-15",
+          "timestamp": 1789448400000,
+          "customerName": "Mohun",
+          "total": 1000,
+          "payment": {
+            "cash": 600,
+            "online": 0,
+            "due": 400,
+            "total": 1000
+          },
+          "dueAmount": 400,
+          "source": "sales-tab"
+        }
+      },
+      {
+        "id": "w15",
+        "data": {
+          "billNumber": "W-15",
+          "type": "wholesale",
+          "date": "2026-09-20",
+          "timestamp": 1789880400000,
+          "customerName": "Suresh Traders",
+          "total": 2000,
+          "payment": {
+            "cash": 1500,
+            "online": 0,
+            "due": 500,
+            "total": 2000
+          },
+          "dueAmount": 500,
+          "source": "sales-tab"
+        }
+      }
+    ],
+    "purchases": [
+      {
+        "id": "p16",
+        "data": {
+          "billNumber": "P-16",
+          "type": "purchase",
+          "date": "2026-10-01",
+          "timestamp": 1790830800000,
+          "customerName": "Suresh Traders",
+          "total": 5000,
+          "payment": {
+            "cash": 3500,
+            "online": 0,
+            "due": 1500,
+            "total": 5000
+          },
+          "dueAmount": 1500,
+          "isPurchase": true
+        }
+      },
+      {
+        "id": "p17",
+        "data": {
+          "billNumber": "P-17",
+          "type": "purchase",
+          "date": "2026-10-02",
+          "timestamp": 1790917200000,
+          "customerName": "Kisan Seth",
+          "total": 3000,
+          "payment": {
+            "cash": 3000,
+            "online": 0,
+            "due": 0,
+            "total": 3000
+          },
+          "dueAmount": 0,
+          "isPurchase": true
+        }
+      },
+      {
+        "id": "p18",
+        "data": {
+          "billNumber": "P-18",
+          "type": "purchase",
+          "date": "2026-10-03",
+          "timestamp": 1791003600000,
+          "customerName": "Kisan",
+          "total": 2000,
+          "payment": {
+            "cash": 1300,
+            "online": 0,
+            "due": 700,
+            "total": 2000
+          },
+          "dueAmount": 700,
+          "isPurchase": true
+        }
+      }
+    ],
+    "items": [],
+    "dev_retailSales": [
+      {
+        "id": "r19",
+        "data": {
+          "billNumber": "R-19",
+          "type": "retail",
+          "date": "2026-10-01",
+          "timestamp": 1790830800000,
+          "customerName": "Dev Only",
+          "total": 10,
+          "payment": {
+            "cash": 0,
+            "online": 0,
+            "due": 10,
+            "total": 10
+          },
+          "dueAmount": 10
+        }
+      }
+    ]
+  },
+  "subcollections": {}
+}
