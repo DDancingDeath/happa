@@ -35,7 +35,7 @@
         { "n": 144, "note": "Desktop/Android distribution; after the #133 spike if needed" },
         { "n": 58, "note": "Decide in-app inbox vs push first; unblocks #86" },
         { "n": 61, "note": "Firebase ownership; do the move together with #72" },
-        { "n": 375, "note": "App name Bahi, brand happa (decided 8 Nov); the rename follows #156, icon in #109" },
+        { "n": 375, "note": "App name Bahi, brand happa (decided 8 Nov). Its to-do list (app name in the app, APK and manifest; icon) has no open issue yet" },
         { "n": 111, "note": "Non-blocking questionnaire; blanks use the listed defaults" }
       ]
     },

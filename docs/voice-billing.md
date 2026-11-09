@@ -94,7 +94,7 @@ Android app (it serves `www/` from the APK).
 |---|---|---|
 | `Permissions-Policy: microphone=(self)` on the app site, `docs/security.md` updated | The web / PWA (Chrome) can use the mic for voice | Done (#266, 1 Nov) |
 | `@capacitor-community/speech-recognition` 7 + `RECORD_AUDIO` in the Android manifest | The Android app gets a recogniser (the WebView has none) | Done (#267, 1 Nov); in APKs built since |
-| A test on a real phone in the Android app: Hindi and English, a noisy shop, with and without internet, the microphone prompt | #81's last acceptance item; nothing above was tried on a phone | Owner, open |
+| A test on a real phone in the Android app: Hindi and English, a noisy shop, with and without internet, the microphone prompt | #81's "works in the Android WebView with the mic prompt" item; nothing above was tried on a phone | Owner, open |
 
 Both changes are safe while the setting is off: no page asks for the microphone
 unless the user switches voice on and taps 🎤.
