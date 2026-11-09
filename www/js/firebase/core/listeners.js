@@ -11,6 +11,7 @@ import {
     listenerStartup, markDirty, pendingFirstSnapshots, pendingViews, resyncSnapshot, runView, unsubscribeFunctions
 } from './realtime.js';
 import { healPending, registerHealable, RELISTEN_TIMEOUT_MS, resetHeal, scheduleHeal } from './target-heal.js';
+import { dataFreshness, expectServer, resetFreshness, sealFreshness, startFreshness, whenServerConfirmed } from '../../utils/data-freshness.js';
 import { SyncStatus } from '../../ui/sync-status.js';
 import { S } from './session.js';
 import { AppState } from '../../utils/state.js';
@@ -58,6 +59,7 @@ export const listenerMethods = {
         });
         unsubscribeFunctions.length = 0;
         resetHeal();
+        resetFreshness();
         SyncStatus.clearListeners();
         pendingFirstSnapshots.forEach(settle => settle.resolve());
         pendingFirstSnapshots.length = 0;
@@ -103,6 +105,23 @@ export const listenerMethods = {
         return JSON.parse(JSON.stringify(listenerStartup));
     },
 
+    /**
+     * 'cache' while some data listener of this session has not heard from the server yet, 'server' once all
+     * did, null with no session (#59).
+     */
+    dataFreshness() {
+        return dataFreshness();
+    },
+
+    /**
+     * Resolves true once every data listener of this session heard from the server, false when the
+     * session ends first. Writers of derived data wait for it, so they never work from cache-only data.
+     * @returns {Promise<boolean>}
+     */
+    whenServerConfirmed() {
+        return whenServerConfirmed();
+    },
+
     /** Whether refreshing the listeners' stored queries (core/target-heal.js) is still to come or running. */
     listenerHealPending() {
         return healPending();
@@ -137,6 +156,7 @@ export const listenerMethods = {
     setupRealtimeListeners() {
         // Clear any existing listeners first
         this.cleanup();
+        startFreshness();
         const gen = S.sessionGen;
         const db = getDb();
         S.warmCache = false;
@@ -159,6 +179,7 @@ export const listenerMethods = {
                 settle.resolve();
             };
             const syncId = `listen-${++S.listenSeq}`;
+            const heardServer = expectServer(label);
             let serverAt = 0;
             // Set while a healed listener waits for the first snapshot of its new subscription.
             let resync = null;
@@ -180,7 +201,11 @@ export const listenerMethods = {
                 live.delivered = true;
                 // Before startup is ready only AppState is updated; startup
                 // computes stock and renders the initial views itself.
-                if (changed) onData(changes, ready);
+                try {
+                    if (changed) onData(changes, ready);
+                } finally {
+                    if (!snapshot.metadata.fromCache) heardServer();
+                }
                 if (!ready) {
                     const source = snapshot.metadata.fromCache ? 'cache' : 'server';
                     listenerStartup[label] = listenerStartup[label] || { first: source, docs: snapshot.size };
@@ -202,6 +227,7 @@ export const listenerMethods = {
             const onError = error => {
                 console.error(`${label} listener error:`, error);
                 live.failed = true;
+                heardServer();
                 clearTimeout(readyTimer);
                 if (resync) {
                     resync.done();
@@ -345,6 +371,7 @@ export const listenerMethods = {
                     }, { optional: true, target: { coll: collName, key: `${collName}|${key}` } }));
                 });
             });
+            sealFreshness();
             const ws = S.windowState;
             // Without a usable checkpoint calculateStock() reads everything anyway (and backfills).
             return Promise.all(waits).then(() => {
@@ -353,11 +380,12 @@ export const listenerMethods = {
                     scheduleLegacyScan(ws, gen);
                 }
                 // Owner/manager phones keep the last week's personal day totals in step with the rows (#98)
-                if (canManageCheckpoint() && FirebaseService.personalRowsLoaded() && navigator.onLine !== false) {
-                    whenIdle(() => (gen === S.sessionGen
+                // ...from the server's rows only: cached rows may miss other phones' changes (#59)
+                if (canManageCheckpoint() && FirebaseService.personalRowsLoaded()) {
+                    whenServerConfirmed().then(ok => ok && gen === S.sessionGen && whenIdle(() => (gen === S.sessionGen && navigator.onLine !== false
                         ? FirebaseService.rebuildPersonalExpenseDays([0, 1, 2, 3, 4, 5, 6].map(localISODaysAgo))
                             .catch(e => console.warn('Personal expense day totals not checked:', e?.code || e))
-                        : undefined), { minDelayMs: LEGACY_SCAN_DELAY_MS });
+                        : undefined), { minDelayMs: LEGACY_SCAN_DELAY_MS }));
                 }
             });
         });
@@ -384,11 +412,12 @@ export const listenerMethods = {
 
         return Promise.all(firstSnapshots).then(() => {
             if (gen !== S.sessionGen) return;
-            setTimeout(() => {
-                if (gen === S.sessionGen) {
+            // The checkpoint is rolled forward from server-confirmed data only (#59)
+            whenServerConfirmed().then(ok => {
+                if (ok && gen === S.sessionGen) {
                     this.maintainStockCheckpoint().catch(e => console.error('Stock checkpoint maintenance failed:', e));
                 }
-            }, 0);
+            });
             scheduleHeal(gen);
         });
     }

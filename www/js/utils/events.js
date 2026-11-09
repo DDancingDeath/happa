@@ -10,6 +10,8 @@
  *    wait until it is shown), exactly when the view used to be re-rendered.
  *  - `ITEM_FREQUENCY_CHANGED`: the shared item order (`itemFrequency/global`)
  *    changed; payload: the document's data.
+ *  - `DATA_FRESHNESS_CHANGED` (utils/data-freshness.js, #59): `'cache'` while some data
+ *    listener has only answered from the phone's cache, `'server'` once every one heard from the server.
  *  - `READS_ALERT` (firebase/firestore-meter.js, #159): `{kind: 'heavy'|'quota', reads}`
  *    once per session, when this session read HEAVY_SESSION_READS documents or
  *    Firestore refused a request because the daily quota ran out.
@@ -25,6 +27,8 @@ export const REFRESH = Object.freeze(Object.fromEntries([
 export const ITEM_FREQUENCY_CHANGED = 'itemFrequency:changed';
 
 export const READS_ALERT = 'reads:alert';
+
+export const DATA_FRESHNESS_CHANGED = 'data:freshness';
 
 /** A bill's print status on this phone changed (utils/print-status.js, #132); payload: its key. */
 export const PRINT_STATUS_CHANGED = 'printStatus:changed';
