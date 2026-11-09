@@ -109,4 +109,9 @@ async function deleteAll(c) {
     }
 }
 
-module.exports = { PASSWORD, USERS, ITEMS, TENANT_TOKEN, waitForEmulators, resetEmulators, signUp, commit, getDoc, listDocs, deleteAll };
+/** Deletes these documents of `c` (what a spec added). */
+async function deleteDocs(c, ids) {
+    for (const id of ids) await fetch(`${FS}/${c}/${encodeURIComponent(id)}`, { method: 'DELETE', headers: H });
+}
+
+module.exports = { PASSWORD, USERS, ITEMS, TENANT_TOKEN, waitForEmulators, resetEmulators, signUp, commit, getDoc, listDocs, deleteAll, deleteDocs };

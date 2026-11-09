@@ -53,6 +53,8 @@ export const S = {
     /** This device made a checkpoint-invalidating edit this session (approximate stock would miss it). */
     ownStaleWrite: false,
     oldestTimestampPromise: null,
+    /** Bills read for Ask item reports, per collection (repos/report-bills.js, #415). @type {Map<string, {gen: number, from: ?number, bills: Array<Object>, readAt: number}>} */
+    reportBills: new Map(),
     /** When the on-demand (non-live) history currently in memory was first fetched (0 = none). */
     onDemandAsOf: 0,
     extendQueue: Promise.resolve(),

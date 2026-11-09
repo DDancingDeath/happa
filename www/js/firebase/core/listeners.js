@@ -82,6 +82,7 @@ export const listenerMethods = {
         S.leaseWaitTimer = null;
         S.leaseWaitStartedAt = 0;
         S.oldestTimestampPromise = null;
+        S.reportBills = new Map();
         S.extendQueue = Promise.resolve();
         pendingExtends.clear();
         invalidationTags.clear();
