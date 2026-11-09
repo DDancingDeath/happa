@@ -7,10 +7,11 @@
  */
 
 import {
-    applySnapshot, defaultMapDoc, FIRST_SNAPSHOT_CACHED_WAIT_MS, FIRST_SNAPSHOT_SERVER_WAIT_MS,
+    applySnapshot, defaultMapDoc, FIRST_SNAPSHOT_SERVER_WAIT_MS,
     listenerStartup, markDirty, pendingFirstSnapshots, pendingViews, resyncSnapshot, runView, unsubscribeFunctions
 } from './realtime.js';
 import { healPending, registerHealable, RELISTEN_TIMEOUT_MS, resetHeal, scheduleHeal } from './target-heal.js';
+import { dataFreshness, expectServer, resetFreshness, sealFreshness, startFreshness, whenServerConfirmed } from '../../utils/data-freshness.js';
 import { SyncStatus } from '../../ui/sync-status.js';
 import { S } from './session.js';
 import { AppState } from '../../utils/state.js';
@@ -43,6 +44,48 @@ const idsKey = (ids) => {
     return `${ids.length}:${(h >>> 0).toString(36)}`;
 };
 
+/**
+ * Bills the server's checkpoint pins that the dues queries, built from the cached checkpoint (#59),
+ * don't listen to: read once (no reads when the lists match, as they normally do).
+ * @param {Object} ws the window state the dues queries belong to
+ * @param {number} gen
+ * @param {Object<string, Set<string>>} listened pinned ids listened to, per collection
+ * @returns {Promise<void>}
+ */
+export async function fetchNewPinned(ws, gen, listened) {
+    const docIdPath = typeof firebase !== 'undefined' && firebase.firestore?.FieldPath?.documentId
+        ? firebase.firestore.FieldPath.documentId() : null;
+    if (!docIdPath) return;
+    for (const spec of HISTORY_COLLECTIONS) {
+        if (gen !== S.sessionGen || S.windowState !== ws || ws.rawFull) return;
+        const pinned = S.checkpointDoc?.pinned?.[spec.key];
+        const c = ws.colls[spec.key];
+        if (!listened[spec.key] || !c || !Array.isArray(pinned)) continue;
+        const known = liveIdSet(c);
+        const ids = pinned.slice(0, PINNED_MAX).filter(id => !listened[spec.key].has(id) && !known.has(id) && !c.extended.has(id));
+        let added = 0;
+        for (let i = 0; i < ids.length; i += PINNED_CHUNK) {
+            let snap;
+            try {
+                snap = await getWithRetry(getDb().collection(col(spec.key)).where(docIdPath, 'in', ids.slice(i, i + PINNED_CHUNK)), `${spec.label} pinned`, { attempts: 2 });
+            } catch (e) {
+                console.warn(`${spec.label}: pinned bills not read:`, e?.code || e);
+                continue;
+            }
+            if (gen !== S.sessionGen || S.windowState !== ws) return;
+            const live = liveIdSet(c);
+            snap.docs.forEach(doc => {
+                if (live.has(doc.id)) return;
+                c.extended.set(doc.id, mapDoc(doc));
+                added++;
+            });
+        }
+        if (!added) continue;
+        publishCollection(c);
+        markDirty(spec.views, !!spec.stock);
+    }
+}
+
 /** FirebaseService listener methods; spread into FirebaseService (`this` is FirebaseService). */
 export const listenerMethods = {
     /**
@@ -58,6 +101,7 @@ export const listenerMethods = {
         });
         unsubscribeFunctions.length = 0;
         resetHeal();
+        resetFreshness();
         SyncStatus.clearListeners();
         pendingFirstSnapshots.forEach(settle => settle.resolve());
         pendingFirstSnapshots.length = 0;
@@ -103,6 +147,23 @@ export const listenerMethods = {
         return JSON.parse(JSON.stringify(listenerStartup));
     },
 
+    /**
+     * 'cache' while some data listener of this session has not heard from the server yet, 'server' once all
+     * did, null with no session (#59).
+     */
+    dataFreshness() {
+        return dataFreshness();
+    },
+
+    /**
+     * Resolves true once every data listener of this session heard from the server, false when the
+     * session ends first. Writers of derived data wait for it, so they never work from cache-only data.
+     * @returns {Promise<boolean>}
+     */
+    whenServerConfirmed() {
+        return whenServerConfirmed();
+    },
+
     /** Whether refreshing the listeners' stored queries (core/target-heal.js) is still to come or running. */
     listenerHealPending() {
         return healPending();
@@ -137,6 +198,7 @@ export const listenerMethods = {
     setupRealtimeListeners() {
         // Clear any existing listeners first
         this.cleanup();
+        startFreshness();
         const gen = S.sessionGen;
         const db = getDb();
         S.warmCache = false;
@@ -159,6 +221,7 @@ export const listenerMethods = {
                 settle.resolve();
             };
             const syncId = `listen-${++S.listenSeq}`;
+            const heardServer = expectServer(label);
             let serverAt = 0;
             // Set while a healed listener waits for the first snapshot of its new subscription.
             let resync = null;
@@ -180,7 +243,11 @@ export const listenerMethods = {
                 live.delivered = true;
                 // Before startup is ready only AppState is updated; startup
                 // computes stock and renders the initial views itself.
-                if (changed) onData(changes, ready);
+                try {
+                    if (changed) onData(changes, ready);
+                } finally {
+                    if (!snapshot.metadata.fromCache) heardServer();
+                }
                 if (!ready) {
                     const source = snapshot.metadata.fromCache ? 'cache' : 'server';
                     listenerStartup[label] = listenerStartup[label] || { first: source, docs: snapshot.size };
@@ -188,20 +255,26 @@ export const listenerMethods = {
                     if (!snapshot.metadata.fromCache || navigator.onLine === false) {
                         listenerStartup[label].readyBy = source === 'server' ? 'server' : 'offline-cache';
                         markReady();
+                    } else if (S.warmCache) {
+                        // This device has the app's data: the first screen comes from the cache answer
+                        // (#59). The server's answer follows as ordinary changes; until every listener
+                        // has one, the pages mark their figures "updating…" (utils/data-freshness.js).
+                        listenerStartup[label].readyBy = 'cache';
+                        markReady();
                     } else if (!readyTimer) {
-                        // This device already has cached data: show it after a
-                        // short wait instead of the full server grace; the live
-                        // listener applies the server copy as soon as it arrives.
+                        // Nothing cached yet (a first sign-in): wait for the server, never show an
+                        // empty cache as the shop's figures.
                         readyTimer = setTimeout(() => {
                             listenerStartup[label].readyBy = 'cache-timeout';
                             markReady();
-                        }, S.warmCache ? FIRST_SNAPSHOT_CACHED_WAIT_MS : FIRST_SNAPSHOT_SERVER_WAIT_MS);
+                        }, FIRST_SNAPSHOT_SERVER_WAIT_MS);
                     }
                 }
             };
             const onError = error => {
                 console.error(`${label} listener error:`, error);
                 live.failed = true;
+                heardServer();
                 clearTimeout(readyTimer);
                 if (resync) {
                     resync.done();
@@ -283,6 +356,8 @@ export const listenerMethods = {
             if (cp) adoptCheckpoint(S.checkpointDoc);
 
             const waits = [];
+            /** @type {Object<string, Set<string>>} pinned ids the dues queries listen to, per collection */
+            const pinnedListened = {};
             HISTORY_COLLECTIONS.forEach(spec => {
                 const c = createCollState(spec);
                 S.windowState.colls[spec.key] = c;
@@ -320,6 +395,7 @@ export const listenerMethods = {
                     ['paidAt', db.collection(collName).where('paidAt', '>=', liveFrom), `paidAt|${liveFrom}`]
                 ];
                 const pinnedIds = Array.isArray(S.checkpointDoc?.pinned?.[spec.key]) ? S.checkpointDoc.pinned[spec.key].slice(0, PINNED_MAX) : [];
+                pinnedListened[spec.key] = new Set(pinnedIds);
                 const docIdPath = typeof firebase !== 'undefined' && firebase.firestore?.FieldPath?.documentId
                     ? firebase.firestore.FieldPath.documentId() : null;
                 for (let i = 0; docIdPath && i < pinnedIds.length; i += PINNED_CHUNK) {
@@ -345,19 +421,28 @@ export const listenerMethods = {
                     }, { optional: true, target: { coll: collName, key: `${collName}|${key}` } }));
                 });
             });
+            sealFreshness();
             const ws = S.windowState;
             // Without a usable checkpoint calculateStock() reads everything anyway (and backfills).
             return Promise.all(waits).then(() => {
                 if (gen !== S.sessionGen) return;
-                if (shouldScheduleLegacyScan({ canManage: canManageCheckpoint(), hasCheckpoint: !!cp, online: navigator.onLine })) {
-                    scheduleLegacyScan(ws, gen);
-                }
+                // Decided on the server's checkpoint (#59: the window may have started from the cached
+                // one): with it dropped or rebuilt, the rebuild's full read backfills instead.
+                const scanLegacy = () => {
+                    if (gen === S.sessionGen && S.windowState === ws && shouldScheduleLegacyScan({
+                        canManage: canManageCheckpoint(), hasCheckpoint: !!cp && !!S.activeCheckpoint && !S.rebuildPromise && !ws.rawFull, online: navigator.onLine
+                    })) scheduleLegacyScan(ws, gen);
+                };
+                if (dataFreshness() === 'server') scanLegacy();
+                else whenServerConfirmed().then(ok => ok && scanLegacy());
+                whenServerConfirmed().then(ok => ok && fetchNewPinned(ws, gen, pinnedListened));
                 // Owner/manager phones keep the last week's personal day totals in step with the rows (#98)
-                if (canManageCheckpoint() && FirebaseService.personalRowsLoaded() && navigator.onLine !== false) {
-                    whenIdle(() => (gen === S.sessionGen
+                // ...from the server's rows only: cached rows may miss other phones' changes (#59)
+                if (canManageCheckpoint() && FirebaseService.personalRowsLoaded()) {
+                    whenServerConfirmed().then(ok => ok && gen === S.sessionGen && whenIdle(() => (gen === S.sessionGen && navigator.onLine !== false
                         ? FirebaseService.rebuildPersonalExpenseDays([0, 1, 2, 3, 4, 5, 6].map(localISODaysAgo))
                             .catch(e => console.warn('Personal expense day totals not checked:', e?.code || e))
-                        : undefined), { minDelayMs: LEGACY_SCAN_DELAY_MS });
+                        : undefined), { minDelayMs: LEGACY_SCAN_DELAY_MS }));
                 }
             });
         });
@@ -384,11 +469,12 @@ export const listenerMethods = {
 
         return Promise.all(firstSnapshots).then(() => {
             if (gen !== S.sessionGen) return;
-            setTimeout(() => {
-                if (gen === S.sessionGen) {
+            // The checkpoint is rolled forward from server-confirmed data only (#59)
+            whenServerConfirmed().then(ok => {
+                if (ok && gen === S.sessionGen) {
                     this.maintainStockCheckpoint().catch(e => console.error('Stock checkpoint maintenance failed:', e));
                 }
-            }, 0);
+            });
             scheduleHeal(gen);
         });
     }

@@ -154,6 +154,7 @@ const STATIC_ASSETS = [
     '/js/utils/constants.js',
     '/js/utils/data-export.js',
     '/js/utils/backup-verify.js',
+    '/js/utils/data-freshness.js',
     '/js/utils/dates.js',
     '/js/utils/due-payments.js',
     '/js/utils/events.js',

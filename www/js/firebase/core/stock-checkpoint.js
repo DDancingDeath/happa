@@ -27,6 +27,7 @@ import { dueVisibleToQueries } from './legacy-scan.js';
 import { tip } from '../../tip/index.js';
 import { checkpointProps } from '../../tip/scenarios/stock-checkpoint.js';
 import { dropRebuildProgress, openRebuildProgress } from './rebuild-progress.js';
+import { expectServer } from '../../utils/data-freshness.js';
 import { FirebaseService } from '../firestore-service.js';
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
@@ -316,6 +317,19 @@ export const CHECKPOINT_MAX_BYTES = 900 * 1024;
  * the checkpoint in use until a rebuilt one arrives.
  * @private
  */
+/**
+ * A cached checkpoint already as new as the default window start: the window starts there whatever
+ * the server's copy says (liveFrom = min(window start, asOf)), so the listeners need not wait for it
+ * (#59; a newer or stale server copy is adopted later, below). An older one could move the window
+ * start earlier (more reads): then wait for the server as before.
+ * @param {?Object} doc
+ * @returns {boolean}
+ */
+function cachedCheckpointCoversWindow(doc) {
+    const cp = doc ? parseCheckpoint(doc) : null;
+    return !!cp && cp.asOf >= defaultWindowStart(Date.now());
+}
+
 export function listenCheckpoint(gen) {
     return new Promise(resolve => {
         let ready = false;
@@ -327,11 +341,13 @@ export function listenCheckpoint(gen) {
             resolve();
         };
         pendingFirstSnapshots.push({ resolve: done, reject: done });
+        const heardServer = expectServer('Checkpoint');
         let unsubscribe = () => {};
         try {
             unsubscribe = checkpointRef().onSnapshot({ includeMetadataChanges: true }, snap => {
                 if (gen !== S.sessionGen) return;
                 S.checkpointDoc = snap.exists ? snap.data() : null;
+                if (!snap.metadata.fromCache) heardServer();
                 if (ready) {
                     if (S.checkpointDoc && !S.checkpointDoc.stale && adoptCheckpoint(S.checkpointDoc)) {
                         markDirty(['stockView'], true);
@@ -352,7 +368,7 @@ export function listenCheckpoint(gen) {
                     }
                     return;
                 }
-                if (!snap.metadata.fromCache || navigator.onLine === false) {
+                if (!snap.metadata.fromCache || navigator.onLine === false || cachedCheckpointCoversWindow(S.checkpointDoc)) {
                     done();
                 } else if (!timer) {
                     // A cached checkpoint is safe to start from: later snapshots
@@ -362,11 +378,13 @@ export function listenCheckpoint(gen) {
             }, error => {
                 console.error('Stock checkpoint listener error:', error);
                 if (S.checkpointDoc === undefined) S.checkpointDoc = null;
+                heardServer();
                 done();
             });
         } catch (e) {
             console.error('Stock checkpoint listener error:', e);
             S.checkpointDoc = null;
+            heardServer();
             done();
         }
         unsubscribeFunctions.push(unsubscribe);

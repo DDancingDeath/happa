@@ -190,11 +190,14 @@ window.addEventListener('pagehide', watchdogOff);
 window.addEventListener('pageshow', watchdogOn);
 watchdogOn();
 
-/** TIP NumberChecks (#161): once a day on an owner's / manager's phone, when the phone is idle. */
+/**
+ * TIP NumberChecks (#161): once a day on an owner's / manager's phone, when the phone is idle, and
+ * only over server-confirmed data (#59: cache-only figures could report false mismatches).
+ */
 function scheduleTipNumberChecks() {
     if (AppState.userRole !== 'owner' && AppState.userRole !== 'manager') return;
-    whenIdle(() => {
-        if (!AppState.stockReady) return;
+    FirebaseService.whenServerConfirmed().then(confirmed => confirmed && whenIdle(() => {
+        if (!AppState.stockReady || FirebaseService.dataFreshness() !== 'server') return;
         runNumberChecksOnce({
             store: localStorage,
             dayKey: dayKeyOf(Date.now()),
@@ -207,7 +210,7 @@ function scheduleTipNumberChecks() {
                 anom.recordNumberChecks(results).catch(e => console.warn('Number-check flags failed:', e?.message || e));
             }
         }).catch(e => console.warn('TIP number checks failed:', e?.message || e));
-    }, { minDelayMs: 30000 });
+    }, { minDelayMs: 30000 }));
 }
 
 // Load and inject HTML templates from separate .html files. The login screen
@@ -676,8 +679,9 @@ async function initializeUserData() {
             loadAllCatalogues().catch(e => console.warn('Language catalogue not loaded:', e?.message || e));
             loadReceiptDrawing().catch(e => console.warn('Receipt drawing not loaded:', e?.message || e));
             if (AppState.userRole !== 'owner' && AppState.userRole !== 'manager') return;
-            loadAnomalies()
-                .then(m => m.scheduleDailyScan(Math.max(0, DAILY_SCAN_DELAY_MS - (Date.now() - shownAt))))
+            // ...over server-confirmed data only (#59): a bill missing from the cache is no anomaly
+            Promise.all([loadAnomalies(), FirebaseService.whenServerConfirmed()])
+                .then(([m, confirmed]) => confirmed && m.scheduleDailyScan(Math.max(0, DAILY_SCAN_DELAY_MS - (Date.now() - shownAt))))
                 .catch(e => console.warn('Anomalies not loaded:', e?.message || e));
         }, { timeoutMs: 4000 });
 

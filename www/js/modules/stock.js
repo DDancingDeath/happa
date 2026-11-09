@@ -27,10 +27,17 @@ import { t, hasCatalogue, loadAllCatalogues } from '../i18n/index.js';
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { pickLang } from '../i18n/localize.js';
 import { can } from '../utils/role-access.js';
+import { awaitingServer } from '../utils/data-freshness.js';
 
 const stockKg = (q) => formatKg(q);
 
 const DEAD_STOCK_DAYS_KEY = 'aadhat.deadStockDays';
+
+/**
+ * Stock not final: being worked out, or from data the server is about to confirm (#59). A count, a
+ * "set to" or a reversal saved from it would store a wrong change of kg: they wait for it.
+ */
+const stockNotFinal = () => AppState.stockReady === false || awaitingServer();
 
 const stockUpdatingHtml = () => `<p class="stock-updating" style="text-align: center; color: var(--text-secondary); margin-top: 40px;">${Helpers.escapeHtml(t('ui.stock.updating'))}</p>`;
 
@@ -267,7 +274,7 @@ export class StockManager {
      */
     static async reverseAdjustment(adjustmentId) {
         if (Helpers.isBusy('stock-adjust') || !this.canManageStock()) return;
-        if (AppState.stockReady === false) {
+        if (stockNotFinal()) {
             UIManager.showToast(t('msg.wholesale.stock_still_updating_try_again'));
             return;
         }
@@ -325,7 +332,7 @@ export class StockManager {
      */
     static async openStockCount() {
         if (Helpers.isBusy('stock-adjust') || !this.canManageStock()) return;
-        if (AppState.stockReady === false) {
+        if (stockNotFinal()) {
             UIManager.showToast(t('msg.wholesale.stock_still_updating_try_again'));
             return;
         }
@@ -724,6 +731,11 @@ export class StockManager {
         const plan = planStockAdjustment({ adjustType, quantity, currentStock, reasonCode, reasonNote, rate });
         if (!plan.ok) {
             UIManager.showToast(plan.error);
+            return;
+        }
+        // "Set to" and a remove capped at the stock are worked out from the current stock
+        if ((adjustType === 'set' || plan.capped) && stockNotFinal()) {
+            UIManager.showToast(t('msg.wholesale.stock_still_updating_try_again'));
             return;
         }
         if (plan.capped) {
