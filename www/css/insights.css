@@ -46,7 +46,7 @@
 
 .ins-tab.active {
     background: var(--btn-primary);
-    color: #fff;
+    color: var(--btn-primary-ink);
 }
 
 .ins-subtabs { margin-top: 8px; }

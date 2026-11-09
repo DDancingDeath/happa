@@ -150,7 +150,7 @@
 .aging-sort-btn.active {
     background: var(--btn-primary);
     border-color: var(--btn-primary);
-    color: #fff;
+    color: var(--btn-primary-ink);
 }
 
 .aging-party {

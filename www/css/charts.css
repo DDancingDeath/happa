@@ -476,7 +476,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .bill-action-btn.btn-edit {
   background: var(--btn-primary);
-  color: white;
+  color: var(--btn-primary-ink);
 }
 
 .bill-action-btn.btn-edit:hover {

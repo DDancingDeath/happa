@@ -10,7 +10,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const CSS = fs.readFileSync(path.join(__dirname, '..', '..', 'www', 'css', 'variables.css'), 'utf8');
+const WWW = path.join(__dirname, '..', '..', 'www');
+const CSS = fs.readFileSync(path.join(WWW, 'css', 'variables.css'), 'utf8');
 
 /** Rule blocks on screen: @media screen is unwrapped, other @media blocks (print) are dropped. */
 function screenBlocks(css) {
@@ -37,10 +38,26 @@ function screenBlocks(css) {
 
 const blocks = screenBlocks(CSS);
 const pick = (test) => Object.assign({}, ...blocks.filter((b) => b.selectors.some(test)).map((b) => b.decl));
-const TOKENS = {
+const BASE = {
     light: pick((s) => s === '[data-theme]'),
     dark: { ...pick((s) => s === '[data-theme]'), ...pick((s) => s === '[data-mode="dark"]') },
 };
+const KINDS = Object.fromEntries([...fs.readFileSync(path.join(WWW, 'js', 'ui', 'themes.js'), 'utf8')
+    .matchAll(/\{\s*id:\s*'([\w-]+)',\s*kind:\s*'(\w+)'/g)].map((m) => [m[1], m[2]]));
+
+/** A theme's tokens in a mode: Modern's base for that mode, then the theme's own blocks for it. */
+function themeTokens(id, mode) {
+    if (id === 'modern') return BASE[mode];
+    const own = screenBlocks(fs.readFileSync(path.join(WWW, 'css', 'themes', `${id}.css`), 'utf8'));
+    const take = (sel) => Object.assign({}, ...own.filter((b) => b.selectors.includes(sel)).map((b) => b.decl));
+    const t = `[data-theme="${id}"]`;
+    return mode === 'dark'
+        ? { ...BASE.dark, ...take(t), ...take(`${t}[data-mode="dark"]`) }
+        : { ...BASE.light, ...take(t), ...take(`${t}:not([data-mode="dark"])`) };
+}
+
+const TOKENS = Object.fromEntries(Object.entries(KINDS).flatMap(([id, kind]) =>
+    (kind === 'dark' ? ['dark'] : ['light', 'dark']).map((mode) => [`${id} ${mode}`, themeTokens(id, mode)])));
 
 function resolve(t, v, depth = 0) {
     if (v == null || depth > 12) return v;
@@ -77,7 +94,7 @@ const PAIRS = [
     ['ink', 'bg'], ['ink', 'surface'], ['ink-2', 'bg'], ['ink-2', 'surface'], ['ink-2', 'surface-2'],
     ['ink-3', 'bg'], ['ink-3', 'surface'], ['ink-3', 'surface-2'], ['ink-placeholder', 'input-bg'],
     ['accent-text', 'bg'], ['accent-text', 'surface'], ['accent-text', 'surface-2'], ['accent-text', 'accent-soft@surface'],
-    ['on-accent', 'accent'], ['on-accent', 'accent-strong'], ['btn-primary-ink', 'btn-primary-bg'],
+    ['on-accent', 'accent'], ['#fff', 'accent-strong'], ['btn-primary-ink', 'btn-primary-bg'],
     ['btn-sale-ink', 'btn-sale-bg'], ['#fff', 'btn-danger-bg'],
     ['positive', 'surface'], ['positive', 'bg'], ['positive', 'positive-soft@surface'],
     ['negative', 'surface'], ['negative', 'bg'], ['negative', 'negative-soft@surface'],
@@ -86,8 +103,8 @@ const PAIRS = [
     ['on-caution-soft', 'caution-soft@surface'], ['toast-ink', 'toast-bg'],
 ];
 
-describe.each(Object.keys(TOKENS))('Modern Minimal, %s', (mode) => {
-    const t = TOKENS[mode];
+describe.each(Object.keys(TOKENS))('%s', (name) => {
+    const t = TOKENS[name];
 
     test('has the semantic tokens', () => {
         for (const n of ['bg', 'surface', 'surface-2', 'ink', 'ink-2', 'ink-3', 'accent', 'accent-text', 'positive', 'negative', 'warning', 'info']) {
@@ -103,7 +120,7 @@ describe.each(Object.keys(TOKENS))('Modern Minimal, %s', (mode) => {
 });
 
 test('printing uses the light values: the dark tokens are screen-only', () => {
-    expect(TOKENS.dark['--bg']).not.toBe(TOKENS.light['--bg']);
+    expect(BASE.dark['--bg']).not.toBe(BASE.light['--bg']);
     expect(blocks.filter((b) => b.selectors.includes('[data-mode="dark"]')).length).toBeGreaterThan(0);
     const printOnly = CSS.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@media\s+screen\s*\{[\s\S]*?\n\}/g, '');
     expect(printOnly).not.toMatch(/\[data-mode="dark"\]\s*[,{]/);

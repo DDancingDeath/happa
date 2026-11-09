@@ -24,8 +24,8 @@ import { APP_IDENTITY } from '../config/app-identity.js';
 import { forgetPrinter, normalizePrinterSettings, normalizeReceiptOptions, PAPER_WIDTHS, setPaperWidth, usePrinter } from '../utils/printer-settings.js';
 import { AuthManager, authErrorMessage } from '../auth/authentication.js';
 import { UsageView } from '../ui/usage-view.js';
-import { ThemeManager } from '../ui/theme.js';
-import { APPEARANCES } from '../ui/themes.js';
+import { ThemeManager, resolveMode } from '../ui/theme.js';
+import { APPEARANCES, DEFAULT_APPEARANCE, DEFAULT_THEME, THEMES, themeById } from '../ui/themes.js';
 
 const LABOUR_OWNER_ONLY_KEY = 'msg.settings.labour_owner_only';
 const LABOUR_INPUTS = ['settingHeavyWeight', 'settingLaborRate', 'settingLabourPackageKg'];
@@ -110,6 +110,7 @@ export class SettingsManager {
         const nameInput = document.getElementById('settingUserName');
         if (nameInput && document.activeElement !== nameInput) nameInput.value = AppState.userName || '';
         
+        this.renderThemeGallery();
         this.syncAppearance();
         
         const bluetoothCheckbox = document.getElementById('settingBluetoothEnabled');
@@ -151,6 +152,7 @@ export class SettingsManager {
     static setAppearance(appearance) {
         if (!APPEARANCES.includes(appearance)) return;
         ThemeManager.apply({ appearance });
+        this.renderThemeGallery();
         this.syncAppearance();
         UIManager.hapticFeedback('light');
         const names = { light: 'ui.settings.appearance_light', dark: 'ui.settings.appearance_dark', system: 'ui.settings.appearance_system' };
@@ -163,6 +165,94 @@ export class SettingsManager {
         document.querySelectorAll('[data-appearance-choice]').forEach((btn) => {
             btn.setAttribute('aria-pressed', String(btn.dataset.appearanceChoice === current));
         });
+        this.syncTheme();
+    }
+
+    /**
+     * Settings › Appearance gallery: one card per theme with a live mini preview (real DOM scoped
+     * with data-theme / data-mode, so a new theme previews itself).
+     */
+    static renderThemeGallery() {
+        const box = document.getElementById('themeGallery');
+        if (!box) return;
+        const systemDark = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const span = (cls, text) => {
+            const el = document.createElement('span');
+            el.className = cls;
+            if (text != null) el.textContent = text;
+            return el;
+        };
+        box.replaceChildren(...THEMES.map((th) => {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'theme-card';
+            card.dataset.themeChoice = th.id;
+            card.setAttribute('data-onclick', `settings.previewTheme('${th.id}')`);
+            const preview = span('theme-card-preview');
+            preview.setAttribute('aria-hidden', 'true');
+            preview.setAttribute('data-theme', th.id);
+            preview.setAttribute('data-mode', resolveMode(ThemeManager.current.appearance, th.kind, systemDark));
+            const panel = span('tcp-panel');
+            panel.append(span('tcp-line'), span('tcp-line tcp-line-short'), span('tcp-dots'));
+            preview.append(span('tcp-bar'), panel, span('tcp-btn'));
+            const text = span('theme-card-text');
+            text.append(span('theme-card-name', t(`ui.settings.theme_${th.id}`)), span('theme-card-desc', t(`ui.settings.theme_${th.id}_desc`)));
+            if (th.kind === 'dark') text.append(span('theme-card-badge', t('ui.settings.theme_always_dark')));
+            card.append(preview, text);
+            return card;
+        }));
+        this.syncTheme();
+    }
+
+    /** Selected / previewed cards, the preview bar and the always-dark hint follow ThemeManager. */
+    static syncTheme() {
+        const { theme, appearance } = ThemeManager.current;
+        const previewing = ThemeManager.previewing;
+        document.querySelectorAll('[data-theme-choice]').forEach((card) => {
+            card.setAttribute('aria-pressed', String(card.dataset.themeChoice === theme));
+            card.toggleAttribute('data-previewing', card.dataset.themeChoice === previewing);
+        });
+        const shown = themeById(previewing || theme);
+        const hint = document.getElementById('themeDarkHint');
+        if (hint) {
+            hint.hidden = !(shown?.kind === 'dark' && appearance !== 'dark');
+            hint.textContent = hint.hidden ? '' : t('ui.settings.theme_dark_hint', { name: t(`ui.settings.theme_${shown.id}`) });
+        }
+        const bar = document.getElementById('themePreviewBar');
+        if (bar) {
+            bar.hidden = !previewing;
+            const label = document.getElementById('themePreviewText');
+            if (label) label.textContent = previewing ? t('ui.settings.theme_previewing', { name: t(`ui.settings.theme_${previewing}`) }) : '';
+        }
+    }
+
+    /** Shows a theme across the app; the preview bar applies or cancels it. */
+    static previewTheme(id) {
+        if (!themeById(id)) return;
+        ThemeManager.preview(id);
+        UIManager.hapticFeedback('light');
+        this.syncTheme();
+    }
+
+    static applyThemePreview() {
+        const id = ThemeManager.previewing;
+        if (!id) return;
+        ThemeManager.apply({ theme: id });
+        this.syncTheme();
+        UIManager.showToast(t('msg.settings.theme_set', { name: t(`ui.settings.theme_${id}`) }));
+    }
+
+    static cancelThemePreview() {
+        ThemeManager.cancelPreview();
+        this.syncTheme();
+    }
+
+    /** Modern Minimal and the default appearance (System). */
+    static resetTheme() {
+        ThemeManager.apply({ theme: DEFAULT_THEME, appearance: DEFAULT_APPEARANCE });
+        this.renderThemeGallery();
+        this.syncAppearance();
+        UIManager.showToast(t('msg.settings.theme_reset_done'));
     }
 
     /**
@@ -872,3 +962,6 @@ export class SettingsManager {
         }
     }
 }
+
+// A preview can end outside Settings (leaving the page): keep the bar and the cards in step
+if (typeof window !== 'undefined') window.addEventListener('aadhat:themechange', () => SettingsManager.syncTheme());

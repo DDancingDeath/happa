@@ -299,7 +299,7 @@
   border: none;
   border-radius: 8px;
   background: var(--btn-primary);
-  color: white;
+  color: var(--btn-primary-ink);
   font-weight: var(--w-strong);
   font-size: 14px;
   cursor: pointer;
