@@ -975,7 +975,8 @@ window.app = {
     // Voice billing (#81): Settings switch (off by default) and the Billing mic buttons
     voice: {
         start: (mode) => VoiceMic.start(mode),
-        setOn: (on) => VoiceMic.setOn(on)
+        setOn: (on) => VoiceMic.setOn(on),
+        setReadback: (on) => VoiceMic.setReadback(on)
     },
     
     // Business switcher (#149) and Rentals (#170): rentals.* methods are added when the section loads
