@@ -13,7 +13,8 @@ const dirOf = (/** @type {?{dir: string}|undefined} */ c) => (c ? c.dir : null);
 
 /**
  * Profit headline (M6) with the comparison that matters most: last year when
- * known, else the previous period. Explains a loss and an unknown cost.
+ * known, else the previous period. Explains a loss. An unknown or partly unknown cost is
+ * said once, by the page's caveat (V2 O-18), so nothing here when profit is unknown.
  * @param {Object} a
  * @param {?number} a.profit M6
  * @param {?{pct: number, dir: string}} a.vsLastYear
@@ -21,16 +22,13 @@ const dirOf = (/** @type {?{dir: string}|undefined} */ c) => (c ? c.dir : null);
  * @param {string} a.lastYearLabel e.g. "Oct 2025"
  * @param {string} a.previousLabel e.g. "Sep"
  * @param {?{name: string, diff: number}} a.driver biggest item change (I6)
- * @param {?{qty: number, estimate: number}} a.uncosted
  * @param {?{pct: number, dir: string}} a.salesVsLastYear
  * @returns {Array<{key: string, params?: Object, link?: string}>}
  */
-export function profitTakeaways({ profit, vsLastYear, vsPrevious, lastYearLabel, previousLabel, driver, uncosted, salesVsLastYear }) {
+export function profitTakeaways({ profit, vsLastYear, vsPrevious, lastYearLabel, previousLabel, driver, salesVsLastYear }) {
+    /** @type {Takeaway[]} */
     const out = [];
-    if (profit === null || profit === undefined) {
-        out.push({ key: 'ui.tk.profit_unknown' });
-        return out;
-    }
+    if (profit === null || profit === undefined) return out;
     const amount = Math.abs(Math.round(profit));
     const cmp = vsLastYear || vsPrevious;
     const label = vsLastYear ? lastYearLabel : previousLabel;
@@ -41,9 +39,6 @@ export function profitTakeaways({ profit, vsLastYear, vsPrevious, lastYearLabel,
         out.push({ key: driver.diff > 0 ? 'ui.tk.driver_up' : 'ui.tk.driver_down', params: { item: driver.name, amount: Math.abs(Math.round(driver.diff)) }, link: 'insights-items' });
     }
     if (dirOf(salesVsLastYear) === 'up' && dirOf(vsLastYear) === 'down') out.push({ key: 'ui.tk.gut_sales_up_profit_down', link: 'insights-items' });
-    if (uncosted && uncosted.qty > 0) {
-        out.push({ key: 'ui.tk.gut_uncosted', params: { qty: Math.round(uncosted.qty * 100) / 100, amount: Math.round(uncosted.estimate || 0) } });
-    }
     return out;
 }
 

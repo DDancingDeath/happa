@@ -19,7 +19,7 @@ import { t, tn, getLang } from '../i18n/index.js';
 import { formatRupees, formatAmount, normalizeLabourSettings } from '../utils/money.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import { labourSummary, labourToPayByDay, labourCalcText, periodLabourGap } from '../utils/labour.js';
-import { formatMonth, formatDay, toLocalISODate, parseAnyBillDate, monthStart, addLocalDays, periodBounds, localDayKeys, endUpToNow } from '../utils/dates.js';
+import { formatMonth, formatDay, toLocalISODate, parseAnyBillDate, monthStart, addLocalDays, periodBounds, localDayKeys, endUpToNow, daysInMonth } from '../utils/dates.js';
 import { pickReplayBase, billsInRange } from '../utils/finance-calc.js';
 import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom, refreshOnDemandHistory } from '../utils/history-window.js';
 import { refusedForClock } from '../utils/clock-skew.js';
@@ -47,7 +47,7 @@ import {
 } from '../ui/period-compare.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
-const money = (v) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : formatRupees(v));
+const money = (v) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : formatRupees(v, { trueMinus: true }));
 const SECTIONS = ['profit', 'cash', 'spending', 'worth'];
 const SESSION_TTL_MS = 10 * 60 * 1000;
 const ACCOUNTS_KEY = 'financeCustomAccounts';
@@ -282,6 +282,15 @@ export const MoneyManager = {
         return t('ui.money.p_all');
     },
 
+    /** CMP label for this month so far: the same days of the other month, "1–8 Oct"; all of it, "Oct". */
+    monthToDate(x, year) {
+        const lang = getLang();
+        const day = Number(periodBounds(x.from, x.to).last.slice(8));
+        if (day >= daysInMonth(x.from)) return formatMonth(x.from, { lang, year });
+        return day === 1 ? formatDay(x.from, { lang, year })
+            : t('ui.money.month_to_date', { month: formatMonth(x.from, { lang, year }), day });
+    },
+
     /** Bills, expenses… as the calculation layer wants them. */
     input(from, sessions = []) {
         const base = pickReplayBase({
@@ -438,9 +447,11 @@ export const MoneyManager = {
         const span = dayOrWeekSpan(r);
         const prevKey = r.day ? 'ui.money.yesterday' : r.week ? 'ui.money.last_week'
             : span === 1 ? 'ui.money.day_before' : span === 7 ? 'ui.money.week_before' : 'ui.money.before';
+        const toDate = r.month && getInsightsContext().preset === 'this-month';
+        const monthText = (x, year) => (toDate && x ? this.monthToDate(x, year) : formatMonth(x?.from, { lang, year }));
         const labels = {
-            prev: r.month ? formatMonth(cmpR.previous?.from, { lang, year: false }) : t(prevKey),
-            ly: r.month ? formatMonth(cmpR.lastYear?.from, { lang }) : t('ui.money.last_year')
+            prev: r.month ? monthText(cmpR.previous, false) : t(prevKey),
+            ly: r.month ? monthText(cmpR.lastYear, true) : t('ui.money.last_year')
         };
         const target = compareTarget(this.cfg(), now);
         const b = target ? this.figuresFor(target.range, now) : null;
@@ -558,13 +569,16 @@ export const MoneyManager = {
     renderProfit({ m, prev, ly, b, labels, r, now }) {
         const vsPrev = change(m.M6.total, prev?.M6 ?? null);
         const vsLy = change(m.M6.total, ly?.M6 ?? null);
+        const estimate = m.caveats.some(c => c.key === 'uncosted');
+        this.text('moneyProfitLabel', t(estimate ? 'ui.money.profit_estimate' : 'ui.money.profit'));
+        this.text('moneyProfitEqLabel', t(estimate ? 'ui.money.profit_eq_estimate' : 'ui.money.profit_eq'));
         this.text('moneyProfitValue', money(m.M6.total));
         this.html('moneyProfitCompare', compareHtml([vsItem(m.M6.total, prev?.M6, labels.prev), vsItem(m.M6.total, ly?.M6, labels.ly), vsB(m.M6.total, b?.M6, labels)]));
         const onProfit = this.section === 'profit';
         const driverRows = onProfit ? this.itemDriver(m, r) : null;
         this.html('moneyProfitTakeaway', takeawayHtml(profitTakeaways({
             profit: m.M6.total, vsLastYear: vsLy, vsPrevious: vsPrev, lastYearLabel: labels.ly, previousLabel: labels.prev,
-            driver: driverRows, uncosted: m.caveats.find(c => c.key === 'uncosted') || null,
+            driver: driverRows,
             salesVsLastYear: change(m.M1.total, ly?.M1 ?? null)
         })));
         this.html('moneyProfitCaveats', this.caveatsHtml(m, ['M2', 'M6']));

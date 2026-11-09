@@ -116,14 +116,17 @@ www/js/modules/money.js: change(now, then) (markup via compareHtml)
 www/js/modules/money.js: compareTableHtml(this.compareRows(m, b), { a, b: labels.b }) (sink via this.html)
 www/js/modules/money.js: figuresFromSnapshot(this.snapshots[lyKey(k)])?.M6 (markup via map(v => (v === null ? NaN : v)))
 www/js/modules/money.js: formatDay(k, { lang, year: false }) (markup via barsSvg)
-www/js/modules/money.js: formatMonth(cmpR.lastYear?.from, { lang }) (markup via this.renderCash)
-www/js/modules/money.js: formatMonth(cmpR.lastYear?.from, { lang }) (markup via this.renderProfit)
-www/js/modules/money.js: formatMonth(cmpR.lastYear?.from, { lang }) (markup via this.renderSpending)
-www/js/modules/money.js: formatMonth(cmpR.previous?.from, { lang, year: false }) (markup via this.renderCash)
-www/js/modules/money.js: formatMonth(cmpR.previous?.from, { lang, year: false }) (markup via this.renderProfit)
-www/js/modules/money.js: formatMonth(cmpR.previous?.from, { lang, year: false }) (markup via this.renderSpending)
+www/js/modules/money.js: formatDay(x.from, { lang, year }) (markup via this.renderCash)
+www/js/modules/money.js: formatDay(x.from, { lang, year }) (markup via this.renderProfit)
+www/js/modules/money.js: formatDay(x.from, { lang, year }) (markup via this.renderSpending)
 www/js/modules/money.js: formatMonth(monthBounds(k).from, { lang }) (markup via barsSvg)
 www/js/modules/money.js: formatMonth(monthBounds(k).from, { lang, year: false }) (markup via barsSvg)
+www/js/modules/money.js: formatMonth(x.from, { lang, year }) (markup via this.renderCash)
+www/js/modules/money.js: formatMonth(x.from, { lang, year }) (markup via this.renderProfit)
+www/js/modules/money.js: formatMonth(x.from, { lang, year }) (markup via this.renderSpending)
+www/js/modules/money.js: formatMonth(x?.from, { lang, year }) (markup via this.renderCash)
+www/js/modules/money.js: formatMonth(x?.from, { lang, year }) (markup via this.renderProfit)
+www/js/modules/money.js: formatMonth(x?.from, { lang, year }) (markup via this.renderSpending)
 www/js/modules/money.js: height
 www/js/modules/money.js: height
 www/js/modules/money.js: height
@@ -218,6 +221,9 @@ www/js/modules/money.js: rangeFigures(this.snapshots, r.from, r.to) (markup via 
 www/js/modules/money.js: rangeFigures(this.snapshots, r.from, r.to) (markup via this.renderSpending)
 www/js/modules/money.js: ref ? ` data-metric-ref="${ref}"` : '' ← ref
 www/js/modules/money.js: sharePct(c.total, max)
+www/js/modules/money.js: t('ui.money.month_to_date', { month: formatMonth(x.from, { lang, year }), day }) (markup via this.renderCash)
+www/js/modules/money.js: t('ui.money.month_to_date', { month: formatMonth(x.from, { lang, year }), day }) (markup via this.renderProfit)
+www/js/modules/money.js: t('ui.money.month_to_date', { month: formatMonth(x.from, { lang, year }), day }) (markup via this.renderSpending)
 www/js/modules/money.js: t('ui.money.stock_vs', { when: sinceLabel }) (markup via vsItem)
 www/js/modules/money.js: t('ui.money.stock_vs_not_known', { when: sinceLabel }) (markup via compareHtml)
 www/js/modules/money.js: tag ← onTap

@@ -14,6 +14,7 @@ import { AppState } from '../utils/state.js';
 import { getInsightsContext, setInsightsContext, resetInsightsContextForTests } from '../utils/insights-context.js';
 import { seasonIndex, seasonKgTotal, weeklyKgWindow, weeklyKgByItem, sharePct, topShare, roundTo, addsUp } from '../utils/business-metrics.js';
 import { snapshotItemSales } from '../utils/month-snapshots.js';
+import { tn } from '../i18n/index.js';
 
 const ROOT = path.resolve(__dirname, '../../..');
 const FIX = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests/fixtures/calculations/shop-month.json'), 'utf8'));
@@ -124,7 +125,11 @@ describe('to-do list (I7, I8, overdue)', () => {
         AppState.purchaseHistory.push({ id: 'pz', date: '2026-10-02', timestamp: new Date(2026, 9, 2).getTime(), grandTotal: 1000, items: [{ itemId: FIX.items[0].id, name: FIX.items[0].name, qty: 20, rate: 50, total: 1000 }] });
         AppState.retailSalesHistory.push({ id: 'rz', date: '2026-10-03', timestamp: new Date(2026, 9, 3).getTime(), total: 20, payment: { cash: 20 }, items: [{ itemId: FIX.items[0].id, name: FIX.items[0].name, qty: 1, rate: 20, total: 20 }] });
         InsightsManager.init('actions');
-        expect(document.getElementById('insightsActionsBelow').textContent).toMatch(/below its cost/);
+        const text = document.getElementById('insightsActionsBelow').textContent;
+        expect(text).toMatch(/Rice was sold below its cost (once|\d+ times) \([\d.,]+ kg\), losing ₹[\d,]+\./);
+        expect(text).not.toMatch(/₹ lost|\b1 times/);
+        expect(tn('ui.insights.act_below_cost', 1, { item: 'Rice', times: 1, kg: '1', amount: '₹30' })).toBe('Rice was sold below its cost once (1 kg), losing ₹30.');
+        expect(tn('ui.insights.act_below_cost', 1, { item: 'चावल', times: 1, kg: '1', amount: '₹30' }, 'hi')).toBe('चावल एक बार लागत से कम में बिका (1 kg), घाटा ₹30।');
     });
 
     test('the To do heading names the chosen period, not "This week" (#92)', () => {
