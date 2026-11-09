@@ -68,6 +68,18 @@
   text-align: right;
 }
 
+/* Bill lines written by purchase.js / retail-sale.js (3.3): a line opens for editing */
+#billTable tbody tr.bill-line, #saleTable tbody tr.bill-line {
+  cursor: pointer;
+}
+
+#billTable td.bill-empty, #saleTable td.bill-empty {
+  padding: var(--sp-6) var(--sp-2);
+  color: var(--ink-3);
+  font-weight: var(--w-regular);
+  text-align: center;
+}
+
 .remove-bill-item, .remove-sale-item {
   background: var(--danger-soft);
   color: var(--on-danger-soft);
