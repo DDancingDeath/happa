@@ -1,0 +1,21 @@
+# Deploys main to the Bahi PROD project (bahi-happa, #72). Does nothing until the
+# repo variable BAHI_CUTOVER is 'true', so this file can merge before cut-over.
+# At cut-over also disable "Deploy to Firebase on merge" (happa-bfc07), see AGENTS.md.
+name: Bahi deploy prod
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prod:
+    if: vars.BAHI_CUTOVER == 'true' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/bahi-deploy.yml
+    with:
+      env: prod
+    secrets:
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAHI_HAPPA }}

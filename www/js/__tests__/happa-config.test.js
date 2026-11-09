@@ -3,7 +3,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { loadConfig, derive, configProblems, hostingProblems, plan, check, guard } = require('../../../scripts/happa-config.js');
+const { loadConfig, forEnv, derive, configProblems, hostingProblems, plan, check, guard } = require('../../../scripts/happa-config.js');
 
 const ROOT = path.join(__dirname, '..', '..', '..');
 
@@ -124,6 +124,33 @@ describe('happa.config.json', () => {
     });
 });
 
+describe('Bahi environments (#72)', () => {
+    test('.firebaserc keeps the live default and lists prod, dev and legacy aliases', () => {
+        const rc = JSON.parse(fs.readFileSync(path.join(ROOT, '.firebaserc'), 'utf8')).projects;
+        const raw = loadConfig(ROOT);
+        expect(rc).toEqual({ default: raw.firebase.projectId, prod: 'bahi-happa', dev: 'bahi-happa-dev', legacy: 'happa-bfc07' });
+    });
+
+    test('--env builds every identity file for that project without touching the committed config', () => {
+        for (const [env, id] of [['prod', 'bahi-happa'], ['dev', 'bahi-happa-dev']]) {
+            const files = Object.fromEntries(plan(ROOT, forEnv(loadConfig(ROOT), env)).map((p) => [p.file, p.wanted]));
+            expect(JSON.parse(files['.firebaserc']).projects.default).toBe(id);
+            expect(files['www/firebaseConfig.js']).toContain(`"projectId": "${id}"`);
+            expect(files['www/firebaseConfig.js']).not.toContain('happa-bfc07');
+            expect(files['firebase.json']).not.toMatch(/myhappa|happaapp|happa-bfc07/);
+        }
+        expect(() => forEnv(loadConfig(ROOT), 'staging')).toThrow(/no environments\.staging/);
+    });
+
+    test('only the dev environment may be a *-dev project', () => {
+        const raw = filled();
+        raw.environments.prod.projectId = 'bahi-happa-dev';
+        expect(configProblems(raw).join('\n')).toMatch(/environments\.prod.*-dev/);
+        raw.environments.prod.projectId = 'aadhat-management';
+        expect(configProblems(raw).join('\n')).toMatch(/old app/);
+    });
+});
+
 describe('CI guard', () => {
     let dir;
     const write = (projectId, rc = projectId) => {
@@ -168,6 +195,15 @@ describe('CI guard', () => {
         write('__HAPPA_PROJECT_ID__');
         expect(guard(dir, { saJson: sa('happa-shop') })).toMatchObject({ ok: true, ready: false });
         expect(guard(dir, { requireReady: true, saJson: sa('happa-shop') }).ok).toBe(false);
+    });
+
+    test('--env refuses a dev project for prod and a prod project for dev', () => {
+        write('happa-shop-dev');
+        const raw = JSON.parse(fs.readFileSync(path.join(dir, 'happa.config.json'), 'utf8'));
+        raw.environments = { prod: raw.firebase, dev: { ...raw.firebase, projectId: 'happa-shop' } };
+        fs.writeFileSync(path.join(dir, 'happa.config.json'), JSON.stringify(raw));
+        expect(guard(dir, { env: 'prod', saJson: sa('happa-shop-dev') }).messages.join('\n')).toMatch(/only the dev environment/);
+        expect(guard(dir, { env: 'dev', saJson: sa('happa-shop') }).ok).toBe(false);
     });
 
     test('missing service account: previews skip, deploys fail', () => {
