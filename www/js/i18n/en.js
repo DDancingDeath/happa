@@ -664,7 +664,7 @@ export default {
     'ui.finance.paid_at_purchase': "Paid on purchase bills",
     'ui.finance.personal_expenses': "Personal expenses",
     'ui.finance.profit_after_personal': "Profit after personal expenses",
-    'ui.finance.profit_on_goods_sold': "Profit (after expenses)",
+    'ui.finance.profit_on_goods_sold': "Profit (after business expenses)",
     'ui.finance.purchases': "Purchases",
     'ui.finance.qty_avg_cost': "{qty} × ₹{rate} average cost",
     'ui.finance.received_at_sale': "Received on sale bills",
