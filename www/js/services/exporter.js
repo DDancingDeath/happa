@@ -11,6 +11,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { AuditService } from './audit.js';
 import { t } from '../i18n/index.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
+import { SITE_HOST } from '../utils/release-info.js';
 import { exportStamp, exportAuditDetails } from '../utils/export-stamp.js';
 
 export const Exporter = {
@@ -81,7 +82,7 @@ export const Exporter = {
         if (native) {
             const shared = await this.shareNative(blob, filename);
             if (shared !== null) return shared;
-            if (!quiet) UIManager.showToast(t('msg.export.needs_website'), 'error');
+            if (!quiet) UIManager.showToast(t('msg.export.needs_website', { site: SITE_HOST }), 'error');
             return false;
         }
         const url = URL.createObjectURL(blob);

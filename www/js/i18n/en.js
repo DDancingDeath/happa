@@ -2829,7 +2829,7 @@ export default {
     'ui.export.status_done': "Done",
     'ui.export.status_cancelled': "Cancelled",
     'ui.export.status_failed': "Failed",
-    'msg.export.needs_website': "This version of the app can't save files. Update the app, or export from the website (myhappa.web.app) in a browser.",
+    'msg.export.needs_website': "This version of the app can't save files. Update the app, or export from the website ({site}) in a browser.",
     'msg.export.share_failed': "The file could not be shared. Try again.",
     'ui.statements.back': "Back",
     'ui.statements.whatsapp': "WhatsApp",
