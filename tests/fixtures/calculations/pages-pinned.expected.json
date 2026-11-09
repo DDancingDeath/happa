@@ -748,23 +748,25 @@
       "moneyPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "moneyNowLabel": "As of today, 1 Nov 2026",
       "moneyCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
+      "moneyProfitLabel": "Profit",
       "moneyProfitValue": "₹0",
-      "moneyProfitCompare": "▲ 100% vs Oct · ▲ 100% vs Nov 2025",
-      "moneyProfitTakeaway": "Profit ₹0, 100% more than Nov 2025.",
+      "moneyProfitCompare": "▲ 100% vs 1 Oct · ▲ 100% vs 1 Nov 2025",
+      "moneyProfitTakeaway": "Profit ₹0, 100% more than 1 Nov 2025.",
       "moneySales": "₹0",
       "moneySalesSplit": "0 bills",
       "moneyCogs": "₹0",
       "moneyGross": "₹0",
       "moneyBusinessTerm": "₹0",
       "moneyBadDebts": "₹0",
+      "moneyProfitEqLabel": "= Profit",
       "moneyProfitTerm": "₹0",
-      "moneyProfitChart": "Nov 2025: -₹6,613Dec 2025: -₹11,430Jan 2026: -₹6,927Feb 2026: -₹12,010Mar 2026: -₹9,463Apr 2026: -₹12,230May 2026: -₹13,440Jun 2026: -₹9,013Jul 2026: -₹12,439Aug 2026: -₹7,760Sep 2026: -₹8,369Oct 2026: -₹11,506Nov 2026: ₹0NovFebMayAugNov",
+      "moneyProfitChart": "Nov 2025: −₹6,613Dec 2025: −₹11,430Jan 2026: −₹6,927Feb 2026: −₹12,010Mar 2026: −₹9,463Apr 2026: −₹12,230May 2026: −₹13,440Jun 2026: −₹9,013Jul 2026: −₹12,439Aug 2026: −₹7,760Sep 2026: −₹8,369Oct 2026: −₹11,506Nov 2026: ₹0NovFebMayAugNov",
       "moneyProfitLegend": "This year Last year",
       "moneyBuildHistory": "Older months are not saved yet, so comparisons with last year are missing.Build month history",
-      "moneyStockMovement": "Stock at the start₹7,31,948+ Bought (at line rate)₹0− Cost of goods sold₹0± Stock corrections₹0= Stock at the end₹7,31,948✓ Stock adds up",
+      "moneyStockMovement": "Stock at the start₹7,31,948+ Bought (at line rate)₹0− Cost of what was sold₹0± Stock corrections₹0= Stock at the end₹7,31,948✓ Stock adds up",
       "moneyPurchases": "₹0 · 0 bills",
       "moneyNetCash": "₹0",
-      "moneyCashCompare": "▲ 100% vs Oct · ▼ 100% vs Nov 2025",
+      "moneyCashCompare": "▲ 100% vs 1 Oct · ▼ 100% vs 1 Nov 2025",
       "moneyCashTakeaway": "₹0 more came in than went out.",
       "moneyIn": "₹0",
       "moneyInSplit": "cash ₹0 · online ₹0",
@@ -772,7 +774,7 @@
       "moneyOutSplit": "cash ₹0 · online ₹0",
       "moneyCashChart": "1 Nov: ₹01",
       "moneyBusiness": "₹0",
-      "moneySpendCompare": "▼ 100% vs Oct · ▼ 100% vs Nov 2025",
+      "moneySpendCompare": "▼ 100% vs 1 Oct · ▼ 100% vs 1 Nov 2025",
       "moneySpendTakeaway": "No business expenses in this period.₹0 went to personal use; ₹0 of the profit stays in the business.",
       "moneyCategories": "No business expenses in this period.",
       "moneyLabourBills": "(0 bills)",
@@ -791,13 +793,13 @@
       "moneyWorthCompare": "stock vs Nov 2025: not known",
       "moneyWorthTakeaway": "You are worth ₹6,29,894.₹42,698 of it is still with customers.",
       "moneyWorthCaveats": "⚠ Net worth leaves out the drawer cash: not counted in the last 30 days.",
-      "moneyWorthTerms": "Stock value₹7,31,948 Stock ›To receive₹42,698 Outstanding ›Cash in drawernot counted in the last 30 days— Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,52,097 Outstanding ›Net worth₹6,29,894",
+      "moneyWorthTerms": "Stock value₹7,31,948 Stock ›To receive₹42,698 Outstanding ›Cash in drawernot counted in the last 30 days— Cash drawer ›Bank, savings and other accounts₹7,345To pay−₹1,52,097 Outstanding ›Net worth₹6,29,894",
       "moneyAccounts": "🏦 Bank₹12,346 ✕🤝 Loan−₹5,001 ✕🏦 Odd₹0 ✕",
       "moneyAccType": "I have this I owe this",
       "moneyChecks": "✓ Numbers match Outstanding, the cash drawer and Stock"
     },
     "cashChart": "<svg class=\"ins-svg\" width=\"100%\" height=\"120\" role=\"img\" style=\"height:120px\"><line class=\"ins-axis\" x1=\"0\" x2=\"100%\" y1=\"106\" y2=\"106\"></line><rect class=\"ins-bar \" x=\"15.00%\" y=\"105.0\" width=\"70.00%\" height=\"1.0\" data-day=\"2026-11-01\"><title>1 Nov: ₹0</title></rect><text x=\"50.00%\" y=\"118\" class=\"ins-tick\">1</text></svg>",
-    "profitChart": "Nov 2025: -₹6,613Dec 2025: -₹11,430Jan 2026: -₹6,927Feb 2026: -₹12,010Mar 2026: -₹9,463Apr 2026: -₹12,230May 2026: -₹13,440Jun 2026: -₹9,013Jul 2026: -₹12,439Aug 2026: -₹7,760Sep 2026: -₹8,369Oct 2026: -₹11,506Nov 2026: ₹0NovFebMayAugNov",
+    "profitChart": "Nov 2025: −₹6,613Dec 2025: −₹11,430Jan 2026: −₹6,927Feb 2026: −₹12,010Mar 2026: −₹9,463Apr 2026: −₹12,230May 2026: −₹13,440Jun 2026: −₹9,013Jul 2026: −₹12,439Aug 2026: −₹7,760Sep 2026: −₹8,369Oct 2026: −₹11,506Nov 2026: ₹0NovFebMayAugNov",
     "accountsTotal": 7345,
     "sessionsAsked": [
       "2026-10-02|2026-11-01"
@@ -810,7 +812,8 @@
       "moneyPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "moneyNowLabel": "As of today, 31 Jan 2027",
       "moneyCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
-      "moneyProfitValue": "-₹13,185",
+      "moneyProfitLabel": "Profit",
+      "moneyProfitValue": "−₹13,185",
       "moneyProfitCompare": "▼ 20% vs Dec · ▼ 26% vs Jan 2026",
       "moneyProfitTakeaway": "Loss of ₹13,185 in this period.Sales went up but profit went down: goods cost more. Check item margins.",
       "moneySales": "₹23,119",
@@ -819,20 +822,21 @@
       "moneyGross": "₹3,359 · ₹14.5 per ₹100 sold",
       "moneyBusinessTerm": "₹16,100",
       "moneyBadDebts": "₹444",
-      "moneyProfitTerm": "-₹13,185",
-      "moneyProfitChart": "Jan 2026: -₹10,487Feb 2026: -₹11,638Mar 2026: -₹10,276Apr 2026: -₹9,716May 2026: -₹10,621Jun 2026: -₹7,527Jul 2026: -₹6,231Aug 2026: -₹9,431Sep 2026: -₹10,059Oct 2026: -₹9,253Nov 2026: -₹11,334Dec 2026: -₹11,018Jan 2027: -₹13,185JanAprJulOctJan",
+      "moneyProfitEqLabel": "= Profit",
+      "moneyProfitTerm": "−₹13,185",
+      "moneyProfitChart": "Jan 2026: −₹10,487Feb 2026: −₹11,638Mar 2026: −₹10,276Apr 2026: −₹9,716May 2026: −₹10,621Jun 2026: −₹7,527Jul 2026: −₹6,231Aug 2026: −₹9,431Sep 2026: −₹10,059Oct 2026: −₹9,253Nov 2026: −₹11,334Dec 2026: −₹11,018Jan 2027: −₹13,185JanAprJulOctJan",
       "moneyProfitLegend": "This year Last year",
       "moneyBuildHistory": "Older months are not saved yet, so comparisons with last year are missing.Build month history",
-      "moneyStockMovement": "Stock at the start₹8,63,662+ Bought (at line rate)₹6,758− Cost of goods sold₹19,760± Stock corrections₹0= Stock at the end₹8,50,661✓ Stock adds up",
+      "moneyStockMovement": "Stock at the start₹8,63,662+ Bought (at line rate)₹6,758− Cost of what was sold₹19,760± Stock corrections₹0= Stock at the end₹8,50,661✓ Stock adds up",
       "moneyPurchases": "₹6,740 · 2 bills",
-      "moneyNetCash": "-₹7,679",
+      "moneyNetCash": "−₹7,679",
       "moneyCashCompare": "▲ 80% vs Dec · ▲ 8% vs Jan 2026",
       "moneyCashTakeaway": "₹7,679 more went out than came in.Biggest outflow: expenses (₹18,100).",
       "moneyIn": "₹17,865",
       "moneyInSplit": "cash ₹17,098 · online ₹767",
       "moneyOut": "₹25,544",
       "moneyOutSplit": "cash ₹22,336 · online ₹3,208",
-      "moneyCashChart": "1 Jan: -₹3712 Jan: ₹1,3103 Jan: ₹04 Jan: -₹1,2005 Jan: -₹3,2086 Jan: ₹07 Jan: -₹9758 Jan: ₹1809 Jan: ₹91910 Jan: ₹011 Jan: -₹1,82512 Jan: -₹1,02613 Jan: -₹1,75014 Jan: ₹31115 Jan: ₹87216 Jan: -₹40017 Jan: ₹018 Jan: ₹6,00419 Jan: -₹75020 Jan: -₹1,67921 Jan: -₹2,46722 Jan: ₹7523 Jan: -₹69824 Jan: -₹71225 Jan: -₹72526 Jan: ₹75627 Jan: ₹1,10628 Jan: -₹1,00029 Jan: -₹1,50030 Jan: ₹1,07431 Jan: ₹018152229",
+      "moneyCashChart": "1 Jan: −₹3712 Jan: ₹1,3103 Jan: ₹04 Jan: −₹1,2005 Jan: −₹3,2086 Jan: ₹07 Jan: −₹9758 Jan: ₹1809 Jan: ₹91910 Jan: ₹011 Jan: −₹1,82512 Jan: −₹1,02613 Jan: −₹1,75014 Jan: ₹31115 Jan: ₹87216 Jan: −₹40017 Jan: ₹018 Jan: ₹6,00419 Jan: −₹75020 Jan: −₹1,67921 Jan: −₹2,46722 Jan: ₹7523 Jan: −₹69824 Jan: −₹71225 Jan: −₹72526 Jan: ₹75627 Jan: ₹1,10628 Jan: −₹1,00029 Jan: −₹1,50030 Jan: ₹1,07431 Jan: ₹018152229",
       "moneyBusiness": "₹16,100",
       "moneySpendCompare": "▲ 23% vs Dec · ▲ 17% vs Jan 2026",
       "moneySpendTakeaway": "Business expenses were ₹69.6 for every ₹100 of sales, more than ₹10.Business expenses 17% more than last year, mostly Other.₹2,000 went to personal use, ₹15,185 more than the profit.",
@@ -848,19 +852,19 @@
       "moneyLabourDiff": "The estimate is ₹12 more than deducted",
       "moneyPersonal": "₹2,000",
       "moneyWithdrawn": "₹0",
-      "moneyKept": "-₹15,185",
+      "moneyKept": "−₹15,185",
       "moneyWithdrawalList": "No withdrawals in this period.",
       "moneyWorthValue": "₹7,82,002",
       "moneyWorthCompare": "stock vs Jan 2026: not known",
       "moneyWorthTakeaway": "You are worth ₹7,82,002.₹53,444 of it is still with customers.",
       "moneyWorthCaveats": "⚠ Net worth leaves out the drawer cash: not counted in the last 30 days.",
-      "moneyWorthTerms": "Stock value₹8,50,661 Stock ›To receive₹53,444 Outstanding ›Cash in drawernot counted in the last 30 days— Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,29,448 Outstanding ›Net worth₹7,82,002",
+      "moneyWorthTerms": "Stock value₹8,50,661 Stock ›To receive₹53,444 Outstanding ›Cash in drawernot counted in the last 30 days— Cash drawer ›Bank, savings and other accounts₹7,345To pay−₹1,29,448 Outstanding ›Net worth₹7,82,002",
       "moneyAccounts": "🏦 Bank₹12,346 ✕🤝 Loan−₹5,001 ✕🏦 Odd₹0 ✕",
       "moneyAccType": "I have this I owe this",
       "moneyChecks": "✓ Numbers match Outstanding, the cash drawer and Stock"
     },
-    "cashChart": "<svg class=\"ins-svg\" width=\"100%\" height=\"120\" role=\"img\" style=\"height:120px\"><line class=\"ins-axis\" x1=\"0\" x2=\"100%\" y1=\"60\" y2=\"60\"></line><rect class=\"ins-bar neg\" x=\"0.48%\" y=\"60.0\" width=\"2.26%\" height=\"3.5\" data-day=\"2027-01-01\"><title>1 Jan: -₹371</title></rect><rect class=\"ins-bar \" x=\"3.71%\" y=\"47.8\" width=\"2.26%\" height=\"12.2\" data-day=\"2027-01-02\"><title>2 Jan: ₹1,310</title></rect><rect class=\"ins-bar \" x=\"6.94%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-03\"><title>3 Jan: ₹0</title></rect><rect class=\"ins-bar neg\" x=\"10.16%\" y=\"60.0\" width=\"2.26%\" height=\"11.2\" data-day=\"2027-01-04\"><title>4 Jan: -₹1,200</title></rect><rect class=\"ins-bar neg\" x=\"13.39%\" y=\"60.0\" width=\"2.26%\" height=\"29.9\" data-day=\"2027-01-05\"><title>5 Jan: -₹3,208</title></rect><rect class=\"ins-bar \" x=\"16.61%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-06\"><title>6 Jan: ₹0</title></rect><rect class=\"ins-bar neg\" x=\"19.84%\" y=\"60.0\" width=\"2.26%\" height=\"9.1\" data-day=\"2027-01-07\"><title>7 Jan: -₹975</title></rect><rect class=\"ins-bar \" x=\"23.06%\" y=\"58.3\" width=\"2.26%\" height=\"1.7\" data-day=\"2027-01-08\"><title>8 Jan: ₹180</title></rect><rect class=\"ins-bar \" x=\"26.29%\" y=\"51.4\" width=\"2.26%\" height=\"8.6\" data-day=\"2027-01-09\"><title>9 Jan: ₹919</title></rect><rect class=\"ins-bar \" x=\"29.52%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-10\"><title>10 Jan: ₹0</title></rect><rect class=\"ins-bar neg\" x=\"32.74%\" y=\"60.0\" width=\"2.26%\" height=\"17.0\" data-day=\"2027-01-11\"><title>11 Jan: -₹1,825</title></rect><rect class=\"ins-bar neg\" x=\"35.97%\" y=\"60.0\" width=\"2.26%\" height=\"9.6\" data-day=\"2027-01-12\"><title>12 Jan: -₹1,026</title></rect><rect class=\"ins-bar neg\" x=\"39.19%\" y=\"60.0\" width=\"2.26%\" height=\"16.3\" data-day=\"2027-01-13\"><title>13 Jan: -₹1,750</title></rect><rect class=\"ins-bar \" x=\"42.42%\" y=\"57.1\" width=\"2.26%\" height=\"2.9\" data-day=\"2027-01-14\"><title>14 Jan: ₹311</title></rect><rect class=\"ins-bar \" x=\"45.65%\" y=\"51.9\" width=\"2.26%\" height=\"8.1\" data-day=\"2027-01-15\"><title>15 Jan: ₹872</title></rect><rect class=\"ins-bar neg\" x=\"48.87%\" y=\"60.0\" width=\"2.26%\" height=\"3.7\" data-day=\"2027-01-16\"><title>16 Jan: -₹400</title></rect><rect class=\"ins-bar \" x=\"52.10%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-17\"><title>17 Jan: ₹0</title></rect><rect class=\"ins-bar \" x=\"55.32%\" y=\"4.0\" width=\"2.26%\" height=\"56.0\" data-day=\"2027-01-18\"><title>18 Jan: ₹6,004</title></rect><rect class=\"ins-bar neg\" x=\"58.55%\" y=\"60.0\" width=\"2.26%\" height=\"7.0\" data-day=\"2027-01-19\"><title>19 Jan: -₹750</title></rect><rect class=\"ins-bar neg\" x=\"61.77%\" y=\"60.0\" width=\"2.26%\" height=\"15.7\" data-day=\"2027-01-20\"><title>20 Jan: -₹1,679</title></rect><rect class=\"ins-bar neg\" x=\"65.00%\" y=\"60.0\" width=\"2.26%\" height=\"23.0\" data-day=\"2027-01-21\"><title>21 Jan: -₹2,467</title></rect><rect class=\"ins-bar \" x=\"68.23%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-22\"><title>22 Jan: ₹75</title></rect><rect class=\"ins-bar neg\" x=\"71.45%\" y=\"60.0\" width=\"2.26%\" height=\"6.5\" data-day=\"2027-01-23\"><title>23 Jan: -₹698</title></rect><rect class=\"ins-bar neg\" x=\"74.68%\" y=\"60.0\" width=\"2.26%\" height=\"6.6\" data-day=\"2027-01-24\"><title>24 Jan: -₹712</title></rect><rect class=\"ins-bar neg\" x=\"77.90%\" y=\"60.0\" width=\"2.26%\" height=\"6.8\" data-day=\"2027-01-25\"><title>25 Jan: -₹725</title></rect><rect class=\"ins-bar \" x=\"81.13%\" y=\"52.9\" width=\"2.26%\" height=\"7.1\" data-day=\"2027-01-26\"><title>26 Jan: ₹756</title></rect><rect class=\"ins-bar \" x=\"84.35%\" y=\"49.7\" width=\"2.26%\" height=\"10.3\" data-day=\"2027-01-27\"><title>27 Jan: ₹1,106</title></rect><rect class=\"ins-bar neg\" x=\"87.58%\" y=\"60.0\" width=\"2.26%\" height=\"9.3\" data-day=\"2027-01-28\"><title>28 Jan: -₹1,000</title></rect><rect class=\"ins-bar neg\" x=\"90.81%\" y=\"60.0\" width=\"2.26%\" height=\"14.0\" data-day=\"2027-01-29\"><title>29 Jan: -₹1,500</title></rect><rect class=\"ins-bar \" x=\"94.03%\" y=\"50.0\" width=\"2.26%\" height=\"10.0\" data-day=\"2027-01-30\"><title>30 Jan: ₹1,074</title></rect><rect class=\"ins-bar \" x=\"97.26%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-31\"><title>31 Jan: ₹0</title></rect><text x=\"1.61%\" y=\"118\" class=\"ins-tick\">1</text><text x=\"24.19%\" y=\"118\" class=\"ins-tick\">8</text><text x=\"46.77%\" y=\"118\" class=\"ins-tick\">15</text><text x=\"69.35%\" y=\"118\" class=\"ins-tick\">22</text><text x=\"91.94%\" y=\"118\" class=\"ins-tick\">29</text></svg>",
-    "profitChart": "Jan 2026: -₹10,487Feb 2026: -₹11,638Mar 2026: -₹10,276Apr 2026: -₹9,716May 2026: -₹10,621Jun 2026: -₹7,527Jul 2026: -₹6,231Aug 2026: -₹9,431Sep 2026: -₹10,059Oct 2026: -₹9,253Nov 2026: -₹11,334Dec 2026: -₹11,018Jan 2027: -₹13,185JanAprJulOctJan",
+    "cashChart": "<svg class=\"ins-svg\" width=\"100%\" height=\"120\" role=\"img\" style=\"height:120px\"><line class=\"ins-axis\" x1=\"0\" x2=\"100%\" y1=\"60\" y2=\"60\"></line><rect class=\"ins-bar neg\" x=\"0.48%\" y=\"60.0\" width=\"2.26%\" height=\"3.5\" data-day=\"2027-01-01\"><title>1 Jan: −₹371</title></rect><rect class=\"ins-bar \" x=\"3.71%\" y=\"47.8\" width=\"2.26%\" height=\"12.2\" data-day=\"2027-01-02\"><title>2 Jan: ₹1,310</title></rect><rect class=\"ins-bar \" x=\"6.94%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-03\"><title>3 Jan: ₹0</title></rect><rect class=\"ins-bar neg\" x=\"10.16%\" y=\"60.0\" width=\"2.26%\" height=\"11.2\" data-day=\"2027-01-04\"><title>4 Jan: −₹1,200</title></rect><rect class=\"ins-bar neg\" x=\"13.39%\" y=\"60.0\" width=\"2.26%\" height=\"29.9\" data-day=\"2027-01-05\"><title>5 Jan: −₹3,208</title></rect><rect class=\"ins-bar \" x=\"16.61%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-06\"><title>6 Jan: ₹0</title></rect><rect class=\"ins-bar neg\" x=\"19.84%\" y=\"60.0\" width=\"2.26%\" height=\"9.1\" data-day=\"2027-01-07\"><title>7 Jan: −₹975</title></rect><rect class=\"ins-bar \" x=\"23.06%\" y=\"58.3\" width=\"2.26%\" height=\"1.7\" data-day=\"2027-01-08\"><title>8 Jan: ₹180</title></rect><rect class=\"ins-bar \" x=\"26.29%\" y=\"51.4\" width=\"2.26%\" height=\"8.6\" data-day=\"2027-01-09\"><title>9 Jan: ₹919</title></rect><rect class=\"ins-bar \" x=\"29.52%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-10\"><title>10 Jan: ₹0</title></rect><rect class=\"ins-bar neg\" x=\"32.74%\" y=\"60.0\" width=\"2.26%\" height=\"17.0\" data-day=\"2027-01-11\"><title>11 Jan: −₹1,825</title></rect><rect class=\"ins-bar neg\" x=\"35.97%\" y=\"60.0\" width=\"2.26%\" height=\"9.6\" data-day=\"2027-01-12\"><title>12 Jan: −₹1,026</title></rect><rect class=\"ins-bar neg\" x=\"39.19%\" y=\"60.0\" width=\"2.26%\" height=\"16.3\" data-day=\"2027-01-13\"><title>13 Jan: −₹1,750</title></rect><rect class=\"ins-bar \" x=\"42.42%\" y=\"57.1\" width=\"2.26%\" height=\"2.9\" data-day=\"2027-01-14\"><title>14 Jan: ₹311</title></rect><rect class=\"ins-bar \" x=\"45.65%\" y=\"51.9\" width=\"2.26%\" height=\"8.1\" data-day=\"2027-01-15\"><title>15 Jan: ₹872</title></rect><rect class=\"ins-bar neg\" x=\"48.87%\" y=\"60.0\" width=\"2.26%\" height=\"3.7\" data-day=\"2027-01-16\"><title>16 Jan: −₹400</title></rect><rect class=\"ins-bar \" x=\"52.10%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-17\"><title>17 Jan: ₹0</title></rect><rect class=\"ins-bar \" x=\"55.32%\" y=\"4.0\" width=\"2.26%\" height=\"56.0\" data-day=\"2027-01-18\"><title>18 Jan: ₹6,004</title></rect><rect class=\"ins-bar neg\" x=\"58.55%\" y=\"60.0\" width=\"2.26%\" height=\"7.0\" data-day=\"2027-01-19\"><title>19 Jan: −₹750</title></rect><rect class=\"ins-bar neg\" x=\"61.77%\" y=\"60.0\" width=\"2.26%\" height=\"15.7\" data-day=\"2027-01-20\"><title>20 Jan: −₹1,679</title></rect><rect class=\"ins-bar neg\" x=\"65.00%\" y=\"60.0\" width=\"2.26%\" height=\"23.0\" data-day=\"2027-01-21\"><title>21 Jan: −₹2,467</title></rect><rect class=\"ins-bar \" x=\"68.23%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-22\"><title>22 Jan: ₹75</title></rect><rect class=\"ins-bar neg\" x=\"71.45%\" y=\"60.0\" width=\"2.26%\" height=\"6.5\" data-day=\"2027-01-23\"><title>23 Jan: −₹698</title></rect><rect class=\"ins-bar neg\" x=\"74.68%\" y=\"60.0\" width=\"2.26%\" height=\"6.6\" data-day=\"2027-01-24\"><title>24 Jan: −₹712</title></rect><rect class=\"ins-bar neg\" x=\"77.90%\" y=\"60.0\" width=\"2.26%\" height=\"6.8\" data-day=\"2027-01-25\"><title>25 Jan: −₹725</title></rect><rect class=\"ins-bar \" x=\"81.13%\" y=\"52.9\" width=\"2.26%\" height=\"7.1\" data-day=\"2027-01-26\"><title>26 Jan: ₹756</title></rect><rect class=\"ins-bar \" x=\"84.35%\" y=\"49.7\" width=\"2.26%\" height=\"10.3\" data-day=\"2027-01-27\"><title>27 Jan: ₹1,106</title></rect><rect class=\"ins-bar neg\" x=\"87.58%\" y=\"60.0\" width=\"2.26%\" height=\"9.3\" data-day=\"2027-01-28\"><title>28 Jan: −₹1,000</title></rect><rect class=\"ins-bar neg\" x=\"90.81%\" y=\"60.0\" width=\"2.26%\" height=\"14.0\" data-day=\"2027-01-29\"><title>29 Jan: −₹1,500</title></rect><rect class=\"ins-bar \" x=\"94.03%\" y=\"50.0\" width=\"2.26%\" height=\"10.0\" data-day=\"2027-01-30\"><title>30 Jan: ₹1,074</title></rect><rect class=\"ins-bar \" x=\"97.26%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-31\"><title>31 Jan: ₹0</title></rect><text x=\"1.61%\" y=\"118\" class=\"ins-tick\">1</text><text x=\"24.19%\" y=\"118\" class=\"ins-tick\">8</text><text x=\"46.77%\" y=\"118\" class=\"ins-tick\">15</text><text x=\"69.35%\" y=\"118\" class=\"ins-tick\">22</text><text x=\"91.94%\" y=\"118\" class=\"ins-tick\">29</text></svg>",
+    "profitChart": "Jan 2026: −₹10,487Feb 2026: −₹11,638Mar 2026: −₹10,276Apr 2026: −₹9,716May 2026: −₹10,621Jun 2026: −₹7,527Jul 2026: −₹6,231Aug 2026: −₹9,431Sep 2026: −₹10,059Oct 2026: −₹9,253Nov 2026: −₹11,334Dec 2026: −₹11,018Jan 2027: −₹13,185JanAprJulOctJan",
     "accountsTotal": 7345,
     "sessionsAsked": [
       "2027-01-01|2027-01-31"
@@ -873,7 +877,8 @@
       "moneyPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "moneyNowLabel": "As of today, 29 Feb 2028",
       "moneyCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
-      "moneyProfitValue": "-₹7,264",
+      "moneyProfitLabel": "Profit",
+      "moneyProfitValue": "−₹7,264",
       "moneyProfitCompare": "▲ 21% vs Jan · ▼ 91% vs Feb 2027",
       "moneyProfitTakeaway": "Loss of ₹7,264 in this period.Sales went up but profit went down: goods cost more. Check item margins.",
       "moneySales": "₹37,900",
@@ -882,20 +887,21 @@
       "moneyGross": "₹3,704 · ₹9.8 per ₹100 sold",
       "moneyBusinessTerm": "₹10,750",
       "moneyBadDebts": "₹218",
-      "moneyProfitTerm": "-₹7,264",
-      "moneyProfitChart": "Feb 2027: -₹3,812Mar 2027: -₹11,697Apr 2027: -₹11,357May 2027: -₹5,925Jun 2027: -₹7,124Jul 2027: -₹7,404Aug 2027: -₹8,307Sep 2027: -₹8,911Oct 2027: -₹9,471Nov 2027: -₹10,306Dec 2027: -₹11,293Jan 2028: -₹9,204Feb 2028: -₹7,264FebMayAugNovFeb",
+      "moneyProfitEqLabel": "= Profit",
+      "moneyProfitTerm": "−₹7,264",
+      "moneyProfitChart": "Feb 2027: −₹3,812Mar 2027: −₹11,697Apr 2027: −₹11,357May 2027: −₹5,925Jun 2027: −₹7,124Jul 2027: −₹7,404Aug 2027: −₹8,307Sep 2027: −₹8,911Oct 2027: −₹9,471Nov 2027: −₹10,306Dec 2027: −₹11,293Jan 2028: −₹9,204Feb 2028: −₹7,264FebMayAugNovFeb",
       "moneyProfitLegend": "This year Last year",
       "moneyBuildHistory": "Older months are not saved yet, so comparisons with last year are missing.Build month history",
-      "moneyStockMovement": "Stock at the start₹11,60,466+ Bought (at line rate)₹40,862− Cost of goods sold₹34,196± Stock corrections₹0= Stock at the end₹11,67,133✓ Stock adds up",
+      "moneyStockMovement": "Stock at the start₹11,60,466+ Bought (at line rate)₹40,862− Cost of what was sold₹34,196± Stock corrections₹0= Stock at the end₹11,67,133✓ Stock adds up",
       "moneyPurchases": "₹40,760 · 4 bills",
-      "moneyNetCash": "-₹15,854",
+      "moneyNetCash": "−₹15,854",
       "moneyCashCompare": "▲ 22% vs Jan · ▲ 84% vs Feb 2027",
       "moneyCashTakeaway": "₹15,854 more went out than came in.Biggest outflow: paying for purchases (₹40,760).",
       "moneyIn": "₹37,056",
       "moneyInSplit": "cash ₹29,274 · online ₹7,782",
       "moneyOut": "₹52,910",
       "moneyOutSplit": "cash ₹50,674 · online ₹2,236",
-      "moneyCashChart": "1 Feb: -₹7482 Feb: -₹1,7173 Feb: ₹3834 Feb: -₹22,7135 Feb: ₹6296 Feb: ₹07 Feb: -₹7508 Feb: -₹7259 Feb: ₹1,39610 Feb: -₹20011 Feb: -₹70212 Feb: -₹1,57513 Feb: ₹13814 Feb: -₹12815 Feb: -₹7516 Feb: ₹21917 Feb: -₹15018 Feb: -₹99719 Feb: ₹3,86020 Feb: -₹50021 Feb: ₹022 Feb: ₹1,35123 Feb: ₹45624 Feb: ₹96325 Feb: -₹65826 Feb: -₹10727 Feb: ₹028 Feb: ₹6,66529 Feb: -₹16918152229",
+      "moneyCashChart": "1 Feb: −₹7482 Feb: −₹1,7173 Feb: ₹3834 Feb: −₹22,7135 Feb: ₹6296 Feb: ₹07 Feb: −₹7508 Feb: −₹7259 Feb: ₹1,39610 Feb: −₹20011 Feb: −₹70212 Feb: −₹1,57513 Feb: ₹13814 Feb: −₹12815 Feb: −₹7516 Feb: ₹21917 Feb: −₹15018 Feb: −₹99719 Feb: ₹3,86020 Feb: −₹50021 Feb: ₹022 Feb: ₹1,35123 Feb: ₹45624 Feb: ₹96325 Feb: −₹65826 Feb: −₹10727 Feb: ₹028 Feb: ₹6,66529 Feb: −₹16918152229",
       "moneyBusiness": "₹10,750",
       "moneySpendCompare": "▼ 17% vs Jan · ▲ 72% vs Feb 2027",
       "moneySpendTakeaway": "Business expenses were ₹28.4 for every ₹100 of sales, more than ₹10.Business expenses 72% more than last year, mostly Other.₹18,400 went to personal use, ₹25,664 more than the profit.",
@@ -911,19 +917,19 @@
       "moneyLabourDiff": "The estimate is ₹48 more than deducted",
       "moneyPersonal": "₹1,400",
       "moneyWithdrawn": "₹17,000",
-      "moneyKept": "-₹25,664",
+      "moneyKept": "−₹25,664",
       "moneyWithdrawalList": "—1 Feb 2028₹17,000",
       "moneyWorthValue": "₹10,36,790",
       "moneyWorthCompare": "stock vs Feb 2027: not known",
       "moneyWorthTakeaway": "You are worth ₹10,36,790.₹37,673 of it is still with customers.",
       "moneyWorthCaveats": "⚠ Net worth leaves out the drawer cash: not counted in the last 30 days.",
-      "moneyWorthTerms": "Stock value₹11,67,133 Stock ›To receive₹37,673 Outstanding ›Cash in drawernot counted in the last 30 days— Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,75,361 Outstanding ›Net worth₹10,36,790",
+      "moneyWorthTerms": "Stock value₹11,67,133 Stock ›To receive₹37,673 Outstanding ›Cash in drawernot counted in the last 30 days— Cash drawer ›Bank, savings and other accounts₹7,345To pay−₹1,75,361 Outstanding ›Net worth₹10,36,790",
       "moneyAccounts": "🏦 Bank₹12,346 ✕🤝 Loan−₹5,001 ✕🏦 Odd₹0 ✕",
       "moneyAccType": "I have this I owe this",
       "moneyChecks": "✓ Numbers match Outstanding, the cash drawer and Stock"
     },
-    "cashChart": "<svg class=\"ins-svg\" width=\"100%\" height=\"120\" role=\"img\" style=\"height:120px\"><line class=\"ins-axis\" x1=\"0\" x2=\"100%\" y1=\"60\" y2=\"60\"></line><rect class=\"ins-bar neg\" x=\"0.52%\" y=\"60.0\" width=\"2.41%\" height=\"1.8\" data-day=\"2028-02-01\"><title>1 Feb: -₹748</title></rect><rect class=\"ins-bar neg\" x=\"3.97%\" y=\"60.0\" width=\"2.41%\" height=\"4.2\" data-day=\"2028-02-02\"><title>2 Feb: -₹1,717</title></rect><rect class=\"ins-bar \" x=\"7.41%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-03\"><title>3 Feb: ₹383</title></rect><rect class=\"ins-bar neg\" x=\"10.86%\" y=\"60.0\" width=\"2.41%\" height=\"56.0\" data-day=\"2028-02-04\"><title>4 Feb: -₹22,713</title></rect><rect class=\"ins-bar \" x=\"14.31%\" y=\"58.4\" width=\"2.41%\" height=\"1.6\" data-day=\"2028-02-05\"><title>5 Feb: ₹629</title></rect><rect class=\"ins-bar \" x=\"17.76%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-06\"><title>6 Feb: ₹0</title></rect><rect class=\"ins-bar neg\" x=\"21.21%\" y=\"60.0\" width=\"2.41%\" height=\"1.8\" data-day=\"2028-02-07\"><title>7 Feb: -₹750</title></rect><rect class=\"ins-bar neg\" x=\"24.66%\" y=\"60.0\" width=\"2.41%\" height=\"1.8\" data-day=\"2028-02-08\"><title>8 Feb: -₹725</title></rect><rect class=\"ins-bar \" x=\"28.10%\" y=\"56.6\" width=\"2.41%\" height=\"3.4\" data-day=\"2028-02-09\"><title>9 Feb: ₹1,396</title></rect><rect class=\"ins-bar neg\" x=\"31.55%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-10\"><title>10 Feb: -₹200</title></rect><rect class=\"ins-bar neg\" x=\"35.00%\" y=\"60.0\" width=\"2.41%\" height=\"1.7\" data-day=\"2028-02-11\"><title>11 Feb: -₹702</title></rect><rect class=\"ins-bar neg\" x=\"38.45%\" y=\"60.0\" width=\"2.41%\" height=\"3.9\" data-day=\"2028-02-12\"><title>12 Feb: -₹1,575</title></rect><rect class=\"ins-bar \" x=\"41.90%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-13\"><title>13 Feb: ₹138</title></rect><rect class=\"ins-bar neg\" x=\"45.34%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-14\"><title>14 Feb: -₹128</title></rect><rect class=\"ins-bar neg\" x=\"48.79%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-15\"><title>15 Feb: -₹75</title></rect><rect class=\"ins-bar \" x=\"52.24%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-16\"><title>16 Feb: ₹219</title></rect><rect class=\"ins-bar neg\" x=\"55.69%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-17\"><title>17 Feb: -₹150</title></rect><rect class=\"ins-bar neg\" x=\"59.14%\" y=\"60.0\" width=\"2.41%\" height=\"2.5\" data-day=\"2028-02-18\"><title>18 Feb: -₹997</title></rect><rect class=\"ins-bar \" x=\"62.59%\" y=\"50.5\" width=\"2.41%\" height=\"9.5\" data-day=\"2028-02-19\"><title>19 Feb: ₹3,860</title></rect><rect class=\"ins-bar neg\" x=\"66.03%\" y=\"60.0\" width=\"2.41%\" height=\"1.2\" data-day=\"2028-02-20\"><title>20 Feb: -₹500</title></rect><rect class=\"ins-bar \" x=\"69.48%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-21\"><title>21 Feb: ₹0</title></rect><rect class=\"ins-bar \" x=\"72.93%\" y=\"56.7\" width=\"2.41%\" height=\"3.3\" data-day=\"2028-02-22\"><title>22 Feb: ₹1,351</title></rect><rect class=\"ins-bar \" x=\"76.38%\" y=\"58.9\" width=\"2.41%\" height=\"1.1\" data-day=\"2028-02-23\"><title>23 Feb: ₹456</title></rect><rect class=\"ins-bar \" x=\"79.83%\" y=\"57.6\" width=\"2.41%\" height=\"2.4\" data-day=\"2028-02-24\"><title>24 Feb: ₹963</title></rect><rect class=\"ins-bar neg\" x=\"83.28%\" y=\"60.0\" width=\"2.41%\" height=\"1.6\" data-day=\"2028-02-25\"><title>25 Feb: -₹658</title></rect><rect class=\"ins-bar neg\" x=\"86.72%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-26\"><title>26 Feb: -₹107</title></rect><rect class=\"ins-bar \" x=\"90.17%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-27\"><title>27 Feb: ₹0</title></rect><rect class=\"ins-bar \" x=\"93.62%\" y=\"43.6\" width=\"2.41%\" height=\"16.4\" data-day=\"2028-02-28\"><title>28 Feb: ₹6,665</title></rect><rect class=\"ins-bar neg\" x=\"97.07%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-29\"><title>29 Feb: -₹169</title></rect><text x=\"1.72%\" y=\"118\" class=\"ins-tick\">1</text><text x=\"25.86%\" y=\"118\" class=\"ins-tick\">8</text><text x=\"50.00%\" y=\"118\" class=\"ins-tick\">15</text><text x=\"74.14%\" y=\"118\" class=\"ins-tick\">22</text><text x=\"98.28%\" y=\"118\" class=\"ins-tick\">29</text></svg>",
-    "profitChart": "Feb 2027: -₹3,812Mar 2027: -₹11,697Apr 2027: -₹11,357May 2027: -₹5,925Jun 2027: -₹7,124Jul 2027: -₹7,404Aug 2027: -₹8,307Sep 2027: -₹8,911Oct 2027: -₹9,471Nov 2027: -₹10,306Dec 2027: -₹11,293Jan 2028: -₹9,204Feb 2028: -₹7,264FebMayAugNovFeb",
+    "cashChart": "<svg class=\"ins-svg\" width=\"100%\" height=\"120\" role=\"img\" style=\"height:120px\"><line class=\"ins-axis\" x1=\"0\" x2=\"100%\" y1=\"60\" y2=\"60\"></line><rect class=\"ins-bar neg\" x=\"0.52%\" y=\"60.0\" width=\"2.41%\" height=\"1.8\" data-day=\"2028-02-01\"><title>1 Feb: −₹748</title></rect><rect class=\"ins-bar neg\" x=\"3.97%\" y=\"60.0\" width=\"2.41%\" height=\"4.2\" data-day=\"2028-02-02\"><title>2 Feb: −₹1,717</title></rect><rect class=\"ins-bar \" x=\"7.41%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-03\"><title>3 Feb: ₹383</title></rect><rect class=\"ins-bar neg\" x=\"10.86%\" y=\"60.0\" width=\"2.41%\" height=\"56.0\" data-day=\"2028-02-04\"><title>4 Feb: −₹22,713</title></rect><rect class=\"ins-bar \" x=\"14.31%\" y=\"58.4\" width=\"2.41%\" height=\"1.6\" data-day=\"2028-02-05\"><title>5 Feb: ₹629</title></rect><rect class=\"ins-bar \" x=\"17.76%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-06\"><title>6 Feb: ₹0</title></rect><rect class=\"ins-bar neg\" x=\"21.21%\" y=\"60.0\" width=\"2.41%\" height=\"1.8\" data-day=\"2028-02-07\"><title>7 Feb: −₹750</title></rect><rect class=\"ins-bar neg\" x=\"24.66%\" y=\"60.0\" width=\"2.41%\" height=\"1.8\" data-day=\"2028-02-08\"><title>8 Feb: −₹725</title></rect><rect class=\"ins-bar \" x=\"28.10%\" y=\"56.6\" width=\"2.41%\" height=\"3.4\" data-day=\"2028-02-09\"><title>9 Feb: ₹1,396</title></rect><rect class=\"ins-bar neg\" x=\"31.55%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-10\"><title>10 Feb: −₹200</title></rect><rect class=\"ins-bar neg\" x=\"35.00%\" y=\"60.0\" width=\"2.41%\" height=\"1.7\" data-day=\"2028-02-11\"><title>11 Feb: −₹702</title></rect><rect class=\"ins-bar neg\" x=\"38.45%\" y=\"60.0\" width=\"2.41%\" height=\"3.9\" data-day=\"2028-02-12\"><title>12 Feb: −₹1,575</title></rect><rect class=\"ins-bar \" x=\"41.90%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-13\"><title>13 Feb: ₹138</title></rect><rect class=\"ins-bar neg\" x=\"45.34%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-14\"><title>14 Feb: −₹128</title></rect><rect class=\"ins-bar neg\" x=\"48.79%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-15\"><title>15 Feb: −₹75</title></rect><rect class=\"ins-bar \" x=\"52.24%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-16\"><title>16 Feb: ₹219</title></rect><rect class=\"ins-bar neg\" x=\"55.69%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-17\"><title>17 Feb: −₹150</title></rect><rect class=\"ins-bar neg\" x=\"59.14%\" y=\"60.0\" width=\"2.41%\" height=\"2.5\" data-day=\"2028-02-18\"><title>18 Feb: −₹997</title></rect><rect class=\"ins-bar \" x=\"62.59%\" y=\"50.5\" width=\"2.41%\" height=\"9.5\" data-day=\"2028-02-19\"><title>19 Feb: ₹3,860</title></rect><rect class=\"ins-bar neg\" x=\"66.03%\" y=\"60.0\" width=\"2.41%\" height=\"1.2\" data-day=\"2028-02-20\"><title>20 Feb: −₹500</title></rect><rect class=\"ins-bar \" x=\"69.48%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-21\"><title>21 Feb: ₹0</title></rect><rect class=\"ins-bar \" x=\"72.93%\" y=\"56.7\" width=\"2.41%\" height=\"3.3\" data-day=\"2028-02-22\"><title>22 Feb: ₹1,351</title></rect><rect class=\"ins-bar \" x=\"76.38%\" y=\"58.9\" width=\"2.41%\" height=\"1.1\" data-day=\"2028-02-23\"><title>23 Feb: ₹456</title></rect><rect class=\"ins-bar \" x=\"79.83%\" y=\"57.6\" width=\"2.41%\" height=\"2.4\" data-day=\"2028-02-24\"><title>24 Feb: ₹963</title></rect><rect class=\"ins-bar neg\" x=\"83.28%\" y=\"60.0\" width=\"2.41%\" height=\"1.6\" data-day=\"2028-02-25\"><title>25 Feb: −₹658</title></rect><rect class=\"ins-bar neg\" x=\"86.72%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-26\"><title>26 Feb: −₹107</title></rect><rect class=\"ins-bar \" x=\"90.17%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-27\"><title>27 Feb: ₹0</title></rect><rect class=\"ins-bar \" x=\"93.62%\" y=\"43.6\" width=\"2.41%\" height=\"16.4\" data-day=\"2028-02-28\"><title>28 Feb: ₹6,665</title></rect><rect class=\"ins-bar neg\" x=\"97.07%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-29\"><title>29 Feb: −₹169</title></rect><text x=\"1.72%\" y=\"118\" class=\"ins-tick\">1</text><text x=\"25.86%\" y=\"118\" class=\"ins-tick\">8</text><text x=\"50.00%\" y=\"118\" class=\"ins-tick\">15</text><text x=\"74.14%\" y=\"118\" class=\"ins-tick\">22</text><text x=\"98.28%\" y=\"118\" class=\"ins-tick\">29</text></svg>",
+    "profitChart": "Feb 2027: −₹3,812Mar 2027: −₹11,697Apr 2027: −₹11,357May 2027: −₹5,925Jun 2027: −₹7,124Jul 2027: −₹7,404Aug 2027: −₹8,307Sep 2027: −₹8,911Oct 2027: −₹9,471Nov 2027: −₹10,306Dec 2027: −₹11,293Jan 2028: −₹9,204Feb 2028: −₹7,264FebMayAugNovFeb",
     "accountsTotal": 7345,
     "sessionsAsked": [
       "2028-01-30|2028-02-29"
@@ -936,7 +942,8 @@
       "moneyPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "moneyNowLabel": "As of today, 31 Mar 2027",
       "moneyCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
-      "moneyProfitValue": "-₹14,256",
+      "moneyProfitLabel": "Profit",
+      "moneyProfitValue": "−₹14,256",
       "moneyProfitCompare": "▼ 121% vs Feb · ▼ 130% vs Mar 2026",
       "moneyProfitTakeaway": "Loss of ₹14,256 in this period.Sales went up but profit went down: goods cost more. Check item margins.",
       "moneySales": "₹24,977",
@@ -945,20 +952,21 @@
       "moneyGross": "₹3,191 · ₹12.8 per ₹100 sold",
       "moneyBusinessTerm": "₹16,775",
       "moneyBadDebts": "₹672",
-      "moneyProfitTerm": "-₹14,256",
-      "moneyProfitChart": "Mar 2026: -₹6,207Apr 2026: -₹5,147May 2026: -₹11,104Jun 2026: -₹4,224Jul 2026: -₹8,850Aug 2026: -₹10,678Sep 2026: -₹7,209Oct 2026: -₹14,105Nov 2026: -₹4,106Dec 2026: -₹9,083Jan 2027: -₹10,097Feb 2027: -₹6,455Mar 2027: -₹14,256MarJunSepDecMar",
+      "moneyProfitEqLabel": "= Profit",
+      "moneyProfitTerm": "−₹14,256",
+      "moneyProfitChart": "Mar 2026: −₹6,207Apr 2026: −₹5,147May 2026: −₹11,104Jun 2026: −₹4,224Jul 2026: −₹8,850Aug 2026: −₹10,678Sep 2026: −₹7,209Oct 2026: −₹14,105Nov 2026: −₹4,106Dec 2026: −₹9,083Jan 2027: −₹10,097Feb 2027: −₹6,455Mar 2027: −₹14,256MarJunSepDecMar",
       "moneyProfitLegend": "This year Last year",
       "moneyBuildHistory": "Older months are not saved yet, so comparisons with last year are missing.Build month history",
-      "moneyStockMovement": "Stock at the start₹6,67,244+ Bought (at line rate)₹1,47,686− Cost of goods sold₹21,786± Stock corrections₹168= Stock at the end₹7,93,313✓ Stock adds up",
+      "moneyStockMovement": "Stock at the start₹6,67,244+ Bought (at line rate)₹1,47,686− Cost of what was sold₹21,786± Stock corrections₹168= Stock at the end₹7,93,313✓ Stock adds up",
       "moneyPurchases": "₹1,47,446 · 8 bills",
-      "moneyNetCash": "-₹1,18,222",
+      "moneyNetCash": "−₹1,18,222",
       "moneyCashCompare": "▼ 4% vs Feb · ▲ 5% vs Mar 2026",
       "moneyCashTakeaway": "₹1,18,222 more went out than came in.Biggest outflow: paying for purchases (₹1,11,206).",
       "moneyIn": "₹22,020",
       "moneyInSplit": "cash ₹13,520 · online ₹8,500",
       "moneyOut": "₹1,40,242",
       "moneyOutSplit": "cash ₹1,13,602 · online ₹26,640",
-      "moneyCashChart": "1 Mar: -₹7302 Mar: ₹7053 Mar: -₹19,8624 Mar: -₹3005 Mar: -₹18,6596 Mar: -₹3057 Mar: ₹08 Mar: -₹8009 Mar: -₹24,19710 Mar: -₹8,91511 Mar: -₹55012 Mar: -₹87513 Mar: -₹2,60214 Mar: -₹62515 Mar: ₹2,00016 Mar: -₹90117 Mar: -₹4,39218 Mar: -₹27219 Mar: -₹26,05020 Mar: ₹31821 Mar: ₹85822 Mar: ₹2523 Mar: -₹1,10924 Mar: -₹1,77525 Mar: -₹1,27526 Mar: ₹5,01827 Mar: -₹10,18028 Mar: ₹029 Mar: ₹46730 Mar: -₹3,81731 Mar: ₹57818152229",
+      "moneyCashChart": "1 Mar: −₹7302 Mar: ₹7053 Mar: −₹19,8624 Mar: −₹3005 Mar: −₹18,6596 Mar: −₹3057 Mar: ₹08 Mar: −₹8009 Mar: −₹24,19710 Mar: −₹8,91511 Mar: −₹55012 Mar: −₹87513 Mar: −₹2,60214 Mar: −₹62515 Mar: ₹2,00016 Mar: −₹90117 Mar: −₹4,39218 Mar: −₹27219 Mar: −₹26,05020 Mar: ₹31821 Mar: ₹85822 Mar: ₹2523 Mar: −₹1,10924 Mar: −₹1,77525 Mar: −₹1,27526 Mar: ₹5,01827 Mar: −₹10,18028 Mar: ₹029 Mar: ₹46730 Mar: −₹3,81731 Mar: ₹57818152229",
       "moneyBusiness": "₹16,775",
       "moneySpendCompare": "▲ 80% vs Feb · ▲ 92% vs Mar 2026",
       "moneySpendTakeaway": "Business expenses were ₹67.2 for every ₹100 of sales, more than ₹10.Business expenses 92% more than last year, mostly Other.₹20,400 went to personal use, ₹34,656 more than the profit.",
@@ -974,19 +982,19 @@
       "moneyLabourDiff": "The estimate is ₹288 more than deducted",
       "moneyPersonal": "₹5,400",
       "moneyWithdrawn": "₹15,000",
-      "moneyKept": "-₹34,656",
+      "moneyKept": "−₹34,656",
       "moneyWithdrawalList": "—1 Mar 2027₹15,000",
       "moneyWorthValue": "₹6,70,294",
       "moneyWorthCompare": "stock vs Mar 2026: not known",
       "moneyWorthTakeaway": "You are worth ₹6,70,294.₹49,350 of it is still with customers.",
       "moneyWorthCaveats": "⚠ Net worth leaves out the drawer cash: not counted in the last 30 days.",
-      "moneyWorthTerms": "Stock value₹7,93,313 Stock ›To receive₹49,350 Outstanding ›Cash in drawernot counted in the last 30 days— Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,79,714 Outstanding ›Net worth₹6,70,294",
+      "moneyWorthTerms": "Stock value₹7,93,313 Stock ›To receive₹49,350 Outstanding ›Cash in drawernot counted in the last 30 days— Cash drawer ›Bank, savings and other accounts₹7,345To pay−₹1,79,714 Outstanding ›Net worth₹6,70,294",
       "moneyAccounts": "🏦 Bank₹12,346 ✕🤝 Loan−₹5,001 ✕🏦 Odd₹0 ✕",
       "moneyAccType": "I have this I owe this",
       "moneyChecks": "✓ Numbers match Outstanding, the cash drawer and Stock"
     },
-    "cashChart": "<svg class=\"ins-svg\" width=\"100%\" height=\"120\" role=\"img\" style=\"height:120px\"><line class=\"ins-axis\" x1=\"0\" x2=\"100%\" y1=\"60\" y2=\"60\"></line><rect class=\"ins-bar neg\" x=\"0.48%\" y=\"60.0\" width=\"2.26%\" height=\"1.6\" data-day=\"2027-03-01\"><title>1 Mar: -₹730</title></rect><rect class=\"ins-bar \" x=\"3.71%\" y=\"58.5\" width=\"2.26%\" height=\"1.5\" data-day=\"2027-03-02\"><title>2 Mar: ₹705</title></rect><rect class=\"ins-bar neg\" x=\"6.94%\" y=\"60.0\" width=\"2.26%\" height=\"42.7\" data-day=\"2027-03-03\"><title>3 Mar: -₹19,862</title></rect><rect class=\"ins-bar neg\" x=\"10.16%\" y=\"60.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-04\"><title>4 Mar: -₹300</title></rect><rect class=\"ins-bar neg\" x=\"13.39%\" y=\"60.0\" width=\"2.26%\" height=\"40.1\" data-day=\"2027-03-05\"><title>5 Mar: -₹18,659</title></rect><rect class=\"ins-bar neg\" x=\"16.61%\" y=\"60.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-06\"><title>6 Mar: -₹305</title></rect><rect class=\"ins-bar \" x=\"19.84%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-07\"><title>7 Mar: ₹0</title></rect><rect class=\"ins-bar neg\" x=\"23.06%\" y=\"60.0\" width=\"2.26%\" height=\"1.7\" data-day=\"2027-03-08\"><title>8 Mar: -₹800</title></rect><rect class=\"ins-bar neg\" x=\"26.29%\" y=\"60.0\" width=\"2.26%\" height=\"52.0\" data-day=\"2027-03-09\"><title>9 Mar: -₹24,197</title></rect><rect class=\"ins-bar neg\" x=\"29.52%\" y=\"60.0\" width=\"2.26%\" height=\"19.2\" data-day=\"2027-03-10\"><title>10 Mar: -₹8,915</title></rect><rect class=\"ins-bar neg\" x=\"32.74%\" y=\"60.0\" width=\"2.26%\" height=\"1.2\" data-day=\"2027-03-11\"><title>11 Mar: -₹550</title></rect><rect class=\"ins-bar neg\" x=\"35.97%\" y=\"60.0\" width=\"2.26%\" height=\"1.9\" data-day=\"2027-03-12\"><title>12 Mar: -₹875</title></rect><rect class=\"ins-bar neg\" x=\"39.19%\" y=\"60.0\" width=\"2.26%\" height=\"5.6\" data-day=\"2027-03-13\"><title>13 Mar: -₹2,602</title></rect><rect class=\"ins-bar neg\" x=\"42.42%\" y=\"60.0\" width=\"2.26%\" height=\"1.3\" data-day=\"2027-03-14\"><title>14 Mar: -₹625</title></rect><rect class=\"ins-bar \" x=\"45.65%\" y=\"55.7\" width=\"2.26%\" height=\"4.3\" data-day=\"2027-03-15\"><title>15 Mar: ₹2,000</title></rect><rect class=\"ins-bar neg\" x=\"48.87%\" y=\"60.0\" width=\"2.26%\" height=\"1.9\" data-day=\"2027-03-16\"><title>16 Mar: -₹901</title></rect><rect class=\"ins-bar neg\" x=\"52.10%\" y=\"60.0\" width=\"2.26%\" height=\"9.4\" data-day=\"2027-03-17\"><title>17 Mar: -₹4,392</title></rect><rect class=\"ins-bar neg\" x=\"55.32%\" y=\"60.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-18\"><title>18 Mar: -₹272</title></rect><rect class=\"ins-bar neg\" x=\"58.55%\" y=\"60.0\" width=\"2.26%\" height=\"56.0\" data-day=\"2027-03-19\"><title>19 Mar: -₹26,050</title></rect><rect class=\"ins-bar \" x=\"61.77%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-20\"><title>20 Mar: ₹318</title></rect><rect class=\"ins-bar \" x=\"65.00%\" y=\"58.2\" width=\"2.26%\" height=\"1.8\" data-day=\"2027-03-21\"><title>21 Mar: ₹858</title></rect><rect class=\"ins-bar \" x=\"68.23%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-22\"><title>22 Mar: ₹25</title></rect><rect class=\"ins-bar neg\" x=\"71.45%\" y=\"60.0\" width=\"2.26%\" height=\"2.4\" data-day=\"2027-03-23\"><title>23 Mar: -₹1,109</title></rect><rect class=\"ins-bar neg\" x=\"74.68%\" y=\"60.0\" width=\"2.26%\" height=\"3.8\" data-day=\"2027-03-24\"><title>24 Mar: -₹1,775</title></rect><rect class=\"ins-bar neg\" x=\"77.90%\" y=\"60.0\" width=\"2.26%\" height=\"2.7\" data-day=\"2027-03-25\"><title>25 Mar: -₹1,275</title></rect><rect class=\"ins-bar \" x=\"81.13%\" y=\"49.2\" width=\"2.26%\" height=\"10.8\" data-day=\"2027-03-26\"><title>26 Mar: ₹5,018</title></rect><rect class=\"ins-bar neg\" x=\"84.35%\" y=\"60.0\" width=\"2.26%\" height=\"21.9\" data-day=\"2027-03-27\"><title>27 Mar: -₹10,180</title></rect><rect class=\"ins-bar \" x=\"87.58%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-28\"><title>28 Mar: ₹0</title></rect><rect class=\"ins-bar \" x=\"90.81%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-29\"><title>29 Mar: ₹467</title></rect><rect class=\"ins-bar neg\" x=\"94.03%\" y=\"60.0\" width=\"2.26%\" height=\"8.2\" data-day=\"2027-03-30\"><title>30 Mar: -₹3,817</title></rect><rect class=\"ins-bar \" x=\"97.26%\" y=\"58.8\" width=\"2.26%\" height=\"1.2\" data-day=\"2027-03-31\"><title>31 Mar: ₹578</title></rect><text x=\"1.61%\" y=\"118\" class=\"ins-tick\">1</text><text x=\"24.19%\" y=\"118\" class=\"ins-tick\">8</text><text x=\"46.77%\" y=\"118\" class=\"ins-tick\">15</text><text x=\"69.35%\" y=\"118\" class=\"ins-tick\">22</text><text x=\"91.94%\" y=\"118\" class=\"ins-tick\">29</text></svg>",
-    "profitChart": "Mar 2026: -₹6,207Apr 2026: -₹5,147May 2026: -₹11,104Jun 2026: -₹4,224Jul 2026: -₹8,850Aug 2026: -₹10,678Sep 2026: -₹7,209Oct 2026: -₹14,105Nov 2026: -₹4,106Dec 2026: -₹9,083Jan 2027: -₹10,097Feb 2027: -₹6,455Mar 2027: -₹14,256MarJunSepDecMar",
+    "cashChart": "<svg class=\"ins-svg\" width=\"100%\" height=\"120\" role=\"img\" style=\"height:120px\"><line class=\"ins-axis\" x1=\"0\" x2=\"100%\" y1=\"60\" y2=\"60\"></line><rect class=\"ins-bar neg\" x=\"0.48%\" y=\"60.0\" width=\"2.26%\" height=\"1.6\" data-day=\"2027-03-01\"><title>1 Mar: −₹730</title></rect><rect class=\"ins-bar \" x=\"3.71%\" y=\"58.5\" width=\"2.26%\" height=\"1.5\" data-day=\"2027-03-02\"><title>2 Mar: ₹705</title></rect><rect class=\"ins-bar neg\" x=\"6.94%\" y=\"60.0\" width=\"2.26%\" height=\"42.7\" data-day=\"2027-03-03\"><title>3 Mar: −₹19,862</title></rect><rect class=\"ins-bar neg\" x=\"10.16%\" y=\"60.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-04\"><title>4 Mar: −₹300</title></rect><rect class=\"ins-bar neg\" x=\"13.39%\" y=\"60.0\" width=\"2.26%\" height=\"40.1\" data-day=\"2027-03-05\"><title>5 Mar: −₹18,659</title></rect><rect class=\"ins-bar neg\" x=\"16.61%\" y=\"60.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-06\"><title>6 Mar: −₹305</title></rect><rect class=\"ins-bar \" x=\"19.84%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-07\"><title>7 Mar: ₹0</title></rect><rect class=\"ins-bar neg\" x=\"23.06%\" y=\"60.0\" width=\"2.26%\" height=\"1.7\" data-day=\"2027-03-08\"><title>8 Mar: −₹800</title></rect><rect class=\"ins-bar neg\" x=\"26.29%\" y=\"60.0\" width=\"2.26%\" height=\"52.0\" data-day=\"2027-03-09\"><title>9 Mar: −₹24,197</title></rect><rect class=\"ins-bar neg\" x=\"29.52%\" y=\"60.0\" width=\"2.26%\" height=\"19.2\" data-day=\"2027-03-10\"><title>10 Mar: −₹8,915</title></rect><rect class=\"ins-bar neg\" x=\"32.74%\" y=\"60.0\" width=\"2.26%\" height=\"1.2\" data-day=\"2027-03-11\"><title>11 Mar: −₹550</title></rect><rect class=\"ins-bar neg\" x=\"35.97%\" y=\"60.0\" width=\"2.26%\" height=\"1.9\" data-day=\"2027-03-12\"><title>12 Mar: −₹875</title></rect><rect class=\"ins-bar neg\" x=\"39.19%\" y=\"60.0\" width=\"2.26%\" height=\"5.6\" data-day=\"2027-03-13\"><title>13 Mar: −₹2,602</title></rect><rect class=\"ins-bar neg\" x=\"42.42%\" y=\"60.0\" width=\"2.26%\" height=\"1.3\" data-day=\"2027-03-14\"><title>14 Mar: −₹625</title></rect><rect class=\"ins-bar \" x=\"45.65%\" y=\"55.7\" width=\"2.26%\" height=\"4.3\" data-day=\"2027-03-15\"><title>15 Mar: ₹2,000</title></rect><rect class=\"ins-bar neg\" x=\"48.87%\" y=\"60.0\" width=\"2.26%\" height=\"1.9\" data-day=\"2027-03-16\"><title>16 Mar: −₹901</title></rect><rect class=\"ins-bar neg\" x=\"52.10%\" y=\"60.0\" width=\"2.26%\" height=\"9.4\" data-day=\"2027-03-17\"><title>17 Mar: −₹4,392</title></rect><rect class=\"ins-bar neg\" x=\"55.32%\" y=\"60.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-18\"><title>18 Mar: −₹272</title></rect><rect class=\"ins-bar neg\" x=\"58.55%\" y=\"60.0\" width=\"2.26%\" height=\"56.0\" data-day=\"2027-03-19\"><title>19 Mar: −₹26,050</title></rect><rect class=\"ins-bar \" x=\"61.77%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-20\"><title>20 Mar: ₹318</title></rect><rect class=\"ins-bar \" x=\"65.00%\" y=\"58.2\" width=\"2.26%\" height=\"1.8\" data-day=\"2027-03-21\"><title>21 Mar: ₹858</title></rect><rect class=\"ins-bar \" x=\"68.23%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-22\"><title>22 Mar: ₹25</title></rect><rect class=\"ins-bar neg\" x=\"71.45%\" y=\"60.0\" width=\"2.26%\" height=\"2.4\" data-day=\"2027-03-23\"><title>23 Mar: −₹1,109</title></rect><rect class=\"ins-bar neg\" x=\"74.68%\" y=\"60.0\" width=\"2.26%\" height=\"3.8\" data-day=\"2027-03-24\"><title>24 Mar: −₹1,775</title></rect><rect class=\"ins-bar neg\" x=\"77.90%\" y=\"60.0\" width=\"2.26%\" height=\"2.7\" data-day=\"2027-03-25\"><title>25 Mar: −₹1,275</title></rect><rect class=\"ins-bar \" x=\"81.13%\" y=\"49.2\" width=\"2.26%\" height=\"10.8\" data-day=\"2027-03-26\"><title>26 Mar: ₹5,018</title></rect><rect class=\"ins-bar neg\" x=\"84.35%\" y=\"60.0\" width=\"2.26%\" height=\"21.9\" data-day=\"2027-03-27\"><title>27 Mar: −₹10,180</title></rect><rect class=\"ins-bar \" x=\"87.58%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-28\"><title>28 Mar: ₹0</title></rect><rect class=\"ins-bar \" x=\"90.81%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-29\"><title>29 Mar: ₹467</title></rect><rect class=\"ins-bar neg\" x=\"94.03%\" y=\"60.0\" width=\"2.26%\" height=\"8.2\" data-day=\"2027-03-30\"><title>30 Mar: −₹3,817</title></rect><rect class=\"ins-bar \" x=\"97.26%\" y=\"58.8\" width=\"2.26%\" height=\"1.2\" data-day=\"2027-03-31\"><title>31 Mar: ₹578</title></rect><text x=\"1.61%\" y=\"118\" class=\"ins-tick\">1</text><text x=\"24.19%\" y=\"118\" class=\"ins-tick\">8</text><text x=\"46.77%\" y=\"118\" class=\"ins-tick\">15</text><text x=\"69.35%\" y=\"118\" class=\"ins-tick\">22</text><text x=\"91.94%\" y=\"118\" class=\"ins-tick\">29</text></svg>",
+    "profitChart": "Mar 2026: −₹6,207Apr 2026: −₹5,147May 2026: −₹11,104Jun 2026: −₹4,224Jul 2026: −₹8,850Aug 2026: −₹10,678Sep 2026: −₹7,209Oct 2026: −₹14,105Nov 2026: −₹4,106Dec 2026: −₹9,083Jan 2027: −₹10,097Feb 2027: −₹6,455Mar 2027: −₹14,256MarJunSepDecMar",
     "accountsTotal": 7345,
     "sessionsAsked": [
       "2027-03-01|2027-03-31"
@@ -999,8 +1007,9 @@
       "moneyPreset": "Today This week This month Last month This year Last year This financial year Last financial year Last 30 days Choose dates…",
       "moneyNowLabel": "As of today, 1 Jan 2027",
       "moneyCompare": "— (before and last year only)Last monthThis monthLast yearThis yearLast financial yearThis financial yearLast 30 daysChoose dates…",
-      "moneyProfitValue": "-₹643",
-      "moneyProfitCompare": "▼ 616% vs Dec · ▲ 52% vs Jan 2026",
+      "moneyProfitLabel": "Profit",
+      "moneyProfitValue": "−₹643",
+      "moneyProfitCompare": "▼ 616% vs 1 Dec · ▲ 52% vs 1 Jan 2026",
       "moneyProfitTakeaway": "Loss of ₹643 in this period.",
       "moneySales": "₹1,827",
       "moneySalesSplit": "1 bill",
@@ -1008,14 +1017,15 @@
       "moneyGross": "₹273 · ₹14.9 per ₹100 sold",
       "moneyBusinessTerm": "₹750",
       "moneyBadDebts": "₹166",
-      "moneyProfitTerm": "-₹643",
-      "moneyProfitChart": "Jan 2026: -₹14,266Feb 2026: -₹10,472Mar 2026: -₹5,611Apr 2026: -₹11,299May 2026: -₹5,753Jun 2026: -₹12,326Jul 2026: -₹9,102Aug 2026: -₹7,756Sep 2026: -₹9,847Oct 2026: -₹9,043Nov 2026: -₹10,210Dec 2026: -₹8,539Jan 2027: -₹643JanAprJulOctJan",
+      "moneyProfitEqLabel": "= Profit",
+      "moneyProfitTerm": "−₹643",
+      "moneyProfitChart": "Jan 2026: −₹14,266Feb 2026: −₹10,472Mar 2026: −₹5,611Apr 2026: −₹11,299May 2026: −₹5,753Jun 2026: −₹12,326Jul 2026: −₹9,102Aug 2026: −₹7,756Sep 2026: −₹9,847Oct 2026: −₹9,043Nov 2026: −₹10,210Dec 2026: −₹8,539Jan 2027: −₹643JanAprJulOctJan",
       "moneyProfitLegend": "This year Last year",
       "moneyBuildHistory": "Older months are not saved yet, so comparisons with last year are missing.Build month history",
-      "moneyStockMovement": "Stock at the start₹8,36,137+ Bought (at line rate)₹0− Cost of goods sold₹1,554± Stock corrections₹0= Stock at the end₹8,34,583✓ Stock adds up",
+      "moneyStockMovement": "Stock at the start₹8,36,137+ Bought (at line rate)₹0− Cost of what was sold₹1,554± Stock corrections₹0= Stock at the end₹8,34,583✓ Stock adds up",
       "moneyPurchases": "₹0 · 0 bills",
       "moneyNetCash": "₹1,077",
-      "moneyCashCompare": "▲ 349% vs Dec · ▲ 127% vs Jan 2026",
+      "moneyCashCompare": "▲ 349% vs 1 Dec · ▲ 127% vs 1 Jan 2026",
       "moneyCashTakeaway": "₹1,077 more came in than went out.Biggest outflow: expenses (₹750).",
       "moneyIn": "₹1,827",
       "moneyInSplit": "cash ₹1,827 · online ₹0",
@@ -1023,7 +1033,7 @@
       "moneyOutSplit": "cash ₹750 · online ₹0",
       "moneyCashChart": "1 Jan: ₹1,0771",
       "moneyBusiness": "₹750",
-      "moneySpendCompare": "▼ 50% vs Jan 2026",
+      "moneySpendCompare": "▼ 50% vs 1 Jan 2026",
       "moneySpendTakeaway": "Business expenses were ₹41.1 for every ₹100 of sales, more than ₹10.Business expenses 50% less than last year, mostly Other.₹11,500 went to personal use, ₹12,143 more than the profit.",
       "moneyCategories": "Other₹750",
       "moneyLabourBills": "(0 bills)",
@@ -1036,19 +1046,19 @@
       "moneyLabourDiff": "The estimate matches what was deducted",
       "moneyPersonal": "₹0",
       "moneyWithdrawn": "₹11,500",
-      "moneyKept": "-₹12,143",
+      "moneyKept": "−₹12,143",
       "moneyWithdrawalList": "—1 Jan 2027₹11,500",
       "moneyWorthValue": "₹7,38,159",
       "moneyWorthCompare": "stock vs Jan 2026: not known",
       "moneyWorthTakeaway": "You are worth ₹7,38,159.₹36,925 of it is still with customers.",
       "moneyWorthCaveats": "⚠ Net worth leaves out the drawer cash: not counted in the last 30 days.",
-      "moneyWorthTerms": "Stock value₹8,34,583 Stock ›To receive₹36,925 Outstanding ›Cash in drawernot counted in the last 30 days— Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,40,694 Outstanding ›Net worth₹7,38,159",
+      "moneyWorthTerms": "Stock value₹8,34,583 Stock ›To receive₹36,925 Outstanding ›Cash in drawernot counted in the last 30 days— Cash drawer ›Bank, savings and other accounts₹7,345To pay−₹1,40,694 Outstanding ›Net worth₹7,38,159",
       "moneyAccounts": "🏦 Bank₹12,346 ✕🤝 Loan−₹5,001 ✕🏦 Odd₹0 ✕",
       "moneyAccType": "I have this I owe this",
       "moneyChecks": "✓ Numbers match Outstanding, the cash drawer and Stock"
     },
     "cashChart": "<svg class=\"ins-svg\" width=\"100%\" height=\"120\" role=\"img\" style=\"height:120px\"><line class=\"ins-axis\" x1=\"0\" x2=\"100%\" y1=\"106\" y2=\"106\"></line><rect class=\"ins-bar \" x=\"15.00%\" y=\"4.0\" width=\"70.00%\" height=\"102.0\" data-day=\"2027-01-01\"><title>1 Jan: ₹1,077</title></rect><text x=\"50.00%\" y=\"118\" class=\"ins-tick\">1</text></svg>",
-    "profitChart": "Jan 2026: -₹14,266Feb 2026: -₹10,472Mar 2026: -₹5,611Apr 2026: -₹11,299May 2026: -₹5,753Jun 2026: -₹12,326Jul 2026: -₹9,102Aug 2026: -₹7,756Sep 2026: -₹9,847Oct 2026: -₹9,043Nov 2026: -₹10,210Dec 2026: -₹8,539Jan 2027: -₹643JanAprJulOctJan",
+    "profitChart": "Jan 2026: −₹14,266Feb 2026: −₹10,472Mar 2026: −₹5,611Apr 2026: −₹11,299May 2026: −₹5,753Jun 2026: −₹12,326Jul 2026: −₹9,102Aug 2026: −₹7,756Sep 2026: −₹9,847Oct 2026: −₹9,043Nov 2026: −₹10,210Dec 2026: −₹8,539Jan 2027: −₹643JanAprJulOctJan",
     "accountsTotal": 7345,
     "sessionsAsked": [
       "2026-12-02|2027-01-01"
@@ -1058,23 +1068,23 @@
     "presets": {
       "last-30": {
         "label": "Last 30 days",
-        "net": "-₹39,034",
+        "net": "−₹39,034",
         "chart": ""
       },
       "this-year": {
         "label": "2026",
-        "net": "-₹3,64,915",
+        "net": "−₹3,64,915",
         "chart": ""
       },
       "last-year": {
         "label": "2025",
-        "net": "-₹5,06,977",
+        "net": "−₹5,06,977",
         "chart": ""
       },
       "last-month": {
         "label": "Oct 2026",
-        "net": "-₹54,633",
-        "chart": "1 Oct: -₹7,2152 Oct: -₹8,3843 Oct: ₹7374 Oct: ₹05 Oct: -₹4256 Oct: ₹4357 Oct: ₹08 Oct: -₹5,1069 Oct: -₹27510 Oct: -₹26211 Oct: ₹012 Oct: -₹48813 Oct: -₹30014 Oct: -₹1,47515 Oct: -₹12,57016 Oct: -₹3,32117 Oct: -₹1,26318 Oct: ₹33719 Oct: ₹4220 Oct: -₹18421 Oct: ₹022 Oct: -₹6923 Oct: -₹65024 Oct: -₹77125 Oct: ₹52526 Oct: -₹15927 Oct: ₹66828 Oct: -₹88729 Oct: -₹72530 Oct: -₹13,13631 Oct: ₹28818152229"
+        "net": "−₹54,633",
+        "chart": "1 Oct: −₹7,2152 Oct: −₹8,3843 Oct: ₹7374 Oct: ₹05 Oct: −₹4256 Oct: ₹4357 Oct: ₹08 Oct: −₹5,1069 Oct: −₹27510 Oct: −₹26211 Oct: ₹012 Oct: −₹48813 Oct: −₹30014 Oct: −₹1,47515 Oct: −₹12,57016 Oct: −₹3,32117 Oct: −₹1,26318 Oct: ₹33719 Oct: ₹4220 Oct: −₹18421 Oct: ₹022 Oct: −₹6923 Oct: −₹65024 Oct: −₹77125 Oct: ₹52526 Oct: −₹15927 Oct: ₹66828 Oct: −₹88729 Oct: −₹72530 Oct: −₹13,13631 Oct: ₹28818152229"
       }
     },
     "steps": [
@@ -1098,23 +1108,23 @@
     "presets": {
       "last-30": {
         "label": "Last 30 days",
-        "net": "-₹7,308",
+        "net": "−₹7,308",
         "chart": ""
       },
       "this-year": {
         "label": "2027",
-        "net": "-₹7,679",
+        "net": "−₹7,679",
         "chart": ""
       },
       "last-year": {
         "label": "2026",
-        "net": "-₹6,04,471",
+        "net": "−₹6,04,471",
         "chart": ""
       },
       "last-month": {
         "label": "Dec 2026",
-        "net": "-₹39,109",
-        "chart": "1 Dec: -₹5002 Dec: ₹703 Dec: -₹8754 Dec: -₹6695 Dec: -₹7506 Dec: ₹07 Dec: ₹1718 Dec: -₹3009 Dec: ₹1,59410 Dec: ₹64411 Dec: -₹62512 Dec: -₹89613 Dec: ₹1414 Dec: -₹9,15515 Dec: -₹58616 Dec: ₹90017 Dec: ₹46518 Dec: ₹2119 Dec: -₹8720 Dec: ₹6821 Dec: -₹12,02622 Dec: -₹9,86423 Dec: ₹53624 Dec: -₹5,60525 Dec: ₹55126 Dec: -₹70027 Dec: ₹028 Dec: -₹72829 Dec: -₹57730 Dec: ₹031 Dec: -₹20018152229"
+        "net": "−₹39,109",
+        "chart": "1 Dec: −₹5002 Dec: ₹703 Dec: −₹8754 Dec: −₹6695 Dec: −₹7506 Dec: ₹07 Dec: ₹1718 Dec: −₹3009 Dec: ₹1,59410 Dec: ₹64411 Dec: −₹62512 Dec: −₹89613 Dec: ₹1414 Dec: −₹9,15515 Dec: −₹58616 Dec: ₹90017 Dec: ₹46518 Dec: ₹2119 Dec: −₹8720 Dec: ₹6821 Dec: −₹12,02622 Dec: −₹9,86423 Dec: ₹53624 Dec: −₹5,60525 Dec: ₹55126 Dec: −₹70027 Dec: ₹028 Dec: −₹72829 Dec: −₹57730 Dec: ₹031 Dec: −₹20018152229"
       }
     },
     "steps": [
@@ -1127,7 +1137,7 @@
       "this-month"
     ],
     "windowed": {
-      "net": "-₹7,679",
+      "net": "−₹7,679",
       "in": "₹17,865"
     },
     "sessionsAsked": [
@@ -1138,23 +1148,23 @@
     "presets": {
       "last-30": {
         "label": "Last 30 days",
-        "net": "-₹16,569",
+        "net": "−₹16,569",
         "chart": ""
       },
       "this-year": {
         "label": "2028",
-        "net": "-₹36,148",
+        "net": "−₹36,148",
         "chart": ""
       },
       "last-year": {
         "label": "2027",
-        "net": "-₹6,67,239",
+        "net": "−₹6,67,239",
         "chart": ""
       },
       "last-month": {
         "label": "Jan 2028",
-        "net": "-₹20,294",
-        "chart": "1 Jan: -₹6282 Jan: -₹1143 Jan: -₹1,7894 Jan: ₹5225 Jan: -₹5,8196 Jan: ₹237 Jan: -₹5508 Jan: -₹8759 Jan: ₹010 Jan: -₹42511 Jan: -₹1,80812 Jan: -₹13713 Jan: -₹7,28114 Jan: -₹2,75815 Jan: -₹1,49516 Jan: -₹42517 Jan: ₹1,49418 Jan: ₹89619 Jan: -₹1,05020 Jan: -₹32521 Jan: ₹53122 Jan: -₹19023 Jan: ₹024 Jan: ₹1,63925 Jan: -₹27426 Jan: ₹1,16627 Jan: -₹17528 Jan: -₹62529 Jan: ₹96230 Jan: -₹6931 Jan: -₹71518152229"
+        "net": "−₹20,294",
+        "chart": "1 Jan: −₹6282 Jan: −₹1143 Jan: −₹1,7894 Jan: ₹5225 Jan: −₹5,8196 Jan: ₹237 Jan: −₹5508 Jan: −₹8759 Jan: ₹010 Jan: −₹42511 Jan: −₹1,80812 Jan: −₹13713 Jan: −₹7,28114 Jan: −₹2,75815 Jan: −₹1,49516 Jan: −₹42517 Jan: ₹1,49418 Jan: ₹89619 Jan: −₹1,05020 Jan: −₹32521 Jan: ₹53122 Jan: −₹19023 Jan: ₹024 Jan: ₹1,63925 Jan: −₹27426 Jan: ₹1,16627 Jan: −₹17528 Jan: −₹62529 Jan: ₹96230 Jan: −₹6931 Jan: −₹71518152229"
       }
     },
     "steps": [
@@ -1167,7 +1177,7 @@
       "this-month"
     ],
     "windowed": {
-      "net": "-₹15,854",
+      "net": "−₹15,854",
       "in": "₹37,056"
     },
     "sessionsAsked": [
@@ -1178,23 +1188,23 @@
     "presets": {
       "last-30": {
         "label": "Last 30 days",
-        "net": "-₹1,17,492",
+        "net": "−₹1,17,492",
         "chart": ""
       },
       "this-year": {
         "label": "2027",
-        "net": "-₹2,33,866",
+        "net": "−₹2,33,866",
         "chart": ""
       },
       "last-year": {
         "label": "2026",
-        "net": "-₹4,26,109",
+        "net": "−₹4,26,109",
         "chart": ""
       },
       "last-month": {
         "label": "Feb 2027",
-        "net": "-₹1,13,305",
-        "chart": "1 Feb: -₹3752 Feb: ₹2883 Feb: -₹28,7454 Feb: ₹3845 Feb: ₹166 Feb: -₹1257 Feb: -₹3,0828 Feb: -₹7929 Feb: -₹55010 Feb: -₹12,97911 Feb: -₹72112 Feb: -₹96713 Feb: ₹55514 Feb: -₹15015 Feb: ₹1,25016 Feb: -₹29,95517 Feb: -₹43718 Feb: -₹2,66419 Feb: -₹1,25020 Feb: -₹4,17321 Feb: ₹022 Feb: -₹32,77423 Feb: ₹54624 Feb: ₹2,35725 Feb: ₹2,26526 Feb: -₹75027 Feb: -₹47728 Feb: ₹0181522"
+        "net": "−₹1,13,305",
+        "chart": "1 Feb: −₹3752 Feb: ₹2883 Feb: −₹28,7454 Feb: ₹3845 Feb: ₹166 Feb: −₹1257 Feb: −₹3,0828 Feb: −₹7929 Feb: −₹55010 Feb: −₹12,97911 Feb: −₹72112 Feb: −₹96713 Feb: ₹55514 Feb: −₹15015 Feb: ₹1,25016 Feb: −₹29,95517 Feb: −₹43718 Feb: −₹2,66419 Feb: −₹1,25020 Feb: −₹4,17321 Feb: ₹022 Feb: −₹32,77423 Feb: ₹54624 Feb: ₹2,35725 Feb: ₹2,26526 Feb: −₹75027 Feb: −₹47728 Feb: ₹0181522"
       }
     },
     "steps": [
@@ -1207,7 +1217,7 @@
       "this-month"
     ],
     "windowed": {
-      "net": "-₹1,18,222",
+      "net": "−₹1,18,222",
       "in": "₹22,020"
     },
     "sessionsAsked": [
@@ -1218,7 +1228,7 @@
     "presets": {
       "last-30": {
         "label": "Last 30 days",
-        "net": "-₹61,921",
+        "net": "−₹61,921",
         "chart": ""
       },
       "this-year": {
@@ -1228,13 +1238,13 @@
       },
       "last-year": {
         "label": "2026",
-        "net": "-₹6,67,083",
+        "net": "−₹6,67,083",
         "chart": ""
       },
       "last-month": {
         "label": "Dec 2026",
-        "net": "-₹62,359",
-        "chart": "1 Dec: -₹4322 Dec: ₹1,0713 Dec: ₹3664 Dec: -₹4115 Dec: -₹7,9646 Dec: ₹07 Dec: ₹3888 Dec: -₹6509 Dec: ₹97010 Dec: -₹2,36011 Dec: ₹1,38912 Dec: ₹1,34313 Dec: ₹014 Dec: -₹9,39415 Dec: ₹13716 Dec: ₹017 Dec: -₹17,31918 Dec: ₹73719 Dec: ₹020 Dec: -₹9,37721 Dec: ₹022 Dec: -₹5,20123 Dec: -₹27524 Dec: -₹40025 Dec: -₹48826 Dec: -₹30027 Dec: ₹028 Dec: -₹1,82529 Dec: -₹10,61430 Dec: -₹1,10031 Dec: -₹65018152229"
+        "net": "−₹62,359",
+        "chart": "1 Dec: −₹4322 Dec: ₹1,0713 Dec: ₹3664 Dec: −₹4115 Dec: −₹7,9646 Dec: ₹07 Dec: ₹3888 Dec: −₹6509 Dec: ₹97010 Dec: −₹2,36011 Dec: ₹1,38912 Dec: ₹1,34313 Dec: ₹014 Dec: −₹9,39415 Dec: ₹13716 Dec: ₹017 Dec: −₹17,31918 Dec: ₹73719 Dec: ₹020 Dec: −₹9,37721 Dec: ₹022 Dec: −₹5,20123 Dec: −₹27524 Dec: −₹40025 Dec: −₹48826 Dec: −₹30027 Dec: ₹028 Dec: −₹1,82529 Dec: −₹10,61430 Dec: −₹1,10031 Dec: −₹65018152229"
       }
     },
     "steps": [
@@ -2386,8 +2396,8 @@
     },
     "month": {
       "title": "Month statement · Nov 2026",
-      "share": "Month statement · Nov 2026\nSales: ₹0\nCost of goods sold: ₹0\nGross profit: ₹0\nBusiness expenses: ₹0\nBad debts: ₹0\nProfit: ₹0\nLabour on purchases (not in cost): ₹0\nPersonal expenses: ₹0\nWithdrawals: ₹0\nKept in business: ₹0\nMoney in: ₹0\nMoney out: ₹0\nNet money in: ₹0\nBought: ₹0\nStock at the start: ₹7,31,948\nStock at the end: ₹7,31,948",
-      "text": "Month statement · Nov 2026Sales₹0− Cost of goods sold₹0= Gross profit₹0− Business expenses₹0− Bad debts₹0= Profit₹0Labour on purchases (not in cost)₹0Personal expenses₹0Withdrawals₹0Kept in business₹0Money in₹0Money out₹0Net money in₹0Bought₹0Stock at the start₹7,31,948= Stock at the end₹7,31,948",
+      "share": "Month statement · Nov 2026\nSales: ₹0\nCost of what was sold: ₹0\nGross profit: ₹0\nBusiness expenses: ₹0\nBad debts: ₹0\nProfit: ₹0\nLabour on purchases (not in cost): ₹0\nPersonal expenses: ₹0\nWithdrawals: ₹0\nKept in business: ₹0\nMoney in: ₹0\nMoney out: ₹0\nNet money in: ₹0\nBought: ₹0\nStock at the start: ₹7,31,948\nStock at the end: ₹7,31,948",
+      "text": "Month statement · Nov 2026Sales₹0− Cost of what was sold₹0= Gross profit₹0− Business expenses₹0− Bad debts₹0= Profit₹0Labour on purchases (not in cost)₹0Personal expenses₹0Withdrawals₹0Kept in business₹0Money in₹0Money out₹0Net money in₹0Bought₹0Stock at the start₹7,31,948= Stock at the end₹7,31,948",
       "rows": 16,
       "first": [
         [
@@ -2395,7 +2405,7 @@
           0
         ],
         [
-          "Cost of goods sold",
+          "Cost of what was sold",
           0
         ],
         [
@@ -2484,8 +2494,8 @@
     },
     "month": {
       "title": "Month statement · Jan 2027",
-      "share": "Month statement · Jan 2027\nSales: ₹23,119\nCost of goods sold: ₹19,760\nGross profit: ₹3,359\nBusiness expenses: ₹16,100\nBad debts: ₹0\nProfit: -₹12,741\nLabour on purchases (not in cost): ₹18\nPersonal expenses: ₹2,000\nWithdrawals: ₹0\nKept in business: -₹14,741\nMoney in: ₹17,865\nMoney out: ₹25,544\nNet money in: -₹7,679\nBought: ₹6,740\nStock at the start: ₹8,63,662\nStock at the end: ₹8,50,661",
-      "text": "Month statement · Jan 2027Sales₹23,119− Cost of goods sold₹19,760= Gross profit₹3,359− Business expenses₹16,100− Bad debts₹0= Profit-₹12,741Labour on purchases (not in cost)₹18Personal expenses₹2,000Withdrawals₹0Kept in business-₹14,741Money in₹17,865Money out₹25,544Net money in-₹7,679Bought₹6,740Stock at the start₹8,63,662= Stock at the end₹8,50,661⚠ ₹1,050 of expenses have no type; they count as business.",
+      "share": "Month statement · Jan 2027\nSales: ₹23,119\nCost of what was sold: ₹19,760\nGross profit: ₹3,359\nBusiness expenses: ₹16,100\nBad debts: ₹0\nProfit: -₹12,741\nLabour on purchases (not in cost): ₹18\nPersonal expenses: ₹2,000\nWithdrawals: ₹0\nKept in business: -₹14,741\nMoney in: ₹17,865\nMoney out: ₹25,544\nNet money in: -₹7,679\nBought: ₹6,740\nStock at the start: ₹8,63,662\nStock at the end: ₹8,50,661",
+      "text": "Month statement · Jan 2027Sales₹23,119− Cost of what was sold₹19,760= Gross profit₹3,359− Business expenses₹16,100− Bad debts₹0= Profit-₹12,741Labour on purchases (not in cost)₹18Personal expenses₹2,000Withdrawals₹0Kept in business-₹14,741Money in₹17,865Money out₹25,544Net money in-₹7,679Bought₹6,740Stock at the start₹8,63,662= Stock at the end₹8,50,661⚠ ₹1,050 of expenses have no type; they count as business.",
       "rows": 16,
       "first": [
         [
@@ -2493,7 +2503,7 @@
           23119
         ],
         [
-          "Cost of goods sold",
+          "Cost of what was sold",
           19759.58
         ],
         [
@@ -2726,8 +2736,8 @@
     },
     "month": {
       "title": "Month statement · Feb 2028",
-      "share": "Month statement · Feb 2028\nSales: ₹37,494\nCost of goods sold: ₹33,847\nGross profit: ₹3,647\nBusiness expenses: ₹10,750\nBad debts: ₹218\nProfit: -₹7,321\nLabour on purchases (not in cost): ₹102\nPersonal expenses: ₹1,400\nWithdrawals: ₹17,000\nKept in business: -₹25,721\nMoney in: ₹36,650\nMoney out: ₹52,910\nNet money in: -₹16,260\nBought: ₹40,760\nStock at the start: ₹11,60,466\nStock at the end: ₹11,67,481",
-      "text": "Month statement · Feb 2028Sales₹37,494− Cost of goods sold₹33,847= Gross profit₹3,647− Business expenses₹10,750− Bad debts₹218= Profit-₹7,321Labour on purchases (not in cost)₹102Personal expenses₹1,400Withdrawals₹17,000Kept in business-₹25,721Money in₹36,650Money out₹52,910Net money in-₹16,260Bought₹40,760Stock at the start₹11,60,466= Stock at the end₹11,67,481⚠ ₹250 of expenses have no type; they count as business.",
+      "share": "Month statement · Feb 2028\nSales: ₹37,494\nCost of what was sold: ₹33,847\nGross profit: ₹3,647\nBusiness expenses: ₹10,750\nBad debts: ₹218\nProfit: -₹7,321\nLabour on purchases (not in cost): ₹102\nPersonal expenses: ₹1,400\nWithdrawals: ₹17,000\nKept in business: -₹25,721\nMoney in: ₹36,650\nMoney out: ₹52,910\nNet money in: -₹16,260\nBought: ₹40,760\nStock at the start: ₹11,60,466\nStock at the end: ₹11,67,481",
+      "text": "Month statement · Feb 2028Sales₹37,494− Cost of what was sold₹33,847= Gross profit₹3,647− Business expenses₹10,750− Bad debts₹218= Profit-₹7,321Labour on purchases (not in cost)₹102Personal expenses₹1,400Withdrawals₹17,000Kept in business-₹25,721Money in₹36,650Money out₹52,910Net money in-₹16,260Bought₹40,760Stock at the start₹11,60,466= Stock at the end₹11,67,481⚠ ₹250 of expenses have no type; they count as business.",
       "rows": 16,
       "first": [
         [
@@ -2735,7 +2745,7 @@
           37494
         ],
         [
-          "Cost of goods sold",
+          "Cost of what was sold",
           33846.72
         ],
         [
@@ -3044,8 +3054,8 @@
     },
     "month": {
       "title": "Month statement · Mar 2027",
-      "share": "Month statement · Mar 2027\nSales: ₹24,095\nCost of goods sold: ₹20,998\nGross profit: ₹3,097\nBusiness expenses: ₹16,775\nBad debts: ₹0\nProfit: -₹13,678\nLabour on purchases (not in cost): ₹240\nPersonal expenses: ₹5,400\nWithdrawals: ₹15,000\nKept in business: -₹34,078\nMoney in: ₹21,442\nMoney out: ₹1,40,242\nNet money in: -₹1,18,800\nBought: ₹1,47,446\nStock at the start: ₹6,67,244\nStock at the end: ₹7,94,101",
-      "text": "Month statement · Mar 2027Sales₹24,095− Cost of goods sold₹20,998= Gross profit₹3,097− Business expenses₹16,775− Bad debts₹0= Profit-₹13,678Labour on purchases (not in cost)₹240Personal expenses₹5,400Withdrawals₹15,000Kept in business-₹34,078Money in₹21,442Money out₹1,40,242Net money in-₹1,18,800Bought₹1,47,446Stock at the start₹6,67,244= Stock at the end₹7,94,101⚠ ₹1,000 of expenses have no type; they count as business.",
+      "share": "Month statement · Mar 2027\nSales: ₹24,095\nCost of what was sold: ₹20,998\nGross profit: ₹3,097\nBusiness expenses: ₹16,775\nBad debts: ₹0\nProfit: -₹13,678\nLabour on purchases (not in cost): ₹240\nPersonal expenses: ₹5,400\nWithdrawals: ₹15,000\nKept in business: -₹34,078\nMoney in: ₹21,442\nMoney out: ₹1,40,242\nNet money in: -₹1,18,800\nBought: ₹1,47,446\nStock at the start: ₹6,67,244\nStock at the end: ₹7,94,101",
+      "text": "Month statement · Mar 2027Sales₹24,095− Cost of what was sold₹20,998= Gross profit₹3,097− Business expenses₹16,775− Bad debts₹0= Profit-₹13,678Labour on purchases (not in cost)₹240Personal expenses₹5,400Withdrawals₹15,000Kept in business-₹34,078Money in₹21,442Money out₹1,40,242Net money in-₹1,18,800Bought₹1,47,446Stock at the start₹6,67,244= Stock at the end₹7,94,101⚠ ₹1,000 of expenses have no type; they count as business.",
       "rows": 16,
       "first": [
         [
@@ -3053,7 +3063,7 @@
           24095
         ],
         [
-          "Cost of goods sold",
+          "Cost of what was sold",
           20997.87
         ],
         [
@@ -3406,8 +3416,8 @@
     },
     "month": {
       "title": "Month statement · Jan 2027",
-      "share": "Month statement · Jan 2027\nSales: ₹0\nCost of goods sold: ₹0\nGross profit: ₹0\nBusiness expenses: ₹750\nBad debts: ₹0\nProfit: -₹750\nLabour on purchases (not in cost): ₹0\nPersonal expenses: ₹0\nWithdrawals: ₹11,500\nKept in business: -₹12,250\nMoney in: ₹0\nMoney out: ₹750\nNet money in: -₹750\nBought: ₹0\nStock at the start: ₹8,36,137\nStock at the end: ₹8,36,137",
-      "text": "Month statement · Jan 2027Sales₹0− Cost of goods sold₹0= Gross profit₹0− Business expenses₹750− Bad debts₹0= Profit-₹750Labour on purchases (not in cost)₹0Personal expenses₹0Withdrawals₹11,500Kept in business-₹12,250Money in₹0Money out₹750Net money in-₹750Bought₹0Stock at the start₹8,36,137= Stock at the end₹8,36,137",
+      "share": "Month statement · Jan 2027\nSales: ₹0\nCost of what was sold: ₹0\nGross profit: ₹0\nBusiness expenses: ₹750\nBad debts: ₹0\nProfit: -₹750\nLabour on purchases (not in cost): ₹0\nPersonal expenses: ₹0\nWithdrawals: ₹11,500\nKept in business: -₹12,250\nMoney in: ₹0\nMoney out: ₹750\nNet money in: -₹750\nBought: ₹0\nStock at the start: ₹8,36,137\nStock at the end: ₹8,36,137",
+      "text": "Month statement · Jan 2027Sales₹0− Cost of what was sold₹0= Gross profit₹0− Business expenses₹750− Bad debts₹0= Profit-₹750Labour on purchases (not in cost)₹0Personal expenses₹0Withdrawals₹11,500Kept in business-₹12,250Money in₹0Money out₹750Net money in-₹750Bought₹0Stock at the start₹8,36,137= Stock at the end₹8,36,137",
       "rows": 16,
       "first": [
         [
@@ -3415,7 +3425,7 @@
           0
         ],
         [
-          "Cost of goods sold",
+          "Cost of what was sold",
           0
         ],
         [

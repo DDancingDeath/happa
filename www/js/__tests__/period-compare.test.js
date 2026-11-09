@@ -220,7 +220,7 @@ describe('CMP-AB card and summary', () => {
         expect(row('M1')).toEqual(['Sales', '₹1,500', '₹1,000', '+₹500', '▲ 50%']);
         expect(row('M4')).toEqual(['Business expenses', '₹100', '₹0', '+₹100', '—']);
         expect(row('M6')).toEqual(['Profit', '₹300', '—', '—', '—']);
-        expect(row('M14')[3]).toBe('-₹50');
+        expect(row('M14')[3]).toBe('−₹50');
     });
     test('WhatsApp text: A, then B and % per figure', () => {
         const text = summaryText(summaryLines(rows.slice(0, 1), { a: 'Oct 2026', b: 'Sep 2026', shop: 'Shop' }));
