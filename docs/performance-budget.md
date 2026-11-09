@@ -28,6 +28,26 @@ worker, signed out, median of 10 (PR #209):
 
 These are relative numbers for comparing changes, not phone timings.
 
+**Start-up weight (#59, PR #403).** Only the app language's catalogue is loaded before
+the first screen (the other one when the phone is idle, or on a switch); Admin,
+Diagnostics, Anomalies, App health and the receipt drawing are imported on first use
+(the anomalies code and receipt drawing also when idle after the first screen). All of
+them stay precached, so they open offline. `startup-perf.spec.js` (E2E, signed-in owner
+reopening the app 5 times, CPU slowed 4×, no service worker, median; the JavaScript is
+what was fetched before `app-shown`, at its size in the repository):
+
+| | Before | After (CI) | Host, 3 runs each (before → after) |
+|---|---|---|---|
+| First contentful paint | 1,008 ms | 816 ms | 904 → 784 ms |
+| Sign-in check (`auth`) | 1,269 ms | 1,099 ms | 1,177 → 1,098 ms |
+| Profile read | 1,377 ms | 1,193 ms | 1,315 → 1,235 ms |
+| First screen (`app-shown`) | 2,384 ms | 2,112 ms | 2,160 → 2,148 ms |
+| JavaScript before the first screen | 198 files, 3,372 KB | 181 files, 2,739 KB | |
+
+The CI columns are one run each on different runners. On one machine the first screen
+moved within noise: after the sign-in it waits for the data listeners' first answers
+(above), which this PR doesn't change.
+
 ## Item picker: no 200-item cap
 
 The issue proposed capping the item autocomplete at the 200 most-used items.
@@ -95,7 +115,9 @@ Probe on one CI runner (reopen, 4x CPU): cache answers 3.4 s → 1.9 s, first sc
 - Reads: the E2E smoke fails a page that reads more than its baseline + 25 % (at
   least 1 read), or more than 300.
 - Start-up shape: `load-perf.test.js` fails if `index.html` links more than the
-  one stylesheet again.
+  one stylesheet again; `startup-weight.test.js` fails if start-up code statically
+  imports a language catalogue, Admin, Diagnostics, Anomalies, App health or the
+  receipt drawing again (#59).
 - Field timings: TIP `AppStart`, `BillSave` and `SessionReads` show slow or heavy
   versions in App health, and repeated failures open `tip-auto` issues.
 - Lab timings: the nightly multi-year benchmark (`bench.yml`, see below) fails on a

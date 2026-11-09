@@ -10,7 +10,7 @@ import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AuditService } from '../services/audit.js';
 import { changedFields } from '../utils/audit-changes.js';
-import { PrinterService } from '../services/printer.js';
+import { PrinterService, loadReceiptDrawing } from '../services/printer.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { LABOUR_PACKAGE_KG_MAX, LABOUR_PACKAGE_KG_MIN, normalizeLabourSettings, normalizePackageKg } from '../utils/money.js';
@@ -708,7 +708,9 @@ export class SettingsManager {
         return this.saveSharedReceipt({ logo: null });
     }
 
-    static previewReceipt() {
+    static async previewReceipt() {
+        // The sample bill is in the receipt language: its catalogue comes with the drawing (#59)
+        await loadReceiptDrawing().catch(() => {});
         return PrinterService.showBillPreview(PrinterService.sampleBill());
     }
 

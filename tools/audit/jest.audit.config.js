@@ -18,7 +18,9 @@ module.exports = {
     testMatch: ['<rootDir>/tools/audit/audit.run.js'],
     testPathIgnorePatterns: ['/node_modules/'],
     moduleNameMapper: {
-        '^@app/(.*)$': path.join(appRoot, 'www', 'js', '$1').replace(/\\/g, '/')
+        '^@app/(.*)$': path.join(appRoot, 'www', 'js', '$1').replace(/\\/g, '/'),
+        // Both language catalogues up front, as in the main config (#59)
+        '^\\./lang-catalogues\\.js$': path.join(appRoot, 'www', 'js', '__tests__', '__mocks__', 'lang-catalogues.js').replace(/\\/g, '/')
     },
     verbose: false
 };

@@ -33,7 +33,7 @@ const TEXT_IDS = [
 ];
 const copy = (v) => JSON.parse(JSON.stringify(v));
 
-function renderToday(c) {
+async function renderToday(c) {
     // todayTotalCashFlow is not in the template; the page still fills it when present.
     document.body.innerHTML = `${TEMPLATE}<div id="todayTotalCashFlow"></div>`;
     jest.setSystemTime(new Date(c.now));
@@ -46,6 +46,8 @@ function renderToday(c) {
     DayManager.daySessions = { date: c.now.slice(0, 10), list: copy(c.daySessions) };
     const report = jest.spyOn(AnomaliesManager, 'renderDayReport').mockImplementation(() => {});
     DayManager.loadTodayData();
+    // The Day report's code is imported when Today first draws (#59)
+    for (let i = 0; i < 10; i++) await Promise.resolve();
     const [totals, session] = report.mock.calls[0];
     const modal = jest.spyOn(UIManager, 'showModalWithHtml').mockResolvedValue(true);
     DayManager.showLabourBreakdown();
@@ -77,8 +79,8 @@ afterAll(() => {
 });
 
 describe('Today screen, pinned (today-days.json)', () => {
-    test.each(Object.keys(FIX.cases))('%s day', (name) => {
-        const got = renderToday(FIX.cases[name]);
+    test.each(Object.keys(FIX.cases))('%s day', async (name) => {
+        const got = await renderToday(FIX.cases[name]);
         if (RECORD) EXPECTED[name] = got;
         else expect(got).toEqual(EXPECTED[name]);
     });

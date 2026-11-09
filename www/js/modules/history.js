@@ -37,7 +37,7 @@ import { whatsAppShareUrl } from '../utils/release-info.js';
 import { openExternal } from '../utils/open-external.js';
 import { billTraceId } from '../utils/status-report.js';
 import { track } from '../services/usage.js';
-import { t, tn } from '../i18n/index.js';
+import { t, tn, loadAllCatalogues } from '../i18n/index.js';
 import { billLabour, billLineTotal, billTotal, hasBillAmount, isActiveBill, isOpeningRecord, readPayment, UNKNOWN_AMOUNT, formatRupees, formatAmount, formatKg, toMoney } from '../utils/money.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
@@ -713,7 +713,8 @@ export class HistoryManager {
         if (list.dataset.loaded === String(current.bill.id)) return;
         list.textContent = t('ui.edits.loading');
         try {
-            const edits = await FirebaseService.loadBillEdits(BILL_COLLECTION[current.type], current.bill);
+            // A reason saved in the other language is recognised with both catalogues (#59)
+            const [edits] = await Promise.all([FirebaseService.loadBillEdits(BILL_COLLECTION[current.type], current.bill), loadAllCatalogues()]);
             renderEditsList(list, edits);
             list.dataset.loaded = String(current.bill.id);
         } catch (error) {
