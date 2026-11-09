@@ -24,8 +24,6 @@
   font-size: var(--fs-caption);
   font-weight: var(--w-label);
   color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 #billTable tbody tr, #saleTable tbody tr {
