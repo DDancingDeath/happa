@@ -170,7 +170,8 @@ describe('spec, reads, sheets', () => {
         const merged = mergeReportBills([{ id: 'a', v: 'phone' }], [{ id: 'a', v: 'server' }, { id: 'b' }, { id: 'c' }], ['c']);
         expect(merged).toEqual([{ id: 'a', v: 'phone' }, { id: 'b' }]);
         // Inside the live window only the phone's bills count: one deleted on another phone stays out.
-        expect(mergeReportBills([], [{ id: 'old', timestamp: 1000 }, { id: 'gone', timestamp: 5000 }], [], 4000)).toEqual([{ id: 'old', timestamp: 1000 }]);
+        expect(mergeReportBills([], [{ id: 'old', timestamp: 1000 }, { id: 'gone', timestamp: 5000 }, { id: 'legacy', date: '2026-10-15' }], [], 4000))
+            .toEqual([{ id: 'old', timestamp: 1000 }, { id: 'legacy', date: '2026-10-15' }]);
     });
     test('read estimate: the window\'s bills per day over the older days', () => {
         const day = 86400000;

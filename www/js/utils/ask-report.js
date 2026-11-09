@@ -216,8 +216,9 @@ export function reportPeriod(preset, now, cfg) {
 /**
  * The bills a report runs on: the ones on the phone (live, with this phone's own changes)
  * over the copies read for the report, without the bills voided on this phone. From
- * `windowFrom` on the phone has every bill live, so copies read for the report count only
- * before it (a bill deleted since on another phone stays out).
+ * `windowFrom` on the phone has every bill with a numeric `timestamp` live, so such copies
+ * read for the report count only before it (a bill deleted since on another phone stays out);
+ * records without one (old app versions) are kept: the window queries never return them.
  * @param {?Array<Rec>|undefined} loaded
  * @param {?Array<Rec>|undefined} fetched
  * @param {Iterable<string>} [voidedIds]
@@ -226,7 +227,7 @@ export function reportPeriod(preset, now, cfg) {
  */
 export function mergeReportBills(loaded, fetched, voidedIds = [], windowFrom = Infinity) {
     const out = new Map();
-    (fetched || []).forEach(b => { if (b?.id && !(eventTime(b) >= windowFrom)) out.set(String(b.id), b); });
+    (fetched || []).forEach(b => { if (b?.id && !(typeof b.timestamp === 'number' && b.timestamp >= windowFrom)) out.set(String(b.id), b); });
     /** @type {Array<Rec>} */
     const extra = [];
     (loaded || []).forEach(b => {
