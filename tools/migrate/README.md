@@ -125,6 +125,14 @@ A new `plan` makes a new bundle; run `wipe --yes` (it keeps the Rentals data), t
 
 `apply` refuses `aadhat-management` and a key that belongs to another project.
 
+### Parties dry run: `parties` (#139, writes nothing)
+
+```
+node tools/migrate/migrate.js parties --in <decrypted backup.json> [--out-dir tools/migrate/out] [--scope due|all] [--salt-from <earlier parties-dryrun.json>] [--no-names]
+```
+
+Offline, like `plan`: reads the same decrypted backup and prints the parties the migration would create (salted stable `partyId`s), possible duplicates to merge (ranked, never merged) and each party's bills and dues, with a check that the dues add up to Outstanding (exit code 1 if not). `parties-dryrun.json` (with the salt: pass it back with `--salt-from` so the ids stay the same) and `parties-review.csv` hold names and phones: keep them outside the repo. The steps, defaults and costs are in [docs/parties-migration-plan.md](../../docs/parties-migration-plan.md).
+
 ## Logins (Firebase Auth)
 
 The app signs in with **email and password only** (`www/js/auth/authentication.js`). Move the accounts with the same uids (the `users/{uid}` docs depend on them). This reads Auth, not Firestore, so it does not touch the Firestore quota.
