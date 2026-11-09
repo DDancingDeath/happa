@@ -1,7 +1,7 @@
 /** Phone bottom bar (#142): active item, swipe targets, the swipe setting. */
 import fs from 'fs';
 import path from 'path';
-import { BAR_TABS, BottomNav, opensKeyboard, swipeTarget } from '../ui/bottom-nav.js';
+import { BAR_TABS, BottomNav, opensKeyboard, swipeTarget, trackTyping } from '../ui/bottom-nav.js';
 
 const NAV = fs.readFileSync(path.resolve(__dirname, '../../templates/navigation.html'), 'utf8');
 
@@ -49,6 +49,29 @@ test('only text fields count as typing (the bar stays for checkboxes, selects an
     expect(opensKeyboard(el('<input type="radio">'))).toBe(false);
     expect(opensKeyboard(el('<select><option>a</option></select>'))).toBe(false);
     expect(opensKeyboard(el('<button>b</button>'))).toBe(false);
+});
+
+test('the bar hides while typing and comes back a task after the field loses focus, not when focus moves to another field', () => {
+    jest.useFakeTimers();
+    try {
+        document.body.innerHTML = '<input id="a"><input id="b"><button id="save">Save</button>';
+        document.body.classList.remove('typing');
+        trackTyping(document);
+        const $ = (id) => document.getElementById(id);
+        $('a').focus();
+        expect(document.body.classList.contains('typing')).toBe(true);
+        $('save').focus();
+        // A tap on Save that blurred the field still ends on Save: the bar is not back yet
+        expect(document.body.classList.contains('typing')).toBe(true);
+        jest.runOnlyPendingTimers();
+        expect(document.body.classList.contains('typing')).toBe(false);
+        $('a').focus();
+        $('b').focus();
+        jest.runOnlyPendingTimers();
+        expect(document.body.classList.contains('typing')).toBe(true);
+    } finally {
+        jest.useRealTimers();
+    }
 });
 
 test('pull-to-refresh runs only the page\'s own data reload; pages without one do nothing', async () => {
