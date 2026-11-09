@@ -97,82 +97,97 @@
         <div class="bill-col-summary">
         <div class="bill-totals">
             <div class="total-row">
-                <span data-i18n="ui.billing.purchase_total">Purchase Total:</span>
+                <span data-i18n="ui.billing.purchase_total_label">Purchase total</span>
                 <strong>₹ <span id="billTotal">0</span></strong>
             </div>
-            
+
             <div class="labor-input-row">
-                <label class="checkbox-label" style="margin: 0;">
+                <label class="checkbox-label">
                     <input type="checkbox" id="autoLaborCharge" checked data-onchange="billing.updateTotals()">
-                    <span data-i18n="ui.billing.labor">Labour (₹):</span>
+                    <span data-i18n="ui.billing.labour_label">Labour</span>
                 </label>
-                <span id="laborCalculation" style="color: #595959; font-size: 14px;">6 × 0</span>
-                <input type="number" inputmode="decimal" id="manualLaborCharges" value="0" 
-                       data-onchange="billing.markLabourManual(this); billing.updateTotals()" 
-                       data-onfocus="billing.markLabourManual(this)" 
-                       placeholder="0" />
+                <span id="laborCalculation" class="bill-labour-calc">6 × 0</span>
+                <div class="adorn bill-money">
+                    <span class="adorn-pre" aria-hidden="true">−₹</span>
+                    <input type="number" class="input" inputmode="decimal" id="manualLaborCharges" value="0"
+                       data-onchange="billing.markLabourManual(this); billing.updateTotals()"
+                       data-onfocus="billing.markLabourManual(this)"
+                       placeholder="0" aria-label="Labour" data-i18n-aria-label="ui.billing.labour_label" />
+                </div>
             </div>
-            
+
             <div class="total-row grand-total">
-                <span data-i18n="ui.billing.total_payable">Total Payable:</span>
+                <span data-i18n="ui.billing.total_payable_label">Total payable</span>
                 <strong>₹ <span id="amountPayable">0</span></strong>
             </div>
 
+            <div class="bill-pay-title" data-i18n="ui.billing.payment">Payment</div>
+
             <div class="payment-row">
-                <label data-i18n="ui.common.online">Online (₹):</label>
-                <input type="checkbox" id="onlineCheckbox" data-onchange="billing.fillPayableAmount('online')" />
-                <input type="number" inputmode="decimal" id="onlinePayment" data-oninput="billing.updatePaymentTotal()" placeholder="0" />
+                <label for="onlinePayment" data-i18n="ui.billing.online_label">Online</label>
+                <input type="checkbox" id="onlineCheckbox" data-onchange="billing.fillPayableAmount('online')" title="Put the whole bill here" aria-label="Put the whole bill here" data-i18n-title="ui.billing.fill_all" data-i18n-aria-label="ui.billing.fill_all" />
+                <div class="adorn bill-money">
+                    <span class="adorn-pre" aria-hidden="true">₹</span>
+                    <input type="number" class="input" inputmode="decimal" id="onlinePayment" data-oninput="billing.updatePaymentTotal()" placeholder="0" />
+                </div>
             </div>
-            
             <div class="payment-row">
-                <label data-i18n="ui.common.cash">Cash (₹):</label>
-                <input type="checkbox" id="cashCheckbox" data-onchange="billing.fillPayableAmount('cash')" />
-                <input type="number" inputmode="decimal" id="cashPayment" data-oninput="billing.updatePaymentTotal()" placeholder="0" />
+                <label for="cashPayment" data-i18n="ui.billing.cash_label">Cash</label>
+                <input type="checkbox" id="cashCheckbox" data-onchange="billing.fillPayableAmount('cash')" title="Put the whole bill here" aria-label="Put the whole bill here" data-i18n-title="ui.billing.fill_all" data-i18n-aria-label="ui.billing.fill_all" />
+                <div class="adorn bill-money">
+                    <span class="adorn-pre" aria-hidden="true">₹</span>
+                    <input type="number" class="input" inputmode="decimal" id="cashPayment" data-oninput="billing.updatePaymentTotal()" placeholder="0" />
+                </div>
             </div>
-            
+
             <div class="payment-row payment-total">
-                <span data-i18n="ui.billing.total_paid">Total Paid:</span>
+                <span data-i18n="ui.billing.total_paid_label">Total paid</span>
                 <strong>₹ <span id="totalPayment">0</span></strong>
             </div>
-            
+
             <div class="payment-row">
-                <label data-i18n="ui.common.due">Due (₹):</label>
-                <input type="checkbox" id="dueCheckbox" data-onchange="billing.fillPayableAmount('due')" />
-                <input type="number" inputmode="decimal" id="dueAmount" data-oninput="billing.updatePaymentTotal()" placeholder="0" />
+                <label for="dueAmount" data-i18n="ui.billing.due_label">Due</label>
+                <input type="checkbox" id="dueCheckbox" data-onchange="billing.fillPayableAmount('due')" title="Put the whole bill here" aria-label="Put the whole bill here" data-i18n-title="ui.billing.fill_all" data-i18n-aria-label="ui.billing.fill_all" />
+                <div class="adorn bill-money">
+                    <span class="adorn-pre" aria-hidden="true">₹</span>
+                    <input type="number" class="input" inputmode="decimal" id="dueAmount" data-oninput="billing.updatePaymentTotal()" placeholder="0" />
+                </div>
             </div>
 
             <div class="payment-row split-remaining-row">
-                <span data-i18n="ui.common.not_split_yet">Not split yet:</span>
+                <span data-i18n="ui.billing.not_split_label">Not split yet</span>
                 <strong id="purchaseSplitRemaining">₹0</strong>
                 <button type="button" class="split-rest-btn" data-onclick="billing.putRestInDue('purchase')" data-i18n="ui.common.rest_due">Rest → Due</button>
             </div>
         </div>
 
-        <div class="form-row" style="margin-top: 16px;">
-            <label style="width: 50px;" data-i18n="ui.billing.notes">Notes:</label>
-            <input type="text" id="billComments" placeholder="GPay name, number etc. (Optional)" style="flex: 1;"  data-i18n-placeholder="ui.billing.gpay_name_number_etc"/>
-            <input type="checkbox" id="billPrintComments" title="Print in bill" style="width: 20px; height: 20px; margin-left: 8px; cursor: pointer; flex-shrink: 0;"  data-i18n-title="ui.billing.print_in_bill"/>
+        <div class="form-row field bill-notes">
+            <label for="billComments" data-i18n="ui.billing.notes_label">Notes</label>
+            <input type="text" class="input" id="billComments" placeholder="GPay name, number etc. (Optional)" data-i18n-placeholder="ui.billing.gpay_name_number_etc"/>
+            <label class="checkbox-label bill-note-print">
+                <input type="checkbox" id="billPrintComments" />
+                <span data-i18n="ui.billing.print_in_bill">Print in bill</span>
+            </label>
         </div>
 
-        <!-- Canvas Debug Preview -->
-        <div style="margin-top: 20px; text-align: center;">
+        <div class="bill-debug-preview">
             <img id="canvasDebugPreview" style="display: none;" alt="Receipt Preview">
         </div>
 
-        <div class="form-row" style="margin-top: 16px;">
-            <label style="width: 100px;" for="billDate" data-i18n="ui.billing.bill_date">Date:</label>
-            <input type="date" id="billDate" class="bill-date-input" />
+        <div class="form-row field">
+            <label for="billDate" data-i18n="ui.billing.date_label">Date</label>
+            <input type="date" id="billDate" class="bill-date-input input" />
         </div>
         <div class="bill-no-hint" id="purchaseBillNo"></div>
 
-        <div style="display: flex; gap: 12px; margin-top: 16px;">
-            <button data-onclick="billing.shareWhatsApp()" class="share-draft-btn" style="flex: 1; padding: 12px; background: #15803d; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; line-height: 1.2;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        <div class="bill-actions">
+            <button type="button" data-onclick="billing.shareWhatsApp()" class="share-draft-btn">
+                <svg class="i i-fill" aria-hidden="true" focusable="false"><use href="#i-wa"/></svg>
                 <span data-i18n="ui.billing.share_draft">Share draft (not saved)</span>
             </button>
-            <button class="save-btn save-purchase-btn" id="saveBillBtn" data-onclick="billing.saveBill()" style="flex: 1; padding: 12px;" data-i18n="ui.common.save">Save</button>
-            <button class="print-btn print-purchase-btn" id="printBillBtn" data-onclick="billing.printBill()" style="flex: 1; padding: 12px;" data-i18n="ui.common.print">Print</button>
-                </div>
+            <button class="save-btn save-purchase-btn" id="saveBillBtn" data-onclick="billing.saveBill()" data-i18n="ui.common.save">Save</button>
+            <button class="print-btn print-purchase-btn" id="printBillBtn" data-onclick="billing.printBill()" data-i18n="ui.common.print">Print</button>
+        </div>
         </div>
         </div>
         <!-- END PURCHASE SECTION -->
@@ -252,65 +267,78 @@
         <div class="bill-col-summary">
         <div class="bill-totals">
             <div class="total-row">
-                <span data-i18n="ui.billing.sale_total">Sale Total:</span>
-                <strong style="color: var(--success-color);">₹ <span id="saleTotal">0</span></strong>
+                <span data-i18n="ui.billing.sale_total_label">Sale total</span>
+                <strong>₹ <span id="saleTotal">0</span></strong>
             </div>
-            
+
             <div class="total-row grand-total">
-                <span data-i18n="ui.common.total_receivable">Total Receivable:</span>
+                <span data-i18n="ui.billing.total_receivable_label">Total receivable</span>
                 <strong>₹ <span id="amountReceivable">0</span></strong>
             </div>
 
+            <div class="bill-pay-title" data-i18n="ui.billing.payment">Payment</div>
+
             <div class="payment-row">
-                <label data-i18n="ui.common.online">Online (₹):</label>
-                <input type="checkbox" id="saleOnlineCheckbox" data-onchange="billing.fillReceivableAmount('online')" />
-                <input type="number" inputmode="decimal" id="saleOnlinePayment" data-oninput="billing.updateSalePaymentTotal()" placeholder="0" />
+                <label for="saleOnlinePayment" data-i18n="ui.billing.online_label">Online</label>
+                <input type="checkbox" id="saleOnlineCheckbox" data-onchange="billing.fillReceivableAmount('online')" title="Put the whole bill here" aria-label="Put the whole bill here" data-i18n-title="ui.billing.fill_all" data-i18n-aria-label="ui.billing.fill_all" />
+                <div class="adorn bill-money">
+                    <span class="adorn-pre" aria-hidden="true">₹</span>
+                    <input type="number" class="input" inputmode="decimal" id="saleOnlinePayment" data-oninput="billing.updateSalePaymentTotal()" placeholder="0" />
+                </div>
             </div>
-            
             <div class="payment-row">
-                <label data-i18n="ui.common.cash">Cash (₹):</label>
-                <input type="checkbox" id="saleCashCheckbox" data-onchange="billing.fillReceivableAmount('cash')" />
-                <input type="number" inputmode="decimal" id="saleCashPayment" data-oninput="billing.updateSalePaymentTotal()" placeholder="0" />
+                <label for="saleCashPayment" data-i18n="ui.billing.cash_label">Cash</label>
+                <input type="checkbox" id="saleCashCheckbox" data-onchange="billing.fillReceivableAmount('cash')" title="Put the whole bill here" aria-label="Put the whole bill here" data-i18n-title="ui.billing.fill_all" data-i18n-aria-label="ui.billing.fill_all" />
+                <div class="adorn bill-money">
+                    <span class="adorn-pre" aria-hidden="true">₹</span>
+                    <input type="number" class="input" inputmode="decimal" id="saleCashPayment" data-oninput="billing.updateSalePaymentTotal()" placeholder="0" />
+                </div>
             </div>
-            
+
             <div class="payment-row payment-total">
-                <span data-i18n="ui.common.total_received">Total Received:</span>
+                <span data-i18n="ui.billing.total_received_label">Total received</span>
                 <strong>₹ <span id="totalReceived">0</span></strong>
             </div>
-            
+
             <div class="payment-row">
-                <label data-i18n="ui.common.due">Due (₹):</label>
-                <input type="checkbox" id="saleDueCheckbox" data-onchange="billing.fillReceivableAmount('due')" />
-                <input type="number" inputmode="decimal" id="saleDueAmount" data-oninput="billing.updateSalePaymentTotal()" placeholder="0" />
+                <label for="saleDueAmount" data-i18n="ui.billing.due_label">Due</label>
+                <input type="checkbox" id="saleDueCheckbox" data-onchange="billing.fillReceivableAmount('due')" title="Put the whole bill here" aria-label="Put the whole bill here" data-i18n-title="ui.billing.fill_all" data-i18n-aria-label="ui.billing.fill_all" />
+                <div class="adorn bill-money">
+                    <span class="adorn-pre" aria-hidden="true">₹</span>
+                    <input type="number" class="input" inputmode="decimal" id="saleDueAmount" data-oninput="billing.updateSalePaymentTotal()" placeholder="0" />
+                </div>
             </div>
 
             <div class="payment-row split-remaining-row">
-                <span data-i18n="ui.common.not_split_yet">Not split yet:</span>
+                <span data-i18n="ui.billing.not_split_label">Not split yet</span>
                 <strong id="saleSplitRemaining">₹0</strong>
                 <button type="button" class="split-rest-btn" data-onclick="billing.putRestInDue('sale')" data-i18n="ui.common.rest_due">Rest → Due</button>
             </div>
         </div>
 
-        <div class="form-row" style="margin-top: 16px;">
-            <label style="width: 50px;" data-i18n="ui.billing.notes">Notes:</label>
-            <input type="text" id="saleComments" placeholder="GPay name, number etc. (Optional)" style="flex: 1;"  data-i18n-placeholder="ui.billing.gpay_name_number_etc"/>
-            <input type="checkbox" id="salePrintComments" title="Print in bill" style="width: 20px; height: 20px; margin-left: 8px; cursor: pointer; flex-shrink: 0;"  data-i18n-title="ui.billing.print_in_bill"/>
+        <div class="form-row field bill-notes">
+            <label for="saleComments" data-i18n="ui.billing.notes_label">Notes</label>
+            <input type="text" class="input" id="saleComments" placeholder="GPay name, number etc. (Optional)" data-i18n-placeholder="ui.billing.gpay_name_number_etc"/>
+            <label class="checkbox-label bill-note-print">
+                <input type="checkbox" id="salePrintComments" />
+                <span data-i18n="ui.billing.print_in_bill">Print in bill</span>
+            </label>
         </div>
 
-        <div class="form-row" style="margin-top: 16px;">
-            <label style="width: 100px;" for="saleDate" data-i18n="ui.billing.bill_date">Date:</label>
-            <input type="date" id="saleDate" class="bill-date-input" />
+        <div class="form-row field">
+            <label for="saleDate" data-i18n="ui.billing.date_label">Date</label>
+            <input type="date" id="saleDate" class="bill-date-input input" />
         </div>
         <div class="bill-no-hint" id="saleBillNo"></div>
 
-        <div style="display: flex; gap: 12px; margin-top: 16px;">
-            <button data-onclick="billing.shareSaleWhatsApp()" class="share-draft-btn" style="flex: 1; padding: 12px; background: #15803d; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; line-height: 1.2;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        <div class="bill-actions">
+            <button type="button" data-onclick="billing.shareSaleWhatsApp()" class="share-draft-btn">
+                <svg class="i i-fill" aria-hidden="true" focusable="false"><use href="#i-wa"/></svg>
                 <span data-i18n="ui.billing.share_draft">Share draft (not saved)</span>
             </button>
-            <button class="save-btn save-sale-btn" id="saveSaleBtn" data-onclick="billing.completeSale()" style="flex: 1; padding: 12px;" data-i18n="ui.common.save">Save</button>
-            <button class="print-btn print-sale-btn" id="printSaleBtn" data-onclick="billing.printSale()" style="flex: 1; padding: 12px;" data-i18n="ui.common.print">Print</button>
-                </div>
+            <button class="save-btn save-sale-btn" id="saveSaleBtn" data-onclick="billing.completeSale()" data-i18n="ui.common.save">Save</button>
+            <button class="print-btn print-sale-btn" id="printSaleBtn" data-onclick="billing.printSale()" data-i18n="ui.common.print">Print</button>
+        </div>
         </div>
         </div>
         <!-- END SALE SECTION -->
