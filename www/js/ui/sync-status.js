@@ -20,6 +20,8 @@ export const SYNCED_SHOW_MS = 2500;
 export const NOT_UPDATED_AFTER_MS = 15000;
 /** localStorage key: when this phone last got data from the server (ms). */
 export const SERVER_DATA_AT_KEY = 'happa.serverDataAt';
+/** localStorage key: when every figure on this phone was last confirmed by the server (ms, #59). */
+export const CONFIRMED_AT_KEY = 'happa.confirmedDataAt';
 /** Rows remembered as "Saved" this session (oldest dropped first). */
 const SYNCED_IDS_MAX = 500;
 const SERVER_DATA_SAVE_MS = 60 * 1000;
@@ -107,9 +109,18 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
     let updating = false;
     let stale = false;
     let staleTimer = null;
-    // When the figures were last all from the server: the previous session's last server data,
-    // not this session's first listener to answer (the others may still be cached only).
+    // When every figure was last from the server (kept while the session is confirmed), not one
+    // listener's answer: "Not updated since" gives it while this session's are still cached only.
+    let confirmedDataAt = Number(storage?.getItem?.(CONFIRMED_AT_KEY)) || null;
+    let confirmedSavedAt = 0;
+    let confirmed = false;
     let confirmedAt = null;
+    const noteConfirmed = (at, save = false) => {
+        confirmedDataAt = at;
+        if (!save && at - confirmedSavedAt < SERVER_DATA_SAVE_MS) return;
+        confirmedSavedAt = at;
+        try { storage?.setItem?.(CONFIRMED_AT_KEY, String(at)); } catch (_) { /* storage full: the time is only shown */ }
+    };
     const saveServerDataAt = (at) => {
         serverDataSavedAt = at;
         try { storage?.setItem?.(SERVER_DATA_AT_KEY, String(at)); } catch (_) { /* storage full: the time is only shown */ }
@@ -251,9 +262,11 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
     /** @param {?string} state utils/data-freshness.js: 'cache' while the figures come from the cache only */
     const setFreshness = (state) => {
         const next = state === 'cache';
+        if (state === 'server' && !confirmed) noteConfirmed(Date.now(), true);
+        confirmed = state === 'server';
         if (next === updating) return;
         updating = next;
-        if (updating) confirmedAt = serverDataAt;
+        if (updating) confirmedAt = confirmedDataAt;
         armStale();
         render();
     };
@@ -279,6 +292,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
         if (serverSinceOnline) {
             serverDataAt = Date.now();
             saveServerDataAt(serverDataAt);
+            if (confirmed) noteConfirmed(serverDataAt, true);
             serverSinceOnline = false;
         }
         render();
@@ -315,6 +329,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
             shown = false;
             synced = false;
             updating = false;
+            confirmed = false;
             stale = false;
             clearTimeout(staleTimer);
             staleTimer = null;
@@ -367,6 +382,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
         noteServerData(at = Date.now()) {
             serverDataAt = at;
             if (online) serverSinceOnline = true;
+            if (confirmed) noteConfirmed(at);
             if (!storage || at - serverDataSavedAt < SERVER_DATA_SAVE_MS) return;
             saveServerDataAt(at);
         },
