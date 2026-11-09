@@ -664,7 +664,7 @@ export default {
     'ui.finance.paid_at_purchase': "ख़रीद बिलों पर दिए",
     'ui.finance.personal_expenses': "घर के खर्च",
     'ui.finance.profit_after_personal': "घर के खर्च के बाद मुनाफ़ा",
-    'ui.finance.profit_on_goods_sold': "बेचे माल पर मुनाफ़ा",
+    'ui.finance.profit_on_goods_sold': "मुनाफ़ा (खर्च के बाद)",
     'ui.finance.purchases': "ख़रीद",
     'ui.finance.qty_avg_cost': "{qty} × ₹{rate} औसत लागत",
     'ui.finance.received_at_sale': "बिक्री बिलों पर मिले",
