@@ -15,10 +15,8 @@ const COMBOS = [
 const DARK_KIND = new Set(['dark', 'midnight']);
 const PAGES = [['Billing', 'billing'], ['Today', 'day'], ['Outstanding', 'due']];
 
-test.beforeEach(async ({}, testInfo) => {
-    test.skip(testInfo.project.name !== 'phone', 'phone project only');
-    await seed();
-});
+test.skip(({ isMobile }) => !isMobile, 'phone project only');
+test.beforeEach(async () => { await seed(); });
 
 async function useTheme(page, theme, appearance) {
     // Once per test: a reload keeps what the app saved since
