@@ -230,6 +230,19 @@ describe('unsaved-bill banner (#117)', () => {
         expect(BillDrafts.saveAutoSave).toHaveBeenCalledTimes(1);
     });
 
+    test('a rate typed (no line added yet) when the check answers also makes an edit recovery unseen (#59)', async () => {
+        let answer;
+        BillDrafts.getAutoSave.mockReturnValue(new Promise(resolve => { answer = resolve; }));
+        const checked = BillingManager.checkAutoSave();
+        document.getElementById('billRate').value = '25';
+        answer({ ...saved, editingBillId: 'b9', editingBillType: 'purchase', editingBase: 'v1' });
+        await checked;
+        PurchaseManager.setBillItems([{ name: 'Maize', qty: 1, rate: 25, total: 25 }]);
+        await BillingManager.autoSaveToCloud();
+        expect(BillDrafts.saveDraft.mock.calls[0][0]).toMatchObject({ editingBillId: 'b9' });
+        expect(UIManager.showToast).toHaveBeenCalledWith(expect.any(String), 'info');
+    });
+
     test('a write waiting on the check also waits for a second check of the same user (#59)', async () => {
         const answers = [];
         BillDrafts.getAutoSave.mockImplementation(() => new Promise(resolve => answers.push(resolve)));

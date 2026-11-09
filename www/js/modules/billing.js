@@ -114,6 +114,9 @@ const formOf = (data, mode) => data?.[mode] || (data?.mode === mode && !data.pur
 const formHasContent = (form) => !!form && ((form.items || []).length > 0 || (form.weights || []).length > 0
     || !!form.typedWeight || !!form.selectedItem || !!form.rate);
 
+/** Entry boxes whose text means a bill is being entered (what an auto-save keeps besides the lines). */
+const ENTRY_BOX_IDS = ['billItem', 'billRate', 'newWeight', 'customerName', 'saleItem', 'saleRate', 'saleWeight', 'saleCustomerName'];
+
 /** The saved bill an auto-save or a draft was editing (#93), or null when it holds a new bill. */
 function editTargetOf(data) {
     if (!data?.editingBillId) return null;
@@ -1083,7 +1086,7 @@ const BillingManager = {
             // A bill already being typed (the first screen doesn't wait for this check): the banner
             // comes too late to be a choice, so typing on keeps this one in Drafts, also an edit
             this.setRecovery({ ...autoSaveData, userId: autoSaveData.userId || AppState.currentUser.uid },
-                { unseen: !this.formsFreeForRestore() });
+                { unseen: this.typingStarted() });
         } catch (error) {
             console.error('Failed to check auto-save:', error);
         }
@@ -1232,6 +1235,11 @@ const BillingManager = {
             return;
         }
         if (this.takeRecovery()) await BillDrafts.deleteAutoSave(AppState.currentUser.uid).catch(e => console.error('Failed to delete auto-save:', e));
+    },
+
+    /** Whether a bill is being entered: lines, weights, a bill open for editing or text in the entry boxes. */
+    typingStarted() {
+        return !this.formsFreeForRestore() || ENTRY_BOX_IDS.some(id => !!String(document.getElementById(id)?.value || '').trim());
     },
 
     /** Whether Restore may fill the forms: nothing typed and no bill open for editing. */
