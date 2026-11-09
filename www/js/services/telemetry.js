@@ -299,6 +299,7 @@ const TelemetryService = {
 
     /**
      * Sync errors to Firestore
+     * @returns {Promise<{failed: Set<string>}|undefined>} the fingerprints not stored; undefined when nothing was sent
      */
     async syncToFirestore() {
         if (this.errorBuffer.length === 0) return;
@@ -355,6 +356,7 @@ const TelemetryService = {
             }
             this.backoffMs = 0;
             this.backoffUntil = 0;
+            return { failed: new Set() };
         } catch (error) {
             // Don't recursively log telemetry errors
             console.warn('Telemetry sync failed:', error?.message);
@@ -363,6 +365,7 @@ const TelemetryService = {
             this.backoffUntil = Date.now() + this.backoffMs;
             // Re-add errors to buffer
             this.errorBuffer = [...errorsToSync, ...this.errorBuffer].slice(0, MAX_LOCAL_ERRORS);
+            return { failed: new Set(errorsToSync.map(e => e.fingerprint)) };
         }
     },
 
@@ -394,9 +397,10 @@ const TelemetryService = {
 
     /**
      * The owner's test (#122): one error through the normal path, sent now rather than after
-     * the debounce. Offline the write stays queued and is sent later.
+     * the debounce or an earlier failure's backoff. 'queued': no answer in time (offline, the
+     * write waits in Firestore's queue); 'failed': refused or not sent (kept for the next sync).
      * @param {number} [waitMs=8000] longest wait for the server
-     * @returns {Promise<'sent'|'queued'>}
+     * @returns {Promise<'sent'|'queued'|'failed'>}
      */
     async sendTestError(waitMs = 8000) {
         if (AppState.userRole !== 'owner') {
@@ -405,11 +409,12 @@ const TelemetryService = {
         this.captureError({ type: 'manual', ref: TEST_ERROR_REF, message: TEST_ERROR_MESSAGE });
         clearTimeout(this.syncTimer);
         this.syncTimer = null;
+        this.backoffUntil = 0;
         let timer;
-        const sent = this.syncToFirestore().then(() => !this.errorBuffer.some(e => e.fingerprint === TEST_ERROR_REF));
-        const late = new Promise(resolve => { timer = setTimeout(() => resolve(false), waitMs); });
+        const sent = this.syncToFirestore().then(r => (r && !r.failed.has(TEST_ERROR_REF) ? 'sent' : 'failed'));
+        const late = new Promise(resolve => { timer = setTimeout(() => resolve('queued'), waitMs); });
         try {
-            return (await Promise.race([sent, late])) ? 'sent' : 'queued';
+            return await Promise.race([sent, late]);
         } finally {
             clearTimeout(timer);
         }

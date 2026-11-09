@@ -2973,7 +2973,7 @@ export default {
     'msg.diag.test_crash_confirm': "The app closes at once with a test crash. Finish any bill you are entering first. Open the app again: the report is sent then and shows in the Firebase console › Crashlytics within a few minutes.",
     'msg.diag.test_sent': "Test error sent. Open the Errors tab to see it.",
     'msg.diag.test_queued': "Test error saved on this phone. It is sent when the phone is online.",
-    'msg.diag.test_failed': "The test error could not be recorded.",
+    'msg.diag.test_failed': "The test error could not be sent: error reports from this phone are not reaching the server.",
     'msg.diag.test_crashlytics_recorded': "Crashlytics: the test error was recorded. It reaches the Firebase console the next time the app opens.",
     'msg.diag.test_crashlytics_failed': "Crashlytics did not take the test error.",
     'msg.speed.failed': "The speed check could not run",

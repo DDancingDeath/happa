@@ -367,7 +367,7 @@ const DiagnosticsManager = {
         const lines = [];
         try {
             const web = await TelemetryService.sendTestError();
-            lines.push(t(web === 'sent' ? 'msg.diag.test_sent' : 'msg.diag.test_queued'));
+            lines.push(t({ sent: 'msg.diag.test_sent', queued: 'msg.diag.test_queued' }[web] || 'msg.diag.test_failed'));
         } catch (err) {
             console.warn('Test error not recorded:', err?.message || err);
             lines.push(t('msg.diag.test_failed'));

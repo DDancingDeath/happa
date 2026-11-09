@@ -195,6 +195,19 @@ describe('Diagnostics › Status: test error reports (#122)', () => {
         expect(card().querySelector('[data-errtest-result]').textContent).toMatch(/saved on this phone/);
     });
 
+    test("a refused write says it was not sent; an earlier failure's pause does not hold the test back", async () => {
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const set = jest.fn(async () => { throw Object.assign(new Error('denied'), { code: 'permission-denied' }); });
+        global.firebase = { firestore: () => ({ collection: () => ({ doc: () => ({ set }) }) }) };
+        TelemetryService.backoffUntil = Date.now() + 60 * 60 * 1000;
+        await DiagnosticsManager.showTab('status');
+        await DiagnosticsManager.sendTestError();
+        expect(set).toHaveBeenCalledTimes(1);
+        expect(card().querySelector('[data-errtest-result]').textContent).toMatch(/could not be sent/);
+        set.mockResolvedValue();
+        expect(await TelemetryService.sendTestError(1000)).toBe('sent');
+    });
+
     test('APK without the Firebase config: a clear "not set up" message, no crash button, never crashes', async () => {
         const p = plugin();
         native(p);
