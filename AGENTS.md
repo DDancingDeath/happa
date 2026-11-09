@@ -480,6 +480,11 @@ in `.github/review-rules-examples/`.
   reads per page. Browsers, firebase-tools and the emulator jars are cached.
   On failure, download the `test-results-N` (traces) or `playwright-report`
   artifacts.
+- **`android-release.yml`** (PRs and pushes to `main` that touch the Android
+  build; every `v*` tag): a debug APK build, or on a tag the signed release.
+  The `main` build keeps the Gradle cache that tag runs restore (a tag run can
+  only read caches from its own ref or `main`); Gradle itself is fetched with
+  retries.
 - **`firebase-hosting-pull-request.yml`**: a preview channel per PR (test data)
   on each hosting site, expiring after 2 days; when the PR closes its channels
   are deleted on every site (Firebase limits the channels per site).
