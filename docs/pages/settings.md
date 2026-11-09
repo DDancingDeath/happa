@@ -2,7 +2,10 @@
 
 Part of the [owner guide](../owner-guide.md) (one file per page). Hindi: [settings.hi.md](settings.hi.md). The codes in brackets are spec IDs in [calculations.md](../calculations.md).
 
-- **Settings › Common**: language, appearance (Light, Dark or System, which follows the device; saved on this device), account (Change password), notifications,
+- **Settings › Common**: language, appearance (Light, Dark or System, which follows the device; saved on this device) and the
+  **theme**: Modern Minimal (the default), Nordic, Nature, Dark or Midnight. Tapping a theme previews it across the app;
+  **Apply** saves it on this device and **Cancel** (or leaving Settings) goes back. Dark and Midnight are always dark.
+  **Reset to default** goes back to Modern Minimal and System. Printed bills look the same in every theme. Then account (Change password), notifications,
   Bluetooth Printer (Test Print), install the app; in the Android app, **Crash reports** (off
   unless this phone's user turns it on: crashes and freezes then go to the shop's Firebase with the
   phone's details; the app adds no names or amounts, but an error message can hold text; docs/error-reporting.md says exactly what is sent); the owner's **Roles & access** (what each role may see, edit
@@ -25,3 +28,8 @@ Part of the [owner guide](../owner-guide.md) (one file per page). Hindi: [settin
 - **Diagnostics › Audit logs**: CSV (in English) or Print / PDF of the entries listed;
   **Errors**: Export report (the errors with names, numbers and secrets removed, plus this
   phone's status) to send to whoever fixes the app. Both are written in the audit log.
+- **Diagnostics › Status › Test error reports** (owner only): **Send a test error** records a test error
+  through the app's error reports; it shows under Diagnostics › Errors. In the Android app with crash reports
+  switched on it also goes to Crashlytics (an error that did not close the app), and **Send a test crash**
+  closes the app on purpose after a confirm. With crash reports off, or not set up in that version of the app,
+  it says so and offers no test crash (docs/error-reporting.md, "Check that reports arrive").

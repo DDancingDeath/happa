@@ -215,10 +215,12 @@
 .save-btn[data-cash-save="open"],
 .save-btn[data-cash-save="entry"] {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 .save-btn[data-cash-save="close"] {
   background: var(--btn-danger);
+  color: var(--btn-danger-ink);
 }
 
 /* -------------------- PRINT BUTTON -------------------- */

@@ -199,3 +199,11 @@
 
     <!-- Toast Notification -->
     <div class="toast" id="toast"></div>
+
+    <!-- Theme preview (Settings › Appearance): shown across the app until Apply or Cancel -->
+    <div class="theme-preview-bar" id="themePreviewBar" role="status" hidden>
+        <svg class="i" aria-hidden="true" focusable="false"><use href="#i-palette"/></svg>
+        <span class="theme-preview-text" id="themePreviewText"></span>
+        <button type="button" class="btn btn-sm btn-ghost theme-preview-cancel" data-onclick="settings.cancelThemePreview()" data-i18n="ui.modals.cancel">Cancel</button>
+        <button type="button" class="btn btn-sm btn-primary theme-preview-apply" data-onclick="settings.applyThemePreview()" data-i18n="ui.settings.theme_apply">Apply</button>
+    </div>

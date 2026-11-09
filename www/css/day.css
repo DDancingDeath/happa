@@ -464,7 +464,7 @@ body.dark-mode .today-labour-diff {
   border: none;
   border-radius: 10px;
   background: var(--btn-success);
-  color: #fff;
+  color: var(--btn-sale-ink);
   font-size: var(--fs-body);
   font-weight: var(--w-strong);
   cursor: pointer;

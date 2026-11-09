@@ -256,6 +256,7 @@ async function injectTemplates() {
 function refreshForLanguage(lang) {
     SettingsManager.syncItemNamesWithLanguage(lang);
     const run = (label, fn) => { try { fn(); } catch (e) { console.warn(`[i18n] ${label} redraw failed:`, e); } };
+    run('theme gallery', () => SettingsManager.renderThemeGallery());
     // Relabel item pickers in place: reloading them would reset the chosen item and rate.
     run('items', () => {
         const label = (item) => ((AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name);
@@ -1423,6 +1424,10 @@ window.app = {
         saveRentals: () => SettingsManager.saveRentals(),
         openOpeningStock: () => SettingsManager.openOpeningStock(),
         setAppearance: (appearance) => SettingsManager.setAppearance(appearance),
+        previewTheme: (id) => SettingsManager.previewTheme(id),
+        applyThemePreview: () => SettingsManager.applyThemePreview(),
+        cancelThemePreview: () => SettingsManager.cancelThemePreview(),
+        resetTheme: () => SettingsManager.resetTheme(),
         clearAllData: () => SettingsManager.clearAllData(),
         toggleBluetoothPrinter: () => SettingsManager.toggleBluetoothPrinter(),
         togglePrintPreview: () => SettingsManager.togglePrintPreview(),
@@ -1458,7 +1463,7 @@ window.app = {
     diagnostics: {
         ...Object.fromEntries(['init', 'runNumberChecks', 'showTab', 'loadData', 'loadAuditLogs', 'filterByType',
         'filterAuditLogs', 'deleteError', 'clearAll', 'runSpeedCheck', 'copyStatus', 'shareStatus', 'exportAuditCsv', 'printAudit',
-        'exportErrorReport']
+        'exportErrorReport', 'sendTestError', 'sendTestCrash']
             .map(name => [name, (...args) => loadDiagnostics().then(m => m[name](...args))]))
     },
     

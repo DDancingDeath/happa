@@ -99,3 +99,44 @@ test('the browser bar takes the page colour and caches it for the boot script', 
         document.documentElement.style.removeProperty('--bg');
     }
 });
+
+describe('preview (Settings › Appearance gallery)', () => {
+    beforeEach(() => { ThemeManager.previewing = null; });
+
+    test('shows a theme without saving it; Cancel goes back to the saved one', () => {
+        ThemeManager.init();
+        ThemeManager.apply({ theme: 'modern', appearance: 'light' });
+        const state = ThemeManager.preview('nordic');
+        expect(state.previewing).toBe('nordic');
+        expect(attrs()).toEqual(['nordic', 'light', 'light']);
+        expect(localStorage.getItem(THEME_KEYS.theme)).toBe('modern');
+        expect(ThemeManager.cancelPreview().previewing).toBeNull();
+        expect(attrs()).toEqual(['modern', 'light', 'light']);
+        expect(ThemeManager.cancelPreview()).toBeNull();
+    });
+
+    test('an always-dark theme previews dark under Light; Apply saves it and ends the preview', () => {
+        ThemeManager.init();
+        ThemeManager.apply({ theme: 'modern', appearance: 'light' });
+        ThemeManager.preview('midnight');
+        expect(attrs()).toEqual(['midnight', 'light', 'dark']);
+        expect(document.body.classList.contains('dark-mode')).toBe(true);
+        const state = ThemeManager.apply({ theme: 'midnight' });
+        expect(state).toMatchObject({ theme: 'midnight', appearance: 'light', mode: 'dark', previewing: null });
+        expect([localStorage.getItem(THEME_KEYS.theme), localStorage.getItem(THEME_KEYS.kind)]).toEqual(['midnight', 'dark']);
+    });
+
+    test('leaving Settings ends a preview; the saved theme and unknown ids never start one', () => {
+        ThemeManager.init();
+        ThemeManager.apply({ theme: 'modern', appearance: 'light' });
+        ThemeManager.preview('nature');
+        window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId: 'settings' } }));
+        expect(ThemeManager.previewing).toBe('nature');
+        window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId: 'billing' } }));
+        expect(ThemeManager.previewing).toBeNull();
+        expect(attrs()[0]).toBe('modern');
+        expect(ThemeManager.preview('nope')).toBeNull();
+        expect(ThemeManager.preview('modern')).toBeNull();
+        expect(ThemeManager.previewing).toBeNull();
+    });
+});

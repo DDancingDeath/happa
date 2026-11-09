@@ -49,7 +49,7 @@
     height: 40px;
     border-color: transparent;
     background: rgba(255, 255, 255, 0.18);
-    color: var(--on-accent);
+    color: var(--on-accent-strong);
     box-shadow: none;
   }
 
@@ -690,4 +690,11 @@
   .st-view > .st-actions { grid-column: 1; grid-row: 3; grid-template-columns: 1fr; }
   .st-view > .st-csv-option { grid-column: 1; grid-row: 4; }
   .st-view > .st-doc { grid-column: 2; grid-row: 2 / span 3; margin-top: 0; min-width: 0; }
+}
+
+@media (min-width: 1024px) {
+  .theme-preview-bar {
+    bottom: 24px;
+    left: calc(50% + var(--desktop-nav-width) / 2);
+  }
 }

@@ -25,7 +25,7 @@ function cssSources(listSource = fs.readFileSync(LIST, 'utf8')) {
 /** The app.css text for the current sources (LF line endings). */
 function buildCss(sources = cssSources(), read = (rel) => fs.readFileSync(path.join(WWW, rel), 'utf8')) {
     const parts = sources.map((rel) => {
-        if (!/^css\/[a-z0-9-]+\.css$/.test(rel) || rel === OUT_URL) throw new Error(`Bad stylesheet in styles.css: ${rel}`);
+        if (!/^css\/(?:themes\/)?[a-z0-9-]+\.css$/.test(rel) || rel === OUT_URL) throw new Error(`Bad stylesheet in styles.css: ${rel}`);
         const body = read(rel).replace(/\r\n/g, '\n').replace(/\s+$/, '');
         if (/@import|@charset/.test(body)) throw new Error(`${rel}: @import/@charset can't be joined into app.css`);
         return `/* ---- ${rel} ---- */\n${body}\n`;

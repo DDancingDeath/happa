@@ -18,7 +18,7 @@ test('the owner records a payment, then writes the rest off as bad debt; both ar
     await expect(button).toHaveText('Write off as bad debt');
     await button.click();
     await expect(page.locator('#modalTitle')).toHaveText(/Write off ₹260 as bad debt/);
-    await expect(page.locator('#modalMessage')).toContainText('Money counts it as a bad debt');
+    await expect(page.locator('#modalMessage')).toContainText('Money counts it as a bad debt (a loss) under Dues written off');
     await page.fill('#writeOffReason', 'Customer left town');
     await page.click('#modalConfirm');
     await expectToast(page, /Due written off/, 30000);
