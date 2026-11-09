@@ -2,7 +2,7 @@
  * @fileoverview Voice billing parser (#81, spec VB-1): one spoken line → item,
  * weight and rate exactly as heard, in English, Hindi and mixed speech.
  */
-import { parseVoiceLine, pickVoiceLine, hasVoiceValues, isUnusualRate, voiceTokens } from '../utils/voice-parse.js';
+import { parseVoiceLine, pickVoiceLine, hasVoiceValues, isUnusualRate, voiceTokens, parseVoiceBill, pickVoiceBill, hasVoiceBillValues } from '../utils/voice-parse.js';
 
 const ITEMS = [
     { id: 'a', name: 'Aloo', hindiName: 'आलू' },
@@ -223,4 +223,65 @@ describe('pickVoiceLine', () => {
 
 test('voiceTokens splits digits from words and keeps decimals', () => {
     expect(voiceTokens('₹30, 10kg; 48.5Kg.')).toEqual(['₹', '30', '10', 'kg', '48.5', 'kg']);
+});
+
+describe('parseVoiceBill: several lines and the customer (#81 A2, A3)', () => {
+    const ITEMS2 = [...ITEMS, { id: 'w', name: 'Wheat', hindiName: 'गेहूं' }, { id: 's', name: 'Mustard', hindiName: 'सरसों' }];
+    const lines = (text, known) => parseVoiceBill(text, ITEMS2, known).lines.map(({ itemIndex, weight, rate }) => [itemIndex, weight, rate]);
+
+    test.each([
+        [`गेहूँ 50 ${KILO} 25 रुपये, सरसों 30 ${KILO} 55 रुपये`, [[5, 50, 25], [6, 30, 55]]],
+        [`गेहूँ 50 ${KILO} 25 रुपये सरसों 30 ${KILO} 55 रुपये`, [[5, 50, 25], [6, 30, 55]]],
+        [`गेहूं पचास ${KILO} पच्चीस रुपये और सरसों तीस ${KILO} पचपन रुपये`, [[5, 50, 25], [6, 30, 55]]],
+        [`दस ${KILO} आलू तीस रुपये फिर साढ़े बारह ${KILO} प्याज़ पैंतालीस`, [[0, 10, 30], [1, 12.5, 45]]],
+        ['10 kilo aloo at 30 and 5 kilo pyaaz at 25', [[0, 10, 30], [1, 5, 25]]],
+        ['10 kg aloo 30 rupees 5 kg pyaaz 25', [[0, 10, 30], [1, 5, 25]]],
+        ['aloo das kilo tees aur pyaaz paanch kilo pachees', [[0, 10, 30], [1, 5, 25]]],
+        ['wheat twenty five kg thirty, mustard ten kg fifty five, rice 1121 2 kg 40', [[5, 25, 30], [6, 10, 55], [2, 2, 40]]],
+        ['Wheat 50 kg Rs. 22. Mustard 30 kg Rs. 55.', [[5, 50, 22], [6, 30, 55]]],
+        ['10 kg aloo 5 kg pyaaz', [[0, 10, null], [1, 5, null]]]
+    ])('%s', (text, want) => {
+        expect(lines(text)).toEqual(want);
+    });
+
+    test('"and" or a comma inside one line keeps it one line', () => {
+        expect(lines('aloo one hundred and fifty kg 30')).toEqual([[0, 150, 30]]);
+        expect(lines('aloo 10 kilo aur 30 rupaye')).toEqual([[0, 10, 30]]);
+        expect(lines('aloo 10 kg, 30 rupees')).toEqual([[0, 10, 30]]);
+        expect(lines('10 kilo, aloo 30')).toEqual([[0, 10, 30]]);
+        expect(lines('wheat गेहूं 10 kg 22')).toEqual([[5, 10, 22]]);
+        expect(lines('10 kilo aloo at 30 and')).toEqual([[0, 10, 30]]);
+        expect(lines('aloo 10 kg 10,000 rupees')).toEqual([[0, 10, 10000]]);
+    });
+
+    test('one line reads exactly as parseVoiceLine', () => {
+        for (const said of ['10 kilo aloo at 30 rupees', `साढ़े तीन सौ ${KILO} चावल 30 रुपये`, 'hello there', 'rate 30']) {
+            expect(parseVoiceBill(said, ITEMS2)).toEqual({ heard: said, customer: null, lines: [parseVoiceLine(said, ITEMS2)] });
+        }
+        expect(parseVoiceBill('', ITEMS2)).toEqual({ heard: '', customer: null, lines: [] });
+    });
+
+    test('the customer name after customer / ग्राहक / naam, and the lines after it', () => {
+        const bill = (text, known) => { const b = parseVoiceBill(text, ITEMS2, known); return [b.customer, b.lines.map(({ itemIndex, weight, rate }) => [itemIndex, weight, rate])]; };
+        expect(bill('customer ramesh kumar, 10 kilo aloo at 30')).toEqual(['Ramesh Kumar', [[0, 10, 30]]]);
+        expect(bill(`ग्राहक का नाम रमेश है, दस ${KILO} आलू तीस रुपये`)).toEqual(['रमेश', [[0, 10, 30]]]);
+        expect(bill('naam Suresh aloo 10 kg')).toEqual(['Suresh', [[0, 10, null]]]);
+        expect(bill('customer Ramesh')).toEqual(['Ramesh', []]);
+        expect(bill('customer name is mohan lal aur wheat 10 kg 22 aur mustard 5 kg 55')).toEqual(['Mohan Lal', [[5, 10, 22], [6, 5, 55]]]);
+        expect(bill('customer a b c d aloo 10 kg')[0]).toBe('A B C');
+        // a name already used takes its spelling
+        expect(bill('customer RAMESH KUMAR aloo 10 kg', ['Ramesh kumar', 'Suresh'])[0]).toBe('Ramesh kumar');
+        // no customer word, no name; the word alone is not a name
+        expect(bill('ramesh 10 kilo aloo')[0]).toBeNull();
+        expect(bill('customer 10 kilo aloo')).toEqual([null, [[0, 10, null]]]);
+    });
+
+    test('hasVoiceBillValues and pickVoiceBill', () => {
+        expect(hasVoiceBillValues(parseVoiceBill('customer Ramesh', ITEMS2))).toBe(true);
+        expect(hasVoiceBillValues(parseVoiceBill('hello there', ITEMS2))).toBe(false);
+        const best = pickVoiceBill(['wheat 10 kg 22 aur mastard 5 kg 55', 'wheat 10 kg 22 aur mustard 5 kg 55'], ITEMS2);
+        expect(best.heard).toBe('wheat 10 kg 22 aur mustard 5 kg 55');
+        expect(pickVoiceBill(['hmm', 'okay'], ITEMS2).heard).toBe('hmm');
+        expect(pickVoiceBill([], ITEMS2)).toEqual({ heard: '', customer: null, lines: [] });
+    });
 });

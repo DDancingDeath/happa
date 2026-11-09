@@ -63,7 +63,7 @@ const langReady = loadCatalogue(getLang()).catch(e => console.error('Language ca
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261108bs-site-url-msg';
+const BUILD_ID = '20261108bv-voice-a1a3';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -975,7 +975,8 @@ window.app = {
     // Voice billing (#81): Settings switch (off by default) and the Billing mic buttons
     voice: {
         start: (mode) => VoiceMic.start(mode),
-        setOn: (on) => VoiceMic.setOn(on)
+        setOn: (on) => VoiceMic.setOn(on),
+        setReadback: (on) => VoiceMic.setReadback(on)
     },
     
     // Business switcher (#149) and Rentals (#170): rentals.* methods are added when the section loads
