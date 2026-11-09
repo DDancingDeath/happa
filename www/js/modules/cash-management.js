@@ -23,7 +23,8 @@ import { outstandingDue, formatRupees, formatAmount } from '../utils/money.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import { toFlags } from '../utils/bill-checks.js';
 import { OutstandingManager } from './outstanding.js';
-import { normalizeParty, sameParty, billParty, legAmount as dueLegAmount } from '../utils/due-payments.js';
+import { billParty, legAmount as dueLegAmount } from '../utils/due-payments.js';
+import { partyNameKey, sameParty } from '../utils/parties.js';
 import { t, tn, getLang } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 import { can } from '../utils/role-access.js';
@@ -178,7 +179,7 @@ export class CashManagementManager {
         const select = document.getElementById('dueBillSelect');
         if (!select) return;
         const type = document.getElementById('cashTransactionType')?.value;
-        const party = normalizeParty(document.getElementById('partyName')?.value);
+        const party = partyNameKey(document.getElementById('partyName')?.value);
         const sources = type === 'paid'
             ? [['purchase', AppState.purchaseHistory]]
             : [['retail', AppState.retailSalesHistory], ['wholesale', AppState.salesHistory]];

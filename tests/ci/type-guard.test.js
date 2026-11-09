@@ -18,7 +18,7 @@ const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..', '..');
 const BASELINE_REL = 'tests/type-baseline.json';
 const BASELINE_FILE = path.join(ROOT, BASELINE_REL);
-const SKIP = new Set(['www/css/app.css', 'www/css/rent-receipt.css', 'www/js/services/printer.js', 'www/js/rentals/rent-receipt.js']);
+const SKIP = new Set(['www/css/app.css', 'www/css/rent-receipt.css', 'www/js/services/printer.js', 'www/js/services/receipt-drawing.js', 'www/js/rentals/rent-receipt.js']);
 
 const FREE = /^\s*(var\(|inherit|initial|unset|revert)/i;
 const DECL = /(?:^|[;{\s"'`])font-(size|weight)\s*:\s*([^;"'`}\r\n]+)/gi;

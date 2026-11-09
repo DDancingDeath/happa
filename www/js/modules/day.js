@@ -10,9 +10,7 @@ import { todaySummary } from '../utils/calc/today.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { CashManagementManager } from './cash-management.js';
 import { sessionForDate } from '../utils/cash-session.js';
-import { AnomaliesManager } from './anomalies.js';
-import { HealthManager } from './health.js';
-import { t, tn, getLang } from '../i18n/index.js';
+import { t, tn, getLang, loadAllCatalogues } from '../i18n/index.js';
 import { canOpenPage } from '../utils/role-access.js';
 import { on, REFRESH } from '../utils/events.js';
 import { overdueReminder, rentReminder, leaseReminder, leaseReminderText } from '../utils/reminders.js';
@@ -31,6 +29,25 @@ const LABOUR_PAID_KEYS = { same: 'ui.today.labour_paid_same', more: 'ui.today.la
 const CHANNELS = { retail: 'Retail', wholesale: 'Wholesale', purchase: 'Purchase' };
 const BILL_KIND_KEYS = { retail: 'ui.finance.bill_retail', wholesale: 'ui.finance.bill_wholesale', purchase: 'ui.reports.pdf_purchase' };
 const BILLS_SHOWN = 8;
+
+let anomaliesManager = null;
+let anomaliesLoading = null;
+/**
+ * anomalies.js (Today's day report, the Anomalies page) is imported on first use (#59), with
+ * both language catalogues: its scans save flags in both languages. A failed import is tried
+ * again next time. main.js uses the same loader.
+ * @returns {Promise<Object>} AnomaliesManager
+ */
+export function loadAnomalies() {
+    if (!anomaliesLoading) {
+        anomaliesLoading = Promise.all([import('./anomalies.js'), loadAllCatalogues()])
+            .then(([m]) => (anomaliesManager = m.AnomaliesManager))
+            .catch(e => { anomaliesLoading = null; throw e; });
+    }
+    return anomaliesLoading;
+}
+/** AnomaliesManager once imported, else null (for callers that can't wait). */
+export const loadedAnomalies = () => anomaliesManager;
 
 export const DayManager = {
     currentSubTab: 'today',
@@ -213,18 +230,23 @@ export const DayManager = {
         this.renderItemWiseDetails(s.purchaseItems, 'purchase');
         this.renderItemWiseDetails(s.saleItems, 'sale');
 
-        // Day report (#187, #40): today's anomalies + review queue, shared with these totals
-        AnomaliesManager.renderDayReport({
+        // Day report (#187, #40): today's anomalies + review queue, shared with these totals.
+        // It and the App health banner are imported when Today first draws (#59).
+        const totals = {
             sales: s.sales, saleCount: s.saleCount,
             purchases: s.purchases, purchaseCount: s.purchaseCount,
             expenses: s.expenses, totalIn: s.totalIn, totalOut: s.totalOut,
             dueReceived: s.dueReceived, duePaid: s.duePaid,
             labourDeducted: labour.deducted.amount, labourDeductedBills: labour.deducted.bills,
             labourToPay: labour.toPay
-        }, session && session.date === todayIso ? session : null);
+        };
+        const todaySession = session && session.date === todayIso ? session : null;
+        loadAnomalies().then(m => m.renderDayReport(totals, todaySession))
+            .catch(e => console.warn('Day report failed:', e));
 
         // App health banner (#217): a live check below its target today (owner/manager)
-        HealthManager.renderTodayBanner().catch(e => console.warn('App health banner failed:', e));
+        import('./health.js').then(({ HealthManager }) => HealthManager.renderTodayBanner())
+            .catch(e => console.warn('App health banner failed:', e));
     },
 
     /**

@@ -9,7 +9,7 @@
  *   - www/index.html and www/templates/*.html: the same in style="…" and <style> blocks;
  *   - www/js/**: hex / rgb() / hsl() literals and colour names after a colour property.
  * Not counted: variables.css (the token home), the built app.css, @media print blocks and the
- * print / receipt output (rent-receipt.css, services/printer.js, rentals/rent-receipt.js), which
+ * print / receipt output (rent-receipt.css, services/printer.js, services/receipt-drawing.js, rentals/rent-receipt.js), which
  * stay black on white in every theme.
  *
  * Counts may only go down. COLOUR_BASELINE=lower npx jest colour-guard lowers
@@ -24,7 +24,7 @@ const BASELINE_REL = 'tests/colour-baseline.json';
 const BASELINE_FILE = path.join(ROOT, BASELINE_REL);
 const SKIP = new Set([
     'www/css/app.css', 'www/css/variables.css', 'www/css/rent-receipt.css',
-    'www/js/services/printer.js', 'www/js/rentals/rent-receipt.js',
+    'www/js/services/printer.js', 'www/js/services/receipt-drawing.js', 'www/js/rentals/rent-receipt.js',
 ]);
 
 const NAMES = 'white|black|red|green|blue|gr[ae]y|orange|yellow|purple|pink|brown|navy|teal|silver|gold|maroon';

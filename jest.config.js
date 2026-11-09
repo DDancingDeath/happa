@@ -38,7 +38,9 @@ module.exports = {
     moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/www/js/$1',
         // tools/audit modules import the app as @app/ (the audit can point it at another checkout)
-        '^@app/(.*)$': '<rootDir>/www/js/$1'
+        '^@app/(.*)$': '<rootDir>/www/js/$1',
+        // Both language catalogues loaded up front (the app imports only the one in use, #59)
+        '^\\./lang-catalogues\\.js$': '<rootDir>/www/js/__tests__/__mocks__/lang-catalogues.js'
     },
     
     // Coverage configuration - only collect from testable utility files

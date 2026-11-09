@@ -22,7 +22,7 @@ import { approxStockNote, lowStockItems, lowStockLevel, stockedItemKeys, DEFAULT
 import { isArchivedItem } from '../utils/item-catalog.js';
 import { evaluateStockAdjustment, toFlags } from '../utils/bill-checks.js';
 import { findDeadStock, daysSinceLabel, localDaysBetween, DEAD_STOCK_DAY_OPTIONS, DEFAULT_DEAD_STOCK_DAYS } from '../utils/dead-stock.js';
-import { t } from '../i18n/index.js';
+import { t, hasCatalogue, loadAllCatalogues } from '../i18n/index.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { pickLang } from '../i18n/localize.js';
@@ -840,6 +840,8 @@ export class StockManager {
     static async renderAdjustmentHistory() {
         const container = document.getElementById("adjustmentHistory");
         if (!container) return;
+        // A reason saved in the other language is recognised with both catalogues (#59)
+        if (!hasCatalogue('en') || !hasCatalogue('hi')) await loadAllCatalogues().catch(() => {});
 
         try {
             // Kept current by the real-time listener; no need to re-read the

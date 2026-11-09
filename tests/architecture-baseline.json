@@ -75,7 +75,7 @@
     "www/js/modules/wholesale-sales.js": {
       "moneyMath": 1
     },
-    "www/js/services/printer.js": {
+    "www/js/services/receipt-drawing.js": {
       "moneyMath": 1
     },
     "www/js/ui/ui-manager.js": {
@@ -125,6 +125,14 @@
       "to": 1,
       "reason": "Moved verbatim out of firestore-service.js (phase 5 split: its count 7 -> 0); the total is unchanged",
       "issue": 69
+    },
+    {
+      "file": "www/js/services/receipt-drawing.js",
+      "category": "moneyMath",
+      "from": 0,
+      "to": 1,
+      "reason": "Moved verbatim out of services/printer.js (receipt drawing imported on first print; its count 1 -> 0); the total is unchanged",
+      "issue": 59
     }
   ]
 }
