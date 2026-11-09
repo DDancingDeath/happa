@@ -290,7 +290,7 @@ export const AskManager = {
             + '</select></label>';
         const types = REPORT_TYPES.filter(tp => tp !== 'wholesale' || this.wholesale());
         const on = new Set((a.kinds || []).map(k => k.key));
-        const chips = (a.pool || []).map(k => `<button type="button" class="filter-btn ask-kind" aria-pressed="${on.has(k.key) ? 'true' : 'false'}" `
+        const chips = (a.pool || []).map(k => `<button type="button" class="chip ask-kind" aria-pressed="${on.has(k.key) ? 'true' : 'false'}" `
             + `data-onclick="ask.toggleKind('${jsId}', '${Helpers.escapeJsAttr(k.key)}')">${esc(itemName(k) || t('ui.ask.no_item_name'))}</button>`).join('');
         return `<div class="ask-change">${select('billType', a.billType, types.map(tp => [tp, t(`ui.ask.type_${tp}`)]))}`
             + select('range', a.period.preset, REPORT_PRESETS.map(p => [p, this.periodLabel(p)]))
