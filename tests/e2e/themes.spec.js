@@ -3,7 +3,8 @@
  * Today and Outstanding in every theme × mode (and in Hindi for the serif themes, whose Devanagari stays
  * in the sans face), and the Settings › Appearance gallery: a tap previews
  * a theme app-wide without saving it, Cancel or leaving Settings restores the saved one, Apply saves it
- * (it survives a reload, applied before first paint). Phone project only: the CSS is the same on desktop.
+ * (it survives a reload, applied before first paint); printing from a serif theme looks like Modern.
+ * Phone project only: the CSS is the same on desktop.
  */
 const AxeBuilder = require('@axe-core/playwright').default;
 const { test, expect, login, showTab, settle } = require('./support/app');
@@ -67,6 +68,38 @@ for (const [theme, appearance, lang = 'en'] of COMBOS) {
         expect(problems.pageErrors).toEqual([]);
     });
 }
+
+test('printing from the serif themes looks like Modern: colours, faces, italic, rules and corners are screen-only', async ({ page, problems }) => {
+    test.setTimeout(120000);
+    await useTheme(page, 'modern', 'light');
+    await login(page, 'owner');
+    await showTab(page, 'billing');
+    expect(await settle(page)).toBe(true);
+    await page.emulateMedia({ media: 'print' });
+    const look = (theme, mode) => page.evaluate(([th, m]) => {
+        const html = document.documentElement;
+        html.dataset.theme = th;
+        html.dataset.mode = m;
+        document.body.classList.toggle('dark-mode', m === 'dark');
+        const cs = (sel) => getComputedStyle(document.querySelector(sel));
+        const title = cs('#billing .bill-section-title');
+        const total = cs('#billing .grand-total strong');
+        const head = cs('#billTable thead th');
+        const card = cs('#purchaseSection .bill-totals');
+        return {
+            page: [cs('body').backgroundColor, cs('body').color],
+            title: [title.fontFamily, title.fontStyle, title.color],
+            total: [total.fontFamily, total.fontWeight, total.fontVariantNumeric],
+            rules: [head.borderBottomColor, cs('#saveBillBtn').backgroundColor],
+            card: [card.backgroundColor, card.borderTopLeftRadius],
+        };
+    }, [theme, mode]);
+    const modern = await look('modern', 'light');
+    for (const theme of ['vintage', 'classic', 'premium']) {
+        for (const mode of ['light', 'dark']) expect(await look(theme, mode), `${theme} ${mode} in print`).toEqual(modern);
+    }
+    expect(problems.pageErrors).toEqual([]);
+});
 
 test('the gallery previews without saving; Cancel, leaving Settings and Apply behave', async ({ page, problems }) => {
     test.setTimeout(180000);
