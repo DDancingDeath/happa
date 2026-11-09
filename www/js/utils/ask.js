@@ -430,7 +430,7 @@ export function answerQuestion(q, src = {}, { role = 'staff', wholesale = false,
                     return { ...base, partyMatches: found.hits.slice(0, ASK_MATCH_LIMIT).map(h => h.name), partyMore: Math.max(0, found.hits.length - ASK_MATCH_LIMIT) };
                 } else if (partyWords.length) {
                     // A name only on bills older than this phone has may still be found once they are read
-                    if (!covered) return { ...base, ...older };
+                    if (!covered) return { ...base, ...older, maybeParty: true };
                     return kinds.length ? { ...base, notItems: partyWords } : base;
                 }
             }

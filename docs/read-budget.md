@@ -72,6 +72,13 @@ error or past the session cap. The meter shows these reads as `ask report: purch
 bills stay in memory for the session, so asking again, or changing the report's kinds, grouping or
 a shorter period, reads nothing. Managers' reports never read: they use the bills on the phone.
 
+While the owner decides, Ask shows a quick figure for the kinds named (calculations.md ASK-7) from
+Insights › Seasons' stats instead of bills: 1 read of `rateStats/_meta`, then each kind's year docs
+(about one read per kind and year, at least 1), from the server, once per session, also shown as
+`ask report` in the meter. "How much Lah was bought till today" in the 3-year benchmark shop with
+3 Lah kinds: about 10 reads at once, against about 1,400 for the bills. Only for the owner, at most
+20 kinds, not after a quota error or past the session cap.
+
 ## When the quota runs out
 
 1. Tell the shop to keep billing: bills save on the phone and sync after the reset.

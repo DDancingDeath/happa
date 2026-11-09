@@ -15,11 +15,11 @@ import { can } from '../utils/role-access.js';
 import { parseQuestion, answerQuestion } from '../utils/ask.js';
 import { approxStockNote } from '../utils/stock-check.js';
 import { pickLang } from '../i18n/localize.js';
-import { estimateReportReads, groupLabel, mergeReportBills, REPORT_COLLECTIONS, REPORT_GROUPS, REPORT_PRESETS, REPORT_TYPES, reportBillTypes, reportCsv, reportDays, reportPeriod, reportSheets, totalLabelKey } from '../utils/ask-report.js';
+import { estimateReportReads, groupLabel, mergeReportBills, quickItemSummary, quickPeriodOk, REPORT_COLLECTIONS, REPORT_GROUPS, REPORT_PRESETS, REPORT_TYPES, reportBillTypes, reportCsv, reportDays, reportPeriod, reportSheets, totalLabelKey } from '../utils/ask-report.js';
 import { insightsSettings } from '../utils/insights-config.js';
 import { exportFilename, stampPairs } from '../utils/export-stamp.js';
 import { formatDay, formatDayTime } from '../utils/dates.js';
-import { ensureXLSX } from '../utils/lazy-scripts.js';
+import { ensureXLSXWriter } from '../utils/lazy-scripts.js';
 import { getQuotaStatus } from '../firebase/firestore-meter.js';
 import { Exporter } from '../services/exporter.js';
 import { UIManager } from '../ui/ui-manager.js';
@@ -28,6 +28,8 @@ import { historyCutoff } from '../utils/role-access.js';
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
 const EXAMPLES = 6;
 const MAX_ANSWERS = 10;
+/** A quick figure reads about one stats doc per kind and year: more kinds than this wait for the bills. */
+const QUICK_MAX_KINDS = 20;
 const PAGE_NAMES = { day: 'ui.ask.open_today', due: 'ui.ask.open_outstanding', stock: 'ui.ask.open_stock' };
 /** Bill type → the AppState list of the bills on the phone. */
 const LOADED = { purchase: 'purchaseHistory', retail: 'retailSalesHistory', wholesale: 'salesHistory' };
@@ -158,8 +160,35 @@ export const AskManager = {
             answer.windowFrom = windowFrom;
             // bill types already read this session cost nothing more
             answer.estimate = await this.estimate(types.filter((_, i) => !held[i]), { windowFrom, now: now.getTime(), from: loadFrom });
+            // The answer (and its Load button) never waits for the stats: the quick figure is added when it comes.
+            this.quickPending = this.quickFigure(answer, types.map(type => ({ type, bills: src[REPORT_COLLECTIONS[type]] })), windowFrom, now)
+                .then((quick) => {
+                    if (!quick) return;
+                    answer.quick = quick;
+                    if (entry.answer === answer && this.mine().includes(entry)) this.renderAnswers();
+                });
         }
         return answer;
+    },
+
+    /**
+     * ASK-7: an older period's figures per kind at once from Insights › Seasons' item stats (a few
+     * reads, no bills), while the bill-by-bill report waits for the owner's confirm. Only for kinds
+     * named, grouped by kind, with no party; null when the stats can't give it.
+     */
+    async quickFigure(a, sources, windowFrom, now) {
+        if (a.groupBy !== 'item' || a.party || a.maybeParty || !a.kinds?.length || a.kinds.length > QUICK_MAX_KINDS) return null;
+        const catalogue = new Set((AppState.items || []).map(i => i.id));
+        const ids = a.kinds.map(k => k.key).filter(k => catalogue.has(k));
+        const quota = getQuotaStatus();
+        if (!ids.length || quota.quota.count || quota.overCap || !quickPeriodOk(a.period, now)) return null;
+        try {
+            const held = await FirebaseService.reportItemStats(ids);
+            return held ? quickItemSummary({ kinds: a.kinds, items: AppState.items, stats: held.docs, sources, period: a.period, windowFrom, now }) : null;
+        } catch (e) {
+            console.warn('Ask: item stats not read:', e?.message || e);
+            return null;
+        }
     },
 
     /** About how many reads loading the older bills of these bill types takes; null when not known. */
@@ -257,7 +286,7 @@ export const AskManager = {
         let fmt = format === 'csv' ? 'csv' : 'xlsx';
         if (fmt === 'xlsx' && Exporter.allowed()) {
             try {
-                await ensureXLSX();
+                await ensureXLSXWriter();
             } catch (e) {
                 console.warn('Ask: Excel not loaded:', e?.message || e);
                 UIManager.showToast(t('msg.ask.excel_offline'));
@@ -302,6 +331,20 @@ export const AskManager = {
             + (chips ? `<div class="ask-kinds" role="group" data-ask-ctl="${esc(`${id}-kinds`)}" aria-label="${esc(t('ui.ask.change_kinds'))}">${chips}</div>` : '');
     },
 
+    /** ASK-7 quick figure lines ('' when there is none). */
+    quickHtml(a, { line, label }) {
+        const q = a.quick;
+        if (!q) return '';
+        const figures = (x) => ({ kg: formatKg(x.kg), rate: x.avgRate === null ? '—' : formatRate(x.avgRate), amount: formatRupees(x.amount) });
+        let html = line(t(a.billType === 'purchase' ? 'ui.ask.quick_head_purchase' : 'ui.ask.quick_head_sale'));
+        html += q.groups.length
+            ? q.groups.map(g => line(t('ui.ask.report_kind', { name: label(g), ...figures(g.totals), bills: bills(g.totals.bills) }))).join('')
+            : line(t('ui.ask.report_none'));
+        if (q.groups.length > 1) html += line(t('ui.ask.quick_total', { name: t('ui.ask.total_kinds'), ...figures(q.totals) }));
+        if (q.left.length) html += line(t('ui.ask.quick_left', { names: q.left.map(label).join(', ') }));
+        return html;
+    },
+
     /** One item report answer (ASK-5, ASK-6) as HTML. */
     reportHtml(a, id, { line, choose, itemName }) {
         if (a.notAllowed) return line(t('ui.ask.report_not_allowed'));
@@ -324,8 +367,10 @@ export const AskManager = {
         if (a.limited !== undefined) return html + line(t('ui.ask.report_limited', { date: formatDay(a.limited, { lang }) })) + controls;
         if (a.needsOlder) {
             if (a.stopped) return html + line(t('ui.ask.report_quota')) + controls;
-            if (a.loading) return html + line(t('ui.ask.report_loading'));
-            return html + line(t(a.failed ? 'ui.ask.report_load_failed' : 'ui.ask.report_needs_older', { date: formatDay(a.windowFrom, { lang }) }))
+            const quickHtml = this.quickHtml(a, { line, label: named });
+            if (a.loading) return html + quickHtml + line(t('ui.ask.report_loading'));
+            return html + quickHtml + line(t(a.failed ? 'ui.ask.report_load_failed' : 'ui.ask.report_needs_older', { date: formatDay(a.windowFrom, { lang }) }))
+                + (quickHtml ? line(t('ui.ask.quick_exact')) : '')
                 + `<button type="button" class="filter-btn ask-open ask-load" data-onclick="ask.loadOlder('${Helpers.escapeJsAttr(id)}')">${esc(t('ui.ask.report_load'))}</button>`
                 + controls;
         }

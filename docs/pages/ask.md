@@ -26,10 +26,14 @@ the kind buttons turn kinds on or off (for example add one listed as not counted
 kind shows its kg, average rate (total amount ÷ total kg) and amount, plus the total after
 labour, the same figures as Insights › Items, adding up to Money's purchases. **Excel**
 saves a Summary sheet and one sheet per kind (bill no., date, kg, rate, amount, labour,
-after labour, and a totals row); **CSV** saves the same sheets in one file, and is used when
-Excel can't load (it needs the internet once). When the period goes back before the bills
+after labour, and a totals row); **CSV** saves the same sheets in one file. Excel works offline
+too: the app keeps its own copy of the Excel writer on the phone. When the period goes back before the bills
 on this phone, Ask says how many bills it would read and loads them only when you confirm
-(once per session; the free limit is 50,000 reads a day for the whole shop).
+(once per session; the free limit is 50,000 reads a day for the whole shop). Meanwhile it shows
+a **quick figure** for the kinds asked about (ASK-7): kg, average rate and amount per kind from
+Insights › Seasons' stats, at once and with no bills read (a few reads, about one per kind and year).
+It is kg × rate before labour, so it can differ a little from the bill-by-bill figure; it is not
+shown for one party's bills or for a report by party or month.
 
 **Managers** with Statements on see the same reports in kg and bill counts only (no amounts or
 rates, no Excel), from the bills on their phone; a longer period needs the owner.
