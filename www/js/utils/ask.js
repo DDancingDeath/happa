@@ -14,7 +14,7 @@ import { stockRows } from './calc/stock.js';
 import { buildAging, dueRows } from './aging.js';
 import { partyNameKey } from './parties.js';
 import { devanagariToLatin, latinToDevanagari, suggestEnglishName, suggestHindiName } from './item-name-autofill.js';
-import { itemPurchaseReport, matchKinds, reportKinds, reportPeriod, validateSpec } from './ask-report.js';
+import { itemReport, kgOnlyReport, matchKinds, reportBillTypes, reportKinds, reportParties, reportPeriod, validateSpec } from './ask-report.js';
 
 /** Answer → its spec ID in docs/calculations.md. */
 export const ASK_SPEC = Object.freeze({
@@ -31,6 +31,10 @@ export const ASK_SPEC = Object.freeze({
 export const MEMBER_STOCK_LIMIT_KG = 100;
 /** Most names offered when a question matches several parties or items. */
 export const ASK_MATCH_LIMIT = 5;
+/** @typedef {{key: string, name: string, hindiName: string}} Kind */
+
+/** Most kinds an item report offers to pick from by hand. */
+export const REPORT_POOL_LIMIT = 12;
 
 const words = (/** @type {string[]} */ list) => new Set(list);
 const TODAY = words(['aaj', 'aj', 'today', 'todays', 'आज']);
@@ -84,6 +88,25 @@ const ALL_TIME = words(['all', 'sab', 'sabhi', 'saara', 'kul', 'total', 'shuru',
 const SO_FAR = /(^|\s)((ab|abhi|aaj|aj|अब|अभी|आज)\s+(tak|तक)|(till|until|upto|up to)\s+(today|now|date)|so far|all time)(?=[\s?!.,]|$)/;
 // More purchase spellings for reports ("kitni lah kharidi").
 const BOUGHT = words(['kharide', 'khareede', 'kharidin', 'kharidi', 'खरीदीं', 'खरीदे']);
+// Sales reports ("chawal kitna becha is mahine", "lah kisko becha"); one kind of sale.
+const SOLD = words(['bika', 'biki', 'bikin', 'bechin', 'बिके', 'बिकीं', 'बेचीं']);
+const RETAIL = words(['retail', 'khudra', 'khudara', 'futkar', 'phutkar', 'खुदरा', 'फुटकर', 'रिटेल']);
+const WHOLESALE = words(['wholesale', 'thok', 'थोक', 'होलसेल']);
+// Group by party ("lah kisko becha", "party wise"), by item ("kya kya becha", "item wise").
+const BY_PARTY = words(['kisko', 'kise', 'kisse', 'kinko', 'kinse', 'kiske', 'kisne', 'party', 'parties', 'partywise', 'customer', 'customers',
+    'supplier', 'suppliers', 'grahak', 'grahakon', 'vyapari', 'पार्टी', 'पार्टियों', 'किसको', 'किसे', 'किससे', 'किसने', 'ग्राहक', 'ग्राहकों', 'व्यापारी']);
+const WHO_ALL = /(^|\s)(kis\s+kis|किस\s+किस)(?=[\s?!.,]|$)/;
+// "kis bhav pe", "kaun sa": question words, never a name
+const ITEM_WORDS = words(['item', 'items', 'itemwise', 'saman', 'samaan', 'cheez', 'cheeze', 'cheezen', 'kaun', 'kon', 'konsa', 'kaunsa', 'kaunse', 'konse',
+    'kis', 'pe', 'par', 'सामान', 'चीज़', 'चीज़ें', 'चीजें', 'कौन', 'कौनसा', 'कौनसे', 'किस', 'पर', 'पे']);
+const BY_MONTH = /(^|\s)((month|mahine|mahina|महीने|महीना)\s*-?\s*(wise|vise|war|vaar|वार)|monthly|mahinewar|mahinevar|महीनेवार|(har|each|every|per|हर)\s+(mahine|mahina|month|महीने|महीना)|month\s+by\s+month)(?=[\s?!.,]|$)/g;
+const WHAT_ALL = /(^|\s)(kya\s+kya|क्या\s+क्या)(?=[\s?!.,]|$)/;
+// Words asking for a report even without an item or a period ("is mahine ki bikri item wise").
+const REPORT_ASK = words(['report', 'excel', 'xlsx', 'sheet', 'sheets', 'csv', 'list', 'download', 'wise', 'vise', 'kinds', 'types', 'kism', 'kisam',
+    'kisme', 'kismen', 'prakar', 'varieties', 'item', 'items', 'itemwise', 'रिपोर्ट', 'एक्सेल', 'शीट', 'लिस्ट', 'किस्में', 'किस्मों', 'प्रकार']);
+const POINTERS = words(['this', 'that', 'ne', 'इस', 'उस', 'ने']);
+/** A report by month with no period named covers last month and this one: still on the phone. */
+const MONTHLY_DEFAULT = 'since-last-month';
 
 const hasAny = (/** @type {string[]} */ tokens, /** @type {Set<string>} */ set) => tokens.some(w => set.has(w));
 
@@ -128,18 +151,19 @@ export function questionWords(text) {
 /**
  * What the question asks.
  * @param {string} text
- * @returns {{intent: 'help'|'sales_today'|'purchases_today'|'expenses_today'|'today_only'|'party_due'|'total_due'|'item_stock'|'item_report'|'unknown', subject?: string, range?: string}}
+ * @returns {{intent: 'help'|'sales_today'|'purchases_today'|'expenses_today'|'today_only'|'party_due'|'total_due'|'item_stock'|'item_report'|'unknown',
+ *   subject?: string, range?: string, billType?: string, groupBy?: string}}
  */
 export function parseQuestion(text) {
     const tokens = questionWords(text);
     if (!tokens.length || hasAny(tokens, HELP)) return { intent: 'help' };
-    const KEYWORDS = [LINK, TODAY, TOTAL, NOISE, DUES, STOCK, GOODS, SALES, PURCHASES, EXPENSES];
+    const KEYWORDS = [LINK, TODAY, TOTAL, NOISE, DUES, STOCK, GOODS, SALES, SOLD, PURCHASES, EXPENSES];
     const named = (/** @type {number} */ i) => AMBIGUOUS.has(tokens[i]) && NAME_NEXT.has(tokens[i + 1]);
     const leftover = () => tokens.filter((w, i) => named(i) || (!AMBIGUOUS.has(w) && !KEYWORDS.some(s => s.has(w)))).join(' ');
 
     // Dues and stock are known as they are now, sales only for today: another day gets no figure.
     const otherDay = hasAny(tokens, OTHER_DAY) || tokens.some(w => /[\d\u0966-\u096F]/.test(w));
-    const sale = hasAny(tokens, SALES) || hasAny(tokens, PURCHASES) || hasAny(tokens, EXPENSES);
+    const sale = hasAny(tokens, SALES) || hasAny(tokens, SOLD) || hasAny(tokens, PURCHASES) || hasAny(tokens, EXPENSES);
     // "baaki" also means "left": "kitna stock baaki hai" is a stock question
     // "Ramesh ka maal baaki" (a name left over) is still Ramesh's due
     const stockAsked = hasAny(tokens, STOCK) || (!sale && hasAny(tokens, GOODS) && (!hasAny(tokens, DUES) || !leftover()));
@@ -150,22 +174,48 @@ export function parseQuestion(text) {
         const subject = leftover();
         return subject ? { intent: 'party_due', subject } : { intent: 'total_due' };
     }
-    const money = hasAny(tokens, SALES) ? 'sales_today' : hasAny(tokens, PURCHASES) ? 'purchases_today'
+    const money = hasAny(tokens, SALES) || hasAny(tokens, SOLD) ? 'sales_today' : hasAny(tokens, PURCHASES) ? 'purchases_today'
         : hasAny(tokens, EXPENSES) ? 'expenses_today' : null;
     if (stockAsked) return otherDay ? { intent: 'today_only' } : { intent: 'item_stock', subject: leftover() };
-    // "lah kitna kharida ab tak": one item's purchases (ASK-5)
-    if ((hasAny(tokens, PURCHASES) || hasAny(tokens, BOUGHT)) && !hasAny(tokens, SALES) && !hasAny(tokens, EXPENSES)) {
-        const REPORT_KEYWORDS = [...KEYWORDS, BOUGHT, REPORT, MONTH, YEAR, LAST, FY, SINCE, ALL_TIME, OTHER_DAY, AMBIGUOUS];
-        const subject = tokens.filter(w => !REPORT_KEYWORDS.some(s => s.has(w)) && !/^[\d\u0966-\u096F]/.test(w)).join(' ');
-        if (subject) {
-            const range = reportRange(text, tokens);
-            return range ? { intent: 'item_report', subject, range } : { intent: 'today_only' };
-        }
+    // "lah kitna kharida ab tak", "chawal kitna becha is mahine", "Ramesh ko kya kya becha": an item report (ASK-5, ASK-6)
+    const bought = hasAny(tokens, PURCHASES) || hasAny(tokens, BOUGHT);
+    const sold = hasAny(tokens, SALES) || hasAny(tokens, SOLD);
+    if (bought !== sold && !hasAny(tokens, EXPENSES)) {
+        const report = itemReportQuestion(text, sold);
+        if (report) return report;
     }
-    // Only today's totals are known here: "kal ki bikri", "chawal kitna becha" or "Ramesh ko kitna becha"
+    // Only today's totals are known here: "kal ki bikri" or "chawal kitna becha kal"
     // must not get today's total, so any word left over gets no figure.
     if (money) return leftover() || otherDay ? { intent: 'today_only' } : { intent: money };
     return { intent: 'unknown' };
+}
+
+/**
+ * An item report question: what was bought or sold (purchases, sales, retail or wholesale),
+ * the words naming items or a party (resolved against the bills when answered), the period,
+ * and what to group by. Null when it asks for today's total only ("aaj ki bikri").
+ * @param {string} text
+ * @param {boolean} sale
+ * @returns {?{intent: 'item_report'|'today_only', billType?: string, subject?: string, range?: string, groupBy?: string}}
+ */
+function itemReportQuestion(text, sale) {
+    const lower = String(text || '').normalize('NFC').toLowerCase();
+    const plain = lower.replace(BY_MONTH, '$1 ');
+    const monthly = plain !== lower;
+    const tokens = questionWords(plain);
+    const byParty = hasAny(tokens, BY_PARTY) || WHO_ALL.test(plain);
+    const groupBy = monthly ? 'month' : byParty ? 'party' : 'item';
+    const KEYWORDS = [LINK, TODAY, TOTAL, NOISE, DUES, STOCK, GOODS, SALES, PURCHASES, EXPENSES, BOUGHT, SOLD, REPORT, MONTH, YEAR, LAST, FY,
+        SINCE, ALL_TIME, OTHER_DAY, AMBIGUOUS, RETAIL, WHOLESALE, BY_PARTY, ITEM_WORDS, REPORT_ASK, POINTERS];
+    const subject = tokens.filter(w => !KEYWORDS.some(s => s.has(w)) && !/^[\d\u0966-\u096F]/.test(w)).join(' ');
+    // "abhi tak ki bikri" alone is today's sales so far: only a month, year or FY makes it a report
+    const periodNamed = [MONTH, YEAR, FY, LAST].some(s => hasAny(tokens, s));
+    const asked = subject || groupBy !== 'item' || WHAT_ALL.test(plain) || hasAny(tokens, REPORT_ASK);
+    if (!asked && !periodNamed) return null;
+    const range = monthly && !periodNamed && !hasAny(tokens, TODAY) && !hasAny(tokens, ALL_TIME) ? MONTHLY_DEFAULT : reportRange(plain, tokens);
+    if (!range) return { intent: 'today_only' };
+    const billType = !sale ? 'purchase' : hasAny(tokens, WHOLESALE) ? 'wholesale' : hasAny(tokens, RETAIL) ? 'retail' : 'sale';
+    return { intent: 'item_report', billType, subject, range, groupBy };
 }
 
 /**
@@ -221,18 +271,19 @@ function matchItems(items, rows, text) {
  * The questions Ask understands, with the data each needs. `role` decides
  * what the role may see, as on the pages: wholesale dues only with Wholesale
  * (`wholesale`), members see "Available" above 100 kg on Stock.
- * @param {{intent: string, subject?: string, range?: string}} q parseQuestion()
+ * @param {{intent: string, subject?: string, range?: string, billType?: string, groupBy?: string, keys?: string[]}} q parseQuestion(); keys: kinds picked by hand
  * @param {Object} src
  * @param {{purchases?: Rec[], retailSales?: Rec[], wholesaleSales?: Rec[]}} [src.bills]
  * @param {Rec[]} [src.expenses]
  * @param {Object<string, {quantity: number, rate: number}>} [src.stock]
  * @param {Array<{id: string, name: string, hindiName?: string}>} [src.items] catalogue
  * @param {Rec} [src.settings]
- * @param {{role?: string, wholesale?: boolean, stockReady?: boolean, today?: Date, covered?: boolean, cfg?: Rec}} [opts]
- *   covered: false when the bills an item report needs are not all on the phone; cfg: insightsSettings()
+ * @param {{role?: string, wholesale?: boolean, reports?: boolean, stockReady?: boolean, today?: Date, covered?: boolean, limitFrom?: number, cfg?: Rec}} [opts]
+ *   reports: the role may open Statements (a manager's item reports, in kg only); covered: false when the bills an
+ *   item report needs are not all on the phone; limitFrom: the oldest bill time a manager's report may need; cfg: insightsSettings()
  * @returns {Rec} answer; `intent` and `spec` always set, `page` = where the figure lives
  */
-export function answerQuestion(q, src = {}, { role = 'staff', wholesale = false, stockReady = true, today = new Date(), covered = true, cfg = undefined } = {}) {
+export function answerQuestion(q, src = {}, { role = 'staff', wholesale = false, reports = false, stockReady = true, today = new Date(), covered = true, limitFrom = 0, cfg = undefined } = {}) {
     const intent = q?.intent || 'unknown';
     const spec = /** @type {Rec} */ (ASK_SPEC)[intent] || null;
     const bills = src.bills || {};
@@ -292,19 +343,51 @@ export function answerQuestion(q, src = {}, { role = 'staff', wholesale = false,
     }
 
     if (intent === 'item_report') {
-        if (role !== 'owner') return { intent, spec, page: null, ownerOnly: true };
-        const rs = validateSpec({ v: 1, billType: 'purchase', item: { text: q.subject, mode: 'family' }, range: { preset: q.range } });
+        const owner = role === 'owner';
+        const types = reportBillTypes(q.billType || '', owner || wholesale);
+        if ((!owner && !(role === 'manager' && reports)) || !types.length) return { intent, spec, page: null, notAllowed: true };
+        const rs = validateSpec({ v: 1, billType: q.billType, item: { text: q.subject || '' }, keys: q.keys, range: { preset: q.range }, groupBy: q.groupBy });
         if (!rs) return { intent: 'unknown', spec: null, page: null };
-        const purchases = bills.purchases || [];
-        const { kinds, near, unknown } = matchKinds(reportKinds(src.items, purchases), rs.item.text);
+        const listOf = { purchase: bills.purchases, retail: bills.retailSales, wholesale: bills.wholesaleSales };
+        const sources = types.map(type => ({ type, bills: listOf[type] || [] }));
+        const all = sources.flatMap(s => s.bills);
         const period = reportPeriod(rs.range.preset, today, cfg);
-        const base = { intent, spec, page: null, subject: rs.item.text, period, kinds, near: near.slice(0, ASK_MATCH_LIMIT), nearMore: Math.max(0, near.length - ASK_MATCH_LIMIT) };
-        // "Ramesh se lah kitna kharida": a report of every party's Lah would answer another question
-        if (kinds.length && unknown.length) return { ...base, notItems: unknown };
-        // A name only on bills older than this phone has may still be found once they are read
-        if (!kinds.length) return !covered ? { ...base, needsOlder: true } : base;
-        if (!covered) return { ...base, needsOlder: true };
-        return { ...base, report: itemPurchaseReport(purchases, src.items, kinds, period) };
+        const base = {
+            intent, spec: rs.billType === 'purchase' ? 'ASK-5' : 'ASK-6', page: null, billType: rs.billType, groupBy: rs.groupBy,
+            retailOnly: rs.billType === 'sale' && types.length === 1, kgOnly: !owner, subject: rs.item?.text || '', period,
+            kinds: /** @type {?Array<Kind>} */ (null), near: /** @type {Array<Kind>} */ ([]), nearMore: 0, pool: /** @type {Array<Kind>} */ ([]), party: /** @type {?string} */ (null)
+        };
+        // Bills this role can't load: a manager sees the ones on the phone only
+        const older = owner ? { needsOlder: true } : { limited: limitFrom };
+        /** @type {?string} */
+        let partyKey = null;
+        if (rs.item) {
+            const m = matchKinds(reportKinds(src.items, all), rs.item.text);
+            const pool = [...m.kinds, ...m.near].slice(0, REPORT_POOL_LIMIT);
+            const picked = rs.keys ? new Set(rs.keys) : null;
+            const kinds = picked ? pool.filter(k => picked.has(k.key)) : m.kinds;
+            const near = picked ? pool.filter(k => !picked.has(k.key)) : m.near;
+            Object.assign(base, { kinds, pool, picked: !!picked, near: near.slice(0, ASK_MATCH_LIMIT), nearMore: Math.max(0, near.length - ASK_MATCH_LIMIT) });
+            if (m.unknown.length) {
+                // "Ramesh se lah kitna kharida", "Ramesh ko kya kya becha": the words that name no item name a party
+                const hits = matchNames(reportParties(all), p => [p.key, ...spellings(p.name)], spellings(m.unknown.join(' ')));
+                if (hits.length > 1) return { ...base, partyMatches: hits.slice(0, ASK_MATCH_LIMIT).map(h => h.name), partyMore: Math.max(0, hits.length - ASK_MATCH_LIMIT) };
+                if (!hits.length) {
+                    // A name only on bills older than this phone has may still be found once they are read
+                    if (!covered) return { ...base, ...older };
+                    return m.kinds.length ? { ...base, notItems: m.unknown } : base;
+                }
+                partyKey = hits[0].key;
+                base.party = hits[0].name;
+            }
+            // only a party named: every item it bought or sold
+            if (!m.kinds.length && !picked) Object.assign(base, { kinds: null, pool: [], near: [], nearMore: 0 });
+            if (picked && !kinds.length) return { ...base, noKinds: true };
+        }
+        if (!owner && limitFrom > 0 && (period.loadFrom === null || period.loadFrom < limitFrom)) return { ...base, limited: limitFrom };
+        if (!covered) return { ...base, ...older };
+        const report = itemReport(sources, src.items, { kinds: base.kinds, partyKey, groupBy: rs.groupBy, billType: rs.billType }, period);
+        return { ...base, report: owner ? report : kgOnlyReport(report) };
     }
 
     return { intent, spec, page: null };

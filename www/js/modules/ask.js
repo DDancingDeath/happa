@@ -15,7 +15,7 @@ import { can } from '../utils/role-access.js';
 import { parseQuestion, answerQuestion } from '../utils/ask.js';
 import { approxStockNote } from '../utils/stock-check.js';
 import { pickLang } from '../i18n/localize.js';
-import { estimateReportReads, mergeReportBills, reportCsv, reportDays, reportPeriod, reportSheets } from '../utils/ask-report.js';
+import { estimateReportReads, groupLabel, mergeReportBills, REPORT_COLLECTIONS, REPORT_GROUPS, REPORT_PRESETS, REPORT_TYPES, reportBillTypes, reportCsv, reportDays, reportPeriod, reportSheets, totalLabelKey } from '../utils/ask-report.js';
 import { insightsSettings } from '../utils/insights-config.js';
 import { exportFilename, stampPairs } from '../utils/export-stamp.js';
 import { formatDay, formatDayTime } from '../utils/dates.js';
@@ -23,16 +23,19 @@ import { ensureXLSX } from '../utils/lazy-scripts.js';
 import { getQuotaStatus } from '../firebase/firestore-meter.js';
 import { Exporter } from '../services/exporter.js';
 import { UIManager } from '../ui/ui-manager.js';
+import { historyCutoff } from '../utils/role-access.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
 const EXAMPLES = 6;
 const MAX_ANSWERS = 10;
 const PAGE_NAMES = { day: 'ui.ask.open_today', due: 'ui.ask.open_outstanding', stock: 'ui.ask.open_stock' };
+/** Bill type → the AppState list of the bills on the phone. */
+const LOADED = { purchase: 'purchaseHistory', retail: 'retailSalesHistory', wholesale: 'salesHistory' };
 const bills = (n) => tn('ui.today.bills_count', n);
 const parties = (n) => tn('ui.ask.parties_count', n);
 let seq = 0;
-/** The oldest purchase's time: one read per signed-in person, shared by questions asked meanwhile. */
-let oldest = { uid: undefined, promise: null };
+/** The oldest bill's time per collection: one read per signed-in person, shared by questions asked meanwhile. */
+let oldest = { uid: undefined, promises: new Map() };
 
 export const AskManager = {
     answers: [],
@@ -102,7 +105,7 @@ export const AskManager = {
     /** Sign-out: nothing of this person's answers stays on the page. */
     reset() {
         this.answers = [];
-        oldest = { uid: undefined, promise: null };
+        oldest = { uid: undefined, promises: new Map() };
         const host = document.getElementById('askAnswers');
         if (host) host.innerHTML = '';
     },
@@ -117,47 +120,71 @@ export const AskManager = {
         return this.answers.filter(a => a.uid === uid);
     },
 
+    /** The role may see wholesale bills (all sales are retail only without it). */
+    wholesale() {
+        return AppState.userRole === 'owner' || can(AppState.userRole, 'wholesale', AppState.settings?.roleAccess);
+    },
+
     /**
-     * An item report (ASK-5) from the bills on the phone, plus the ones read for a report
-     * earlier in this session. Without all the bills its period needs: no figures, an estimate
-     * of the reads it would take, and the owner's confirm loads them (loadOlder).
+     * An item report (ASK-5, ASK-6) from the bills on the phone, plus the ones read for a report
+     * earlier in this session. Without all the bills its period needs the owner gets no figures,
+     * an estimate of the reads it would take, and the confirm loads them (loadOlder); a manager
+     * gets the bills on the phone only, within History's days back.
      */
     async reportAnswer(entry) {
         const now = new Date();
+        const role = AppState.userRole;
+        const owner = role === 'owner';
+        const access = AppState.settings?.roleAccess;
         const cfg = insightsSettings(AppState.settings?.insights);
         const windowFrom = FirebaseService.isFullHistoryLoaded() ? 0 : Number(FirebaseService.getHistoryWindowStart()) || 0;
         const { loadFrom } = reportPeriod(entry.q.range, now, cfg);
         const needOlder = windowFrom > 0 && (loadFrom === null || loadFrom < windowFrom);
-        const held = needOlder ? FirebaseService.reportBillsInMemory('purchases', loadFrom) : null;
-        const purchases = held
-            ? mergeReportBills(AppState.purchaseHistory, held.bills, FirebaseService.voidedBills('purchases').map(b => b.id), windowFrom)
-            : AppState.purchaseHistory;
-        const answer = answerQuestion(entry.q, { bills: { purchases }, items: AppState.items }, {
-            role: AppState.userRole, today: now, cfg, covered: !needOlder || !!held
+        const types = reportBillTypes(entry.q.billType, this.wholesale());
+        const held = needOlder && owner ? types.map(type => FirebaseService.reportBillsInMemory(REPORT_COLLECTIONS[type], loadFrom)) : [];
+        const covered = !needOlder || (held.length > 0 && held.every(Boolean));
+        const src = {};
+        types.forEach((type, i) => {
+            const coll = REPORT_COLLECTIONS[type];
+            const loaded = AppState[LOADED[type]] || [];
+            src[coll] = needOlder && covered ? mergeReportBills(loaded, held[i].bills, FirebaseService.voidedBills(coll).map(b => b.id), windowFrom) : loaded;
         });
-        if (held) answer.readAt = held.readAt;
+        const answer = answerQuestion(entry.q, { bills: src, items: AppState.items }, {
+            role, wholesale: this.wholesale(), reports: can(role, 'reports', access), today: now, cfg, covered,
+            limitFrom: owner ? 0 : Math.max(windowFrom, historyCutoff(role, access, now.getTime()) || 0)
+        });
+        if (needOlder && covered) answer.readAt = Math.min(...held.map(h => h.readAt));
         if (answer.needsOlder) {
             answer.windowFrom = windowFrom;
-            answer.estimate = estimateReportReads({ loaded: AppState.purchaseHistory, windowFrom, now: now.getTime(), oldest: await this.oldestPurchase(), from: loadFrom });
+            answer.estimate = await this.estimate(types, { windowFrom, now: now.getTime(), from: loadFrom });
         }
         return answer;
     },
 
-    oldestPurchase() {
-        const uid = this.uid();
-        if (oldest.uid !== uid || !oldest.promise) {
-            const entry = { uid, promise: null };
-            entry.promise = FirebaseService.oldestBillTime('purchases').catch((e) => {
-                console.warn('Ask: oldest purchase not read:', e?.message || e);
-                if (oldest === entry) oldest = { uid: undefined, promise: null };
-                return null;
-            });
-            oldest = entry;
-        }
-        return oldest.promise;
+    /** About how many reads loading the older bills of these bill types takes; null when not known. */
+    async estimate(types, { windowFrom, now, from }) {
+        const counts = await Promise.all(types.map(async type => estimateReportReads({
+            loaded: AppState[LOADED[type]], windowFrom, now, oldest: await this.oldestBill(REPORT_COLLECTIONS[type]), from
+        })));
+        return counts.some(n => n === null) ? null : counts.reduce((a, n) => a + n, 0);
     },
 
-    /** The owner's confirm, then one read of the older purchase bills (owner only). */
+    oldestBill(collKey) {
+        const uid = this.uid();
+        if (oldest.uid !== uid) oldest = { uid, promises: new Map() };
+        const cache = oldest;
+        if (!cache.promises.has(collKey)) {
+            const promise = FirebaseService.oldestBillTime(collKey).catch((e) => {
+                console.warn('Ask: oldest bill not read:', e?.message || e);
+                if (cache.promises.get(collKey) === promise) cache.promises.delete(collKey);
+                return null;
+            });
+            cache.promises.set(collKey, promise);
+        }
+        return cache.promises.get(collKey);
+    },
+
+    /** The owner's confirm, then one read of the older bills of the report's bill types (owner only). */
     async loadOlder(id) {
         const entry = this.mine().find(e => e.id === id);
         const a = entry?.answer;
@@ -174,10 +201,12 @@ export const AskManager = {
         entry.answer = { ...a, loading: true, failed: false };
         this.renderAnswers();
         try {
-            await FirebaseService.readReportBills('purchases', a.period.loadFrom);
+            for (const type of reportBillTypes(a.billType, this.wholesale())) {
+                await FirebaseService.readReportBills(REPORT_COLLECTIONS[type], a.period.loadFrom);
+            }
             entry.answer = await this.reportAnswer(entry);
         } catch (e) {
-            console.warn('Ask: older purchases not read:', e?.message || e);
+            console.warn('Ask: older bills not read:', e?.message || e);
             entry.answer = { ...a, loading: false, failed: true };
         } finally {
             entry.busy = false;
@@ -185,10 +214,43 @@ export const AskManager = {
         this.renderAnswers();
     },
 
-    /** The report as an Excel book (Summary + one sheet per kind), or CSV (owner only, Exporter). */
+    /** "Change": the report's bills, period or grouping picked by hand, answered again. */
+    async changeReport(id, field, value) {
+        const entry = this.mine().find(e => e.id === id);
+        const allowed = { billType: REPORT_TYPES, range: REPORT_PRESETS, groupBy: REPORT_GROUPS }[field];
+        if (!entry || entry.busy || entry.q?.intent !== 'item_report' || !allowed?.includes(value) || entry.q[field] === value) return;
+        const q = { ...entry.q, [field]: value };
+        // another bill type has other kinds
+        if (field === 'billType') delete q.keys;
+        await this.rerun(entry, q, field);
+    },
+
+    /** A kind added to or taken out of the report by hand. */
+    async toggleKind(id, key) {
+        const entry = this.mine().find(e => e.id === id);
+        const a = entry?.answer;
+        if (!a?.pool?.some(k => k.key === key) || entry.busy) return;
+        const on = new Set((a.kinds || []).map(k => k.key));
+        if (on.has(key)) on.delete(key); else on.add(key);
+        await this.rerun(entry, { ...entry.q, keys: a.pool.map(k => k.key).filter(k => on.has(k)) });
+    },
+
+    async rerun(entry, q, field) {
+        entry.busy = true;
+        try {
+            entry.q = q;
+            entry.answer = await this.reportAnswer(entry);
+        } finally {
+            entry.busy = false;
+        }
+        this.renderAnswers();
+        if (field) document.querySelector(`[data-ask-ctl="${entry.id}-${field}"]`)?.focus();
+    },
+
+    /** The report as an Excel book (Summary + one sheet per group), or CSV (owner only, Exporter). */
     async download(id, format) {
         const a = this.mine().find(e => e.id === id)?.answer;
-        if (!a?.report) return false;
+        if (!a?.report || a.report.kgOnly) return false;
         let fmt = format === 'csv' ? 'csv' : 'xlsx';
         if (fmt === 'xlsx' && Exporter.allowed()) {
             try {
@@ -203,6 +265,8 @@ export const AskManager = {
         const label = this.periodLabel(a.period.preset);
         return Exporter.run({
             kind: 'ask', format: fmt, period: { ...reportDays(a.period, new Date()), label }, rows: a.report.rowCount,
+            // party names in the file: grouped by party, a party column (by month) or one party's bills
+            names: a.report.groupBy !== 'item' || !!a.report.party,
             produce: (stamp) => {
                 const sheets = reportSheets(a.report, { lang, stamp: stampPairs(stamp, lang) });
                 const name = exportFilename(stamp, 'item-report', fmt);
@@ -217,31 +281,72 @@ export const AskManager = {
         return t(`ui.ask.period_${String(preset).replace(/-/g, '_')}`);
     },
 
-    /** One item report answer (ASK-5) as HTML. */
+    /** "Change": the report's bills, period, grouping and kinds, picked by hand. */
+    controlsHtml(a, id, itemName) {
+        const jsId = Helpers.escapeJsAttr(id);
+        const select = (field, value, options) => `<label class="ask-change-field">${esc(t(`ui.ask.change_${field}`))}`
+            + `<select data-ask-ctl="${esc(`${id}-${field}`)}" data-onchange="ask.changeReport('${jsId}', '${Helpers.escapeJsAttr(field)}', this.value)">`
+            + options.map(([v, label]) => `<option value="${esc(v)}"${v === value ? ' selected' : ''}>${esc(label)}</option>`).join('')
+            + '</select></label>';
+        const types = REPORT_TYPES.filter(tp => tp !== 'wholesale' || this.wholesale());
+        const on = new Set((a.kinds || []).map(k => k.key));
+        const chips = (a.pool || []).map(k => `<button type="button" class="filter-btn ask-kind" aria-pressed="${on.has(k.key) ? 'true' : 'false'}" `
+            + `data-onclick="ask.toggleKind('${jsId}', '${Helpers.escapeJsAttr(k.key)}')">${esc(itemName(k) || t('ui.ask.no_item_name'))}</button>`).join('');
+        return `<div class="ask-change">${select('billType', a.billType, types.map(tp => [tp, t(`ui.ask.type_${tp}`)]))}`
+            + select('range', a.period.preset, REPORT_PRESETS.map(p => [p, this.periodLabel(p)]))
+            + select('groupBy', a.groupBy, REPORT_GROUPS.map(g => [g, t(`ui.ask.group_${g}`)]))
+            + '</div>'
+            + (chips ? `<div class="ask-kinds" role="group" aria-label="${esc(t('ui.ask.change_kinds'))}">${chips}</div>` : '');
+    },
+
+    /** One item report answer (ASK-5, ASK-6) as HTML. */
     reportHtml(a, id, { line, choose, itemName }) {
-        if (a.ownerOnly) return line(t('ui.ask.report_owner_only'));
-        if (a.notItems) return line(t('ui.ask.report_not_item', { words: a.notItems.join(' ') }));
-        if (!a.kinds.length && !a.needsOlder) return a.near.length ? choose(a.near.map(itemName), a.nearMore) : line(t('ui.ask.no_item', { name: a.subject }));
+        if (a.notAllowed) return line(t('ui.ask.report_not_allowed'));
         const lang = getLang();
-        let html = line(t('ui.ask.report_head', { period: this.periodLabel(a.period.preset) }))
-            + line(a.kinds.length ? t('ui.ask.report_kinds', { names: a.kinds.map(itemName).join(', ') }) : t('ui.ask.report_no_item_here', { name: a.subject }))
-            + (a.near.length ? line(t('ui.ask.report_not_included', { names: a.near.map(itemName).join(', ') })) : '');
+        const named = (k) => itemName(k) || t('ui.ask.no_item_name');
+        const controls = this.controlsHtml(a, id, itemName);
+        let html = line(t('ui.ask.report_head', { type: t(`ui.ask.type_${a.billType}`), period: this.periodLabel(a.period.preset) }))
+            + (a.party ? line(t('ui.ask.report_party', { name: a.party })) : '')
+            + (a.retailOnly ? line(t('ui.ask.report_retail_only')) : '');
+        if (a.partyMatches) return html + choose(a.partyMatches, a.partyMore) + controls;
+        if (a.notItems) return html + line(t('ui.ask.report_not_item', { words: a.notItems.join(' ') })) + controls;
+        if (a.kinds && !a.kinds.length && !a.noKinds && !a.needsOlder && a.limited === undefined) {
+            return html + (a.near.length ? choose(a.near.map(named), a.nearMore) : line(t('ui.ask.report_nothing_named', { name: a.subject }))) + controls;
+        }
+        html += a.kinds === null ? line(t('ui.ask.report_all_items'))
+            : a.kinds.length ? line(t('ui.ask.report_kinds', { names: a.kinds.map(named).join(', ') }))
+                : line(t(a.noKinds ? 'ui.ask.report_pick_kind' : 'ui.ask.report_no_item_here', { name: a.subject }));
+        if (a.near.length && !a.picked) html += line(t('ui.ask.report_not_included', { names: a.near.map(named).join(', ') }));
+        if (a.noKinds) return html + controls;
+        if (a.limited !== undefined) return html + line(t('ui.ask.report_limited', { date: formatDay(a.limited, { lang }) })) + controls;
         if (a.needsOlder) {
-            if (a.stopped) return html + line(t('ui.ask.report_quota'));
+            if (a.stopped) return html + line(t('ui.ask.report_quota')) + controls;
             if (a.loading) return html + line(t('ui.ask.report_loading'));
             return html + line(t(a.failed ? 'ui.ask.report_load_failed' : 'ui.ask.report_needs_older', { date: formatDay(a.windowFrom, { lang }) }))
-                + `<button type="button" class="filter-btn ask-open" data-onclick="ask.loadOlder('${Helpers.escapeJsAttr(id)}')">${esc(t('ui.ask.report_load'))}</button>`;
+                + `<button type="button" class="filter-btn ask-open ask-load" data-onclick="ask.loadOlder('${Helpers.escapeJsAttr(id)}')">${esc(t('ui.ask.report_load'))}</button>`
+                + controls;
         }
-        const shown = a.report.groups.filter(g => g.totals.bills);
-        if (!shown.length) return html + line(t('ui.ask.report_none'));
+        const r = a.report;
+        const shown = r.groups.filter(g => g.totals.bills);
+        if (!shown.length) return html + line(t('ui.ask.report_none')) + controls;
+        const label = (g) => groupLabel(r, g, lang);
+        if (r.kgOnly) {
+            const kg = (name, x) => line(t('ui.ask.report_kind_kg', { name, kg: formatKg(x.kg), bills: bills(x.bills) }));
+            html += shown.map(g => kg(label(g), g.totals)).join('');
+            if (shown.length > 1) html += kg(t(totalLabelKey(r)), r.totals);
+            return html + controls;
+        }
         const figures = (x) => ({ kg: formatKg(x.kg), rate: x.avgRate === null ? '—' : formatRate(x.avgRate), amount: formatRupees(x.amount), net: formatRupees(x.net), bills: bills(x.bills) });
-        html += shown.map(g => line(t('ui.ask.report_kind', { name: itemName(g), ...figures(g.totals) }))).join('');
-        if (shown.length > 1) html += line(t('ui.ask.report_total', figures(a.report.totals)));
-        html += line(t('ui.ask.report_after_labour', figures(a.report.totals)));
+        html += shown.map(g => line(t('ui.ask.report_kind', { name: label(g), ...figures(g.totals) }))).join('');
+        if (shown.length > 1) html += line(t('ui.ask.report_kind', { name: t(totalLabelKey(r)), ...figures(r.totals) }));
+        if (r.billType === 'purchase') html += line(t('ui.ask.report_after_labour', figures(r.totals)));
+        if (r.totals.billsTotal !== null) html += line(t('ui.ask.report_bills_total', { amount: formatRupees(r.totals.billsTotal) }));
         if (a.readAt) html += line(t('ui.ask.report_as_of', { time: formatDayTime(a.readAt, { lang }) }));
-        if (!Exporter.allowed()) return html;
-        return html + `<button type="button" class="filter-btn ask-open" data-onclick="ask.download('${Helpers.escapeJsAttr(id)}', 'xlsx')">${esc(t('ui.ask.download_excel'))}</button>`
-            + `<button type="button" class="filter-btn ask-open" data-onclick="ask.download('${Helpers.escapeJsAttr(id)}', 'csv')">${esc(t('ui.ask.download_csv'))}</button>`;
+        if (Exporter.allowed()) {
+            html += `<button type="button" class="filter-btn ask-open ask-xlsx" data-onclick="ask.download('${Helpers.escapeJsAttr(id)}', 'xlsx')">${esc(t('ui.ask.download_excel'))}</button>`
+                + `<button type="button" class="filter-btn ask-open ask-csv" data-onclick="ask.download('${Helpers.escapeJsAttr(id)}', 'csv')">${esc(t('ui.ask.download_csv'))}</button>`;
+        }
+        return html + controls;
     },
 
     renderAnswers() {

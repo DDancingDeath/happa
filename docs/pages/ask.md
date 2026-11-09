@@ -10,15 +10,19 @@ equals the page it links to: today's sales, purchases or business expenses
 (ASK-3), and one item's stock (ASK-4). When a name matches more than one party or
 item, Ask lists them instead.
 
-**Item purchases (owner only, ASK-5, #415).** Ask which kinds of an item were bought, how
+**Item purchases and sales (ASK-5, ASK-6, #415).** Ask which kinds of an item were bought or sold, how
 much and at what average rate: "lah kitna kharida ab tak", "pichle mahine chawal ki kharid",
 "लाह की किस्में कितनी खरीदीं". Every item whose name has that word counts (Lah Kusmi, Rangeeni
 Lah, लाह, लाख कदकी, old archived items and names typed on bills too; "lah" and "lakh" / "लाख" are
 the same word here); a name that only starts the
 same ("Lahsun") is listed as not counted. The period is today, this or last month, year or
 financial year, from the start of last month or year till today ("pichle saal se ab tak"), or
-all time ("ab tak", "till today"); without one it is this month. A party's name in the
-question ("Ramesh se lah kitna kharida") gets no figure: the report counts every party. Each
+all time ("ab tak", "till today"); without one it is this month. Sales work the same way:
+"chawal kitna becha is mahine", "thok me chawal kitna becha" (wholesale only), "khudra" (retail
+only). Name a party to see only its bills: "Ramesh se lah kitna kharida", "Ramesh ko kya kya
+becha" (every item Ramesh bought). Group by party ("lah kisko becha", "party wise") or by month
+("mahine wise", "har mahine"). Under each answer, the **Bills**, **Period** and **Group by** choices change it, and
+the kind buttons turn kinds on or off (for example add one listed as not counted). Each
 kind shows its kg, average rate (total amount ÷ total kg) and amount, plus the total after
 labour, the same figures as Insights › Items, adding up to Money's purchases. **Excel**
 saves a Summary sheet and one sheet per kind (bill no., date, kg, rate, amount, labour,
@@ -26,3 +30,6 @@ after labour, and a totals row); **CSV** saves the same sheets in one file, and 
 Excel can't load (it needs the internet once). When the period goes back before the bills
 on this phone, Ask says how many bills it would read and loads them only when you confirm
 (once per session; the free limit is 50,000 reads a day for the whole shop).
+
+**Managers** with Statements on see the same reports in kg and bill counts only (no amounts or
+rates, no Excel), from the bills on their phone; a longer period needs the owner.

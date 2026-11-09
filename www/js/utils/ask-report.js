@@ -1,50 +1,80 @@
 // @ts-check
 /**
- * @fileoverview Ask item reports (#415, docs/calculations.md ASK-5): which kinds of an item
- * were bought, how many kg, at what weighted average rate and for how much, bill by bill.
- * A question becomes a small report spec (validateSpec); the rows come from the bills the
- * same way Insights › Items (purchaseItems) and Statements' CSV (ST5) take them, so the
- * figures add up to History and Money (M16, M7). Also the Excel / CSV sheets of a report.
- * Pure: no DOM, no AppState, no Firestore.
+ * @fileoverview Ask item reports (#415, docs/calculations.md ASK-5, ASK-6): what was bought
+ * or sold, by item kind, party or month: how many kg, at what weighted average rate and for
+ * how much, bill by bill. A question becomes a small report spec (validateSpec); the rows come
+ * from the bills the same way Insights › Items (purchaseItems, itemSummary) and Statements'
+ * CSV (ST5) take them, so the figures add up to History and Money (M1, M16, M7). Also the
+ * Excel / CSV sheets of a report. Pure: no DOM, no AppState, no Firestore.
  * @module utils/ask-report
  */
 
 import { billsInRange } from './finance-calc.js';
-import { billLabour, readLineItem, round2 } from './money.js';
+import { billLabour, billTotal, readLineItem, round2 } from './money.js';
 import { createItemKeyResolver, eventTime } from './stock-replay.js';
 import { periodRange } from './business-metrics.js';
-import { partyNameKey } from './parties.js';
+import { partyDisplayNames, partyNameKey, partyNameSpelling } from './parties.js';
 import { devanagariToLatin, suggestEnglishName, suggestHindiName } from './item-name-autofill.js';
 import { csvCell } from './statements.js';
-import { endOfLocalDayExclusive, toLocalISODate } from './dates.js';
+import { endOfLocalDayExclusive, formatMonth, toLocalISODate } from './dates.js';
 import { t } from '../i18n/index.js';
 
 /** Periods an item report can cover (business-metrics periodRange presets). */
 export const REPORT_PRESETS = Object.freeze(['today', 'this-month', 'last-month', 'this-year', 'last-year', 'this-fy', 'last-fy', 'all',
     'since-last-month', 'since-last-year', 'since-last-fy']);
-const BILL_TYPES = ['purchase'];
+/** Bills a report counts: purchases, all sales, or one kind of sale. */
+export const REPORT_TYPES = Object.freeze(['purchase', 'sale', 'retail', 'wholesale']);
+/** What a report's groups are: item kinds, parties or months. */
+export const REPORT_GROUPS = Object.freeze(['item', 'party', 'month']);
+/** Bill type → its Firestore collection key. */
+export const REPORT_COLLECTIONS = Object.freeze({ purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' });
 const MEASURES = ['kg', 'amount', 'avgRate', 'bills', 'labour', 'net'];
+const MAX_KEYS = 100;
 
 /**
- * @typedef {{v: 1, billType: 'purchase', item: {text: string, mode: 'family'}, range: {preset: string},
- *   groupBy: 'item', measures: string[]}} ReportSpec
+ * @typedef {{v: 1, billType: string, item: ?{text: string, mode: 'family'}, party: ?{text: string}, keys: ?string[],
+ *   range: {preset: string}, groupBy: string, measures: string[]}} ReportSpec
+ * item: the typed words (item kinds, and a party's name among them); keys: the kinds picked by hand
  */
 
+const specText = (/** @type {*} */ v) => (typeof v === 'string' ? v.normalize('NFC').trim().slice(0, 80) : '');
+
 /**
- * The one gate for a report spec, from the rules or later any other source: known
- * keys and values only, everything else dropped; null when it can't be run.
+ * The one gate for a report spec, from the rules, the "Change" controls or later any other
+ * source: known keys and values only, everything else dropped; null when it can't be run.
  * @param {*} spec
  * @returns {?ReportSpec}
  */
 export function validateSpec(spec) {
     if (!spec || typeof spec !== 'object' || spec.v !== 1) return null;
-    if (!BILL_TYPES.includes(spec.billType)) return null;
-    const text = typeof spec.item?.text === 'string' ? spec.item.text.normalize('NFC').trim().slice(0, 80) : '';
-    if (!text) return null;
+    if (!REPORT_TYPES.includes(spec.billType)) return null;
     const preset = REPORT_PRESETS.includes(spec.range?.preset) ? spec.range.preset : null;
     if (!preset) return null;
+    const item = specText(spec.item?.text);
+    const party = specText(spec.party?.text);
+    const keys = Array.isArray(spec.keys)
+        ? [...new Set(spec.keys.filter((/** @type {*} */ k) => typeof k === 'string' && k).map((/** @type {string} */ k) => k.slice(0, 200)))].slice(0, MAX_KEYS)
+        : null;
     const measures = Array.isArray(spec.measures) ? MEASURES.filter(m => spec.measures.includes(m)) : [];
-    return { v: 1, billType: 'purchase', item: { text, mode: 'family' }, range: { preset }, groupBy: 'item', measures: measures.length ? measures : [...MEASURES] };
+    return {
+        v: 1, billType: spec.billType, item: item ? { text: item, mode: 'family' } : null, party: party ? { text: party } : null, keys,
+        range: { preset }, groupBy: REPORT_GROUPS.includes(spec.groupBy) ? spec.groupBy : 'item', measures: measures.length ? measures : [...MEASURES]
+    };
+}
+
+/**
+ * The bill types a report of `billType` counts: all sales are retail and wholesale, or retail
+ * only for a role without Wholesale (as Outstanding); none for wholesale without it.
+ * @param {string} billType REPORT_TYPES
+ * @param {boolean} wholesale the role may see wholesale bills
+ * @returns {Array<'purchase'|'retail'|'wholesale'>}
+ */
+export function reportBillTypes(billType, wholesale) {
+    if (billType === 'purchase') return ['purchase'];
+    if (billType === 'retail') return ['retail'];
+    if (billType === 'wholesale') return wholesale ? ['wholesale'] : [];
+    if (billType === 'sale') return wholesale ? ['retail', 'wholesale'] : ['retail'];
+    return [];
 }
 
 const DEVANAGARI = /[\u0900-\u097F]/;
@@ -132,6 +162,18 @@ export function matchKinds(kinds, text) {
 }
 
 const billNo = (/** @type {Rec} */ b) => String(b?.billNumber || b?.billNo || '');
+/** A bill's party as typed (PARTY: the same field Insights › Parties groups by). */
+const billParty = (/** @type {Rec} */ b) => partyNameSpelling(b?.customerName ?? b?.supplierName);
+const UNDATED = Number.MAX_SAFE_INTEGER;
+
+/**
+ * The parties on these bills, one per PARTY key, with the spelling used most (no unnamed bills).
+ * @param {?Array<Rec>|undefined} bills
+ * @returns {Array<{key: string, name: string}>}
+ */
+export function reportParties(bills) {
+    return [...partyDisplayNames((bills || []).map(billParty))].map(([key, name]) => ({ key, name }));
+}
 
 /**
  * A bill's labour shared by line value in whole paise that add up to it exactly (largest
@@ -153,56 +195,140 @@ export function labourShares(labour, values) {
     return out.map(p => p / 100);
 }
 
+/** Local "YYYY-MM" of a bill time, '' when undated. */
+function monthKey(/** @type {number} */ time) {
+    if (time === UNDATED || !Number.isFinite(time)) return '';
+    const d = new Date(time);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 /**
- * ASK-5: the purchase lines of the chosen kinds in [from, to), bill by bill, with each
- * kind's totals. A line's amount is its saved line amount (readLineItem, as AVG-COST);
- * its labour is the bill's labour shared by line value in whole paise (labourShares; Insights ›
- * Items and ST5 share it the same way, unrounded), so amount − labour of every line of every
- * kind adds up to M16 with the bills' adjustments.
- * Average rate = total amount ÷ total kg (weighted by kg, not a mean of the rates).
+ * @typedef {{kg: number, amount: number, labour: number, net: number, avgRate: ?number, bills: number,
+ *   adjust: ?number, billsTotal: ?number}} ReportTotals
+ * adjust / billsTotal: only when every line of the group's bills is counted (no kinds picked,
+ * grouped by party or month): the bills' discounts and rounding, and the bills' own total
+ */
+
+/**
+ * ASK-5 (purchases) / ASK-6 (sales): the bill lines of the chosen kinds (null = every item)
+ * in [from, to), of one party when `partyKey` is set, grouped by item kind, party or month,
+ * bill by bill, with each group's totals. A line's amount is its saved line amount
+ * (readLineItem, as AVG-COST and Insights › Items); on a purchase its labour is the bill's labour
+ * shared by line value in whole paise (labourShares; Insights › Items and ST5 share it the same
+ * way, unrounded), so the lines after labour, with the bills' adjustments, add up to M16; sale
+ * lines with theirs add up to M1. Average rate = total amount ÷ total kg (weighted by kg).
+ * @param {Array<{type: 'purchase'|'retail'|'wholesale', bills: ?Array<Rec>|undefined}>} sources
+ * @param {?Array<{id: string, name?: string, hindiName?: string}>|undefined} items catalogue
+ * @param {{kinds: ?Array<{key: string, name: string, hindiName: string}>, partyKey?: ?string, groupBy?: string, billType?: string}} pick
+ * @param {{from: number, to: number}} range
+ */
+export function itemReport(sources, items, { kinds, partyKey = null, groupBy = 'item', billType = 'purchase' }, { from, to }) {
+    const getKey = createItemKeyResolver(items || []);
+    const byId = new Map((items || []).map(i => [i.id, i]));
+    const wanted = kinds ? new Set(kinds.map(k => k.key)) : null;
+    const whole = !kinds;
+    /** @type {Map<string, {key: string, name: string, hindiName: string, month: ?number, rows: Array<Rec>, raw: Rec, bills: Set<Rec>}>} */
+    const groups = new Map();
+    const group = (/** @type {string} */ key, /** @type {{name?: string, hindiName?: string, month?: ?number}} */ info) => {
+        if (!groups.has(key)) groups.set(key, { key, name: info.name || '', hindiName: info.hindiName || '', month: info.month ?? null, rows: [], raw: { kg: 0, amount: 0, labour: 0, adjust: 0 }, bills: new Set() });
+        return /** @type {*} */ (groups.get(key));
+    };
+    (kinds || []).forEach(k => { if (groupBy === 'item') group(k.key, k); });
+    /** @type {Map<string, string>} */
+    const partyName = new Map();
+    const all = { kg: 0, amount: 0, labour: 0, adjust: 0 };
+    const allBills = new Set();
+    sources.forEach(({ type, bills }) => {
+        const purchase = type === 'purchase';
+        const inRange = billsInRange(bills || [], from, to);
+        reportParties(inRange).forEach(p => partyName.set(p.key, p.name));
+        inRange.forEach(b => {
+            const party = billParty(b);
+            const pk = partyNameKey(party);
+            if (partyKey !== null && pk !== partyKey) return;
+            const lines = (Array.isArray(b.items) ? b.items : []).map((/** @type {BillLine} */ l) => ({ l, v: readLineItem(l) }));
+            const shares = purchase ? labourShares(billLabour(b), lines.map(x => x.v.total)) : lines.map(() => 0);
+            const time = eventTime(/** @type {Rec} */ (b));
+            const month = groupBy === 'month' ? monthKey(time) : null;
+            const billGroup = groupBy === 'party' ? group(pk, { name: pk }) : groupBy === 'month' ? group(/** @type {string} */ (month), { month: month ? new Date(time).setDate(1) : null }) : null;
+            let net = 0;
+            lines.forEach(({ l, v }, i) => {
+                const key = getKey(l);
+                if (wanted && !wanted.has(key)) return;
+                const it = byId.get(key);
+                const item = { name: it ? String(it.name || '') : (key === '__unknown__' ? '' : String(l.name || '').trim()), hindiName: it ? String(it.hindiName || '') : '' };
+                const g = billGroup || group(key, item);
+                const share = shares[i];
+                for (const r of [g.raw, all]) {
+                    r.kg += v.qty;
+                    r.amount += v.total;
+                    r.labour += share;
+                }
+                net += v.total - share;
+                g.bills.add(b);
+                allBills.add(b);
+                g.rows.push({
+                    billNo: billNo(b), time, type, party, itemKey: key, item, qty: v.qty,
+                    rate: v.rate > 0 ? v.rate : (v.qty > 0 ? round2(v.total / v.qty) : 0),
+                    amount: v.total, labour: share, net: round2(v.total - share)
+                });
+            });
+            if (!whole) return;
+            const rest = billTotal(b) - net;
+            allBills.add(b);
+            if (billGroup) billGroup.bills.add(b);
+            if (Math.abs(rest) < 0.005) return;
+            all.adjust += rest;
+            if (billGroup) billGroup.raw.adjust += rest;
+        });
+    });
+    const totals = (/** @type {Rec} */ r, /** @type {number} */ bills, /** @type {boolean} */ withAdjust) => {
+        const net = round2(r.amount - r.labour);
+        return {
+            kg: round2(r.kg), amount: round2(r.amount), labour: round2(r.labour), net,
+            avgRate: r.kg > 0 ? round2(r.amount / r.kg) : null, bills,
+            adjust: withAdjust ? round2(r.adjust) : null, billsTotal: withAdjust ? round2(r.amount - r.labour + r.adjust) : null
+        };
+    };
+    const byName = (/** @type {Rec} */ a, /** @type {Rec} */ b) => String(a.name || a.hindiName).localeCompare(String(b.name || b.hindiName));
+    let list = [...groups.values()];
+    if (groupBy === 'party') list.forEach(g => { g.name = partyName.get(g.key) || ''; });
+    if (groupBy === 'month') list.sort((a, b) => (a.month ?? Infinity) - (b.month ?? Infinity));
+    else if (!(groupBy === 'item' && kinds)) list.sort((a, b) => (!a.key ? 1 : 0) - (!b.key ? 1 : 0) || b.raw.kg - a.raw.kg || byName(a, b));
+    const out = list.map(g => ({
+        key: g.key, name: g.name, hindiName: g.hindiName, month: g.month,
+        rows: g.rows.sort((a, b) => a.time - b.time || a.billNo.localeCompare(b.billNo, 'en', { numeric: true })),
+        totals: totals(g.raw, g.bills.size, whole && groupBy !== 'item')
+    }));
+    return {
+        billType, groupBy, kinds: kinds ? kinds.length : null, party: partyKey === null ? null : (partyName.get(partyKey) || partyKey),
+        groups: out, totals: totals(all, allBills.size, whole), rowCount: out.reduce((n, g) => n + g.rows.length, 0)
+    };
+}
+
+/**
+ * ASK-5: the purchase lines of the chosen kinds, one group per kind (itemReport).
  * @param {?Array<Rec>|undefined} purchases bills (voided bills and opening records are left out)
  * @param {?Array<{id: string, name?: string, hindiName?: string}>|undefined} items catalogue
  * @param {Array<{key: string, name: string, hindiName: string}>} kinds
  * @param {{from: number, to: number}} range
  */
-export function itemPurchaseReport(purchases, items, kinds, { from, to }) {
-    const getKey = createItemKeyResolver(items || []);
-    const groups = kinds.map(k => ({ ...k, rows: /** @type {Array<Rec>} */ ([]), raw: { kg: 0, amount: 0, labour: 0 }, bills: new Set() }));
-    const byKey = new Map(groups.map(g => [g.key, g]));
-    billsInRange(purchases || [], from, to).forEach(b => {
-        const lines = (Array.isArray(b.items) ? b.items : []).map((/** @type {BillLine} */ l) => ({ l, v: readLineItem(l) }));
-        const shares = labourShares(billLabour(b), lines.map(x => x.v.total));
-        const time = eventTime(/** @type {Rec} */ (b));
-        lines.forEach(({ l, v }, i) => {
-            const g = byKey.get(getKey(l));
-            if (!g) return;
-            const share = shares[i];
-            g.raw.kg += v.qty;
-            g.raw.amount += v.total;
-            g.raw.labour += share;
-            g.bills.add(b);
-            g.rows.push({
-                billNo: billNo(b), time, qty: v.qty,
-                rate: v.rate > 0 ? v.rate : (v.qty > 0 ? round2(v.total / v.qty) : 0),
-                amount: v.total, labour: share, net: round2(v.total - share)
-            });
-        });
-    });
-    const totals = (/** @type {{kg: number, amount: number, labour: number}} */ r, /** @type {number} */ bills) => ({
-        kg: round2(r.kg), amount: round2(r.amount), labour: round2(r.labour), net: round2(r.amount - r.labour),
-        avgRate: r.kg > 0 ? round2(r.amount / r.kg) : null, bills
-    });
-    const all = { kg: 0, amount: 0, labour: 0 };
-    const allBills = new Set();
-    const out = groups.map(g => {
-        all.kg += g.raw.kg;
-        all.amount += g.raw.amount;
-        all.labour += g.raw.labour;
-        g.bills.forEach(b => allBills.add(b));
-        const rows = g.rows.sort((a, b) => a.time - b.time || a.billNo.localeCompare(b.billNo, 'en', { numeric: true }));
-        return { key: g.key, name: g.name, hindiName: g.hindiName, rows, totals: totals(g.raw, g.bills.size) };
-    });
-    return { groups: out, totals: totals(all, allBills.size), rowCount: out.reduce((n, g) => n + g.rows.length, 0) };
+export function itemPurchaseReport(purchases, items, kinds, range) {
+    return itemReport([{ type: 'purchase', bills: purchases }], items, { kinds }, range);
+}
+
+/**
+ * What a role that sees weights only gets of a report: each group's kg and bill count, no
+ * amounts, rates or bill rows.
+ * @param {ReturnType<typeof itemReport>} report
+ */
+export function kgOnlyReport(report) {
+    const keep = (/** @type {ReportTotals} */ x) => ({ kg: x.kg, bills: x.bills });
+    return {
+        billType: report.billType, groupBy: report.groupBy, kinds: report.kinds, party: report.party, kgOnly: true,
+        groups: report.groups.map(g => ({ key: g.key, name: g.name, hindiName: g.hindiName, month: g.month, rows: [], totals: keep(g.totals) })),
+        totals: keep(report.totals), rowCount: 0
+    };
 }
 
 /**
@@ -286,46 +412,90 @@ export function sheetName(name, used) {
     return out;
 }
 
-const blank = (/** @type {?number} */ v) => (v === null || v === undefined ? '' : v);
+const blank = (/** @type {?number|undefined} */ v) => (v === null || v === undefined ? '' : v);
 
 /**
- * The report as sheets: a Summary (the stamp, one row per kind and the total), then one
- * sheet per kind with its bill lines sorted by date and a totals row.
- * @param {ReturnType<typeof itemPurchaseReport>} report
+ * A report group's name in `lang`: the kind's name (Hindi name in Hindi), the party, or the month.
+ * @param {{groupBy: string}} report
+ * @param {{name: string, hindiName: string, month?: ?number}} g
+ * @param {'en'|'hi'} lang
+ * @returns {string}
+ */
+export function groupLabel(report, g, lang) {
+    const tl = (/** @type {string} */ k) => t(k, null, lang);
+    if (report.groupBy === 'month') return g.month ? formatMonth(g.month, { lang }) : tl('ui.ask.no_date');
+    if (report.groupBy === 'party') return g.name || tl('ui.ask.no_party_name');
+    return (lang === 'hi' && g.hindiName ? g.hindiName : g.name || g.hindiName) || tl('ui.ask.no_item_name');
+}
+
+/**
+ * The label of a report's all-groups total: all kinds, all items, all parties or all months.
+ * @param {{groupBy: string, kinds: ?number}} report
+ * @returns {string} an i18n key
+ */
+export function totalLabelKey(report) {
+    if (report.groupBy === 'party') return 'ui.ask.total_parties';
+    if (report.groupBy === 'month') return 'ui.ask.total_months';
+    return report.kinds === null ? 'ui.ask.total_items' : 'ui.ask.total_kinds';
+}
+
+/**
+ * The report as sheets: a Summary (the stamp, one row per group and the total), then one
+ * sheet per group with its bill lines sorted by date and a totals row. Purchases add the
+ * labour columns; all sales the bill type; groups by party or month the item; by month the
+ * party; a report of every item the bills' adjustments and own total in the Summary.
+ * @param {ReturnType<typeof itemReport>} report
  * @param {{lang: 'en'|'hi', stamp: Array<[string, string]>}} opts stamp: stampPairs() (shop, period, time, who)
  * @returns {Array<{name: string, rows: Array<Array<*>>, widths: number[]}>}
  */
 export function reportSheets(report, { lang, stamp }) {
     const tl = (/** @type {string} */ k) => t(k, null, lang);
-    const kindName = (/** @type {{name: string, hindiName: string}} */ g) => (lang === 'hi' && g.hindiName ? g.hindiName : g.name || g.hindiName);
+    const purchase = report.billType === 'purchase';
+    const both = report.billType === 'sale';
+    const whole = report.totals.billsTotal !== null && report.totals.billsTotal !== undefined;
     const used = new Set();
-    const groups = report.groups.filter(g => g.rows.length);
-    const summaryHead = [tl('ui.ask.col_kind'), tl('ui.ask.col_bills'), tl('ui.ask.col_weight'), tl('ui.ask.col_avg_rate'), tl('ui.ask.col_amount'), tl('ui.ask.col_labour'), tl('ui.ask.col_net')];
-    const sumRow = (/** @type {string} */ label, /** @type {Rec} */ x) => [label, x.bills, x.kg, blank(x.avgRate), x.amount, x.labour, x.net];
+    const groups = report.groups.filter(g => g.totals.bills);
+    const kindName = (/** @type {{name: string, hindiName: string}} */ k) => (lang === 'hi' && k.hindiName ? k.hindiName : k.name || k.hindiName) || tl('ui.ask.no_item_name');
+    const groupHead = { item: 'ui.ask.col_kind', party: 'ui.ask.col_party', month: 'ui.ask.col_month' }[report.groupBy] || 'ui.ask.col_kind';
+    const summaryHead = [tl(groupHead), tl('ui.ask.col_bills'), tl('ui.ask.col_weight'), tl('ui.ask.col_avg_rate'), tl('ui.ask.col_amount'),
+        ...(purchase ? [tl('ui.ask.col_labour'), tl('ui.ask.col_net')] : []), ...(whole ? [tl('ui.ask.col_adjust'), tl('ui.ask.col_bills_total')] : [])];
+    const sumRow = (/** @type {string} */ label, /** @type {Rec} */ x) => [label, x.bills, x.kg, blank(x.avgRate), x.amount,
+        ...(purchase ? [x.labour, x.net] : []), ...(whole ? [blank(x.adjust), blank(x.billsTotal)] : [])];
     const summary = {
         name: sheetName(tl('ui.ask.sheet_summary'), used),
         rows: [
-            [tl('ui.ask.report_sheet_title')],
+            [tl(`ui.ask.sheet_title_${report.billType}`)],
             ...stamp.map(([k, v]) => [k, v]),
+            ...(report.party ? [[tl('ui.ask.col_party'), report.party]] : []),
             [],
             summaryHead,
-            ...groups.map(g => sumRow(kindName(g), g.totals)),
-            sumRow(tl('ui.ask.col_total_all'), report.totals)
+            ...groups.map(g => sumRow(groupLabel(report, g, lang), g.totals)),
+            sumRow(tl(totalLabelKey(report)), report.totals)
         ],
-        widths: [24, 8, 12, 14, 14, 12, 14]
+        widths: [24, 8, 12, 14, 14, ...(purchase ? [12, 14] : []), ...(whole ? [14, 14] : [])]
     };
-    const head = [tl('ui.ask.col_bill_no'), tl('ui.ask.col_date'), tl('ui.ask.col_weight'), tl('ui.ask.col_rate'), tl('ui.ask.col_amount'), tl('ui.ask.col_labour'), tl('ui.ask.col_net')];
-    const kinds = groups.map(g => ({
-        name: sheetName(kindName(g), used),
-        rows: [
-            [kindName(g)],
-            head,
-            ...g.rows.map(r => [r.billNo, toLocalISODate(new Date(r.time)), r.qty, r.rate, r.amount, r.labour, r.net]),
-            [tl('ui.ask.col_total'), '', g.totals.kg, blank(g.totals.avgRate), g.totals.amount, g.totals.labour, g.totals.net]
-        ],
-        widths: [12, 12, 12, 12, 14, 12, 14]
-    }));
-    return [summary, ...kinds];
+    const withItem = report.groupBy !== 'item';
+    const withParty = report.groupBy === 'month';
+    const typeName = (/** @type {string} */ type) => tl(`ui.ask.type_${type}_short`);
+    const head = [tl('ui.ask.col_bill_no'), tl('ui.ask.col_date'), ...(both ? [tl('ui.ask.col_type')] : []), ...(withItem ? [tl('ui.ask.col_item')] : []),
+        ...(withParty ? [tl('ui.ask.col_party')] : []), tl('ui.ask.col_weight'), tl('ui.ask.col_rate'), tl('ui.ask.col_amount'),
+        ...(purchase ? [tl('ui.ask.col_labour'), tl('ui.ask.col_net')] : [])];
+    const lead = (both ? 1 : 0) + (withItem ? 1 : 0) + (withParty ? 1 : 0);
+    const sheets = groups.map(g => {
+        const label = groupLabel(report, g, lang);
+        return {
+            name: sheetName(label, used),
+            rows: [
+                [label],
+                head,
+                ...g.rows.map(r => [r.billNo, r.time === UNDATED ? '' : toLocalISODate(new Date(r.time)), ...(both ? [typeName(r.type)] : []),
+                    ...(withItem ? [kindName(r.item)] : []), ...(withParty ? [r.party] : []), r.qty, r.rate, r.amount, ...(purchase ? [r.labour, r.net] : [])]),
+                [tl('ui.ask.col_total'), '', ...Array(lead).fill(''), g.totals.kg, blank(g.totals.avgRate), g.totals.amount, ...(purchase ? [g.totals.labour, g.totals.net] : [])]
+            ],
+            widths: [12, 12, ...(both ? [12] : []), ...(withItem ? [20] : []), ...(withParty ? [20] : []), 12, 12, 14, ...(purchase ? [12, 14] : [])]
+        };
+    });
+    return [summary, ...sheets];
 }
 
 /**

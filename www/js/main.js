@@ -1351,7 +1351,9 @@ window.app = {
         submit: (event) => { event?.preventDefault?.(); return loadAsk().then(m => m.submit(event)); },
         ask: (text) => loadAsk().then(m => m.ask(text)),
         loadOlder: (id) => loadAsk().then(m => m.loadOlder(id)),
-        download: (id, format) => loadAsk().then(m => m.download(id, format))
+        download: (id, format) => loadAsk().then(m => m.download(id, format)),
+        changeReport: (id, field, value) => loadAsk().then(m => m.changeReport(id, field, value)),
+        toggleKind: (id, key) => loadAsk().then(m => m.toggleKind(id, key))
     },
 
     // Statements (redesign §5.4): statements.js is imported on first use
