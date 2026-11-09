@@ -94,13 +94,14 @@ export const reportBillMethods = {
         const byId = (start, end, limit) => tagQuery(getDb().collection(col('rateStats'))
             .orderBy(firebase.firestore.FieldPath.documentId()).startAt(start).endAt(end).limit(limit), TAG);
         if (held.meta === undefined) {
-            const [meta] = fromServer(await getWithRetry(() => byId('_meta', '_meta', 1), 'rateStats meta'));
+            const [meta] = fromServer(await getWithRetry(a => byId('_meta', '_meta', 1 + a), 'rateStats meta'));
             held.meta = meta || null;
         }
         if (!held.meta?.backfillDone) return null;
         const ids = [...new Set(itemIds)];
         await Promise.all(ids.filter(id => !held.items.has(id)).map(async (id) => {
-            const docs = fromServer(await getWithRetry(() => byId(`${id}_`, `${id}_\uf8ff`, 40), `rateStats ${id}`));
+            // a new limit per attempt: a different query, so a stuck target is not waited on again
+            const docs = fromServer(await getWithRetry(a => byId(`${id}_`, `${id}_\uf8ff`, 40 + a), `rateStats ${id}`));
             held.items.set(id, docs.filter(d => d.itemId === id && /^\d{4}$/.test(String(d.year || ''))));
         }));
         if (gen !== S.sessionGen) return null;

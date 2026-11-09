@@ -414,6 +414,25 @@ const localMonth = (/** @type {number} */ ms) => {
     const d = new Date(ms);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
+const isMonthStart = (/** @type {number} */ ms) => {
+    const d = new Date(ms);
+    return d.getDate() === 1 && d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0 && d.getMilliseconds() === 0;
+};
+
+/**
+ * Whether month stats can give a period exactly: it starts on a month (or is all time) and ends
+ * on a month or at the end of today (no bills after now). A period such as the last 30 days
+ * would count whole months: no quick figure.
+ * @param {{from: number, to: number}} period
+ * @param {Date} now
+ * @returns {boolean}
+ */
+export function quickPeriodOk(period, now) {
+    const fromOk = period.from === -Infinity || (Number.isFinite(period.from) && isMonthStart(period.from));
+    const toOk = period.to === Infinity || (Number.isFinite(period.to)
+        && (isMonthStart(period.to) || period.to === /** @type {Date} */ (endOfLocalDayExclusive(now)).getTime()));
+    return fromOk && toOk;
+}
 
 /**
  * ASK-7: the quick figure of an item report over older bills, with no bill read: each kind's
@@ -423,9 +442,12 @@ const localMonth = (/** @type {number} */ ms) => {
  * the roll-forward stores them). Only catalogue kinds have stats: the others are in `left`.
  * @param {{kinds: Array<{key: string, name: string, hindiName: string}>, items: ?Array<{id: string, name?: string, hindiName?: string}>|undefined,
  *   stats: Array<Rec>, sources: Array<{type: 'purchase'|'retail'|'wholesale', bills: ?Array<Rec>|undefined}>,
- *   period: {from: number, to: number}, windowFrom: number}} a stats: the kinds' rateStats year docs
+ *   period: {from: number, to: number}, windowFrom: number, now?: Date}} a stats: the kinds' rateStats year docs
+ * @returns {?{groups: Array<Rec>, totals: Rec, left: Array<{key: string, name: string, hindiName: string}>}} null when the
+ *   period doesn't fit whole months (quickPeriodOk)
  */
-export function quickItemSummary({ kinds, items, stats, sources, period, windowFrom }) {
+export function quickItemSummary({ kinds, items, stats, sources, period, windowFrom, now = new Date() }) {
+    if (!quickPeriodOk(period, now)) return null;
     const ids = new Set((items || []).map(i => i.id));
     const counted = kinds.filter(k => ids.has(k.key));
     const wanted = new Set(counted.map(k => k.key));

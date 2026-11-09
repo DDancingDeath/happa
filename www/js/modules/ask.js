@@ -15,7 +15,7 @@ import { can } from '../utils/role-access.js';
 import { parseQuestion, answerQuestion } from '../utils/ask.js';
 import { approxStockNote } from '../utils/stock-check.js';
 import { pickLang } from '../i18n/localize.js';
-import { estimateReportReads, groupLabel, mergeReportBills, quickItemSummary, REPORT_COLLECTIONS, REPORT_GROUPS, REPORT_PRESETS, REPORT_TYPES, reportBillTypes, reportCsv, reportDays, reportPeriod, reportSheets, totalLabelKey } from '../utils/ask-report.js';
+import { estimateReportReads, groupLabel, mergeReportBills, quickItemSummary, quickPeriodOk, REPORT_COLLECTIONS, REPORT_GROUPS, REPORT_PRESETS, REPORT_TYPES, reportBillTypes, reportCsv, reportDays, reportPeriod, reportSheets, totalLabelKey } from '../utils/ask-report.js';
 import { insightsSettings } from '../utils/insights-config.js';
 import { exportFilename, stampPairs } from '../utils/export-stamp.js';
 import { formatDay, formatDayTime } from '../utils/dates.js';
@@ -159,10 +159,14 @@ export const AskManager = {
         if (answer.needsOlder) {
             answer.windowFrom = windowFrom;
             // bill types already read this session cost nothing more
-            [answer.estimate, answer.quick] = await Promise.all([
-                this.estimate(types.filter((_, i) => !held[i]), { windowFrom, now: now.getTime(), from: loadFrom }),
-                this.quickFigure(answer, types.map(type => ({ type, bills: src[REPORT_COLLECTIONS[type]] })), windowFrom)
-            ]);
+            answer.estimate = await this.estimate(types.filter((_, i) => !held[i]), { windowFrom, now: now.getTime(), from: loadFrom });
+            // The answer (and its Load button) never waits for the stats: the quick figure is added when it comes.
+            this.quickPending = this.quickFigure(answer, types.map(type => ({ type, bills: src[REPORT_COLLECTIONS[type]] })), windowFrom, now)
+                .then((quick) => {
+                    if (!quick) return;
+                    answer.quick = quick;
+                    if (entry.answer === answer && this.mine().includes(entry)) this.renderAnswers();
+                });
         }
         return answer;
     },
@@ -172,15 +176,15 @@ export const AskManager = {
      * reads, no bills), while the bill-by-bill report waits for the owner's confirm. Only for kinds
      * named, grouped by kind, with no party; null when the stats can't give it.
      */
-    async quickFigure(a, sources, windowFrom) {
+    async quickFigure(a, sources, windowFrom, now) {
         if (a.groupBy !== 'item' || a.party || a.maybeParty || !a.kinds?.length || a.kinds.length > QUICK_MAX_KINDS) return null;
         const catalogue = new Set((AppState.items || []).map(i => i.id));
         const ids = a.kinds.map(k => k.key).filter(k => catalogue.has(k));
         const quota = getQuotaStatus();
-        if (!ids.length || quota.quota.count || quota.overCap) return null;
+        if (!ids.length || quota.quota.count || quota.overCap || !quickPeriodOk(a.period, now)) return null;
         try {
             const held = await FirebaseService.reportItemStats(ids);
-            return held ? quickItemSummary({ kinds: a.kinds, items: AppState.items, stats: held.docs, sources, period: a.period, windowFrom }) : null;
+            return held ? quickItemSummary({ kinds: a.kinds, items: AppState.items, stats: held.docs, sources, period: a.period, windowFrom, now }) : null;
         } catch (e) {
             console.warn('Ask: item stats not read:', e?.message || e);
             return null;

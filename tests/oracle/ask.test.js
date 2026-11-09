@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import * as O from './oracle.js';
 import { answerQuestion, parseQuestion } from '../../www/js/utils/ask.js';
-import { quickItemSummary } from '../../www/js/utils/ask-report.js';
+import { quickItemSummary, quickPeriodOk, reportPeriod } from '../../www/js/utils/ask-report.js';
 import { billsToYearDocs } from '../../www/js/utils/rate-trends.js';
 
 const FIX = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../fixtures/calculations/shop-month.json'), 'utf8'));
@@ -138,8 +138,8 @@ describe('ASK-7: the quick figure = Insights › Seasons month stats (RT4, PT1; 
     const phone = { purchase: FIX.purchases, retail: FIX.retailSales, wholesale: FIX.wholesaleSales };
     const kinds = FIX.items.map(i => ({ key: i.id, name: i.name, hindiName: i.hindiName || '' }));
     const ALL = { from: -Infinity, to: Infinity };
-    const quick = (types, windowFrom, period = ALL, stats = stored) => quickItemSummary({
-        kinds, items: FIX.items, stats, sources: types.map(type => ({ type, bills: phone[type] })), period, windowFrom
+    const quick = (types, windowFrom, period = ALL, stats = stored, now = new Date()) => quickItemSummary({
+        kinds, items: FIX.items, stats, sources: types.map(type => ({ type, bills: phone[type] })), period, windowFrom, now
     });
     const expected = (id, types, months = null) => {
         const s = { kg: 0, amount: 0, bills: 0 };
@@ -175,6 +175,19 @@ describe('ASK-7: the quick figure = Insights › Seasons month stats (RT4, PT1; 
         expect(byKey(q)).toEqual(Object.fromEntries(Object.keys(want).map(id => [id, expected(id, ['retail'], ['2026-01'])]).filter(([, x]) => x.kg > 0)));
     });
 
+    test('a period that does not fit whole months (this month as the last 30 days) gets none; one ending today does', () => {
+        const now = new Date(NOW);
+        const last30 = reportPeriod('this-month', now, { monthMode: 'last30' });
+        expect(new Date(last30.from).getDate()).not.toBe(1);
+        expect(quickPeriodOk(last30, now)).toBe(false);
+        expect(quick(['purchase'], OCT_1, last30, stored, now)).toBeNull();
+        const since = reportPeriod('since-last-month', now);
+        expect(quickPeriodOk(since, now)).toBe(true);
+        const q = quick(['purchase'], OCT_1, since, stored, now);
+        expect(q.groups.length).toBeGreaterThan(0);
+        q.groups.forEach(g => expect(g.totals).toEqual(expected(g.key, ['purchase'], ['2026-09', '2026-10'])));
+        expect(quickPeriodOk({ from: since.from, to: since.to - 3600000 }, now)).toBe(false);
+    });
     test('a kind not in the item list has no stats: it is listed as left out', () => {
         const q = quickItemSummary({ kinds: [...kinds, { key: 'unmatched lah', name: 'Unmatched Lah', hindiName: '' }], items: FIX.items, stats: stored,
             sources: [{ type: 'purchase', bills: phone.purchase }], period: ALL, windowFrom: OCT_1 });

@@ -276,6 +276,7 @@ describe('Ask page: item reports (ASK-5)', () => {
         };
         FirebaseService.reportItemStats.mockResolvedValue({ meta: { backfillDone: true }, docs: [{ id: 'k_2026', itemId: 'k', year: '2026', months }] });
         await AskManager.ask('lah kitna kharida ab tak');
+        await AskManager.quickPending;
         expect(FirebaseService.reportItemStats).toHaveBeenCalledWith(['k']);
         expect(answers()).toContain('Quick figure from Insights › Seasons (kg × rate, before labour; no bills read):');
         expect(answers()).toContain('Lah Kusmi: 150 kg · average ₹206.67/kg · ₹31,000 (2 bills)');
@@ -290,11 +291,36 @@ describe('Ask page: item reports (ASK-5)', () => {
         expect(answers()).toContain('After labour: ₹30,910');
     });
 
-    test('ASK-7 hi: the quick figure in Hindi, kg as kg', async () => {
-        await setLang('hi');
+    test('ASK-7: the answer and its Load button do not wait for the item stats; the quick figure is added when they come', async () => {
+        let arrive;
+        FirebaseService.reportItemStats.mockImplementation(() => new Promise((resolve) => { arrive = resolve; }));
+        const stats = { meta: { backfillDone: true }, docs: [{ id: 'k_2026', itemId: 'k', year: '2026', months: { 'm2026-02': { purchase: { kg: 100, amount: 20000, bills: 1 } } } }] };
+        await AskManager.ask('lah kitna kharida ab tak');
+        expect(answers()).toContain('not on this phone');
+        expect(document.querySelectorAll('#askAnswers .ask-load')).toHaveLength(1);
+        expect(answers()).not.toContain('Quick figure');
+        arrive(stats);
+        await AskManager.quickPending;
+        expect(answers()).toContain('Lah Kusmi: 150 kg · average ₹206.67/kg · ₹31,000 (2 bills)');
+        // a quick figure for an answer already replaced (Change) or a person signed out is dropped
+        await AskManager.changeReport(AskManager.answers[0].id, 'range', 'this-year');
+        const replaced = arrive;
+        await AskManager.changeReport(AskManager.answers[0].id, 'range', 'last-year');
+        replaced(stats);
+        await new Promise(r => setTimeout(r, 0));
+        expect(AskManager.answers[0].answer.period.preset).toBe('last-year');
+        expect(answers()).not.toContain('Quick figure');
+        AskManager.reset();
+        arrive(stats);
+        await AskManager.quickPending;
+        expect(document.getElementById('askAnswers').innerHTML).toBe('');
+    });
+
+    test('ASK-7 hi: the quick figure in Hindi, kg as kg', async () => {        await setLang('hi');
         try {
             FirebaseService.reportItemStats.mockResolvedValue({ meta: { backfillDone: true }, docs: [{ id: 'k_2026', itemId: 'k', year: '2026', months: { 'm2026-02': { purchase: { kg: 100, amount: 20000, bills: 1 } } } }] });
             await AskManager.ask('लाह कितना खरीदा अब तक');
+            await AskManager.quickPending;
             expect(answers()).toContain('कारोबार › मौसम से झटपट आँकड़ा');
             expect(answers()).toContain('Lah Kusmi: 150 kg · औसत ₹206.67/kg · ₹31,000 (2 बिल)');
         } finally {
@@ -317,7 +343,8 @@ describe('Ask page: item reports (ASK-5)', () => {
         // the stats can't be read (offline, or never built): the answer is as before
         FirebaseService.reportItemStats.mockRejectedValueOnce(Object.assign(new Error('offline'), { code: 'unavailable' }));
         await AskManager.ask('lah kitna kharida ab tak');
-        expect(AskManager.answers[0].answer.quick).toBeNull();
+        await AskManager.quickPending;
+        expect(AskManager.answers[0].answer.quick).toBeUndefined();
         expect(answers()).not.toContain('₹');
     });
 
