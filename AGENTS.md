@@ -165,7 +165,8 @@ In order:
   token already switches with the theme and mode; the old `.dark-mode` rules go screen by screen). Text on a fill uses its
   ink token (below). Use the component classes in `forms.css` / `surfaces.css` and keep old classes and every id as hooks.
   **Icons come from the sprite** (`<use href="#i-…">`, below); a script that draws one uses a shared `icon(name)` helper
-  (`js/ui/icons.js`, added with the first such script) with a constant name. No emoji in navigation, titles or buttons.
+  (`js/ui/icons.js`, added with the first such script, which also makes `icon-sprite.test.js` check its names) with a
+  constant name. No emoji in navigation, titles or buttons.
   Print and receipts never read theme tokens.
 - **Colours come from design tokens** (`www/css/variables.css`: semantic `--bg`, `--surface`,
   `--ink`, `--accent`, `--positive`…, component tokens, and the old names such as
@@ -178,8 +179,8 @@ In order:
   `[data-mode="dark"]` (`body.dark-mode` mirrors it). The pre-paint `#themeBoot` reads the same keys; it is data-only, so a new
   theme never changes it or its CSP hash. A theme is a registry entry in `js/ui/themes.js` plus a tokens-only file
   `www/css/themes/<id>.css` (imported in `styles.css`, ≤1.5 KB gzip, colours only inside `@media screen` so print stays
-  Modern light; `tests/ci/themes.test.js`), names in en+hi, and a row in `tests/ci/theme-contrast.test.js` /
-  `tests/e2e/themes.spec.js` (axe per theme × mode). Text on a fill uses its ink token, never white (`--btn-primary-ink`, `--btn-sale-ink`, `--on-mode-wholesale`, `--btn-danger-ink`, `--on-accent-strong`; guarded in `themes.test.js`):
+  Modern light; `tests/ci/themes.test.js`), names in en+hi, and rows in `tests/e2e/themes.spec.js` (axe per theme × mode;
+  `tests/ci/theme-contrast.test.js` reads the registry). Text on a fill uses its ink token, never white (`--btn-primary-ink`, `--btn-sale-ink`, `--on-mode-wholesale`, `--btn-danger-ink`, `--on-accent-strong`; guarded in `themes.test.js`):
   dark themes have a light accent. The gallery preview (`ThemeManager.preview`) never saves; leaving Settings cancels it.
 - **Type comes from tokens too**: font sizes `--fs-caption|sm|body|lead|title|display|hero` and weights
   `--w-regular|label|strong` (400/600 only; labels go regular in Hindi, `--w-strong` is 500 on the Android app).

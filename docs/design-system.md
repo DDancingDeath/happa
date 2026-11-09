@@ -22,12 +22,12 @@ layer-2 tokens. Nothing else changes per theme.
 
 | Layer | What | Tokens | Set by |
 |---|---|---|---|
-| **1. Semantic** | Colours by meaning, elevation, focus, type faces, shape | `--bg`, `--surface`, `--surface-2`, `--surface-3`, `--line`, `--line-strong`, `--ink`, `--ink-2`, `--ink-3`, `--ink-placeholder`, `--scrim`; `--accent`, `--accent-hover`, `--accent-strong`, `--accent-text`, `--accent-soft`, `--accent-line`; `--mode-sale`, `--mode-wholesale`, `--mode-rentals` (+ `-soft`); `--positive`, `--negative`, `--warning`, `--info` (+ `-soft`, `-line`), `--negative-fill`, `--warning-dot`, `--caution-soft`; the **inks** `--on-accent`, `--on-accent-strong`, `--on-mode-sale`, `--on-mode-wholesale`, `--on-caution-soft`; `--e1`…`--e3`, `--highlight`, `--focus`, `--state-hover`; `--font-ui`, `--font-display`, `--font-num`, `--font-hero`, `--w-display`, `--tracking-display`; `--r-xs`, `--r-sm`, `--r-control`, `--r-panel`, `--r-chip`, `--r-sheet`, `--r-full`, `--rule-style` | every theme (a light block, and a dark block unless it is always dark) |
-| **2. Component** | Materials and roles, derived from layer 1 | `--page-bg`, `--panel-bg`, `--panel-border`, `--panel-shadow`, `--input-bg`, `--input-border`, `--bar-bg`, `--bar-border`, `--seg-track`, `--seg-on`, `--btn-primary-bg`, `--btn-primary-ink`, `--btn-primary-shadow`, `--btn-sale-bg`, `--btn-sale-ink`, `--btn-danger-bg`, `--btn-danger-ink`, `--toast-bg`, `--toast-ink`, `--toast-pos/-neg/-warn/-info`, `--preview-apply-line`, `--mode-purchase` | defaults in `variables.css`; a theme overrides only what makes it different |
+| **1. Semantic** | Colours by meaning, elevation, focus | `--bg`, `--surface`, `--surface-2`, `--surface-3`, `--line`, `--line-strong`, `--ink`, `--ink-2`, `--ink-3`, `--ink-placeholder`, `--scrim`; `--accent`, `--accent-hover`, `--accent-strong`, `--accent-text`, `--accent-soft`, `--accent-line`; `--mode-sale`, `--mode-wholesale`, `--mode-rentals` (+ `-soft`); `--positive`, `--negative`, `--warning`, `--info` (+ `-soft`, `-line`), `--negative-fill`, `--warning-dot`, `--caution-soft`; the **inks** `--on-accent`, `--on-accent-strong`, `--on-mode-sale`, `--on-mode-wholesale`, `--on-caution-soft`; `--e1`…`--e3`, `--highlight`, `--focus`, `--state-hover` | every theme (a light block, and a dark block unless it is always dark) |
+| **2. Component** | Shape and type roles (declared beside layer 1, on `:root, [data-theme]`); materials and button inks derived from layer 1 (on `:root, [data-theme], [data-mode]`) | `--r-xs`, `--r-sm`, `--r-control`, `--r-panel`, `--r-chip`, `--r-sheet`, `--r-full`, `--rule-style`; `--font-ui`, `--font-display`, `--font-num`, `--font-hero`, `--w-regular`, `--w-strong`, `--w-display`, `--tracking-display`; `--page-bg`, `--panel-bg`, `--panel-border`, `--panel-shadow`, `--input-bg`, `--input-border`, `--bar-bg`, `--bar-border`, `--seg-track`, `--seg-on`, `--btn-primary-bg`, `--btn-primary-ink`, `--btn-primary-shadow`, `--btn-sale-bg`, `--btn-sale-ink`, `--btn-danger-bg`, `--btn-danger-ink`, `--toast-bg`, `--toast-ink`, `--toast-pos/-neg/-warn/-info`, `--preview-apply-line`, `--mode-purchase` | defaults in `variables.css`; a theme overrides only what makes it different |
 | **3. Components** | `.btn`, `.field`, `.seg`, `.panel`, `.row`, `.notice` … (§3) | read tokens, never raw colours | base CSS only |
 
 **Not per theme** (on `:root`): the type scale `--fs-caption|sm|body|lead|title|display|hero`,
-`--lh-body`, the weights `--w-regular|label|strong`, spacing `--sp-1…10`, `--gutter`,
+`--lh-body`, `--w-label`, spacing `--sp-1…10`, `--gutter`,
 `--section-gap`, `--row-h`, `--control-h(-sm)`, motion `--ease`, `--dur-1…3`. Layouts are therefore
 identical in every theme. Hindi (`html[lang="hi"]`) raises `--fs-sm` / `--fs-body` and `--lh-body`
 and makes `--w-label` 400; the Android app (`html.platform-android`) uses weight 500.
@@ -36,10 +36,11 @@ and makes `--w-label` 400; the Android app (`html.platform-android`) uses weight
 `--shadow-md`, `--radius`, …) are aliases of the tokens above, so older stylesheets follow every
 theme. New code uses the new names.
 
-**Why the third selector.** Every token defined with `var()` sits in a block on
-`:root, [data-theme], [data-mode]`, so it is recomputed on each themed element. That is what lets a
+**Why the third selector.** The materials and inks derived with `var()` from layer-1 colours sit in a block on
+`:root, [data-theme], [data-mode]`, so they are recomputed on each themed element. That is what lets a
 gallery card (`<span data-theme="nature" data-mode="dark">`) render another theme in place. A new
-derived token goes in that block too.
+derived colour token goes in that block too. (The old `--radius*`, `--space-*` and `--transition*`
+aliases are on `:root` only, so a scoped preview keeps the page's values for them; new code uses `--r-*`.)
 
 ### Modes and themes
 
@@ -72,8 +73,9 @@ fills (a pale accent, a light green sale fill), so white text there is unreadabl
 ## 2. Contrast
 
 Every text token keeps WCAG AA (4.5:1) on the surfaces it is used on, in every theme and mode:
-ink 1–3 and the placeholder on `--bg` / `--surface` / `--surface-2`, accent text, each ink on its
-fill, status colours on surfaces and on their `-soft` fills, the toast.
+`--ink` on `--bg` / `--surface`, `--ink-2` / `--ink-3` and accent text also on `--surface-2`, the
+placeholder on `--input-bg`, each ink on its fill, status colours on surfaces and on their `-soft`
+fills, the toast.
 
 - `tests/ci/theme-contrast.test.js` checks those pairs from the CSS (resolving `var()` chains and
   compositing translucent fills) for every theme × mode. A theme can't merge with a failing pair.
@@ -96,14 +98,14 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   (`.pos/.neg/.warn/.info`).
 - **Panel and rows** `.panel`, `.row` (`.row-main`, `.row-title`, `.row-meta`, `.row-trail`,
   `.row-amt`, `.lead-icon`). **Metrics** `.metrics > .metric`, `.hero-num`, `.display-num`, `.meter`.
-- **Feedback** `.notice` (`.pos/.neg/.warn/.info`), `.empty`, `.skel`, `.toast` (near-black in every
-  theme), `.dialog` / `.sheet` / `.scrim` (old `.modal-overlay > .modal-box`), `.spinner` (blocking
+- **Feedback** `.notice` (`.pos/.neg/.warn/.info`), `.empty`, `.skel`, `.toast` (near-black; light in the
+  Dark theme), `.dialog` / `.sheet` / `.scrim` (old `.modal-overlay > .modal-box`), `.spinner` (blocking
   saves only).
 - **Tones** for text written by scripts: `.tone-pos`, `.tone-neg`, `.tone-warn`, `.tone-info`,
   `.tone-muted`, instead of inline colours.
 
-Money and weight figures use `tabular-nums`. There is no uppercase and no letter-spacing on
-Devanagari.
+Money and weight figures use `tabular-nums`. New CSS adds no uppercase and no letter-spacing that
+can reach Hindi text (a few older table headers still do; they go with their screens).
 
 ## 4. Icons
 
@@ -116,12 +118,13 @@ Line icons on a 24 grid, 1.75 stroke, `currentColor`, from the sprite at the top
 
 Sizes: `.i-sm` 16, `.i` 20, `.i-lg` 24. An icon next to text is `aria-hidden`; an icon-only
 button has an `aria-label` (through `data-i18n-aria-label`). A new icon is a new `<symbol id="i-…">`
-in the sprite. `tests/ci/icon-sprite.test.js` checks that every `#i-*` referenced in templates and
-scripts exists and that the sprite stays small.
+in the sprite. `tests/ci/icon-sprite.test.js` checks that every literal `#i-*` in `index.html`,
+templates, scripts and CSS has a symbol, and that the sprite stays small.
 
 Scripts that draw an icon write the same markup with a constant icon name. The first module that
 needs this adds one shared helper (`icon(name)` in `www/js/ui/icons.js`) returning that constant
-string, so `check:html-escape` stays clean; never build an icon name from data.
+string, so `check:html-escape` stays clean; never build an icon name from data. The same PR
+extends `icon-sprite.test.js` to check the names passed to `icon()`, which it does not see today.
 
 Emoji stay only where they are content: WhatsApp share text, receipts and print, and text people
 type.
@@ -139,9 +142,10 @@ type.
 2. **Wire it.** Add `@import url('css/themes/<id>.css');` to `www/styles.css` after `variables.css`,
    then `npm run build:css`. Add `{ id: '<id>', kind: 'both' | 'dark' }` to `THEMES` in
    `www/js/ui/themes.js` (the order is the gallery order).
-3. **Words.** Add `ui.settings.theme_<id>` and `ui.settings.theme_<id>_desc` to `i18n/en.js` and
-   `i18n/hi.js`.
-4. **Test.** Add the theme × mode rows to `COMBOS` in `tests/e2e/themes.spec.js`. The Jest tests pick
+3. **Words.** Add `ui.settings.theme_<id>` and `ui.settings.theme_<id>_desc` to `www/js/i18n/en.js` and
+   `www/js/i18n/hi.js`.
+4. **Test.** In `tests/e2e/themes.spec.js`, add the theme × mode rows to `COMBOS`, add the id to
+   `DARK_KIND` if it is always dark, and raise the gallery's card count (`toHaveCount`). The Jest tests pick
    the theme up from the registry: `tests/ci/themes.test.js` (file ↔ registry ↔ styles.css ↔ i18n,
    tokens only, screen-only colours, **≤1.5 KB gzip**) and `tests/ci/theme-contrast.test.js` (every
    pair at 4.5:1).
@@ -162,7 +166,7 @@ toward the 1.5 KB.
 | Do | Don't |
 |---|---|
 | Use tokens for every colour, size, weight, radius and shadow | Write a hex, `rgb()` or colour name in `www/css`, a template `style=` / `<style>` or `www/js` (`colour-guard`) |
-| Put text on a fill in that fill's ink token | Put `color: white` / `#fff` on an accent, sale, wholesale or danger fill (`themes.test.js` fails) |
+| Put text on a fill in that fill's ink token | Put `color: white` / `#fff` on an accent, sale or wholesale fill (`themes.test.js` fails); only the danger fill and `--accent-strong` take white, through their ink tokens |
 | Keep theme differences in `css/themes/<id>.css` | Add `[data-theme=…]`, `[data-mode=…]` or `.dark-mode` selectors in page CSS: a token already switches with the mode (the older `.dark-mode` rules are removed screen by screen) |
 | Use a new token in `variables.css` when nothing fits, with a value for light and dark | Add a page-local custom property holding a colour |
 | Use the type scale `--fs-*` and `--w-*` | Write a raw `font-size` / `font-weight` (`type-guard`), use 500, uppercase or letter-spacing on Hindi |
@@ -170,7 +174,7 @@ toward the 1.5 KB.
 | Mark state with tone classes (`.tone-neg`, `.tag.warn`) from scripts | Write inline colours from JS (`el.style.color = …`) |
 | Use sprite icons (§4) | Use emoji in navigation, titles or buttons |
 | Put desktop-only rules in `desktop.css` | Put `@media (min-width: 1024px)` rules in page CSS |
-| Animate only `transform` and `opacity`; respect reduced motion | Use `backdrop-filter` on phone layouts |
+| Move things with `transform` and `opacity` only (colour and shadow transitions on hover are fine); respect reduced motion | Use `backdrop-filter` on phone layouts |
 | Leave print and receipts alone | Let a theme colour reach `@media print`, `printer.js`, `receipt-drawing.js` or `rent-receipt.css` |
 
 ## 7. Guards
@@ -179,7 +183,7 @@ toward the 1.5 KB.
 |---|---|
 | `tests/ci/colour-guard.test.js` | a file gaining a hard-coded colour (baseline `tests/colour-baseline.json`, may only go down: `COLOUR_BASELINE=lower`) |
 | `tests/ci/type-guard.test.js` | a raw `font-size` / `font-weight` (baseline `tests/type-baseline.json`, `TYPE_BASELINE=lower`) |
-| `tests/ci/themes.test.js` | a theme missing from the registry, `styles.css` or i18n; a non-token rule or a colour outside `@media screen` in a theme file; a theme over 1.5 KB gzip; white text on a theme fill |
+| `tests/ci/themes.test.js` | a theme missing from the registry, `styles.css` or i18n; a non-token rule or a colour outside `@media screen` in a theme file; a theme over 1.5 KB gzip; a rule in `www/css` or a template `<style>` that sets an accent, sale, wholesale or status fill and white text together |
 | `tests/ci/theme-contrast.test.js` | a text / background pair under 4.5:1 in any theme × mode |
 | `tests/ci/icon-sprite.test.js` | a missing `#i-*` symbol, or the sprite growing too large |
 | `www/js/__tests__/theme-manager.test.js`, `theme-boot.test.js` | Appearance, System, preview and the pre-paint boot |
