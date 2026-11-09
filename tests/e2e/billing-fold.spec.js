@@ -3,7 +3,9 @@
  * Save / Print are on screen without scrolling the page; on a small phone (360×640),
  * scrolled to the bottom, they show whole, not under the bottom bar. Both bill modes,
  * with a line on the bill so the totals column has its real height. The page scrolls
- * inside the open tab (`.tab.active`), not the window.
+ * inside the open tab (`.tab.active`), not the window. On the phone Save / Print sit in the
+ * action bar above the bottom bar, with the payable beside them, and the last field still
+ * scrolls clear of it.
  */
 const { test, expect, login, showTab } = require('./support/app');
 
@@ -14,8 +16,8 @@ const SIZES = [
 ];
 
 const MODES = {
-    purchase: { btn: '#purchaseModeBtn', item: '#billItem', rate: '#billRate', weight: '#newWeight', section: '#purchaseSection', totals: ['#billTotal', '#amountPayable'], actions: ['#saveBillBtn', '#printBillBtn'], last: '#billDate' },
-    sale: { btn: '#saleModeBtn', item: '#saleItem', rate: '#saleRate', weight: '#saleWeight', section: '#saleSection', totals: ['#saleTotal'], actions: ['#saveSaleBtn', '#printSaleBtn'], last: '#saleDate' }
+    purchase: { btn: '#purchaseModeBtn', item: '#billItem', rate: '#billRate', weight: '#newWeight', section: '#purchaseSection', totals: ['#billTotal', '#amountPayable'], actions: ['#saveBillBtn', '#printBillBtn'], last: '#billDate', bar: ['#barPayable', '#amountPayable'] },
+    sale: { btn: '#saleModeBtn', item: '#saleItem', rate: '#saleRate', weight: '#saleWeight', section: '#saleSection', totals: ['#saleTotal'], actions: ['#saveSaleBtn', '#printSaleBtn'], last: '#saleDate', bar: ['#barReceivable', '#amountReceivable'] }
 };
 
 /** Where an element is on screen, and whether it is the topmost thing at its centre. */
@@ -111,11 +113,16 @@ for (const size of SIZES) {
                 expect(p.right, `not cut off on the right (${where})`).toBeLessThanOrEqual(p.vw);
                 expect(p.onTop, `nothing covers it (${where})`).toBe(true);
             }
-            if (size.fold) {
-                // The fields between the totals and Save/Print (notes, date) can be reached by scrolling.
-                expect(await reachable(page, m.last), `${m.last} reachable by scrolling`).toBe(true);
-                await scrollTab(page, 'top');
+            if (!size.fold) {
+                // The bar repeats the card's figure, on screen and uncovered
+                const [bar, card] = m.bar;
+                const p = await place(page, bar);
+                expect(p.top >= 0 && p.bottom <= p.vh && p.onTop, `${bar} on screen (${JSON.stringify(p)})`).toBe(true);
+                await expect(page.locator(bar)).toHaveText(await page.locator(card).textContent());
             }
+            // The fields between the totals and Save/Print (notes, date) can be reached by scrolling.
+            expect(await reachable(page, m.last), `${m.last} reachable by scrolling`).toBe(true);
+            await scrollTab(page, 'top');
             await testInfo.attach(`billing-${mode}-${size.width}x${size.height}.png`, {
                 body: await page.screenshot(), contentType: 'image/png'
             });

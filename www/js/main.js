@@ -1351,7 +1351,9 @@ window.app = {
         init: () => loadAsk().then(m => m.init())
             .catch(e => console.warn('Ask not loaded:', e?.message || e)),
         submit: (event) => { event?.preventDefault?.(); return loadAsk().then(m => m.submit(event)); },
-        ask: (text) => loadAsk().then(m => m.ask(text))
+        ask: (text) => loadAsk().then(m => m.ask(text)),
+        loadOlder: (id) => loadAsk().then(m => m.loadOlder(id)),
+        download: (id, format) => loadAsk().then(m => m.download(id, format))
     },
 
     // Statements (redesign §5.4): statements.js is imported on first use

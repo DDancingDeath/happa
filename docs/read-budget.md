@@ -62,6 +62,15 @@ on any phone bumps it), and for at most a day; otherwise it is dropped and every
 read again. In the benchmark's shop, closing the app once mid-rebuild cost 16,118 reads
 until the checkpoint was stored before, and 10,456 with the resume.
 
+## Reads the owner asks for (Ask item reports, #415)
+
+An Ask item report (calculations.md ASK-5) for a period older than the loaded window reads
+the `purchases` collection once (all time: every purchase bill, about 1,400 documents in the
+3-year benchmark shop; reading all history collections would be about 8,300). It happens only
+after the owner confirms the estimate Ask shows, never on a page load, and not after a quota
+error or past the session cap. The meter shows these reads as `ask report: purchases get`. The
+bills stay in memory for the session, so asking again reads nothing.
+
 ## When the quota runs out
 
 1. Tell the shop to keep billing: bills save on the phone and sync after the reset.

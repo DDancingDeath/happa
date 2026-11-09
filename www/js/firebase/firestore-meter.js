@@ -63,6 +63,21 @@ export function sourceLabel(ref, kind) {
     return `${collection}${isDoc ? ' (doc)' : ''} ${kind}`;
 }
 
+/** Queries counted under their own name in the meter (Ask item reports, #415). */
+const queryTags = new WeakMap();
+
+/**
+ * Counts this query's reads as "<tag>: <collection> get".
+ * @template T
+ * @param {T} query
+ * @param {string} tag
+ * @returns {T}
+ */
+export function tagQuery(query, tag) {
+    if (query && typeof query === 'object') queryTags.set(query, String(tag));
+    return query;
+}
+
 /** Writes sent and failed reads/writes since the app opened (#119 Status tab). */
 const ioCounts = { writes: 0, writeErrors: 0, readErrors: 0, lastWriteAckAt: null };
 const isWriteSource = (source) => / (set|update|delete|add)$|^batch commit$/.test(String(source));
@@ -219,10 +234,12 @@ export function installFirestoreMeter(fs) {
     installed = true;
 
     patch(Query.prototype, 'get', (orig) => function (...args) {
-        const source = sourceLabel(this, 'get');
+        const path = sourceLabel(this, 'get');
+        const tag = queryTags.get(this);
+        const source = tag ? `${tag}: ${path}` : path;
         return wrapPromise(orig.apply(this, args), source, snap => {
             quotaGuard.reads.add(source, readsForQueryGet(snap));
-            noteServerQueryRead(source, snap);
+            noteServerQueryRead(path, snap);
         });
     });
     patch(Query.prototype, 'onSnapshot', (orig) => function (...args) {
