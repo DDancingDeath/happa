@@ -68,7 +68,7 @@ describe('happa.config.json', () => {
         expect(files['android/app/build.gradle']).toMatch(/namespace "com\.happa"/);
         // A new project moves the CSP's Auth frame with it (Google sign-in, docs/google-sign-in.md)
         const appCsp = JSON.parse(files['firebase.json']).hosting.headers[0].headers.find((h) => h.key === 'Content-Security-Policy').value;
-        expect(appCsp).toContain("frame-src 'self' https://happa-shop.firebaseapp.com;");
+        expect(appCsp).toContain("frame-src 'self' https://happa-shop.firebaseapp.com https://www.google.com/recaptcha/;");
         expect(appCsp).not.toContain('happa-bfc07');
     });
 
@@ -90,6 +90,23 @@ describe('happa.config.json', () => {
         expect(configProblems(raw).join('\n')).toMatch(/googleSignIn must be/);
         raw.googleSignIn = { ios: true };
         expect(configProblems(raw).join('\n')).toMatch(/googleSignIn must be/);
+    });
+
+    test('App Check (#89) is off without a site key; appCheck.siteKey reaches firebaseConfig.js', () => {
+        const off = Object.fromEntries(plan(ROOT, filled()).map((p) => [p.file, p.wanted]));
+        expect(off['www/firebaseConfig.js']).toContain('const appCheckSiteKey = "";');
+        const raw = filled();
+        delete raw.appCheck;
+        expect(derive(raw).appCheckSiteKey).toBe('');
+        expect(configProblems(raw)).toEqual([]);
+        raw.appCheck = { siteKey: ' 6LcTestKey_-abc ' };
+        const on = Object.fromEntries(plan(ROOT, raw).map((p) => [p.file, p.wanted]));
+        expect(on['www/firebaseConfig.js']).toContain('const appCheckSiteKey = "6LcTestKey_-abc";');
+        expect(configProblems(raw)).toEqual([]);
+        raw.appCheck = { siteKey: '"; alert(1); "' };
+        expect(configProblems(raw).join('\n')).toMatch(/appCheck must be/);
+        raw.appCheck = { enforce: true };
+        expect(configProblems(raw).join('\n')).toMatch(/appCheck must be/);
     });
 
     test('only the app site serves www/; redirect sites only 301 every path to it', () => {

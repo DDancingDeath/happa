@@ -80,6 +80,7 @@ runs fail instead of deploying. After rebasing on `main` they preview to happa.
 | `appName` / `appNameHi` | ✅ `happa`: all lowercase wherever it is shown, the same in English and Hindi |
 | `apkName` | ✅ `happa` → `happa.apk` / `happa-vX.Y.Z.apk`, release "happa vX.Y.Z" |
 | `ownerConfirmed` | ✅ `true` |
+| `appCheck.siteKey` | empty = App Check off. A reCAPTCHA v3 site key turns it on in monitor mode ([security.md](security.md), "App Check") |
 
 All values are filled and `npm run check:happa-config` passes. The commands below are
 only needed if a value changes again. `apply` also moves `MainActivity.java` to the
@@ -357,12 +358,12 @@ Run workflow) to confirm they read the new project.
 
 Written by `npm run apply:happa-config` from `happa.config.json`:
 
-- `.firebaserc` (default project), `firebase.json` (`hosting.site`)
+- `.firebaserc` (default project), `firebase.json` (`hosting.site`, the CSP's `frame-src`)
 - `capacitor.config.json` (`appId`, `appName`)
 - `android/app/build.gradle` (`applicationId` and `namespace`), and `MainActivity.java` is moved to `android/app/src/main/java/com/happa/`
 - `android/app/src/main/res/values/strings.xml` (`app_name`, `title_activity_main`, `package_name`, `custom_url_scheme`)
 - `www/manifest.webmanifest` (`name`, `short_name`)
-- `www/firebaseConfig.js` (the `<happa-config>` block)
+- `www/firebaseConfig.js` (the `<happa-config>` block, App Check site key included)
 - `www/js/config/app-identity.js` (name, site, download/APK/release URLs). It is used by the update banner, share text, What's new, password-reset link, reports and notifications
 - `www/index.html` (`<title>`), `www/js/i18n/en.js` + `hi.js` (`ui.app.name`, used by the login screen, side menu and About)
 - `www/download.html` (`data-happa*` markers), `www/img/download-qr.svg`

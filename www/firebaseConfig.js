@@ -76,6 +76,7 @@ const firebaseConfig = {
   "appId": "1:516108799937:web:a4e3fdbff054b9cc07a940",
   "measurementId": "G-1514HNS14K"
 };
+const appCheckSiteKey = "";
 const googleSignInWeb = false;
 // </happa-config>
 
@@ -92,6 +93,8 @@ firebaseConfig.authDomain = authDomainFor(window.location.hostname, firebaseConf
 // Expose environment globally
 window.APP_ENV = APP_ENV;
 window.COLLECTION_PREFIX = COLLECTION_PREFIX;
+// App Check (monitor mode): js/services/app-check.js starts it after the first screen, only with a key
+window.APP_CHECK_SITE_KEY = appCheckSiteKey;
 
 // Helper function to get prefixed collection name
 window.getCollection = (name) => COLLECTION_PREFIX + name;
