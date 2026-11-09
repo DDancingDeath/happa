@@ -21,7 +21,8 @@
     padding: 8px 12px;
     border-radius: var(--r-panel);
     border: 1px solid var(--negative-line);
-    background: var(--negative-soft);
+    /* The soft tint over an opaque surface: the banner sticks over the bill as it scrolls */
+    background: linear-gradient(var(--negative-soft), var(--negative-soft)), var(--surface);
     color: var(--negative);
     font-size: var(--fs-sm);
 }
@@ -32,7 +33,7 @@
 
 .bill-check-banner.bill-check-warn {
     border-color: var(--warning-line);
-    background: var(--warning-soft);
+    background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--surface);
     color: var(--warning);
 }
 
