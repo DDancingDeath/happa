@@ -51,7 +51,7 @@
 - [कैश (गल्ला)](pages/cash.hi.md)
 - [खर्च](pages/expenses.hi.md)
 - [हिसाब (मुनाफ़ा, नकद, खर्च, कुल पूंजी)](pages/money.hi.md)
-- [कारोबार (करना है, माल, पार्टी, मौसम)](pages/insights.hi.md)
+- [कारोबार (करना है, आइटम, पार्टी, मौसम)](pages/insights.hi.md)
 - [बही-खाता](pages/statements.hi.md)
 - [पूछें](pages/ask.hi.md)
 - [रेट](pages/rates.hi.md)

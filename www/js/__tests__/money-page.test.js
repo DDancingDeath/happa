@@ -15,7 +15,7 @@ import {
     buildSnapshot, figuresFromSnapshot, partialFigures, sumFigures, rangeFigures, monthsToRoll, monthKeysBetween, lastMonthKeys, monthBounds, SNAPSHOT_VERSION, outdatedOlderMonths,
     snapshotCustomers
 } from '../utils/month-snapshots.js';
-import { profitTakeaways, cashTakeaways, spendingTakeaways, worthTakeaways } from '../utils/takeaways.js';
+import { profitTakeaways, noSalesTakeaway, cashTakeaways, spendingTakeaways, worthTakeaways } from '../utils/takeaways.js';
 import { setInsightsContext, resetInsightsContextForTests, getInsightsContext, contextMonth } from '../utils/insights-context.js';
 import { t, tn, setLang } from '../i18n/index.js';
 import { billsOfLines } from '../utils/finance-breakdown.js';
@@ -170,6 +170,16 @@ describe('comparisons and takeaways', () => {
         expect(list.map(x => x.key)).toEqual(['ui.tk.loss']);
         expect(t(list[0].key, list[0].params)).toBe('Loss of ₹111 in this period.');
         expect(profitTakeaways({ profit: null })).toEqual([]);
+    });
+
+    test('no sales (#92): the empty state is said first; the other sentences stay', () => {
+        const none = noSalesTakeaway({ count: 0, month: 'Oct 2026', ongoing: true });
+        const say = (list) => list.map(x => t(x.key, x.params));
+        expect(say(profitTakeaways({ profit: -90, noSales: none }))).toEqual(['No sales in Oct 2026 yet.', 'Loss of ₹90 in this period.']);
+        expect(say(profitTakeaways({ profit: null, noSales: none }))).toEqual(['No sales in Oct 2026 yet.']);
+        expect(noSalesTakeaway({ count: 3, month: 'Oct 2026', ongoing: true })).toBeNull();
+        expect(say([noSalesTakeaway({ count: 0 }), noSalesTakeaway({ count: 0, ongoing: true }), noSalesTakeaway({ count: 0, week: true })]))
+            .toEqual(['No sales in this period.', 'No sales in this period yet.', 'No sales yet this week.']);
     });
 
     test('this month so far compares with the same days: "vs 1–21 Sep", "vs 1–21 Oct 2025"; a whole month by its name (O-19)', () => {
@@ -532,6 +542,32 @@ describe('#92 sign-off fixes', () => {
         MoneyManager.toggleCompare();
         expect(btn.getAttribute('aria-expanded')).toBe('false');
         expect(head.classList.contains('ins-cmp-open')).toBe(false);
+    });
+
+    test('no sale bill in the period: "No sales in Oct 2026 yet", a past month without "yet", today, Hindi; the figures stay', () => {
+        AppState.salesHistory = [];
+        AppState.retailSalesHistory = [];
+        const noSales = { ...data, wholesaleSales: [], retailSales: [] };
+        MoneyManager.init('profit');
+        const tk = () => document.getElementById('moneyProfitTakeaway').textContent;
+        expect(tk()).toMatch(/^No sales in Oct 2026 yet\./);
+        expect(shown('moneySales')).toBe(0);
+        expect(shown('moneyProfitValue')).toBe(rupee(O.metrics(noSales, OCT).M6_profit));
+        MoneyManager.step(-1);
+        expect(tk()).toMatch(/^No sales in Sep 2026\./);
+        MoneyManager.setPreset('today');
+        expect(tk()).toMatch(/^No sales yet today\./);
+        MoneyManager.setPreset('this-month');
+        setLang('hi');
+        try {
+            MoneyManager.render();
+            expect(tk()).toMatch(/^\S+ 2026 में अभी तक कोई बिक्री नहीं।/);
+        } finally {
+            setLang('en');
+        }
+        load();
+        MoneyManager.render();
+        expect(tk()).not.toMatch(/No sales/);
     });
 });
 

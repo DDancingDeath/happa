@@ -739,7 +739,7 @@ describe('#104 "Mark as cleared" asks how and records it (no silent write-off)',
         expect(toast).toHaveBeenCalledWith('Please write a reason for the write-off');
         expect(ctx.fake.stats.writes).toBe(writes);
         expect(shown.title).toBe('Write off ₹495 as bad debt');
-        expect(shown.html).toContain('Money counts it as a bad debt');
+        expect(shown.html).toContain('Money counts it as a loss under Dues written off');
 
         reply('Shop closed down');
         expect(await OutstandingManager.writeOffDue('r1', 'retail')).toBe(true);
