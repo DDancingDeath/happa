@@ -413,6 +413,11 @@
     padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   }
 
+  /* The tab fades in without moving: a transform would hold the fixed bar for the animation */
+  #billing.tab.active {
+    animation-name: bill-fade-in;
+  }
+
   /* Room under the last field (notes, date) to scroll clear of the bar, and for focus scrolling */
   #billing.tab {
     padding-bottom: calc(96px + 72px + env(safe-area-inset-bottom, 0px));
@@ -424,4 +429,9 @@
   body:not(.biz-rentals):has(#billing.tab.active) .app-update-banner {
     bottom: calc(80px + 72px + env(safe-area-inset-bottom, 0px));
   }
+}
+
+@keyframes bill-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
