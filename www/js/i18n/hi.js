@@ -2541,6 +2541,7 @@ export default {
     'msg.cmp.not_saved': "अवधि सहेजी नहीं जा सकी।",
     'msg.cmp.not_loaded': "इस अवधि के बिल अभी लोड नहीं हुए।",
     'ui.money.month_to_date': "1 से {day} {month}",
+    'ui.money.cmp_days': "1–{day} {month}",
     'ui.money.today_label': "आज, {day}",
     'ui.money.week_label': "इस हफ़्ते, {from} – {to}",
     'ui.money.week_label_one': "इस हफ़्ते, {day}",

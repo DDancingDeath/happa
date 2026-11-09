@@ -288,7 +288,7 @@ export const MoneyManager = {
         const day = Number(periodBounds(x.from, x.to).last.slice(8));
         if (day >= daysInMonth(x.from)) return formatMonth(x.from, { lang, year });
         return day === 1 ? formatDay(x.from, { lang, year })
-            : t('ui.money.month_to_date', { month: formatMonth(x.from, { lang, year }), day });
+            : t('ui.money.cmp_days', { month: formatMonth(x.from, { lang, year }), day });
     },
 
     /** Bills, expenses… as the calculation layer wants them. */

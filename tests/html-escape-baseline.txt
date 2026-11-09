@@ -221,9 +221,9 @@ www/js/modules/money.js: rangeFigures(this.snapshots, r.from, r.to) (markup via 
 www/js/modules/money.js: rangeFigures(this.snapshots, r.from, r.to) (markup via this.renderSpending)
 www/js/modules/money.js: ref ? ` data-metric-ref="${ref}"` : '' ← ref
 www/js/modules/money.js: sharePct(c.total, max)
-www/js/modules/money.js: t('ui.money.month_to_date', { month: formatMonth(x.from, { lang, year }), day }) (markup via this.renderCash)
-www/js/modules/money.js: t('ui.money.month_to_date', { month: formatMonth(x.from, { lang, year }), day }) (markup via this.renderProfit)
-www/js/modules/money.js: t('ui.money.month_to_date', { month: formatMonth(x.from, { lang, year }), day }) (markup via this.renderSpending)
+www/js/modules/money.js: t('ui.money.cmp_days', { month: formatMonth(x.from, { lang, year }), day }) (markup via this.renderCash)
+www/js/modules/money.js: t('ui.money.cmp_days', { month: formatMonth(x.from, { lang, year }), day }) (markup via this.renderProfit)
+www/js/modules/money.js: t('ui.money.cmp_days', { month: formatMonth(x.from, { lang, year }), day }) (markup via this.renderSpending)
 www/js/modules/money.js: t('ui.money.stock_vs', { when: sinceLabel }) (markup via vsItem)
 www/js/modules/money.js: t('ui.money.stock_vs_not_known', { when: sinceLabel }) (markup via compareHtml)
 www/js/modules/money.js: tag ← onTap

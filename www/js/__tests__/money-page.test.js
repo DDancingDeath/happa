@@ -184,7 +184,8 @@ describe('comparisons and takeaways', () => {
         setLang('hi');
         try {
             MoneyManager.render();
-            expect(text()).toContain('1 से 21 सित॰');
+            expect(text()).toContain('1–21 सित॰ से');
+            expect(text()).not.toContain('1 से 21');
         } finally {
             setLang('en');
         }

@@ -2541,6 +2541,7 @@ export default {
     'msg.cmp.not_saved': "Could not save the range.",
     'msg.cmp.not_loaded': "Bills for this period are not loaded yet.",
     'ui.money.month_to_date': "1–{day} {month}",
+    'ui.money.cmp_days': "1–{day} {month}",
     'ui.money.today_label': "Today, {day}",
     'ui.money.week_label': "This week, {from} – {to}",
     'ui.money.week_label_one': "This week, {day}",
