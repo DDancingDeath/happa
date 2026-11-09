@@ -8,6 +8,9 @@
  *   node tools/migrate/migrate.js apply --bundle tools/migrate/out/bundle.json --project <newProjectId>
  *        [--key service-account.json | --emulator] [--yes] [--budget 12000] [--cursor <file>] [--restart] [--dev]
  *
+ *   node tools/migrate/migrate.js parties --in backup.json [--out-dir tools/migrate/out] [--scope due|all] [--salt-from <earlier parties-dryrun.json>]
+ *        [--mode fresh|full] [--carry-payables] [--include-hidden-wholesale-dues] [--no-names]   (#139: proposed parties, possible duplicates, dues per party; offline, writes nothing to Firebase)
+ *
  *   node tools/migrate/migrate.js convert --in rest-docs.json --out backup.json [--exclude a,b] [--exported-at ISO]
  *   node tools/migrate/migrate.js wipe --project <newProjectId> (--key service-account.json | --emulator) [--yes] [--test-domain @happa.local]
  *        [--bundle tools/migrate/out/bundle.json]
@@ -18,7 +21,7 @@
  * Service and test accounts on the denylist (lib/service-accounts.js, by email) are never carried:
  * `plan` leaves their users docs out, `auth:import` / `auth:filter` their logins, and `wipe` deletes them from Auth.
  *
- * `plan` and `convert` are offline. `apply`, `wipe` and `auth:import` are dry runs unless --yes is given.
+ * `plan`, `parties` and `convert` are offline. `apply`, `wipe` and `auth:import` are dry runs unless --yes is given.
  * `wipe` never deletes the Rentals data (rent_*, RENT_* audit entries, profiles with a rentRole: lib/wipe.js).
  * `--emulator` uses the local Firebase emulators (FIRESTORE_EMULATOR_HOST / FIREBASE_AUTH_EMULATOR_HOST)
  * and needs a demo-* --project (a real project id is refused).
@@ -110,6 +113,30 @@ async function apply() {
     if (!dryRun) console.log(`Writes this run: ${result.writes}. Cursor: ${cursorPath}`);
 }
 
+async function parties() {
+    const { partiesDryRun, saltFrom, toCsv, formatSummary } = await import('./lib/parties-dryrun.js');
+    const input = arg('--in');
+    if (!input) throw new Error('--in <decrypted backup.json> is required');
+    const outDir = arg('--out-dir') || fileURLToPath(new URL('./out', import.meta.url));
+    const backup = JSON.parse(fs.readFileSync(input, 'utf8'));
+    const saltFile = arg('--salt-from');
+    const salt = saltFile ? saltFrom(JSON.parse(fs.readFileSync(saltFile, 'utf8'))) : undefined;
+    const options = {
+        mode: arg('--mode'),
+        carryPayables: flag('--carry-payables') ? true : undefined,
+        includeHiddenWholesaleDues: flag('--include-hidden-wholesale-dues') ? true : undefined
+    };
+    const result = partiesDryRun(backup, { salt, scope: arg('--scope') || 'due', options });
+    fs.mkdirSync(outDir, { recursive: true });
+    const jsonPath = path.join(outDir, 'parties-dryrun.json');
+    const csvPath = path.join(outDir, 'parties-review.csv');
+    fs.writeFileSync(jsonPath, JSON.stringify(result, null, 2));
+    fs.writeFileSync(csvPath, toCsv(result));
+    console.log(formatSummary(result, { names: !flag('--no-names') }));
+    console.log(`Proposals: ${jsonPath} (keeps the salt: pass it with --salt-from next time so the ids stay the same)`);
+    console.log(`Review sheet: ${csvPath}. Both hold names and phones: keep them outside the repo.`);
+    if (!result.totals.matchesPlan) process.exitCode = 1;
+}
 async function convert() {
     const { convertRestDocs } = await import('./lib/convert.js');
     const input = arg('--in');
@@ -217,9 +244,9 @@ async function initAdmin({ key, project }) {
 
 const targetNote = (emulator) => (emulator ? ` (EMULATOR firestore ${emulator.firestore}${emulator.auth ? `, auth ${emulator.auth}` : ''})` : '');
 
-const commands = { plan, apply, convert, wipe, 'auth:import': authImport, 'auth:filter': authFilter };
+const commands = { plan, parties, apply, convert, wipe, 'auth:import': authImport, 'auth:filter': authFilter };
 if (!commands[command]) {
-    console.error('Usage: node tools/migrate/migrate.js plan|apply|convert|wipe|auth:import|auth:filter ... (see tools/migrate/README.md)');
+    console.error('Usage: node tools/migrate/migrate.js plan|parties|apply|convert|wipe|auth:import|auth:filter ... (see tools/migrate/README.md)');
     process.exit(2);
 }
 commands[command]().catch(err => {
