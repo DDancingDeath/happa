@@ -13,7 +13,8 @@ item, Ask lists them instead.
 **Item purchases (owner only, ASK-5, #415).** Ask which kinds of an item were bought, how
 much and at what average rate: "lah kitna kharida ab tak", "pichle mahine chawal ki kharid",
 "लाह की किस्में कितनी खरीदीं". Every item whose name has that word counts (Lah Kusmi, Rangeeni
-Lah, लाह, old archived items and names typed on bills too); a name that only starts the
+Lah, लाह, लाख कदकी, old archived items and names typed on bills too; "lah" and "lakh" / "लाख" are
+the same word here); a name that only starts the
 same ("Lahsun") is listed as not counted. The period is today, this or last month, year or
 financial year, from the start of last month or year till today ("pichle saal se ab tak"), or
 all time ("ab tak", "till today"); without one it is this month. A party's name in the
