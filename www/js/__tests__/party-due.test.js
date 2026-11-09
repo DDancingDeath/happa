@@ -138,7 +138,9 @@ describe('#166 due line under the name', () => {
         expect(line()).toBeNull();
         jest.advanceTimersByTime(1);
         expect(line().hidden).toBe(false);
-        expect(line().textContent).toBe('📥 Already owes ₹500 on 2 bills (oldest 51 days) ›');
+        expect(line().textContent).toBe('📥 Already owes ₹500 on 2 bills (oldest 51 days) · updating… ›');
+        // "updating…" is shown by CSS only while the dues come from the cache (#59)
+        expect(line().querySelector('.updating-mark').textContent).toBe(' · updating…');
         expect(line().classList.contains('party-due-old')).toBe(true);
         expect(document.querySelector('#saleSection .form-row').nextElementSibling).toBe(line());
 

@@ -1035,6 +1035,14 @@ export const MoneyManager = {
     /** Rebuilds the current / previous month snapshot from the loaded bills (≤ 2 writes, every 6 h). */
     async rollNow() {
         if (!this.writesSnapshots()) return;
+        if (FirebaseService.dataFreshness?.() === 'cache') {
+            // Cached bills may miss other phones' (#59): roll once the server confirmed them.
+            this.rollAfterServer = this.rollAfterServer || FirebaseService.whenServerConfirmed().then(ok => {
+                this.rollAfterServer = null;
+                if (ok) this.rollSnapshots().catch(e => console.warn('Month snapshots not rolled:', e?.code || e));
+            });
+            return;
+        }
         const now = Date.now();
         const keys = monthsToRoll(this.snapshots, { now, loadedFrom: isFullHistoryLoaded() ? 0 : historyLoadedFrom() });
         const docs = keys.map(k => this.snapshotFor(k, now)).filter(Boolean);
