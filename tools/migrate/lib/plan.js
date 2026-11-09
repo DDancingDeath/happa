@@ -163,8 +163,35 @@ function openingDoc({ billType, kind, entry, party, src, cutoff, fromProject, wa
     return { coll: BILL_COLLS[billType], id: `opening-${billType}-${src.__docId}`, data: withCanonicalDue(doc, null, { full: true }) };
 }
 
+const DUE_LISTS = [['retail', 'receivable'], ['wholesale', 'receivable'], ['purchase', 'payable']];
+
+/**
+ * Whether `plan` carries a due set as opening records: only in fresh mode; payables
+ * with carryPayables; wholesale bills not made on the Wholesale page with includeHiddenWholesaleDues.
+ * @param {'receivable'|'payable'} kind
+ * @param {Object} options parseOptions()
+ * @param {{hidden?: boolean}} [opts]
+ */
+export function carriesDues(kind, options, { hidden = false } = {}) {
+    if (options.mode !== 'fresh') return false;
+    if (hidden) return !!options.includeHiddenWholesaleDues;
+    return kind === 'receivable' || !!options.carryPayables;
+}
+
+/** The due sets `plan` turns into opening records, with the same rules and options. */
+export function carriedDueSets(bills, today, options) {
+    const out = [];
+    DUE_LISTS.forEach(([billType, kind]) => {
+        if (carriesDues(kind, options)) out.push({ billType, kind, hidden: false, set: dueSet(billType, bills[billType] || [], today) });
+    });
+    if (carriesDues('receivable', options, { hidden: true })) {
+        out.push({ billType: 'wholesale', kind: 'receivable', hidden: true, set: dueSet('wholesale', bills.wholesale || [], today, { hidden: true }) });
+    }
+    return out;
+}
+
 /** Open bills of one page, grouped and aged exactly as that page does. */
-function dueSet(billType, bills, today, { hidden = false } = {}) {
+export function dueSet(billType, bills, today, { hidden = false } = {}) {
     let open;
     if (billType === 'wholesale' && !hidden) {
         // The old app's Wholesale page rule (what it showed): sales-tab bills only.
@@ -392,14 +419,14 @@ export function buildPlan(backup, rawOptions = {}, { now = Date.now() } = {}) {
             && set.aging.parties.every(p => after.parties.find(q => q.key === p.key)?.total === p.total);
         if (!summary.matches) warnings.push(`${billType}: opening records do not match the old page (totals, age groups or parties)`);
     };
-    [['retail', 'receivable'], ['wholesale', 'receivable'], ['purchase', 'payable']].forEach(([billType, kind]) => {
+    DUE_LISTS.forEach(([billType, kind]) => {
         const set = dueSet(billType, bills[billType], today);
-        const carry = options.mode === 'fresh' && (kind === 'receivable' || options.carryPayables);
+        const carry = carriesDues(kind, options);
         dues[billType] = summarize(set, kind, carry);
         if (carry) carryInto(dues[billType], set, billType, kind);
     });
     const hiddenSet = dueSet('wholesale', bills.wholesale, today, { hidden: true });
-    const carryHidden = options.mode === 'fresh' && options.includeHiddenWholesaleDues;
+    const carryHidden = carriesDues('receivable', options, { hidden: true });
     const hiddenDues = summarize(hiddenSet, 'receivable', carryHidden);
     if (carryHidden) carryInto(hiddenDues, hiddenSet, 'wholesale', 'receivable');
     if (dues.purchase.total > 0) {
