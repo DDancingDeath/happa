@@ -127,8 +127,14 @@ const hasAny = (/** @type {string[]} */ tokens, /** @type {Set<string>} */ set) 
 function subjectWords(tokens) {
     const KEYWORDS = [LINK, TODAY, TOTAL, NOISE, DUES, STOCK, GOODS, SALES, PURCHASES, EXPENSES, BOUGHT, SOLD, REPORT, MONTH, YEAR, LAST, FY,
         SINCE, ALL_TIME, OTHER_DAY, AMBIGUOUS, RETAIL, WHOLESALE, BY_PARTY, ITEM_WORDS, REPORT_ASK, POINTERS, FIRST_PERSON, US];
-    // "ji" stays: "Sharma ji" is the party Sharma Ji, "Sharma" the party Sharma
-    return tokens.filter(w => (HONORIFIC.has(w) || !KEYWORDS.some(s => s.has(w))) && !/^[\d\u0966-\u096F]/.test(w));
+    /** @type {string[]} */
+    const out = [];
+    tokens.forEach(w => {
+        if (/^[\d\u0966-\u096F]/.test(w)) return;
+        // "ji" after a name stays: "Sharma ji" is the party Sharma Ji, "Sharma" the party Sharma; a lone "ji" names nothing
+        if (HONORIFIC.has(w) ? out.length && !HONORIFIC.has(out[out.length - 1]) : !KEYWORDS.some(s => s.has(w))) out.push(w);
+    });
+    return out;
 }
 
 /**

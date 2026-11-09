@@ -68,6 +68,7 @@ describe('parseQuestion: item reports', () => {
         ['what is monthly sale of chawal', R('sale', 'chawal', 'since-last-month', 'month')],
         ['what is month wise sale of chawal', R('sale', 'chawal', 'since-last-month', 'month')],
         ['Sharma ji ko kya kya becha', R('sale', 'sharma ji', 'this-month')],
+        ['ji is mahine lah kitna becha', R('sale', 'lah', 'this-month')],
         ['this month lah purchase', R('purchase', 'lah', 'this-month')],
         ['aaj ki bikri', { intent: 'sales_today' }],
         ['aaj kitna bika', { intent: 'sales_today' }],
