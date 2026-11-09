@@ -215,15 +215,18 @@ export function reportPeriod(preset, now, cfg) {
 
 /**
  * The bills a report runs on: the ones on the phone (live, with this phone's own changes)
- * over the copies read for the report, without the bills voided on this phone.
+ * over the copies read for the report, without the bills voided on this phone. From
+ * `windowFrom` on the phone has every bill live, so copies read for the report count only
+ * before it (a bill deleted since on another phone stays out).
  * @param {?Array<Rec>|undefined} loaded
  * @param {?Array<Rec>|undefined} fetched
  * @param {Iterable<string>} [voidedIds]
+ * @param {number} [windowFrom] start of the live window (ms)
  * @returns {Array<Rec>}
  */
-export function mergeReportBills(loaded, fetched, voidedIds = []) {
+export function mergeReportBills(loaded, fetched, voidedIds = [], windowFrom = Infinity) {
     const out = new Map();
-    (fetched || []).forEach(b => { if (b?.id) out.set(String(b.id), b); });
+    (fetched || []).forEach(b => { if (b?.id && !(eventTime(b) >= windowFrom)) out.set(String(b.id), b); });
     /** @type {Array<Rec>} */
     const extra = [];
     (loaded || []).forEach(b => {

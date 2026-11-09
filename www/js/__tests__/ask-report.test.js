@@ -25,6 +25,13 @@ describe('parseQuestion: item reports', () => {
         ['lah kitna kharida pichle saal se ab tak', { intent: 'item_report', subject: 'lah', range: 'since-last-year' }],
         ['pichle mahine se aaj tak lah ki kharid', { intent: 'item_report', subject: 'lah', range: 'since-last-month' }],
         ['Ramesh se lah kitna kharida', { intent: 'item_report', subject: 'ramesh lah', range: 'this-month' }],
+        ['aaj kul kitna lah kharida', { intent: 'item_report', subject: 'lah', range: 'today' }],
+        ['lah ki kul kharid', { intent: 'item_report', subject: 'lah', range: 'all' }],
+        ['kal total lah kitna kharida', { intent: 'today_only' }],
+        ['is hafte ab tak lah kitna kharida', { intent: 'today_only' }],
+        ['pichle 3 mahine me lah kitna kharida', { intent: 'today_only' }],
+        ['maine lah kitne kilo kharide the', { intent: 'item_report', subject: 'lah', range: 'this-month' }],
+        ['मैंने लाह कितनी खरीदी', { intent: 'item_report', subject: 'लाह', range: 'this-month' }],
         ['kal lah kitna kharida', { intent: 'today_only' }],
         ["What's today's purchase", { intent: 'purchases_today' }],
         ['aaj kitna maal kharida', { intent: 'purchases_today' }],
@@ -141,9 +148,11 @@ describe('answerQuestion: item reports', () => {
         expect(a.notItems).toEqual(['ramesh']);
         expect(a.report).toBeUndefined();
     });
-    test('a name only on older bills: the older bills can still be loaded', () => {
+    test('a name only on older bills: the older bills can still be loaded, also when a longer name matches', () => {
         expect(answerQuestion(parseQuestion('chhuri kitna kharida ab tak'), { bills: { purchases: [] }, items: ITEMS }, { role: 'owner', today, covered: false }))
             .toMatchObject({ kinds: [], needsOlder: true });
+        expect(answerQuestion(parseQuestion('lahs kitna kharida ab tak'), { bills: { purchases: [] }, items: ITEMS }, { role: 'owner', today, covered: false }))
+            .toMatchObject({ kinds: [], needsOlder: true, near: [expect.objectContaining({ name: 'Garlic' }), expect.objectContaining({ name: 'Lahsun Desi' })] });
     });
     test('no item of that name', () => {
         expect(answerQuestion(parseQuestion('Ramesh se kitna kharida'), src, { role: 'owner', today })).toMatchObject({ kinds: [], near: [], subject: 'ramesh' });
@@ -160,6 +169,8 @@ describe('spec, reads, sheets', () => {
     test('the bills on the phone win over the copies read; bills voided on the phone go', () => {
         const merged = mergeReportBills([{ id: 'a', v: 'phone' }], [{ id: 'a', v: 'server' }, { id: 'b' }, { id: 'c' }], ['c']);
         expect(merged).toEqual([{ id: 'a', v: 'phone' }, { id: 'b' }]);
+        // Inside the live window only the phone's bills count: one deleted on another phone stays out.
+        expect(mergeReportBills([], [{ id: 'old', timestamp: 1000 }, { id: 'gone', timestamp: 5000 }], [], 4000)).toEqual([{ id: 'old', timestamp: 1000 }]);
     });
     test('read estimate: the window\'s bills per day over the older days', () => {
         const day = 86400000;

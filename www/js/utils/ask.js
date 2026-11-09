@@ -69,6 +69,8 @@ const REPORT = words(['report', 'excel', 'xlsx', 'sheet', 'sheets', 'csv', 'list
     'bhav', 'bhaav', 'kinds', 'kind', 'types', 'type', 'kism', 'kisam', 'kisme', 'kismen', 'prakar', 'tarah', 'varieties', 'variety',
     'weight', 'vajan', 'wajan', 'bill', 'bills', 'number', 'no', 'date', 'totals', 'plus', 'one', 'page', 'per', 'each', 'har',
     'with', 'as', 'an', 'a', 'were', 'and', 'aur', 'at', 'all', 'mein', 'me', 'ek', 'wise', 'vise', 'give', 'make', 'banao', 'bana', 'do', 'de',
+    'maine', 'mene', 'humne', 'hamne', 'tha', 'thi', 'the', 'liya', 'lia', 'li', 'kilo', 'kg', 'quintal', 'kuntal', 'in', 'by', 'we', 'have', 'has',
+    'मैंने', 'हमने', 'था', 'थी', 'थे', 'लिया', 'ली', 'क्विंटल',
     'रिपोर्ट', 'एक्सेल', 'शीट', 'लिस्ट', 'भाव', 'रेट', 'औसत', 'किस्म', 'किस्में', 'किस्मों', 'प्रकार', 'तरह', 'वज़न', 'वजन', 'बिल', 'नंबर',
     'तारीख', 'हर', 'और', 'में', 'एक', 'पेज', 'दो', 'बनाओ']);
 const MONTH = words(['mahina', 'mahine', 'month', 'महीना', 'महीने']);
@@ -77,6 +79,7 @@ const LAST = words(['pichle', 'pichhle', 'pichla', 'last', 'previous', 'पि�
 const FY = words(['fy', 'financial']);
 // "pichle saal se ab tak": from the start of that period until today
 const SINCE = words(['se', 'from', 'since', 'से']);
+const DAYS_WEEKS = words(['kal', 'parso', 'parson', 'yesterday', 'tomorrow', 'week', 'hafta', 'hafte', 'कल', 'परसों', 'हफ़्ता', 'हफ्ता', 'हफ़्ते', 'हफ्ते']);
 const ALL_TIME = words(['all', 'sab', 'sabhi', 'saara', 'kul', 'total', 'shuru', 'सब', 'सभी', 'सारा', 'कुल', 'शुरू']);
 const SO_FAR = /(^|\s)((ab|abhi|aaj|aj|अब|अभी|आज)\s+(tak|तक)|(till|until|upto|up to)\s+(today|now|date)|so far|all time)(?=[\s?!.,]|$)/;
 // More purchase spellings for reports ("kitni lah kharidi").
@@ -95,12 +98,14 @@ export function reportRange(text, tokens) {
     const last = hasAny(tokens, LAST);
     const soFar = SO_FAR.test(String(text || '').normalize('NFC').toLowerCase());
     const from = (/** @type {string} */ unit) => (!last ? `this-${unit}` : soFar && hasAny(tokens, SINCE) ? `since-last-${unit}` : `last-${unit}`);
+    // "kal", "is hafte", "pichle 3 mahine": a period a report doesn't offer
+    if (hasAny(tokens, DAYS_WEEKS) || tokens.some(w => /[\d\u0966-\u096F]/.test(w))) return null;
     if (hasAny(tokens, FY)) return from('fy');
     if (hasAny(tokens, MONTH)) return from('month');
     if (hasAny(tokens, YEAR)) return from('year');
-    if (soFar || hasAny(tokens, ALL_TIME)) return 'all';
+    if (soFar) return 'all';
     if (hasAny(tokens, TODAY)) return 'today';
-    if (hasAny(tokens, OTHER_DAY) || tokens.some(w => /[\d\u0966-\u096F]/.test(w))) return null;
+    if (hasAny(tokens, ALL_TIME)) return 'all';
     return 'this-month';
 }
 const DEVANAGARI = /[\u0900-\u097F]/;
@@ -297,7 +302,7 @@ export function answerQuestion(q, src = {}, { role = 'staff', wholesale = false,
         // "Ramesh se lah kitna kharida": a report of every party's Lah would answer another question
         if (kinds.length && unknown.length) return { ...base, notItems: unknown };
         // A name only on bills older than this phone has may still be found once they are read
-        if (!kinds.length) return !covered && !near.length ? { ...base, needsOlder: true } : base;
+        if (!kinds.length) return !covered ? { ...base, needsOlder: true } : base;
         if (!covered) return { ...base, needsOlder: true };
         return { ...base, report: itemPurchaseReport(purchases, src.items, kinds, period) };
     }

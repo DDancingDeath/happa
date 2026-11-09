@@ -130,7 +130,7 @@ export const AskManager = {
         const needOlder = windowFrom > 0 && (loadFrom === null || loadFrom < windowFrom);
         const held = needOlder ? FirebaseService.reportBillsInMemory('purchases', loadFrom) : null;
         const purchases = held
-            ? mergeReportBills(AppState.purchaseHistory, held.bills, FirebaseService.voidedBills('purchases').map(b => b.id))
+            ? mergeReportBills(AppState.purchaseHistory, held.bills, FirebaseService.voidedBills('purchases').map(b => b.id), windowFrom)
             : AppState.purchaseHistory;
         const answer = answerQuestion(entry.q, { bills: { purchases }, items: AppState.items }, {
             role: AppState.userRole, today: now, cfg, covered: !needOlder || !!held
