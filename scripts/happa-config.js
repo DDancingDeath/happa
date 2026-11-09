@@ -70,6 +70,8 @@ function derive(raw) {
         latestReleaseApi: `https://api.github.com/repos/${raw.githubRepo}/releases/latest`,
         // Off until the owner has done the console steps (docs/google-sign-in.md)
         googleSignIn: { web: google.web === true, android: google.android === true },
+        // App Check (monitor mode) starts only when a reCAPTCHA v3 site key is set (docs/security.md)
+        appCheckSiteKey: typeof raw.appCheck?.siteKey === 'string' ? raw.appCheck.siteKey.trim() : '',
         webConfig
     };
 }
@@ -107,6 +109,12 @@ function configProblems(raw) {
         const g = raw.googleSignIn;
         const ok = g && typeof g === 'object' && Object.keys(g).every((k) => ['web', 'android'].includes(k) && typeof g[k] === 'boolean');
         if (!ok) errors.push('googleSignIn must be { "web": true|false, "android": true|false }');
+    }
+    if (raw.appCheck !== undefined) {
+        const a = raw.appCheck;
+        const ok = a && typeof a === 'object' && Object.keys(a).every((k) => k === 'siteKey') &&
+            (a.siteKey === undefined || (typeof a.siteKey === 'string' && /^[\w-]*$/.test(a.siteKey.trim())));
+        if (!ok) errors.push('appCheck must be { "siteKey": "<reCAPTCHA v3 site key>" } (empty = App Check off)');
     }
     return errors;
 }
@@ -188,13 +196,16 @@ function redirectHosting(site, d) {
     };
 }
 
+/** App Check's reCAPTCHA v3 widget frame (docs/security.md, "App Check"). */
+const RECAPTCHA_FRAME_SRC = 'https://www.google.com/recaptcha/';
+
 /**
  * The app site's CSP frame-src: Firebase Auth frames <authDomain>/__/auth/iframe. That is the
  * project's firebaseapp.com domain, or the site itself ('self') when Google sign-in runs on
- * Hosting (firebaseConfig.js, docs/google-sign-in.md).
+ * Hosting (firebaseConfig.js, docs/google-sign-in.md). Plus App Check's reCAPTCHA frame.
  */
 function withAuthFrameSrc(headers, d) {
-    const frameSrc = `frame-src 'self' https://${d.webConfig.authDomain}`;
+    const frameSrc = `frame-src 'self' https://${d.webConfig.authDomain} ${RECAPTCHA_FRAME_SRC}`;
     return (headers || []).map((entry) => (entry.source !== '**' ? entry : {
         ...entry,
         headers: entry.headers.map((h) => (h.key !== 'Content-Security-Policy' ? h
@@ -287,7 +298,7 @@ const TARGETS = [
     {
         file: 'www/firebaseConfig.js',
         write: (t, d) => replaceOrThrow(t, /(\/\/ <happa-config>\n)[\s\S]*?(\/\/ <\/happa-config>)/,
-            `$1const firebaseConfig = ${JSON.stringify(d.webConfig, null, 2)};\nconst googleSignInWeb = ${d.googleSignIn.web};\n$2`, 'happa-config block in firebaseConfig.js')
+            `$1const firebaseConfig = ${JSON.stringify(d.webConfig, null, 2)};\nconst appCheckSiteKey = ${JSON.stringify(d.appCheckSiteKey)};\nconst googleSignInWeb = ${d.googleSignIn.web};\n$2`, 'happa-config block in firebaseConfig.js')
     },
     { file: 'www/js/config/app-identity.js', write: (_, d) => identityModule(d) },
     { file: 'www/index.html', write: (t, d) => replaceOrThrow(t, /<title>[^<]*<\/title>/, `<title>${escapeHtml(d.appName)}</title>`, '<title>') },

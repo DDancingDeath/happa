@@ -37,6 +37,7 @@ import { createSyncWatcher } from './tip/scenarios/sync.js';
 import { createWatchdog, TICK_MS as WATCHDOG_TICK_MS } from './tip/scenarios/main-thread.js';
 import { runNumberChecksOnce, numberChecksProps } from './tip/scenarios/number-checks.js';
 import { whenIdle } from './utils/background-tasks.js';
+import { startAppCheck } from './services/app-check.js';
 import { APP_VERSION } from './version.js';
 import { AuditService } from './services/audit.js';
 import { TelemetryService } from './services/telemetry.js';
@@ -676,6 +677,7 @@ async function initializeUserData() {
         // idle (#59); the scan still starts 8 s after this.
         const shownAt = Date.now();
         whenIdle(() => {
+            startAppCheck();
             loadAllCatalogues().catch(e => console.warn('Language catalogue not loaded:', e?.message || e));
             loadReceiptDrawing().catch(e => console.warn('Receipt drawing not loaded:', e?.message || e));
             if (AppState.userRole !== 'owner' && AppState.userRole !== 'manager') return;
@@ -755,6 +757,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 AppState.currentUser = null;
                 document.getElementById('printerPermissionBanner')?.remove();
                 document.getElementById('authScreen').style.display = 'flex';
+                // App Check (#89, monitor mode): ready before the sign-in request, after the login screen
+                whenIdle(() => startAppCheck(), { timeoutMs: 4000 });
             }
         });
     }

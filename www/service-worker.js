@@ -100,6 +100,7 @@ const STATIC_ASSETS = [
     '/js/rentals/rent-views.js',
     '/js/rentals/rentals.js',
     '/js/services/audit.js',
+    '/js/services/app-check.js',
     '/js/services/payment-intents.js',
     '/js/services/crash-reports.js',
     '/js/services/exporter.js',

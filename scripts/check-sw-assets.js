@@ -9,7 +9,8 @@
  * cache.addAll reject, silently disabling offline caching) or if an app file
  * (js/css/templates/img/icons/vendor, download.html, changelog.json, manifest) is missing from the list.
  * Files in LAZY_ASSETS (loaded with import() on use, cached at runtime) must exist
- * and must not be precached.
+ * and must not be precached. RUNTIME_ONLY files are in neither list: only some phones ever load
+ * them, so install never downloads them; the fetch handler caches them on first use.
  */
 const fs = require('fs');
 const path = require('path');
@@ -17,6 +18,8 @@ const { cssSources } = require('./build-css.js');
 
 const WWW = path.join(__dirname, '..', 'www');
 const SW_PATH = path.join(WWW, 'service-worker.js');
+// App Check SDK: loaded only when a site key is configured (js/services/app-check.js, #89).
+const RUNTIME_ONLY = ['/vendor/firebase/10.7.1/firebase-app-check-compat.js'];
 
 function walk(dir) {
     return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -68,17 +71,17 @@ function check() {
     const lazy = readLazyAssets();
     const all = [...listed, ...lazy];
     const missingOnDisk = all.filter((u) => !existsOnDisk(u));
-    const notListed = expectedAssets().filter((u) => !all.includes(u));
-    const duplicates = all.filter((u, i) => all.indexOf(u) !== i);
+    const notListed = expectedAssets().filter((u) => !all.includes(u) && !RUNTIME_ONLY.includes(u));
+    const duplicates = [...all.filter((u, i) => all.indexOf(u) !== i), ...all.filter((u) => RUNTIME_ONLY.includes(u))];
     return { listed, lazy, missingOnDisk, notListed, duplicates };
 }
 
-module.exports = { expectedAssets, readStaticAssets, readLazyAssets, existsOnDisk, check };
+module.exports = { RUNTIME_ONLY, expectedAssets, readStaticAssets, readLazyAssets, existsOnDisk, check };
 
 if (require.main === module) {
     if (process.argv.includes('--print')) {
         const lazy = readLazyAssets();
-        console.log(expectedAssets().filter((u) => !lazy.includes(u)).map((u) => `    '${u}',`).join('\n'));
+        console.log(expectedAssets().filter((u) => !lazy.includes(u) && !RUNTIME_ONLY.includes(u)).map((u) => `    '${u}',`).join('\n'));
         process.exit(0);
     }
     const { listed, lazy, missingOnDisk, notListed, duplicates } = check();
