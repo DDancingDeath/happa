@@ -11,6 +11,7 @@
 import { CLIENT_VERSION, getDb } from './db.js';
 import { itemMethods } from './repos/items.js';
 import { billStatsMethods } from './repos/bill-stats.js';
+import { reportBillMethods } from './repos/report-bills.js';
 import { collectionAdminMethods } from './repos/collection-admin.js';
 import { tipMethods } from './repos/tip-health.js';
 import { anomalyMethods } from './repos/anomalies.js';
@@ -71,6 +72,8 @@ const FirebaseService = {
     ...itemMethods,
 
     ...billStatsMethods,
+
+    ...reportBillMethods,
 
     ...historyWindowMethods,
 
