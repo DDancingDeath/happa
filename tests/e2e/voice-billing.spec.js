@@ -38,7 +38,7 @@ async function fakeSpeech(page) {
         const synth = {
             speak: (u) => window.__spoken.push({ text: u.text, lang: u.lang }),
             cancel: () => {},
-            getVoices: () => []
+            getVoices: () => [{ lang: 'en-IN', name: 'en', localService: true }, { lang: 'hi-IN', name: 'hi', localService: true }]
         };
         Object.defineProperty(window, 'speechSynthesis', { value: synth, configurable: true });
         window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };

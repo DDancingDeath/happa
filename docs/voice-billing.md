@@ -47,9 +47,12 @@ untick it to keep that one. Said alone ("customer Suresh"), only the name is fil
 `speechSynthesis` in `hi-IN` or `en-IN` ("Customer Ramesh. Wheat, 50 kg, 25 rupees
 per kg"; in Hindi with the Hindi item name), and stops when the dialog closes, so
 the next 🎤 doesn't hear it. Its **Read aloud** switch mutes it on this device
-(`aadhat.voiceReadback`; on by default). Where there is no `speechSynthesis` (the
-Android System WebView often has none; in the Android app it counts only when it
-lists a voice), the switch is hidden and the dialog works the same.
+(`aadhat.voiceReadback`; on by default). It uses only a voice on the device
+(`localService`), never a network voice such as Chrome's "Google …" voices, which
+would send the text (names, items, amounts) to a server. With no such voice for the
+language, or no `speechSynthesis` at all (the Android System WebView often has none
+or lists no voices), nothing is read aloud, the switch is hidden and the dialog works
+the same.
 
 Understood: digits (also Devanagari ०–९), Hindi number words 1–99, सौ / hundred,
 हज़ार / thousand, आधा / half (½), पाव / quarter (¼), डेढ़ (1½), ढाई (2½), साढ़े (+½), सवा (+¼),

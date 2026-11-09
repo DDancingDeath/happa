@@ -37,18 +37,24 @@ const FIELDS = {
 export const READBACK_KEY = 'aadhat.voiceReadback';
 
 /**
- * Spoken readback (#81 A1) with the browser's speechSynthesis. The Android WebView
- * may have none, or one with no voices: then nothing is said and the switch is hidden.
- * @param {'native'|'web'} [engine]
+ * Spoken readback (#81 A1) with the browser's speechSynthesis, only through a voice on
+ * this device (`localService`): a network voice (Chrome's "Google …" voices) would send
+ * the text to a server. None for the language (the Android WebView often has no
+ * speechSynthesis or no voices): nothing is said and the switch is hidden.
+ * @param {string} lang 'hi-IN' or 'en-IN'
  * @param {any} [win]
+ * @returns {?SpeechSynthesisVoice}
  */
-export function canSpeak(engine = 'web', win = window) {
+export function localVoice(lang, win = window) {
     try {
         const synth = win.speechSynthesis;
-        if (typeof synth?.speak !== 'function' || typeof win.SpeechSynthesisUtterance !== 'function') return false;
-        return engine !== 'native' || (synth.getVoices?.() || []).length > 0;
+        if (typeof synth?.speak !== 'function' || typeof win.SpeechSynthesisUtterance !== 'function') return null;
+        const want = String(lang || '').toLowerCase();
+        const tag = (v) => String(v.lang || '').replace('_', '-').toLowerCase();
+        const voices = (synth.getVoices?.() || []).filter(v => v && v.localService === true);
+        return voices.find(v => tag(v) === want) || voices.find(v => tag(v).split('-')[0] === want.split('-')[0]) || null;
     } catch {
-        return false;
+        return null;
     }
 }
 
@@ -63,16 +69,17 @@ export const Readback = {
         if (!on) this.stop();
     },
 
-    /** @returns {boolean} true when it was handed to the speech engine */
+    /** @returns {boolean} true when it was handed to an on-device voice */
     speak(text, lang, win = window) {
-        if (!text || !this.isOn() || !canSpeak('web', win)) return false;
+        if (!text || !this.isOn()) return false;
+        const voice = localVoice(lang, win);
+        if (!voice) return false;
         try {
             const synth = win.speechSynthesis;
             synth.cancel();
             const u = new win.SpeechSynthesisUtterance(text);
             u.lang = lang;
-            const voice = (synth.getVoices?.() || []).find(v => String(v.lang || '').replace('_', '-') === lang);
-            if (voice) u.voice = voice;
+            u.voice = voice;
             synth.speak(u);
             return true;
         } catch {
@@ -184,6 +191,8 @@ export const VoiceBilling = {
         mic?.setAttribute('aria-busy', 'true');
         UIManager.showToast(t('msg.voice.listening'));
         try {
+            // Chrome loads its voice list on first ask; by the time speech is heard it is there
+            try { window.speechSynthesis?.getVoices?.(); } catch { /* no speech synthesis */ }
             const lang = getLang() === 'hi' ? 'hi-IN' : 'en-IN';
             const heard = engine === 'native'
                 ? await listenNative(lang, window.Capacitor?.Plugins?.SpeechRecognition)
@@ -204,7 +213,7 @@ export const VoiceBilling = {
             const lines = bill.lines.filter(l => l.itemIndex !== null || l.weight !== null || l.rate !== null)
                 .map(l => ({ ...l, item: lineItem(l) }));
             const current = String(byId(f.customer)?.value || '').trim();
-            const readback = canSpeak(engine) && this.readbackText(bill.customer, lines);
+            const readback = !!localVoice(lang) && this.readbackText(bill.customer, lines);
             const asked = UIManager.showModalWithHtml(this.previewHtml(bill, lines, current, !!readback), t('ui.voice.check_title'), true);
             this.spoken = readback ? { text: readback, lang } : null;
             if (this.spoken) Readback.speak(this.spoken.text, lang);

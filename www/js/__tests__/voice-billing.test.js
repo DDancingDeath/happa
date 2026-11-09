@@ -8,7 +8,7 @@ import { PurchaseManager } from '../modules/purchase.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { VoiceMic, VOICE_KEY, voiceEngine } from '../ui/voice-mic.js';
-import { VoiceBilling, listenNative, voiceErrorKey, canSpeak, Readback, READBACK_KEY } from '../modules/voice-billing.js';
+import { VoiceBilling, listenNative, voiceErrorKey, localVoice, Readback, READBACK_KEY } from '../modules/voice-billing.js';
 import { setLang } from '../i18n/index.js';
 
 jest.mock('../firebase/repos/bill-drafts.js', () => ({
@@ -305,14 +305,16 @@ describe('customer name (#81 A3)', () => {
 });
 
 describe('spoken readback (#81 A1)', () => {
-    const fakeSynth = (voices = []) => {
+    const EN = { lang: 'en_IN', name: 'en', localService: true };
+    const HI = { lang: 'hi-IN', name: 'hi', localService: true };
+    const fakeSynth = (voices = [EN, HI]) => {
         window.speechSynthesis = { speak: jest.fn(), cancel: jest.fn(), getVoices: () => voices };
         window.SpeechSynthesisUtterance = function Utterance(text) { this.text = text; };
         return window.speechSynthesis;
     };
 
     test('reads back what was understood while the dialog is open, then stops', async () => {
-        const synth = fakeSynth([{ lang: 'en_IN', name: 'en' }]);
+        const synth = fakeSynth();
         window.webkitSpeechRecognition = fakeWebSpeech(['customer ramesh, wheat 10 kg 24 aur rice 5 kg 30']);
         let open = null;
         const modal = dialog(false, () => { open = synth.speak.mock.calls.length; });
@@ -320,7 +322,7 @@ describe('spoken readback (#81 A1)', () => {
         expect(open).toBe(1);
         expect(synth.speak).toHaveBeenCalledTimes(1);
         const [u] = synth.speak.mock.calls[0];
-        expect(u).toMatchObject({ text: 'Customer Ramesh. Wheat, 10 kg, 24 rupees per kg. Rice, 5 kg, 30 rupees per kg', lang: 'en-IN', voice: { lang: 'en_IN' } });
+        expect(u).toMatchObject({ text: 'Customer Ramesh. Wheat, 10 kg, 24 rupees per kg. Rice, 5 kg, 30 rupees per kg', lang: 'en-IN', voice: EN });
         expect(modal).toHaveBeenCalled();
         expect(document.getElementById('voiceReadback').checked).toBe(true);
         expect(synth.cancel).toHaveBeenCalled();
@@ -332,7 +334,7 @@ describe('spoken readback (#81 A1)', () => {
         window.webkitSpeechRecognition = fakeWebSpeech(['गेहूं 10 kg 24 रुपये']);
         dialog(false);
         await VoiceBilling.listenOnce('purchase', 'web');
-        expect(synth.speak.mock.calls[0][0]).toMatchObject({ text: 'गेहूं, 10 kg, 24 रुपये प्रति kg', lang: 'hi-IN' });
+        expect(synth.speak.mock.calls[0][0]).toMatchObject({ text: 'गेहूं, 10 kg, 24 रुपये प्रति kg', lang: 'hi-IN', voice: HI });
     });
 
     test('the mute switch is kept on this device and stops or restarts the readback', async () => {
@@ -355,17 +357,28 @@ describe('spoken readback (#81 A1)', () => {
         expect(document.getElementById('voiceReadback').checked).toBe(false);
     });
 
+    test('only a voice on this device: a network voice (Chrome "Google …") is never used, the text stays here', async () => {
+        const synth = fakeSynth([{ lang: 'hi-IN', name: 'Google हिन्दी', localService: false }, { lang: 'en-US', name: 'local en', localService: true }]);
+        setLang('hi');
+        window.webkitSpeechRecognition = fakeWebSpeech(['गेहूं 10 kg 24 रुपये']);
+        const modal = dialog(true);
+        await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(true);
+        expect(synth.speak).not.toHaveBeenCalled();
+        expect(modal.mock.calls[0][0]).not.toContain('voiceReadback');
+        // the same language from another region is fine
+        expect(localVoice('en-IN', window)).toMatchObject({ name: 'local en' });
+    });
+
     test('no speech engine (or the Android WebView with no voices): no readback, no switch, the dialog still works', async () => {
         window.webkitSpeechRecognition = fakeWebSpeech(['wheat 10 kg 24']);
         const modal = dialog(true);
         await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(true);
         expect(modal.mock.calls[0][0]).not.toContain('voiceReadback');
-        expect(canSpeak('web', {})).toBe(false);
-        expect(canSpeak('web', { speechSynthesis: {} , SpeechSynthesisUtterance: function U() {} })).toBe(false);
-        const synth = { speak: () => {}, getVoices: () => [] };
-        expect(canSpeak('native', { speechSynthesis: synth, SpeechSynthesisUtterance: function U() {} })).toBe(false);
-        expect(canSpeak('web', { speechSynthesis: synth, SpeechSynthesisUtterance: function U() {} })).toBe(true);
-        expect(canSpeak('web', { get speechSynthesis() { throw new Error('blocked'); } })).toBe(false);
+        const U = function U() {};
+        expect(localVoice('en-IN', {})).toBeNull();
+        expect(localVoice('en-IN', { speechSynthesis: {}, SpeechSynthesisUtterance: U })).toBeNull();
+        expect(localVoice('en-IN', { speechSynthesis: { speak: () => {}, getVoices: () => [] }, SpeechSynthesisUtterance: U })).toBeNull();
+        expect(localVoice('en-IN', { get speechSynthesis() { throw new Error('blocked'); } })).toBeNull();
         expect(Readback.speak('hello', 'en-IN', {})).toBe(false);
     });
 });
