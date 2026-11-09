@@ -469,13 +469,23 @@
     margin-bottom: 4px;
   }
 
-  .bill-col-summary input[type="number"] {
+  .bill-col-summary input[type="number"],
+  #billing .bill-col-summary .bill-money > .input {
     padding-top: 6px;
     padding-bottom: 6px;
   }
 
+  #billing .bill-col-summary .grand-total strong {
+    font-size: var(--fs-title) !important;
+  }
+
+  #billing .bill-pay-title {
+    margin-top: 4px;
+    padding-top: 6px;
+  }
+
   .bill-col-summary > .form-row,
-  .bill-col-summary > div[style*="display: flex"] {
+  .bill-col-summary > :is(.bill-actions, div[style*="display: flex"]) {
     margin-top: 10px !important;
   }
 
@@ -508,7 +518,7 @@
     z-index: 2;
   }
 
-  .bill-col-summary > div[style*="display: flex"]:last-child {
+  .bill-col-summary > :is(.bill-actions, div[style*="display: flex"]):last-child {
     position: sticky;
     bottom: 0;
     z-index: 2;
@@ -517,7 +527,7 @@
     background: var(--light-bg);
   }
 
-  body.dark-mode .bill-col-summary > div[style*="display: flex"]:last-child {
+  body.dark-mode .bill-col-summary > :is(.bill-actions, div[style*="display: flex"]):last-child {
     background: var(--light-bg);
   }
 }

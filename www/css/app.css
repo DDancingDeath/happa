@@ -4265,19 +4265,138 @@ input[type="number"] {
   color: var(--on-success-soft) !important;
 }
 
+/* ---------- Billing totals and payment (redesign 3.1b): colon-less labels, ₹ in the field ---------- */
+#billing .bill-col-summary > .bill-totals {
+  border: 1px solid var(--panel-border);
+  border-radius: var(--r-panel);
+  background: var(--panel-bg);
+  box-shadow: var(--panel-shadow);
+}
+
+#billing .total-row span {
+  color: var(--ink-2);
+  font-weight: var(--w-regular);
+}
+
+#billing .total-row strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+#billing .grand-total span {
+  font-weight: var(--w-strong);
+}
+
+#billing .grand-total strong {
+  font-size: var(--fs-display) !important;
+}
+
+#billing .labor-input-row .checkbox-label {
+  margin: 0;
+}
+
+.bill-labour-calc {
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+#billing .bill-money {
+  flex: none;
+}
+
+#billing .bill-money > .input {
+  width: 100px;
+  min-width: 0;
+  max-width: 100px;
+  padding: 11px;
+  font-weight: var(--w-strong);
+  text-align: right;
+}
+
+#billing .bill-pay-title {
+  margin-top: var(--sp-2);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
+}
+
+#billing .payment-row > label {
+  color: var(--ink);
+}
+
+#billing .split-rest-btn {
+  border-color: transparent;
+  background-color: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+#billing #saleSection .split-rest-btn {
+  background-color: var(--positive-soft);
+  color: var(--positive);
+}
+
+#billing .form-row.field > .bill-note-print {
+  align-self: flex-start;
+  min-height: 44px;
+  font-weight: var(--w-regular);
+}
+
+.bill-debug-preview {
+  text-align: center;
+}
+
+.bill-debug-preview:has(> img:not([style*="none"])) {
+  margin-top: var(--sp-5);
+}
+
+.bill-actions {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-4);
+}
+
+.bill-actions > button {
+  flex: 1;
+  min-height: 48px;
+}
+
+.bill-actions > .share-draft-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: var(--sp-2) var(--sp-3);
+  border: none;
+  border-radius: var(--r-control);
+  background-color: var(--positive-soft);
+  color: var(--positive);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-strong);
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.bill-actions > .share-draft-btn:hover {
+  background-image: linear-gradient(var(--state-hover), var(--state-hover));
+}
+
 /* ---- css/bill-checks.css ---- */
 /* Live bill checks (#188): red = must fix (block), amber = unusual (warn).
    Never colour only: every mark comes with an icon and a text reason. */
 
+/* Slim (redesign 3.1b): a hairline round the bill; the banner and the field marks carry the reason */
 .bill-checks-block,
 .bill-checks-warn {
-    outline: 3px solid var(--danger-dark);
+    outline: 1px solid var(--negative-line);
     outline-offset: 4px;
     border-radius: 12px;
 }
 
 .bill-checks-warn {
-    outline-color: var(--warning-dark);
+    outline-color: var(--warning-line);
 }
 
 .bill-check-banner {
@@ -4285,12 +4404,13 @@ input[type="number"] {
     top: 0;
     z-index: 5;
     margin: 0 0 12px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    border: 2px solid var(--danger-dark);
-    background: var(--danger-soft);
-    color: var(--on-danger-soft);
-    box-shadow: var(--shadow-sm);
+    padding: 8px 12px;
+    border-radius: var(--r-panel);
+    border: 1px solid var(--negative-line);
+    /* The soft tint over an opaque surface: the banner sticks over the bill as it scrolls */
+    background: linear-gradient(var(--negative-soft), var(--negative-soft)), var(--surface);
+    color: var(--negative);
+    font-size: var(--fs-sm);
 }
 
 .bill-check-banner[hidden] {
@@ -4298,9 +4418,9 @@ input[type="number"] {
 }
 
 .bill-check-banner.bill-check-warn {
-    border-color: var(--warning-dark);
-    background: var(--warning-soft);
-    color: var(--on-warning-soft);
+    border-color: var(--warning-line);
+    background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--surface);
+    color: var(--warning);
 }
 
 .bill-check-banner-head {
@@ -4396,30 +4516,12 @@ tr.bill-check-row .bill-check-msg {
     box-sizing: border-box;
 }
 
-body.dark-mode .bill-check-banner {
-    background: #3b0d0d;
-    color: #fecaca;
-}
-
-body.dark-mode .bill-check-banner.bill-check-warn {
-    background: #3a2a06;
-    color: #fde68a;
-}
-
 body.dark-mode tr.bill-check-block > td {
     background: rgba(220, 38, 38, 0.18);
 }
 
 body.dark-mode tr.bill-check-warn > td {
     background: rgba(217, 119, 6, 0.2);
-}
-
-body.dark-mode .bill-check-msg {
-    color: #fca5a5;
-}
-
-body.dark-mode .bill-check-msg.bill-check-warn {
-    color: #fcd34d;
 }
 
 /* Existing due of the party under the name field (#166) — information only */
@@ -10436,13 +10538,23 @@ body.dark-mode .notif-panel-actions {
     margin-bottom: 4px;
   }
 
-  .bill-col-summary input[type="number"] {
+  .bill-col-summary input[type="number"],
+  #billing .bill-col-summary .bill-money > .input {
     padding-top: 6px;
     padding-bottom: 6px;
   }
 
+  #billing .bill-col-summary .grand-total strong {
+    font-size: var(--fs-title) !important;
+  }
+
+  #billing .bill-pay-title {
+    margin-top: 4px;
+    padding-top: 6px;
+  }
+
   .bill-col-summary > .form-row,
-  .bill-col-summary > div[style*="display: flex"] {
+  .bill-col-summary > :is(.bill-actions, div[style*="display: flex"]) {
     margin-top: 10px !important;
   }
 
@@ -10475,7 +10587,7 @@ body.dark-mode .notif-panel-actions {
     z-index: 2;
   }
 
-  .bill-col-summary > div[style*="display: flex"]:last-child {
+  .bill-col-summary > :is(.bill-actions, div[style*="display: flex"]):last-child {
     position: sticky;
     bottom: 0;
     z-index: 2;
@@ -10484,7 +10596,7 @@ body.dark-mode .notif-panel-actions {
     background: var(--light-bg);
   }
 
-  body.dark-mode .bill-col-summary > div[style*="display: flex"]:last-child {
+  body.dark-mode .bill-col-summary > :is(.bill-actions, div[style*="display: flex"]):last-child {
     background: var(--light-bg);
   }
 }
