@@ -64,7 +64,7 @@ const langReady = loadCatalogue(getLang()).catch(e => console.error('Language ca
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261108cr-appcheck';
+const BUILD_ID = '20261108cu-worker-pay';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -157,6 +157,8 @@ const loadHealth = onDemand(() => import('./modules/health.js').then(m => (healt
 const loadDiagnostics = onDemand(() => Promise.all([import('./modules/diagnostics.js'), loadAllCatalogues()])
     .then(([m]) => (diagnostics = m.DiagnosticsManager)));
 const loadAdmin = onDemand(() => import('./modules/admin.js').then(m => (admin = m.AdminManager)));
+let workers = null;
+const loadWorkers = onDemand(() => import('./modules/workers.js').then(m => (workers = m.WorkersManager)));
 
 // Data changes re-render the open lazy pages (firestore-service.js emits, utils/events.js);
 // the eager pages subscribe in their own modules. Money, Insights and Statements subscribe
@@ -307,7 +309,8 @@ function refreshForLanguage(lang) {
         anomalies: () => loadedAnomalies()?.refreshForLanguage(),
         stock: () => StockManager.refreshForLanguage(),
         admin: () => { admin?.renderTabs(); admin?.renderContent(); },
-        health: () => { if (health?.data) health.render(); }
+        health: () => { if (health?.data) health.render(); },
+        workers: () => workers?.render()
     }[tabId];
     if (redraw) run(tabId, redraw);
     if (tabId === 'day' && DayManager.currentSubTab === 'cash') run('day-cash', () => CashManagementManager.refreshForLanguage());
@@ -753,6 +756,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 NotificationsManager.stop();
                 ManualReminders.reset();
                 ask?.reset();
+                workers?.reset();
                 BusinessSwitcher.reset();
                 AppState.currentUser = null;
                 document.getElementById('printerPermissionBanner')?.remove();
@@ -1330,6 +1334,12 @@ window.app = {
     health: {
         ...Object.fromEntries(['init', 'refresh', 'openPage', 'savePolicies']
             .map(name => [name, (...args) => loadHealth().then(m => m[name](...args))]))
+    },
+
+    // Workers / Salaries (#373): owner page, workers.js is imported on first use
+    workers: {
+        ...Object.fromEntries(['init', 'render', 'step', 'open', 'showForm', 'cancel', 'saveWorker', 'savePay', 'saveEdit', 'saveLeft', 'rejoin', 'removeEntry']
+            .map(name => [name, (...args) => loadWorkers().then(m => m[name](...args))]))
     },
 
     // Money (redesign §5.2): money.js is imported on first use

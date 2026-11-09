@@ -1625,6 +1625,35 @@ service cloud.firestore {
         && d.get('createdAt', null) is number && rentStr(d, 'createdBy', 1, 128);
     }
 
+    // Worker pay (#373): owner only; one doc per worker, entries append-only or one removed.
+    function wpEntryOk(e) {
+      return e is map && e.keys().hasOnly(['id', 'month', 'date', 'amount', 'kind', 'mode', 'note'])
+        && rentStr(e, 'id', 1, 40) && rentMonth(e.get('month', '')) && rentDate(e.get('date', ''))
+        && e.get('amount', null) is int && e.amount > 0 && e.amount <= 10000000
+        && e.get('kind', '') in ['pay', 'advance'] && e.get('mode', '') in ['cash', 'online'] && rentStr(e, 'note', 0, 120);
+    }
+
+    function wpStepOk(s) {
+      return s is map && s.keys().hasOnly(['from', 'amount']) && rentMonth(s.get('from', ''))
+        && s.get('amount', null) is int && s.amount >= 0 && s.amount <= 10000000;
+    }
+
+    function wpOk(isNew) {
+      let d = request.resource.data;
+      let p = d.get('pays', null);
+      let e = d.get('entries', null);
+      let n = e is list ? e.size() : -1;
+      let o = isNew ? 0 : resource.data.entries.size();
+      return d.keys().hasOnly(['name', 'startMonth', 'active', 'pays', 'entries', 'updatedAt'])
+        && rentStr(d, 'name', 1, 60) && rentMonth(d.get('startMonth', '')) && d.get('active', null) is bool
+        && p is list && p.size() >= 1 && p.size() <= 24 && wpStepOk(p[0]) && p[0].from == d.startMonth && wpStepOk(p[p.size() - 1])
+        && n >= 0 && n <= 3000 && (n == 0 || wpEntryOk(e[n - 1]))
+        && (isNew ? n == 0 : (n == o - 1 && resource.data.entries.hasAll(e) && e.toSet().size() == n)
+            || (n == o && e == resource.data.entries)
+            || (n == o + 1 && (o == 0 || e[0:o] == resource.data.entries)))
+        && d.get('updatedAt', null) == request.time;
+    }
+
     // Shared business collections (prod and dev_). Create and update dispatch on the collection
     // here rather than in a helper: every helper layer is re-walked by the rules compiler.
     match /{collection}/{docId} {
@@ -2115,6 +2144,12 @@ service cloud.firestore {
       allow create, update: if canWriteRent('users') && validRentCounter('users', docId);
     }
 
+    match /workers/{docId} {
+      allow read, delete: if isOwnerIn('users');
+      allow create: if isOwnerIn('users') && wpOk(true);
+      allow update: if isOwnerIn('users') && wpOk(false);
+    }
+
     match /dev_stockCheckpoints/{docId} {
       allow read: if isApprovedIn('dev_users');
       allow create, update: if checkpointRules('dev_users', docId);
@@ -2261,6 +2296,12 @@ service cloud.firestore {
     match /dev_rent_counters/{docId} {
       allow read: if rentRoleIn('dev_users') != '';
       allow create, update: if canWriteRent('dev_users') && validRentCounter('dev_users', docId);
+    }
+
+    match /dev_workers/{docId} {
+      allow read, delete: if isOwnerIn('dev_users');
+      allow create: if isOwnerIn('dev_users') && wpOk(true);
+      allow update: if isOwnerIn('dev_users') && wpOk(false);
     }
   }
 }

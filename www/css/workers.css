@@ -1,0 +1,18 @@
+/* Workers / Salaries (#373). Loaded on demand by js/modules/workers.js, not linked from index.html. */
+.workers-page { display: grid; gap: var(--sp-3); max-width: 900px; }
+.workers-page h2, .workers-page h3, .workers-page h4 { margin: 0; }
+.wp-month { display: flex; align-items: center; gap: var(--sp-2); }
+.wp-counts { margin: 0; font-size: var(--fs-sm); }
+.wp-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.wp-list .row-trail { display: grid; justify-items: end; gap: var(--sp-1); }
+.wp-list .row-trail .row-meta { white-space: normal; }
+.wp-form, .wp-detail { display: grid; gap: var(--sp-3); }
+.wp-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.wp-table th, .wp-table td { padding: var(--sp-2); border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.wp-table th { color: var(--ink-3); font-weight: var(--w-regular); }
+.wp-table .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; text-align: right; }
+
+@media (min-width: 1024px) {
+    .wp-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .wp-form h3, .wp-form .wp-actions, .wp-form p { grid-column: 1 / -1; }
+}

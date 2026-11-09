@@ -15,7 +15,7 @@ const TITLE_KEYS = Object.freeze({
     day: 'ui.nav.today', 'cash-management': 'ui.nav.today', items: 'ui.nav.rates', stock: 'ui.nav.stocks',
     'wholesale-sales': 'ui.nav.sales', due: 'ui.nav.outstanding', rentals: 'ui.biz.rentals'
 });
-const SAME_NAME = new Set(['billing', 'history', 'expenses', 'money', 'insights', 'statements', 'anomalies', 'health', 'admin', 'diagnostics', 'settings', 'ask']);
+const SAME_NAME = new Set(['billing', 'history', 'expenses', 'money', 'insights', 'statements', 'anomalies', 'health', 'admin', 'diagnostics', 'settings', 'ask', 'workers']);
 
 /** The app bar title (redesign 4.1): the open page's menu name, else the app name. */
 export function pageTitleKey(tab) {
