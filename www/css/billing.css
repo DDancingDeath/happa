@@ -57,6 +57,7 @@ input[type="number"] {
 
 .tab.sale-theme .quick-add-btn-inline {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 
@@ -186,6 +187,7 @@ input[type="number"] {
 #wholesale-sales .add-to-bill-btn,
 .items-add-btn {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 
@@ -204,6 +206,7 @@ input[type="number"] {
 
 .tab.sale-theme .add-to-bill-btn {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 .tab.purchase-theme .bill-totals {
@@ -288,14 +291,17 @@ input[type="number"] {
 
 .add-rate-plus.purchase {
   background: var(--btn-primary);
+  color: var(--btn-primary-ink);
 }
 
 .add-rate-plus.wholesale {
   background: var(--wholesale-color);
+  color: var(--on-mode-wholesale);
 }
 
 .add-rate-plus.sale {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 .add-rate-plus:hover {
@@ -343,7 +349,7 @@ input[type="number"] {
 .autosave-restore {
   background: var(--btn-primary);
   border: 1px solid var(--btn-primary);
-  color: #fff;
+  color: var(--btn-primary-ink);
 }
 
 .autosave-discard {

@@ -63,7 +63,7 @@ const langReady = loadCatalogue(getLang()).catch(e => console.error('Language ca
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261108bj-perf-59-startup';
+const BUILD_ID = '20261108bl-themes';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -255,6 +255,7 @@ async function injectTemplates() {
 function refreshForLanguage(lang) {
     SettingsManager.syncItemNamesWithLanguage(lang);
     const run = (label, fn) => { try { fn(); } catch (e) { console.warn(`[i18n] ${label} redraw failed:`, e); } };
+    run('theme gallery', () => SettingsManager.renderThemeGallery());
     // Relabel item pickers in place: reloading them would reset the chosen item and rate.
     run('items', () => {
         const label = (item) => ((AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name);
@@ -1422,6 +1423,10 @@ window.app = {
         saveRentals: () => SettingsManager.saveRentals(),
         openOpeningStock: () => SettingsManager.openOpeningStock(),
         setAppearance: (appearance) => SettingsManager.setAppearance(appearance),
+        previewTheme: (id) => SettingsManager.previewTheme(id),
+        applyThemePreview: () => SettingsManager.applyThemePreview(),
+        cancelThemePreview: () => SettingsManager.cancelThemePreview(),
+        resetTheme: () => SettingsManager.resetTheme(),
         clearAllData: () => SettingsManager.clearAllData(),
         toggleBluetoothPrinter: () => SettingsManager.toggleBluetoothPrinter(),
         togglePrintPreview: () => SettingsManager.togglePrintPreview(),

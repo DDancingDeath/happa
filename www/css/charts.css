@@ -120,7 +120,7 @@ html {
 /* -------------------- MODE TOGGLE BUTTON -------------------- */
 .mode-toggle-btn {
   background: var(--btn-success);
-  color: white;
+  color: var(--btn-sale-ink);
   border: none;
   padding: 10px 20px;
   border-radius: var(--radius-full);
@@ -142,6 +142,7 @@ html {
 
 .mode-toggle-btn.sale-mode {
   background: var(--btn-primary);
+  color: var(--btn-primary-ink);
 }
 
 /* -------------------- MODAL POPUP -------------------- */
@@ -248,6 +249,7 @@ body:has(.tab.purchase-theme.active) .modal-btn-confirm:hover {
 
 body:has(.tab.sale-theme.active) .modal-btn-confirm {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 body:has(.tab.sale-theme.active) .modal-btn-confirm:hover {
@@ -476,7 +478,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .bill-action-btn.btn-edit {
   background: var(--btn-primary);
-  color: white;
+  color: var(--btn-primary-ink);
 }
 
 .bill-action-btn.btn-edit:hover {

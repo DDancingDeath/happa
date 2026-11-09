@@ -1,0 +1,82 @@
+/* Nordic (redesign 2.6, DIRECTION 4.2): airy off-white, fjord blue, borderless soft panels.
+   Colours are screen-only, so printing from any theme uses the Modern light values (black on white). */
+[data-theme="nordic"] {
+  --r-control: 12px;
+  --r-panel: 18px;
+  --r-sheet: 24px;
+}
+
+@media screen {
+  [data-theme="nordic"]:not([data-mode="dark"]) {
+    color-scheme: light;
+    --bg: #f4f6f6;
+    --surface: #fdfefe;
+    --surface-2: #ebf0f0;
+    --surface-3: #dfe6e7;
+    --line: #e2e8e9;
+    --line-strong: #cbd5d7;
+    --ink: #1d2a30;
+    --ink-2: #45555c;
+    --ink-3: #5c6c73;
+    --ink-placeholder: #5f6f76;
+    --accent: #3a6a8a;
+    --accent-hover: #2f5a76;
+    --accent-strong: #2f5a76;
+    --accent-text: #2f5a76;
+    --accent-soft: #e3eef4;
+    --accent-line: #b9d0de;
+    --mode-sale: #46745a;
+    --mode-sale-soft: #e3efe7;
+    --mode-wholesale: #6f5f97;
+    --mode-wholesale-soft: #ece8f4;
+    --mode-rentals: #3a7a80;
+    --positive: #3f6e52;
+    --negative: #a83a3a;
+    --warning: #8a5a14;
+    --warning-dot: #d9a441;
+    --panel-border: transparent;
+    --panel-shadow: 0 1px 2px rgba(30, 50, 60, 0.04);
+    --input-bg: #f7f9f9;
+    --input-border: #cbd5d7;
+    --seg-on: #fdfefe;
+    --btn-primary-shadow: none;
+  }
+
+  [data-theme="nordic"][data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #1a1f24;
+    --surface: #21282e;
+    --surface-2: #283038;
+    --surface-3: #313a43;
+    --line: rgba(220, 235, 245, 0.07);
+    --line-strong: rgba(220, 235, 245, 0.14);
+    --ink: #e9eef1;
+    --ink-2: #b4c0c7;
+    --ink-3: #94a2aa;
+    --ink-placeholder: #8a98a0;
+    --accent: #86aac6;
+    --accent-hover: #9cbad2;
+    --accent-strong: #2f5a76;
+    --accent-text: #a3c2da;
+    --accent-soft: rgba(134, 170, 198, 0.16);
+    --accent-line: rgba(134, 170, 198, 0.4);
+    --on-accent: #0f1a22;
+    --mode-sale: #8cbf9f;
+    --on-mode-sale: #0f1f15;
+    --mode-sale-soft: rgba(140, 191, 159, 0.14);
+    --mode-wholesale: #b3a6d9;
+    --on-mode-wholesale: #17122a;
+    --mode-wholesale-soft: rgba(179, 166, 217, 0.14);
+    --mode-rentals: #84c2c8;
+    --positive: #8cbf9f;
+    --positive-soft: rgba(140, 191, 159, 0.14);
+    --negative: #ec9a9a;
+    --negative-soft: rgba(236, 154, 154, 0.12);
+    --warning: #e6c07a;
+    --warning-soft: rgba(230, 192, 122, 0.12);
+    --input-bg: #1d2329;
+    --input-border: rgba(220, 235, 245, 0.18);
+    --seg-on: #39434d;
+    --toast-bg: #313a43;
+  }
+}

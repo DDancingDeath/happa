@@ -168,7 +168,11 @@ In order:
   Light / Dark / System and the visual theme are per device (`js/ui/theme.js` ThemeManager, keys
   `happa.theme` / `happa.appearance`); `<html>` carries `data-theme`, `data-appearance` and `data-mode`, and CSS keys on
   `[data-mode="dark"]` (`body.dark-mode` mirrors it). The pre-paint `#themeBoot` reads the same keys; it is data-only, so a new
-  theme never changes it or its CSP hash.
+  theme never changes it or its CSP hash. A theme is a registry entry in `js/ui/themes.js` plus a tokens-only file
+  `www/css/themes/<id>.css` (imported in `styles.css`, ≤1.5 KB gzip, colours only inside `@media screen` so print stays
+  Modern light; `tests/ci/themes.test.js`), names in en+hi, and a row in `tests/ci/theme-contrast.test.js` /
+  `tests/e2e/themes.spec.js` (axe per theme × mode). Text on a fill uses its ink token, never white (`--btn-primary-ink`, `--btn-sale-ink`, `--on-mode-wholesale`, `--btn-danger-ink`, `--on-accent-strong`; guarded in `themes.test.js`):
+  dark themes have a light accent. The gallery preview (`ThemeManager.preview`) never saves; leaving Settings cancels it.
 - **Type comes from tokens too**: font sizes `--fs-caption|sm|body|lead|title|display|hero` and weights
   `--w-regular|label|strong` (400/600 only; labels go regular in Hindi, `--w-strong` is 500 on the Android app).
   A new raw `font-size` / `font-weight` fails `tests/ci/type-guard.test.js` (baseline `tests/type-baseline.json`,

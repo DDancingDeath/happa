@@ -6,6 +6,13 @@
 
 /* Core Variables & Theme */
 @import url('css/variables.css');
+
+/* Themes (redesign 2.6): token overrides only; the registry is js/ui/themes.js */
+@import url('css/themes/nordic.css');
+@import url('css/themes/nature.css');
+@import url('css/themes/dark.css');
+@import url('css/themes/midnight.css');
+
 @import url('css/icons.css');
 @import url('css/forms.css');
 @import url('css/surfaces.css');

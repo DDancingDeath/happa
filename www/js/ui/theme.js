@@ -55,6 +55,8 @@ export const CHOICE_AT_LOAD = (() => { const store = storage(); return store ? s
 export const ThemeManager = {
     /** @type {{theme: string, appearance: string}} */
     current: { theme: DEFAULT_THEME, appearance: DEFAULT_APPEARANCE },
+    /** A theme shown but not saved (Settings › Appearance gallery), or null. */
+    previewing: null,
     _watching: false,
 
     /** @param {{theme: string, appearance: string}|null} [choice] defaults to the saved choice now */
@@ -69,9 +71,11 @@ export const ThemeManager = {
         const query = systemQuery();
         if (query && !this._watching) {
             this._watching = true;
-            const follow = () => { if (this.current.appearance === 'system') this.render(this.current); };
+            const follow = () => { if (this.current.appearance === 'system') this.render({ ...this.current, theme: this.previewing || this.current.theme }); };
             if (query.addEventListener) query.addEventListener('change', follow);
             else if (query.addListener) query.addListener(follow);
+            // A preview never outlives Settings
+            window.addEventListener('aadhat:tabshown', (e) => { if (e.detail?.tabId !== 'settings') this.cancelPreview(); });
         }
         return this.current;
     },
@@ -89,13 +93,29 @@ export const ThemeManager = {
         const bar = getComputedStyle(root).getPropertyValue('--bg').trim();
         const meta = document.querySelector('meta[name="theme-color"]');
         if (meta && BAR_COLOUR.test(bar)) meta.setAttribute('content', bar);
-        const state = { theme: th.id, appearance: choice, mode, kind: th.kind, bar };
+        const state = { theme: th.id, appearance: choice, mode, kind: th.kind, bar, previewing: this.previewing };
         window.dispatchEvent(new CustomEvent('aadhat:themechange', { detail: state }));
         return state;
     },
 
+    /** Shows a theme across the app without saving it; choosing the saved theme ends the preview. */
+    preview(theme) {
+        if (!themeById(theme)) return null;
+        if (theme === this.current.theme) return this.cancelPreview();
+        this.previewing = theme;
+        return this.render({ ...this.current, theme });
+    },
+
+    /** Back to the saved choice; null when nothing was being previewed. */
+    cancelPreview() {
+        if (this.previewing === null) return null;
+        this.previewing = null;
+        return this.render(this.current);
+    },
+
     /** Applies and saves a choice (Settings › Appearance). */
     apply(choice) {
+        this.previewing = null;
         const next = { ...this.current, ...choice };
         const state = this.render(next);
         const changedTheme = state.theme !== this.current.theme;

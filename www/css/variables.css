@@ -21,6 +21,7 @@
   --accent-hover: #4338ca;
   /* Deep fill for hero cards: their translucent white text keeps AA in both modes */
   --accent-strong: #4338ca;
+  --on-accent-strong: #ffffff;
   --accent-text: #4338ca;
   --accent-soft: #eef0ff;
   --accent-line: #c9cdfb;
@@ -31,6 +32,7 @@
   --on-mode-sale: #ffffff;
   --mode-wholesale: #6d28d9;
   --mode-wholesale-soft: #f3effe;
+  --on-mode-wholesale: #ffffff;
   --mode-rentals: #0e7490;
   --mode-rentals-soft: #e5f5f8;
 
@@ -106,6 +108,8 @@
   --btn-sale-bg: var(--mode-sale);
   --btn-sale-ink: var(--on-mode-sale);
   --btn-danger-bg: var(--negative-fill);
+  --btn-danger-ink: #ffffff;
+  --preview-apply-line: transparent;
 
   /* Old names (32 stylesheets and script-written styles use them); new code uses the tokens above */
   --primary-color: var(--accent-text);
