@@ -11,8 +11,7 @@ import path from 'path';
 import {
     formatSummary, hindiSuggestion, mergeSuggestions, partiesDryRun, partyIdOf, PARTY_ID_RE, proposeParties, saltFrom, toCsv
 } from '../../../tools/migrate/lib/parties-dryrun.js';
-import { revive } from '../../../tools/migrate/lib/plan.js';
-import { buildAging } from '../utils/aging.js';
+import { buildPlan } from '../../../tools/migrate/lib/plan.js';
 
 const ROOT = path.join(__dirname, '..', '..', '..');
 const load = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'migrate', 'parties-backup.json'), 'utf8'));
@@ -20,6 +19,11 @@ const SALT = '0123456789abcdef0123456789abcdef';
 const NOW = Date.UTC(2026, 9, 25, 9);
 const run = (opts = {}, backup = load()) => partiesDryRun(backup, { salt: SALT, now: NOW, ...opts });
 const byName = (result, name) => result.parties.find(p => p.name === name);
+const PAY = { options: { carryPayables: true } };
+const hiddenWholesale = (backup = load()) => {
+    backup.collections.wholesaleSales.push({ id: 'w-hidden', data: { type: 'wholesale', date: '2026-10-11', customerName: 'Hari', total: 250, payment: { due: 250, total: 250 }, source: 'billing' } });
+    return backup;
+};
 
 describe('partyId scheme', () => {
     test("'p-' + 16 hex digits, valid as a bill's partyId in the rules", () => {
@@ -59,8 +63,8 @@ describe('partyId scheme', () => {
 });
 
 describe('proposed parties', () => {
-    test('one party per name with an open due; voided bills, blank names and dev_ data left out', () => {
-        const r = run();
+    test('one party per name with a carried due; voided bills, blank names and dev_ data left out', () => {
+        const r = run(PAY);
         expect(r.totals).toMatchObject({ parties: 12, namesInBackup: 14, customers: 10, suppliers: 1, both: 1, voidedBillsSkipped: 1 });
         expect(r.totals.unnamed).toEqual({ bills: 1, dueBills: 1, due: 50 });
         const names = r.parties.map(p => p.name);
@@ -70,14 +74,14 @@ describe('proposed parties', () => {
     });
 
     test('scope all also proposes fully paid names', () => {
-        const r = run({ scope: 'all' });
+        const r = run({ scope: 'all', ...PAY });
         expect(r.totals.parties).toBe(14);
         expect(byName(r, 'Gopal')).toMatchObject({ dueBills: 0, dues: { receivable: 0, payable: 0 }, bills: { total: 1 } });
         expect(() => run({ scope: 'some' })).toThrow(/scope/);
     });
 
     test('name = most used spelling, other spellings as aliases, newest phone as legacyPhone, type from the sides', () => {
-        const r = run();
+        const r = run(PAY);
         expect(byName(r, 'Ramesh')).toMatchObject({ aliases: ['ramesh'], legacyPhone: '9876500011', type: 'customer', bills: { retail: 2, total: 2 }, dueBills: 2 });
         expect(byName(r, 'Suresh Traders')).toMatchObject({ type: 'both', dues: { purchase: 1500, wholesale: 500, receivable: 500, payable: 1500 } });
         expect(byName(r, 'Kisan')).toMatchObject({ type: 'supplier', legacyPhone: null });
@@ -94,22 +98,52 @@ describe('proposed parties', () => {
     });
 });
 
-describe('dues add up to Outstanding', () => {
-    test('per list: Σ parties + "No name" = buildAging total of the same bills', () => {
-        const backup = load();
-        const r = run({}, backup);
-        const total = (coll) => buildAging(backup.collections[coll].map(d => ({ id: d.id, ...revive(d.data) })), { today: new Date(NOW) }).total;
-        expect(r.totals.outstanding.purchase).toMatchObject({ parties: 2200, unnamed: 0, outstanding: total('purchases'), matches: true });
-        expect(r.totals.outstanding.retail).toMatchObject({ parties: 1190, unnamed: 50, outstanding: total('retailSales'), matches: true });
-        expect(r.totals.outstanding.wholesale).toMatchObject({ parties: 900, outstanding: total('wholesaleSales'), matches: true });
-        expect(r.totals.matchesOutstanding).toBe(true);
+describe('dues are the ones plan carries (same rules and options)', () => {
+    const planTotal = (backup, options, list) => {
+        const { dues, hiddenWholesaleDues } = buildPlan(backup, options, { now: NOW }).summary;
+        const opening = (s) => (s.carried ? s.openingTotal : 0);
+        return list === 'wholesale' ? opening(dues.wholesale) + opening(hiddenWholesaleDues) : opening(dues[list]);
+    };
+
+    test('per list: Σ parties + "No name" = the opening records of buildPlan with the same options', () => {
+        const r = run();
+        expect(r.totals.check.retail).toMatchObject({ parties: 1190, unnamed: 50, plan: planTotal(load(), {}, 'retail'), outstanding: 1240, notCarried: 0, matches: true });
+        expect(r.totals.check.wholesale).toMatchObject({ parties: 900, plan: planTotal(load(), {}, 'wholesale'), matches: true });
+        expect(r.totals.matchesPlan).toBe(true);
+    });
+
+    test('payables are not carried by default, so their suppliers are not proposed; carryPayables carries them', () => {
+        const r = run();
+        expect(r.options).toMatchObject({ mode: 'fresh', carryPayables: false, includeHiddenWholesaleDues: false });
+        expect(r.totals.check.purchase).toMatchObject({ parties: 0, plan: 0, outstanding: 2200, notCarried: 2200, matches: true });
+        expect(byName(r, 'Kisan')).toBeUndefined();
+        expect(byName(r, 'Suresh Traders').dues).toMatchObject({ purchase: 0, payable: 0, wholesale: 500 });
+        const paid = run(PAY);
+        expect(paid.totals.check.purchase).toMatchObject({ parties: 2200, plan: planTotal(load(), { carryPayables: true }, 'purchase'), notCarried: 0, matches: true });
+        expect(byName(paid, 'Kisan')).toMatchObject({ type: 'supplier', dues: { payable: 700 } });
+    });
+
+    test('a wholesale bill not made on the Wholesale page is carried only with includeHiddenWholesaleDues', () => {
+        const r = run({}, hiddenWholesale());
+        expect(byName(r, 'Hari')).toBeUndefined();
+        expect(r.totals.check.wholesale).toMatchObject({ parties: 900, plan: 900, outstanding: 1150, notCarried: 250, matches: true });
+        const opts = { includeHiddenWholesaleDues: true };
+        const all = run({ options: opts }, hiddenWholesale());
+        expect(byName(all, 'Hari')).toMatchObject({ dueBills: 1, dues: { wholesale: 250, receivable: 250 } });
+        expect(all.totals.check.wholesale).toMatchObject({ parties: 1150, plan: planTotal(hiddenWholesale(), opts, 'wholesale'), notCarried: 0, matches: true });
+        expect(all.totals.hiddenWholesale).toBe(250);
+    });
+
+    test('mode full carries no opening records, so no party has a carried due', () => {
+        const r = run({ options: { mode: 'full' } });
+        expect(r.parties).toHaveLength(0);
+        expect(r.totals.check.retail).toMatchObject({ parties: 0, plan: 0, notCarried: 1240, matches: true });
     });
 
     test('nothing is written: only a count of what the migration would write', () => {
-        expect(run().writes).toEqual({ parties: 12, directory: 1, bills: 0 });
+        expect(run().writes).toEqual({ parties: 11, directory: 1, bills: 0 });
     });
 });
-
 describe('merge suggestions', () => {
     const r = run();
     const pair = (a, b) => r.suggestions.find(s => s.names.includes(a) && s.names.includes(b));
@@ -143,16 +177,17 @@ describe('outputs', () => {
     test('CSV: one row per party with its possible duplicates, quoted where needed', () => {
         const csv = toCsv(run()).trim().split('\n');
         expect(csv[0]).toMatch(/^partyId,name,hindiSuggestion,type,aliases,bills/);
-        expect(csv).toHaveLength(13);
+        expect(csv).toHaveLength(12);
         expect(csv.find(l => l.includes(',Mohan,'))).toMatch(/\(medium\)$/);
         const odd = run({}, { ...load(), collections: { retailSales: [{ id: 'x', data: { customerName: 'A, "B"', payment: { due: 5, total: 5 } } }] } });
         expect(toCsv(odd)).toContain('"A, ""B"""');
     });
 
-    test('the summary without names shows counts and the Outstanding check only', () => {
+    test('the summary without names shows counts and the plan check only', () => {
         const text = formatSummary(run(), { names: false });
         expect(text).toMatch(/NO WRITES/);
-        expect(text).toMatch(/retail +parties ₹1,190 \+ no name ₹50 = ₹1,240; Outstanding ₹1,240 OK/);
+        expect(text).toMatch(/retail +parties ₹1,190 \+ no name ₹50 = ₹1,240; plan opening records ₹1,240 OK; Outstanding of these bills ₹1,240, not carried ₹0/);
+        expect(text).toMatch(/payables NOT carried/);
         expect(text).not.toMatch(/Ramesh|Mohan/);
     });
 });

@@ -9,7 +9,7 @@
  *        [--key service-account.json | --emulator] [--yes] [--budget 12000] [--cursor <file>] [--restart] [--dev]
  *
  *   node tools/migrate/migrate.js parties --in backup.json [--out-dir tools/migrate/out] [--scope due|all] [--salt-from <earlier parties-dryrun.json>]
- *        [--no-names]   (#139: proposed parties, possible duplicates, dues per party; offline, writes nothing to Firebase)
+ *        [--mode fresh|full] [--carry-payables] [--include-hidden-wholesale-dues] [--no-names]   (#139: proposed parties, possible duplicates, dues per party; offline, writes nothing to Firebase)
  *
  *   node tools/migrate/migrate.js convert --in rest-docs.json --out backup.json [--exclude a,b] [--exported-at ISO]
  *   node tools/migrate/migrate.js wipe --project <newProjectId> (--key service-account.json | --emulator) [--yes] [--test-domain @happa.local]
@@ -121,7 +121,12 @@ async function parties() {
     const backup = JSON.parse(fs.readFileSync(input, 'utf8'));
     const saltFile = arg('--salt-from');
     const salt = saltFile ? saltFrom(JSON.parse(fs.readFileSync(saltFile, 'utf8'))) : undefined;
-    const result = partiesDryRun(backup, { salt, scope: arg('--scope') || 'due' });
+    const options = {
+        mode: arg('--mode'),
+        carryPayables: flag('--carry-payables') ? true : undefined,
+        includeHiddenWholesaleDues: flag('--include-hidden-wholesale-dues') ? true : undefined
+    };
+    const result = partiesDryRun(backup, { salt, scope: arg('--scope') || 'due', options });
     fs.mkdirSync(outDir, { recursive: true });
     const jsonPath = path.join(outDir, 'parties-dryrun.json');
     const csvPath = path.join(outDir, 'parties-review.csv');
@@ -130,7 +135,7 @@ async function parties() {
     console.log(formatSummary(result, { names: !flag('--no-names') }));
     console.log(`Proposals: ${jsonPath} (keeps the salt: pass it with --salt-from next time so the ids stay the same)`);
     console.log(`Review sheet: ${csvPath}. Both hold names and phones: keep them outside the repo.`);
-    if (!result.totals.matchesOutstanding) process.exitCode = 1;
+    if (!result.totals.matchesPlan) process.exitCode = 1;
 }
 async function convert() {
     const { convertRestDocs } = await import('./lib/convert.js');

@@ -12,10 +12,10 @@ format `aadhat-backup-v1`, the same file `migrate.js plan` reads). **0 Firestore
 
 | Output | What it is |
 |---|---|
-| Proposed parties | One per PARTY key (case, spaces and Unicode form ignored, as today) with an open due (`--scope all`: every named bill). `name` = the most used spelling; other spellings → `aliases`; `type` customer / supplier / both from the bill lists; newest bill phone → `legacyPhone`; a spelled Hindi name as a suggestion only |
+| Proposed parties | One per PARTY key (case, spaces and Unicode form ignored, as today) with a due that `plan` carries as an opening record (`--scope all`: every named bill). `name` = the most used spelling; other spellings → `aliases`; `type` customer / supplier / both from the bill lists; newest bill phone → `legacyPhone`; a spelled Hindi name as a suggestion only |
 | `partyId` | `'p-'` + the first 16 hex digits of SHA-256(salt + U+0000 + PARTY key). Stable for a salt (kept in the private output, reused with `--salt-from`), independent of the side and of the spelling shown, can't be traced back to the name, and matches the rules' `^[A-Za-z0-9_-]{1,40}$` |
 | Possible duplicates | Pairs found by the billing "Did you mean" matcher (`utils/party-match.js`: Hindi / Latin transliteration, "ji" / "bhai" / "seth", spacing, doubled letters, 1–2 letter typos). Ranked: **high** (same name in a loose spelling), **medium** (1 letter apart), **low** (one name starts the other, or 2 letters apart: can be two people). Each says which party would stay (more bills, then the larger due) and the combined due. **Never merged automatically** |
-| Bills and dues per party | Bill counts per list, open bills, dues (purchase = payable; retail + wholesale = receivable). Per list, Σ parties + "No name" bills must equal the Outstanding total of the same bills (`buildAging`); the run says `OK` / `MISMATCH` and exits 1 on a mismatch |
+| Bills and dues per party | Bill counts per list, carried due bills, dues (purchase = payable; retail + wholesale = receivable). The dues are the ones `plan` carries, picked with `plan`'s own rules and options (`carriedDueSets` in `lib/plan.js`: `--mode`, `--carry-payables`, `--include-hidden-wholesale-dues`, default off: payables and wholesale bills not made on the Wholesale page are **not carried**, and wholesale uses the old Wholesale page rule). Per list, Σ parties + "No name" must equal the opening records `buildPlan` makes with the same options; the run says `OK` / `MISMATCH` (exit 1 on a mismatch) and also prints the Outstanding total of the same bills and how much of it is **not carried** |
 
 ## Steps (with the section 13 defaults)
 
@@ -24,15 +24,20 @@ Prerequisites: phase 1 (one name matcher, on `main`), phase 2 rules + repository
 Until those are merged no step below can write anything.
 
 1. **Dry run on the latest backup.** Owner (or the orchestrator on the owner's machine) runs
-   `parties --in <backup>` and keeps `parties-dryrun.json` and `parties-review.csv` in the private
+   `parties --in <backup>` with the **same options** the real `plan` will use (default: none) and keeps `parties-dryrun.json` and `parties-review.csv` in the private
    folder (e.g. `Q:\aadhat-data`), never in the repo.
-2. **Owner checks the totals**: the purchase / retail / wholesale lines must read `OK` and match
-   what Outstanding shows for the same date.
+2. **Owner checks the totals.** Each list (purchase / retail / wholesale) must read `OK`: the
+   parties' dues plus "No name" equal the opening records `plan` would write with those options.
+   The same line shows the Outstanding total of those bills and the part **not carried**: with the
+   defaults that is every payable (the owner said none are due; `--carry-payables` carries them)
+   and the wholesale bills not made on the Wholesale page (`--include-hidden-wholesale-dues`).
+   The owner confirms the carried totals match the old app's Outstanding and Wholesale pages for
+   the same date and decides on anything not carried before step 4.
 3. **Owner reviews the duplicates** in the CSV (high first). Default (question 8): **suggest only,
    the owner confirms each merge**; nothing is merged by the tool. Two different people with one
    name (question 4): give one a distinguishing name later ("Ramesh (Kheda)"); old bills stay with
    the first.
-4. **Plan with the same salt.** `migrate.js plan --salt-from parties-dryrun.json` (phase 8) proposes
+4. **Plan with the same salt and options.** `migrate.js plan --salt-from parties-dryrun.json` (phase 8) proposes
    the same parties with the same ids, and every opening record gets its party's `partyId` on
    creation (a field on a create, no edit record).
 5. **Apply** (phase 8, existing `apply` with its budget and cursor): writes the party docs and one
@@ -61,7 +66,7 @@ Defaults applied (section 13; no answer = these):
 
 | Write | Count | When |
 |---|---|---|
-| `parties/{p-…}` | 1 per proposed party (default scope: names with an open due; a few hundred at most) | `apply` |
+| `parties/{p-…}` | 1 per proposed party (default scope: names with a carried due; a few hundred at most) | `apply` |
 | `partyIndex/main` | 1 | `apply` |
 | `partyId` on opening records | 0 extra (a field on the opening record's create) | `apply` |
 | Existing bills, edit records | 0 | never |

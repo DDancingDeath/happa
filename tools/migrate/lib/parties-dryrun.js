@@ -10,13 +10,13 @@
  */
 import { createHash, randomBytes } from 'crypto';
 import backupLib from '../../backup/backup-lib.js';
-import { revive } from './plan.js';
+import { buildPlan, carriedDueSets, parseOptions, revive } from './plan.js';
 import { partyNameKey, partyNameSpelling, pickPartyName } from '../../../www/js/utils/parties.js';
 import { closeParty, editDistance, partyEntries } from '../../../www/js/utils/party-match.js';
 import { latinToDevanagari } from '../../../www/js/utils/item-name-autofill.js';
 import { buildAging } from '../../../www/js/utils/aging.js';
 import { billDateOf } from '../../../www/js/utils/history-filters.js';
-import { isActiveBill, outstandingDue, round2 } from '../../../www/js/utils/money.js';
+import { isActiveBill, round2 } from '../../../www/js/utils/money.js';
 
 export const DRYRUN_FORMAT = 'aadhat-parties-dryrun-v1';
 export const PARTY_ID_RE = /^p-[0-9a-f]{16}$/;
@@ -70,44 +70,48 @@ const typeOf = (sides) => (sides.has('customer') && sides.has('supplier') ? 'bot
 const clip = (s) => s.slice(0, MAX_NAME);
 
 /**
- * Groups the backup's bills into proposed parties (one per PARTY key).
+ * Groups the backup's bills into proposed parties (one per PARTY key). Dues are the ones
+ * `plan` carries as opening records (plan.js carriedDueSets: the same page rules and options).
  * @param {Object} backup decrypted backup (tools/backup/export-firestore.js)
- * @param {{salt: string, scope?: 'due'|'all'}} opts scope due: only names with an open due (what
- *   the migration carries); all: every named bill
+ * @param {{salt: string, scope?: 'due'|'all', options?: Object}} opts scope due: only names with a
+ *   carried due; all: every named bill. options: the `plan` options (mode, carryPayables,
+ *   includeHiddenWholesaleDues)
  */
-export function proposeParties(backup, { salt, scope = 'due' } = {}) {
+export function proposeParties(backup, { salt, scope = 'due', options = {} } = {}) {
     if (!backup || backup.format !== backupLib.BACKUP_FORMAT) {
         throw new Error(`Not a decrypted backup (format ${backup?.format}); expected ${backupLib.BACKUP_FORMAT}`);
     }
     if (!SCOPES.includes(scope)) throw new Error(`scope must be one of ${SCOPES.join(', ')}`);
+    const opts = parseOptions(options);
     const exportedAt = Date.parse(backup.exportedAt);
     const today = Number.isFinite(exportedAt) ? new Date(exportedAt) : new Date(0);
     const groups = new Map();
     const unnamed = { bills: 0, dueBills: 0, dues: { purchase: 0, retail: 0, wholesale: 0 } };
-    const lists = { purchase: [], retail: [], wholesale: [] };
+    const records = { purchase: [], retail: [], wholesale: [] };
+    const active = { purchase: [], retail: [], wholesale: [] };
     let voided = 0;
     let order = 0;
+    const groupOf = (key) => {
+        let g = groups.get(key);
+        if (!g) {
+            g = { key, spellings: new Map(), sides: new Set(), bills: { purchase: 0, retail: 0, wholesale: 0 },
+                dueBills: 0, dues: { purchase: 0, retail: 0, wholesale: 0 }, last: 0, phone: '', phoneAt: -Infinity };
+            groups.set(key, g);
+        }
+        return g;
+    };
 
     Object.entries(BILL_LISTS).forEach(([coll, { list, side }]) => {
         (backup.collections?.[coll] || []).forEach(d => {
             const bill = { id: d.id, ...revive(d.data) };
+            Object.defineProperty(bill, '__docId', { value: d.id, enumerable: false });
+            records[list].push(bill);
             if (!isActiveBill(bill)) { voided++; return; }
-            lists[list].push(bill);
+            active[list].push(bill);
             const name = partyNameSpelling(bill.customerName || bill.supplierName);
             const key = partyNameKey(name);
-            const due = round2(outstandingDue(bill));
-            const open = due > DUE_EPSILON;
-            if (!key) {
-                unnamed.bills++;
-                if (open) { unnamed.dueBills++; unnamed.dues[list] = round2(unnamed.dues[list] + due); }
-                return;
-            }
-            let g = groups.get(key);
-            if (!g) {
-                g = { key, spellings: new Map(), sides: new Set(), bills: { purchase: 0, retail: 0, wholesale: 0 },
-                    dueBills: 0, dues: { purchase: 0, retail: 0, wholesale: 0 }, last: 0, phone: '', phoneAt: -Infinity };
-                groups.set(key, g);
-            }
+            if (!key) { unnamed.bills++; return; }
+            const g = groupOf(key);
             const time = billDateOf(bill)?.getTime();
             const t = Number.isFinite(time) ? time : 0;
             const seen = g.spellings.get(name) || { count: 0, last: 0 };
@@ -115,14 +119,27 @@ export function proposeParties(backup, { salt, scope = 'due' } = {}) {
             g.sides.add(side);
             g.bills[list]++;
             g.last = Math.max(g.last, t);
-            if (open) {
-                g.dueBills++;
-                g.dues[list] = round2(g.dues[list] + due);
-            }
             const phone = String(bill.customerPhone || bill.phone || bill.mobile || '').trim();
             if (phone && t >= g.phoneAt) { g.phone = phone; g.phoneAt = t; }
         });
     });
+
+    const carried = { purchase: 0, retail: 0, wholesale: 0 };
+    let hiddenWholesale = 0;
+    carriedDueSets(records, today, opts).forEach(({ billType, hidden, set }) => set.entries.forEach(({ entry, src }) => {
+        const due = round2(entry.due);
+        carried[billType] = round2(carried[billType] + due);
+        if (hidden) hiddenWholesale = round2(hiddenWholesale + due);
+        const key = partyNameKey(src?.customerName || src?.supplierName);
+        if (!key) {
+            unnamed.dueBills++;
+            unnamed.dues[billType] = round2(unnamed.dues[billType] + due);
+            return;
+        }
+        const g = groupOf(key);
+        g.dueBills++;
+        g.dues[billType] = round2(g.dues[billType] + due);
+    }));
 
     const parties = [...groups.values()]
         .filter(g => scope === 'all' || g.dueBills > 0)
@@ -147,10 +164,9 @@ export function proposeParties(backup, { salt, scope = 'due' } = {}) {
         .sort((a, b) => b.dues.receivable + b.dues.payable - (a.dues.receivable + a.dues.payable)
             || b.bills.total - a.bills.total || a.key.localeCompare(b.key));
 
-    const outstanding = Object.fromEntries(Object.keys(lists).map(l => [l, buildAging(lists[l], { today }).total]));
-    return { parties, unnamed, voided, outstanding, today, allParties: groups.size };
+    const outstanding = Object.fromEntries(Object.keys(active).map(l => [l, buildAging(active[l], { today }).total]));
+    return { parties, unnamed, voided, outstanding, carried, hiddenWholesale, options: opts, today, allParties: groups.size };
 }
-
 /** The words of a name with honorifics in either script left out. */
 const plainWords = (name) => partyNameKey(name).split(' ').filter(w => w && !HONORIFICS.has(w) && !HONORIFIC_HI.has(w));
 const honorificCount = (name) => partyNameKey(name).split(' ').length - plainWords(name).length;
@@ -225,22 +241,34 @@ export function mergeSuggestions(parties) {
 /**
  * The whole dry run.
  * @param {Object} backup
- * @param {{salt?: string, scope?: 'due'|'all', now?: number}} [opts]
+ * @param {{salt?: string, scope?: 'due'|'all', options?: Object, now?: number}} [opts] options: the `plan` options
  */
-export function partiesDryRun(backup, { salt = newSalt(), scope = 'due', now = Date.now() } = {}) {
-    const { parties, unnamed, voided, outstanding, allParties } = proposeParties(backup, { salt, scope });
+export function partiesDryRun(backup, { salt = newSalt(), scope = 'due', options = {}, now = Date.now() } = {}) {
+    const { parties, unnamed, voided, outstanding, carried, hiddenWholesale, options: opts, allParties } = proposeParties(backup, { salt, scope, options });
     const suggestions = mergeSuggestions(parties);
     const sum = (f) => round2(parties.reduce((a, p) => a + f(p), 0));
     const dues = { purchase: sum(p => p.dues.purchase), retail: sum(p => p.dues.retail), wholesale: sum(p => p.dues.wholesale) };
+    // Independent check: the opening records `plan` itself would write with the same options
+    const planDues = buildPlan(backup, opts, { now }).summary;
+    const opening = (s) => (s && s.carried ? s.openingTotal || 0 : 0);
+    const planTotals = {
+        purchase: opening(planDues.dues.purchase),
+        retail: opening(planDues.dues.retail),
+        wholesale: round2(opening(planDues.dues.wholesale) + opening(planDues.hiddenWholesaleDues))
+    };
     const check = Object.fromEntries(Object.keys(outstanding).map(l => {
         const parts = round2(dues[l] + unnamed.dues[l]);
-        return [l, { parties: dues[l], unnamed: unnamed.dues[l], outstanding: outstanding[l], matches: Math.abs(parts - outstanding[l]) < DUE_EPSILON }];
+        return [l, {
+            parties: dues[l], unnamed: unnamed.dues[l], plan: planTotals[l], matches: Math.abs(parts - planTotals[l]) < DUE_EPSILON,
+            outstanding: outstanding[l], notCarried: round2(outstanding[l] - carried[l])
+        }];
     }));
     return {
         format: DRYRUN_FORMAT,
         generatedAt: new Date(now).toISOString(),
         source: { exportedAt: backup.exportedAt, project: backup.project || null },
         scope,
+        options: { mode: opts.mode, carryPayables: opts.carryPayables, includeHiddenWholesaleDues: opts.includeHiddenWholesaleDues },
         salt,
         idScheme: "'p-' + first 16 hex digits of SHA-256(salt + U+0000 + PARTY key)",
         writes: { parties: parties.length, directory: parties.length ? 1 : 0, bills: 0 },
@@ -257,8 +285,9 @@ export function partiesDryRun(backup, { salt = newSalt(), scope = 'due', now = D
             suggestions: { high: suggestions.filter(s => s.level === 'high').length, medium: suggestions.filter(s => s.level === 'medium').length, low: suggestions.filter(s => s.level === 'low').length },
             unnamed: { bills: unnamed.bills, dueBills: unnamed.dueBills, due: round2(unnamed.dues.purchase + unnamed.dues.retail + unnamed.dues.wholesale) },
             dues,
-            outstanding: check,
-            matchesOutstanding: Object.values(check).every(c => c.matches)
+            hiddenWholesale,
+            check,
+            matchesPlan: Object.values(check).every(c => c.matches)
         },
         parties,
         suggestions
@@ -292,13 +321,13 @@ const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFract
 export function formatSummary(result, { names = true, top = 15 } = {}) {
     const t = result.totals;
     const lines = [
-        `Parties dry run (${result.scope === 'due' ? 'names with an open due' : 'every named bill'}): NO WRITES`,
+        `Parties dry run (${result.scope === 'due' ? 'names with a carried due' : 'every named bill'}): NO WRITES`,
         `Backup exported ${result.source.exportedAt}`,
         `Proposed parties: ${t.parties} (${t.customers} customers, ${t.suppliers} suppliers, ${t.both} both) of ${t.namesInBackup} names in the backup; ${t.withAliases} with other spellings, ${t.withPhone} with an old-app phone`,
         `Bills of these parties: ${t.bills}; voided bills left out: ${t.voidedBillsSkipped}; bills with no name: ${t.unnamed.bills} (${t.unnamed.dueBills} with ${money(t.unnamed.due)} due, stay under "No name")`,
-        'Dues (check against Outstanding):'
+        `Dues carried as opening records (plan options: mode ${result.options.mode}, payables ${result.options.carryPayables ? 'carried' : 'NOT carried'}, wholesale not made on the Wholesale page ${result.options.includeHiddenWholesaleDues ? 'carried' : 'NOT carried'}):`,
     ];
-    Object.entries(t.outstanding).forEach(([l, c]) => lines.push(`  ${l.padEnd(9)} parties ${money(c.parties)} + no name ${money(c.unnamed)} = ${money(round2(c.parties + c.unnamed))}; Outstanding ${money(c.outstanding)} ${c.matches ? 'OK' : 'MISMATCH'}`));
+    Object.entries(t.check).forEach(([l, c]) => lines.push(`  ${l.padEnd(9)} parties ${money(c.parties)} + no name ${money(c.unnamed)} = ${money(round2(c.parties + c.unnamed))}; plan opening records ${money(c.plan)} ${c.matches ? 'OK' : 'MISMATCH'}; Outstanding of these bills ${money(c.outstanding)}, not carried ${money(c.notCarried)}`));
     lines.push(`Possible duplicates (suggestions, never merged automatically): ${t.suggestions.high} high, ${t.suggestions.medium} medium, ${t.suggestions.low} low`);
     if (names) {
         result.suggestions.slice(0, top).forEach(s => lines.push(`  [${s.level} ${s.confidence}] keep "${s.names[0]}" (${s.keep}) + "${s.names[1]}" (${s.merge}): ${s.reasons.join(', ')}; after: ${s.after.bills} bills, receive ${money(s.after.receivable)}, pay ${money(s.after.payable)}`));
