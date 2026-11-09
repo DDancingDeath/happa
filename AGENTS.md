@@ -159,6 +159,14 @@ In order:
   `www/styles.css` (cascade order; a new stylesheet is added there). Commit the
   rebuilt `app.css` with your change: `check:sw` and `load-perf.test.js` fail
   while it is out of date. The joined files are not precached on their own.
+- **UI rules** (full guide: `docs/design-system.md`): **tokens only** (colour, type, radius, shadow, spacing come from
+  `variables.css`; when none fits, add one there with light and dark values). **No theme-specific selectors in page CSS**:
+  no `[data-theme=…]`, `[data-mode=…]` or new `.dark-mode` rules outside `www/css/themes/<id>.css` and `variables.css` (a
+  token already switches with the theme and mode; the old `.dark-mode` rules go screen by screen). Text on a fill uses its
+  ink token (below). Use the component classes in `forms.css` / `surfaces.css` and keep old classes and every id as hooks.
+  **Icons come from the sprite** (`<use href="#i-…">`, below); a script that draws one uses a shared `icon(name)` helper
+  (`js/ui/icons.js`, added with the first such script) with a constant name. No emoji in navigation, titles or buttons.
+  Print and receipts never read theme tokens.
 - **Colours come from design tokens** (`www/css/variables.css`: semantic `--bg`, `--surface`,
   `--ink`, `--accent`, `--positive`…, component tokens, and the old names such as
   `--primary-color` as aliases), so every theme and dark mode restyle them. A hard-coded colour
