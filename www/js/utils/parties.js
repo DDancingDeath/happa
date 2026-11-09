@@ -5,7 +5,8 @@
  * show. Bills match when their names are equal with case, extra spaces and
  * Unicode form (NFC) ignored. Nothing else is folded: "Ramesh Ji", "R. Kumar",
  * "रमेश" and a nukta letter (क़ vs क) stay separate parties.
- * Every page that groups, filters or compares parties goes through here (#139).
+ * Dues, statements, Insights and the cash page group, filter and compare parties
+ * through here (#139); the exceptions are listed in docs/architecture.md (PARTY row).
  * Pure: no DOM, Firestore or AppState.
  * @module utils/parties
  */
