@@ -71,7 +71,7 @@ desktop app shell is needed (#144).
 
 ## 4. One test crash (#122)
 
-Only after the cut-over to **happa-bahi**, once the `GOOGLE_SERVICES_JSON` secret holds that project's
+Only after the cut-over to **bahi-happa**, once the `GOOGLE_SERVICES_JSON` secret holds that project's
 `google-services.json` and an APK has been built with it ([error-reporting.md](error-reporting.md) ›
 "Set-up"). Until then the switch says crash reports are not set up.
 
@@ -79,7 +79,7 @@ Only after the cut-over to **happa-bahi**, once the `GOOGLE_SERVICES_JSON` secre
 2. **Settings › Diagnostics › Status › Test error reports › Send a test crash (closes the app)**,
    confirm. The app closes.
 3. Open the app again (the report is sent then).
-4. Firebase console › Crashlytics (happa-bahi project) › Crashes.
+4. Firebase console › Crashlytics (bahi-happa project) › Crashes.
 
 **Pass:** the "Test crash sent by the owner from Diagnostics" report shows within a few minutes. Also
 tap **Send a test error**: it shows under Diagnostics › Errors and as a non-fatal in Crashlytics.
@@ -99,7 +99,7 @@ No answers came back, so **the defaults in #111 are accepted as built**, with on
 ### Firestore reads (#159)
 
 Root cause and guards: [read-budget.md](read-budget.md) › "Status". A normal day's reads are measured in
-week 1 after the cut-over to happa-bahi.
+week 1 after the cut-over to bahi-happa.
 
 ### Ask AI fallback (#415)
 
