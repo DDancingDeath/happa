@@ -9119,6 +9119,11 @@ body.dark-mode .today-cash-prompt {
 .ask-line { margin: 2px 0; }
 .ask-answer .ask-open { margin-top: 6px; }
 .ask-answer .ask-open + .ask-open { margin-left: 6px; }
+.ask-change { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border-color); }
+.ask-change-field { display: flex; flex: 1 1 140px; min-width: 0; flex-direction: column; gap: 2px; font-size: var(--fs-sm); color: var(--text-secondary); }
+.ask-change-field select { width: 100%; min-height: 44px; font-size: var(--fs-body); }
+.ask-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ask-kind { min-height: 44px; }
 
 /* Cash › history: a day row lights up under the pointer (was an inline mouseover, #89) */
 .cash-day-row { transition: background 0.2s; }

@@ -64,12 +64,13 @@ until the checkpoint was stored before, and 10,456 with the resume.
 
 ## Reads the owner asks for (Ask item reports, #415)
 
-An Ask item report (calculations.md ASK-5) for a period older than the loaded window reads
-the `purchases` collection once (all time: every purchase bill, about 1,400 documents in the
+An Ask item report (calculations.md ASK-5, ASK-6) for a period older than the loaded window reads
+the `purchases` collection once (a sales report: `retailSales` and `wholesaleSales`, one query each) (all time: every purchase bill, about 1,400 documents in the
 3-year benchmark shop; reading all history collections would be about 8,300). It happens only
 after the owner confirms the estimate Ask shows, never on a page load, and not after a quota
 error or past the session cap. The meter shows these reads as `ask report: purchases get`. The
-bills stay in memory for the session, so asking again reads nothing.
+bills stay in memory for the session, so asking again, or changing the report's kinds, grouping or
+a shorter period, reads nothing. Managers' reports never read: they use the bills on the phone.
 
 ## When the quota runs out
 

@@ -63,7 +63,7 @@ const langReady = loadCatalogue(getLang()).catch(e => console.error('Language ca
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261108cm-themes-serif';
+const BUILD_ID = '20261108cn-ask-sales';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -1353,7 +1353,9 @@ window.app = {
         submit: (event) => { event?.preventDefault?.(); return loadAsk().then(m => m.submit(event)); },
         ask: (text) => loadAsk().then(m => m.ask(text)),
         loadOlder: (id) => loadAsk().then(m => m.loadOlder(id)),
-        download: (id, format) => loadAsk().then(m => m.download(id, format))
+        download: (id, format) => loadAsk().then(m => m.download(id, format)),
+        changeReport: (id, field, value) => loadAsk().then(m => m.changeReport(id, field, value)),
+        toggleKind: (id, key) => loadAsk().then(m => m.toggleKind(id, key))
     },
 
     // Statements (redesign §5.4): statements.js is imported on first use

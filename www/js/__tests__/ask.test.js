@@ -39,8 +39,8 @@ describe('parseQuestion', () => {
         ['Abhi ka baaki', { intent: 'party_due', subject: 'abhi' }],
         ['Sara ka baaki', { intent: 'party_due', subject: 'sara' }],
         ['kal ki bikri', { intent: 'today_only' }],
-        ['chawal kitna becha', { intent: 'today_only' }],
-        ['Ramesh ko kitna becha', { intent: 'today_only' }],
+        ['chawal kitna becha', { intent: 'item_report', billType: 'sale', subject: 'chawal' }],
+        ['Ramesh ko kitna becha', { intent: 'item_report', billType: 'sale', subject: 'ramesh' }],
         ['wholesale ki bikri', { intent: 'today_only' }],
         ['१० तारीख की बिक्री', { intent: 'today_only' }],
         ['abhi tak ka baaki', { intent: 'total_due' }],
@@ -118,8 +118,8 @@ describe('answerQuestion', () => {
         expect(ask('chawal ka stock')).toMatchObject({ name: 'Rice', quantity: 150, limited: false });
         expect(ask('chawal ka stock', { role: 'staff' }).limited).toBe(true);
     });
-    test('one item\'s sales are not given as today\'s total', () => {
-        expect(ask('chawal kitna becha').intent).toBe('today_only');
+    test('one item\'s sales are an item report, not today\'s total', () => {
+        expect(ask('chawal kitna becha').intent).toBe('item_report');
         expect(ask('aaj ki sale kaisi rahi').intent).toBe('sales_today');
     });
     test('sign-out clears the answers on the page', async () => {
@@ -189,8 +189,64 @@ describe('Ask page: item reports (ASK-5)', () => {
         await AskManager.ask('is mahine lah kitna kharida');
         expect(answers()).toContain('Lah Kusmi: 50 kg · average ₹220.00/kg · ₹11,000 (1 bill)');
         expect(answers()).toContain('Not counted (the name only starts the same): Garlic');
-        expect(document.querySelectorAll('#askAnswers button')).toHaveLength(2);
+        expect(document.querySelectorAll('#askAnswers .ask-xlsx, #askAnswers .ask-csv')).toHaveLength(2);
+        expect([...document.querySelectorAll('#askAnswers .ask-kind')].map(b => [b.textContent, b.getAttribute('aria-pressed')])).toEqual([['Lah Kusmi', 'true'], ['Garlic', 'false']]);
+        expect([...document.querySelectorAll('#askAnswers select')].map(s => s.value)).toEqual(['purchase', 'this-month', 'item']);
         expect(FirebaseService.readReportBills).not.toHaveBeenCalled();
+    });
+
+    test('Change: another period or grouping answers again; a kind can be added by hand', async () => {
+        jest.spyOn(FirebaseService, 'isFullHistoryLoaded').mockReturnValue(true);
+        AppState.purchaseHistory = [...recent, { ...pb('p3', '2026-11-05T10:00:00', '20', 10, 90), customerName: 'Mohan', items: [{ itemId: 'g', name: 'Garlic', qty: 10, rate: 90, total: 900 }] }];
+        await AskManager.ask('is mahine lah kitna kharida');
+        const id = AskManager.answers[0].id;
+        await AskManager.toggleKind(id, 'g');
+        expect(answers()).toContain('Garlic: 10 kg · average ₹90.00/kg · ₹900 (1 bill)');
+        expect(answers()).not.toContain('Not counted');
+        await AskManager.changeReport(id, 'groupBy', 'month');
+        expect(answers()).toContain('Nov 2026: 60 kg');
+        await AskManager.changeReport(id, 'range', 'last-month');
+        expect(answers()).toContain('No bills of these in this period.');
+        await AskManager.changeReport(id, 'range', 'forever');
+        await AskManager.changeReport(id, 'billType', 'users');
+        expect(AskManager.answers[0].q).toMatchObject({ range: 'last-month', billType: 'purchase', groupBy: 'month', keys: ['k', 'g'] });
+    });
+
+    test('picking the offered kind when the word only started its name gives its report (no crash)', async () => {
+        jest.spyOn(FirebaseService, 'isFullHistoryLoaded').mockReturnValue(true);
+        AppState.purchaseHistory = [{ ...pb('p3', '2026-11-05T10:00:00', '20', 10, 90), items: [{ itemId: 'g', name: 'Garlic', qty: 10, rate: 90, total: 900 }] }];
+        AppState.items = [items[1]];
+        await AskManager.ask('is mahine lahs kitna kharida');
+        expect(answers()).toContain('Which one? Garlic');
+        await AskManager.toggleKind(AskManager.answers[0].id, 'g');
+        expect(answers()).toContain('Garlic: 10 kg · average ₹90.00/kg · ₹900 (1 bill)');
+        await AskManager.ask('help');
+        expect(answers()).toContain('I can tell you');
+    });
+
+    test('a kind chip keeps the keyboard focus after it is turned on or off', async () => {
+        jest.spyOn(FirebaseService, 'isFullHistoryLoaded').mockReturnValue(true);
+        await AskManager.ask('is mahine lah kitna kharida');
+        await AskManager.toggleKind(AskManager.answers[0].id, 'g');
+        expect(document.activeElement.textContent).toBe('Garlic');
+        expect(document.activeElement.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    test('the estimate leaves out a bill type already read this session', async () => {
+        Object.assign(AppState, { retailSalesHistory: [], salesHistory: [] });
+        FirebaseService.reportBillsInMemory.mockImplementation((coll) => (coll === 'wholesaleSales' ? { bills: [], readAt: Date.now() } : null));
+        await AskManager.ask('lah kitna becha ab tak');
+        expect(AskManager.answers[0].answer.needsOlder).toBe(true);
+        expect(FirebaseService.oldestBillTime.mock.calls.map(x => x[0])).toEqual(['retailSales']);
+    });
+
+    test('sales of all time: both sale collections are read after the one confirm', async () => {
+        jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
+        Object.assign(AppState, { retailSalesHistory: [], salesHistory: [] });
+        await AskManager.ask('lah kitna becha ab tak');
+        await AskManager.loadOlder(AskManager.answers[0].id);
+        expect(FirebaseService.oldestBillTime.mock.calls.map(x => x[0]).sort()).toEqual(['retailSales', 'wholesaleSales']);
+        expect(FirebaseService.readReportBills.mock.calls).toEqual([['retailSales', null], ['wholesaleSales', null]]);
     });
 
     test('all time: no figures until the owner confirms the estimated reads; then one read', async () => {
@@ -200,7 +256,7 @@ describe('Ask page: item reports (ASK-5)', () => {
         expect(answers()).toContain('not on this phone');
         expect(answers()).not.toContain('₹');
         await AskManager.loadOlder(AskManager.answers[0].id);
-        expect(modal.mock.calls[0][0]).toMatch(/Load about \d+ purchase bills/);
+        expect(modal.mock.calls[0][0]).toMatch(/Load about \d+ bills/);
         expect(FirebaseService.readReportBills).not.toHaveBeenCalled();
         await AskManager.loadOlder(AskManager.answers[0].id);
         expect(FirebaseService.readReportBills).toHaveBeenCalledWith('purchases', null);
@@ -223,11 +279,21 @@ describe('Ask page: item reports (ASK-5)', () => {
         AskManager.reset();
     });
 
-    test('a manager gets no report and no read', async () => {
+    test('a manager: kg only, no Excel, and no read of older bills', async () => {
         AppState.userRole = 'manager';
         await AskManager.ask('lah kitna kharida ab tak');
-        expect(answers()).toContain('Only the owner');
+        expect(answers()).toContain('Only the owner can load older bills');
+        expect(document.querySelectorAll('#askAnswers .ask-load')).toHaveLength(0);
+        await AskManager.ask('is mahine lah kitna kharida');
+        expect(answers()).toContain('Lah Kusmi: 50 kg (1 bill)');
+        expect(answers()).not.toContain('₹');
+        expect(document.querySelectorAll('#askAnswers .ask-xlsx')).toHaveLength(0);
+        expect(await AskManager.download(AskManager.answers[0].id, 'xlsx')).toBe(false);
+        AppState.settings = { roleAccess: { manager: { reports: false } } };
+        await AskManager.ask('is mahine lah kitna kharida');
+        expect(answers()).toContain('Item reports are for the owner');
         expect(FirebaseService.oldestBillTime).not.toHaveBeenCalled();
+        expect(FirebaseService.readReportBills).not.toHaveBeenCalled();
     });
 
     test('Excel: a Summary sheet and one per kind, saved through the share sheet / download; offline it is CSV', async () => {
