@@ -228,19 +228,31 @@ in place in **monitor** mode: tokens are sent and counted, nothing is refused.
   `check:happa-config` refuses a key that isn't a plain `[A-Za-z0-9_-]` string. A
   reCAPTCHA site key is public (it ships in every page), so it belongs in the config, not
   in secrets.
-- `www/js/services/app-check.js` (`startAppCheck()`): with a key, loads the self-hosted
+- `www/js/services/app-check.js` (`startAppCheck()`): with a key and online, it first
+  loads reCAPTCHA (`https://www.google.com/recaptcha/api.js?render=explicit`, through
+  `loadScriptOnce`, which rejects on a load error) and waits up to 5 s for
+  `grecaptcha.ready`. Only then does it load the self-hosted
   `vendor/firebase/10.7.1/firebase-app-check-compat.js` (same version as the other SDK
-  files, byte-identical to gstatic/npm, SRI-pinned, in the service worker's `LAZY_ASSETS`,
-  not precached and not a `<script>` in `index.html`) and calls
+  files, byte-identical to gstatic/npm, SRI-pinned; not precached, not installed by the
+  service worker (`RUNTIME_ONLY` in `scripts/check-sw-assets.js`), cached by its fetch
+  handler on first use; not a `<script>` in `index.html`) and call
   `firebase.appCheck().activate(new ReCaptchaV3Provider(siteKey), true)` (token
-  auto-refresh on). Once; a failed load only logs a warning and is retried next time.
+  auto-refresh on). The SDK then reuses `self.grecaptcha` instead of adding its own
+  `api.js` tag.
+  **Why the order matters:** the SDK's own reCAPTCHA loader has no error path. If
+  `api.js` never loads (offline, a blocker, google.com blocked), its "initialized" promise
+  never settles, every `getToken()` waits forever, and Firestore and Auth wait on it, so
+  sync and sign-in would stall until a reload. So it is never activated unless reCAPTCHA
+  is proven working. Offline, a load error or a timeout: nothing is activated, a warning
+  is logged, and it tries again on the next `online` event or the next trigger below.
 - **When**: off the critical path. `main.js` starts it when the phone is idle **after**
   the first screen is shown (signed in), or after the login screen is shown (signed out,
   so the sign-in request already carries a token). Before that, nothing changes, so the
-  first screen does no extra work at all. Cost after it: one ~23 KB same-origin script
-  plus reCAPTCHA v3 (`api.js` + its script and an invisible frame from Google), then one
+  first screen does no extra work at all. Cost after it: reCAPTCHA v3 (`api.js` + its
+  script and an invisible frame from Google), one ~23 KB same-origin script, then one
   token exchange per token lifetime (default 1 h; cached in IndexedDB across starts).
-  The widget is rendered into a hidden `div`, so no reCAPTCHA badge shows.
+  The widget is rendered into a hidden `div` (and `render=explicit` stops reCAPTCHA from
+  rendering its own), so no reCAPTCHA badge shows.
 - **Provider**: reCAPTCHA **v3** (free, score based, invisible) on the web. The **debug
   provider** (`FIREBASE_APPCHECK_DEBUG_TOKEN = true`, the SDK then logs a debug token to
   register in the console) only in a browser on `localhost` / `127.0.0.1` (the emulators,

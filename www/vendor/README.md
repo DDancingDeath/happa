@@ -22,15 +22,19 @@ files — replace them with a new versioned folder instead.
   `load-perf.test.js` checks those hashes against the files on disk.
 - App Check (`firebase-app-check-compat.js`) is not in `index.html`: only with a site key,
   `js/services/app-check.js` loads it after the first screen with its SRI hash
-  (`APP_CHECK_SDK_INTEGRITY`, checked by `app-check.test.js`); it is in `LAZY_ASSETS`.
+  (`APP_CHECK_SDK_INTEGRITY`, checked by `app-check.test.js`). It is in neither service
+  worker list (`RUNTIME_ONLY` in `scripts/check-sw-assets.js`), so phones without a key
+  never download it; the fetch handler caches it on first use.
 
 ### Upgrading
 
 1. Download the `*-compat.js` files for the new version into
    `vendor/firebase/<version>/` and verify them against the npm package.
 2. Update the `<script>` tags (src + integrity) in `index.html`, `APP_CHECK_SDK_URL` /
-   `APP_CHECK_SDK_INTEGRITY` in `js/services/app-check.js` and the `STATIC_ASSETS` /
-   `LAZY_ASSETS` entries in `service-worker.js`; delete the old folder.
+   `APP_CHECK_SDK_INTEGRITY` in `js/services/app-check.js` (and re-check that the SDK still
+   reuses an existing `self.grecaptcha`, `app-check.test.js`), `RUNTIME_ONLY` in
+   `scripts/check-sw-assets.js` and the `STATIC_ASSETS` entries in `service-worker.js`;
+   delete the old folder.
 3. Run `npm run check:sw` and `npm test`.
 
 ## SheetJS Community Edition 0.20.1 (`xlsx.mini.min.js`)

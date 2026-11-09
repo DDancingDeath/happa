@@ -278,7 +278,7 @@ const STATIC_ASSETS = [
     '/vendor/firebase/10.7.1/firebase-auth-compat.js',
     '/vendor/firebase/10.7.1/firebase-firestore-compat.js'
 ];
-// Loaded with import() (or, for SheetJS and App Check, a script tag) only when used (Ask, Excel files, App Check with a key, rent receipts, Tenants/Properties pages, This month in Advanced, unit picker, tenant link actions, deposits,
+// Loaded with import() (or, for SheetJS, a script tag) only when used (Ask, Excel files, rent receipts, Tenants/Properties pages, This month in Advanced, unit picker, tenant link actions, deposits,
 // expenses, reports), so not in
 // the precache budget; install also caches them, best effort, so this version's copies (matching
 // the precached files) are there offline right after a deploy.
@@ -287,7 +287,6 @@ const LAZY_ASSETS = [
     '/js/utils/ask.js',
     '/js/utils/ask-report.js',
     '/vendor/sheetjs/0.20.1/xlsx.mini.min.js',
-    '/vendor/firebase/10.7.1/firebase-app-check-compat.js',
     '/css/rent-receipt.css',
     '/js/rentals/rent-deposit.js',
     '/js/rentals/rent-deposit-store.js',
