@@ -221,10 +221,6 @@ const BillingManager = {
         if (event) {
             purchaseBtn.classList.remove('active');
             saleBtn.classList.remove('active');
-            purchaseBtn.style.background = '';
-            purchaseBtn.style.borderColor = '';
-            saleBtn.style.background = '';
-            saleBtn.style.borderColor = '';
             // The tab for this mode (a delegated click's currentTarget is the document, #89)
             (mode === 'sale' ? saleBtn : purchaseBtn).classList.add('active');
         }
@@ -233,11 +229,6 @@ const BillingManager = {
             this.currentMode = 'sale';
             purchaseSection.style.display = 'none';
             saleSection.style.display = 'block';
-            
-            if (saleBtn.classList.contains('active')) {
-                saleBtn.style.background = '#15803d';
-                saleBtn.style.borderColor = '#15803d';
-            }
             
             // Preserve current selections (the picker keeps its item by id)
             const currentRate = document.getElementById('saleRate')?.value;
@@ -756,7 +747,7 @@ const BillingManager = {
         try {
             const currentUser = firebase.auth().currentUser;
             if (!currentUser) {
-                content.innerHTML = `<p style="text-align: center; color: #666; padding: 40px;">${Helpers.escapeHtml(t('ui.billing.login_to_view_drafts'))}</p>`;
+                content.innerHTML = `<p class="drafts-empty">${Helpers.escapeHtml(t('ui.billing.login_to_view_drafts'))}</p>`;
                 overlay.classList.add('active');
                 return;
             }
@@ -765,21 +756,21 @@ const BillingManager = {
                 .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
             if (drafts.length === 0) {
-                content.innerHTML = `<p style="text-align: center; color: #666; padding: 40px;">${Helpers.escapeHtml(t('ui.billing.no_saved_drafts'))}</p>`;
+                content.innerHTML = `<p class="drafts-empty">${Helpers.escapeHtml(t('ui.billing.no_saved_drafts'))}</p>`;
             } else {
                 content.innerHTML = drafts.map((draft) => `
-                    <div class="history-item" style="margin-bottom: 12px;">
-                        <div class="history-header">
-                            <span style="font-weight: 600;">${Helpers.escapeHtml(t(draft.mode === 'purchase' ? 'ui.billing.purchase_draft' : 'ui.billing.sale_draft'))}</span>
-                            <span style="color: #666; font-size: 14px;">${Helpers.escapeHtml(t(draft.weights?.length > 0 ? 'ui.billing.draft_items_weights' : 'ui.billing.draft_items', { items: draft.items?.length || 0, weights: draft.weights?.length || 0 }))}</span>
+                    <div class="draft-card draft-card-${draft.mode === 'purchase' ? 'purchase' : 'sale'}">
+                        <div class="draft-card-head">
+                            <span class="draft-card-title">${Helpers.escapeHtml(t(draft.mode === 'purchase' ? 'ui.billing.purchase_draft' : 'ui.billing.sale_draft'))}</span>
+                            <span class="draft-card-meta">${Helpers.escapeHtml(t(draft.weights?.length > 0 ? 'ui.billing.draft_items_weights' : 'ui.billing.draft_items', { items: draft.items?.length || 0, weights: draft.weights?.length || 0 }))}</span>
                         </div>
-                        <div class="history-date">${Helpers.escapeHtml(draft.date)}</div>
-                        ${draft.customerName ? `<div style="color: #666; font-size: 13px; margin-top: 4px;">${Helpers.escapeHtml(t('ui.common.customer'))} ${Helpers.escapeHtml(draft.customerName)}</div>` : ''}
-                        <div style="display: flex; gap: 8px; margin-top: 8px;">
-                            <button data-onclick="billing.loadDraft('${Helpers.escapeJsAttr(draft.id)}')" style="flex: 1; padding: 8px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                        <div class="draft-card-date">${Helpers.escapeHtml(draft.date)}</div>
+                        ${draft.customerName ? `<div class="draft-card-customer">${Helpers.escapeHtml(t('ui.common.customer'))} ${Helpers.escapeHtml(draft.customerName)}</div>` : ''}
+                        <div class="draft-card-actions">
+                            <button type="button" class="btn btn-primary btn-sm" data-onclick="billing.loadDraft('${Helpers.escapeJsAttr(draft.id)}')">
                                 ${Helpers.escapeHtml(t('ui.billing.load'))}
                             </button>
-                            <button data-onclick="billing.deleteDraft('${Helpers.escapeJsAttr(draft.id)}')" style="flex: 1; padding: 8px; background: #b91c1c; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            <button type="button" class="btn btn-danger btn-sm" data-onclick="billing.deleteDraft('${Helpers.escapeJsAttr(draft.id)}')">
                                 ${Helpers.escapeHtml(t('ui.modals.delete'))}
                             </button>
                         </div>
@@ -790,7 +781,7 @@ const BillingManager = {
             overlay.classList.add('active');
         } catch (error) {
             console.error('Failed to load drafts:', error);
-            content.innerHTML = `<p style="text-align: center; color: #ef4444; padding: 40px;">${Helpers.escapeHtml(t('ui.billing.failed_load_drafts'))}</p>`;
+            content.innerHTML = `<p class="drafts-empty tone-neg">${Helpers.escapeHtml(t('ui.billing.failed_load_drafts'))}</p>`;
             overlay.classList.add('active');
         }
     },

@@ -277,7 +277,7 @@ const PurchaseManager = {
         const billTotalSpan = document.getElementById('billTotal');
         
         if (billItems.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 24px;" data-i18n="msg.common.no_items_in_bill">${Helpers.escapeHtml(t('msg.common.no_items_in_bill'))}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="bill-empty" data-i18n="msg.common.no_items_in_bill">${Helpers.escapeHtml(t('msg.common.no_items_in_bill'))}</td></tr>`;
             if (billTotalSpan) billTotalSpan.textContent = '0';
             if (totalPacketsInBillSpan) totalPacketsInBillSpan.textContent = '0';
             if (weightBreakdownSection) weightBreakdownSection.innerHTML = '';
@@ -299,11 +299,11 @@ const PurchaseManager = {
                     }
                     
                     return `
-                        <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #0058b8;">
-                            <div style="font-weight: 600; margin-bottom: 6px; color: #333;">
+                        <div class="bill-weights bill-weights-purchase">
+                            <div class="bill-weights-title">
                                 ${Helpers.escapeHtml(lineLabel(item))} (${Helpers.escapeHtml(tn('ui.print.packets_kg', item.weights.length, { kg: formatKg(item.qty) }))})
                             </div>
-                            <div style="font-family: monospace; font-size: 14px; line-height: 1.4; color: #555;">
+                            <div class="bill-weights-list">
                                 ${weightLines.join('<br>')}
                             </div>
                         </div>
@@ -317,12 +317,12 @@ const PurchaseManager = {
         // Render bill items table
         tbody.innerHTML = billItems.map((item, index) => {
             return `
-                <tr style="cursor: pointer;" data-onclick="purchase.editBillItem(${index})">
+                <tr class="bill-line" data-onclick="purchase.editBillItem(${index})">
                     <td>${Helpers.escapeHtml(lineLabel(item))}</td>
                     <td>${formatRate(item.rate)}</td>
                     <td>${formatKg(item.qty)} kg</td>
                     <td>${formatRupees(shownAmount(item.total))}</td>
-                    <td><button data-onclick="event.stopPropagation(); purchase.deleteBillItem(${index})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">×</button></td>
+                    <td><button type="button" class="remove-bill-item" data-onclick="event.stopPropagation(); purchase.deleteBillItem(${index})" aria-label="${Helpers.escapeHtml(t('ui.modals.delete'))}" title="${Helpers.escapeHtml(t('ui.modals.delete'))}">×</button></td>
                 </tr>
             `;
         }).join('');
