@@ -3155,6 +3155,18 @@ body.typing .bottom-nav {
   text-align: right;
 }
 
+/* Bill lines written by purchase.js / retail-sale.js (3.3): a line opens for editing */
+#billTable tbody tr.bill-line, #saleTable tbody tr.bill-line {
+  cursor: pointer;
+}
+
+#billTable td.bill-empty, #saleTable td.bill-empty {
+  padding: var(--sp-6) var(--sp-2);
+  color: var(--ink-3);
+  font-weight: var(--w-regular);
+  text-align: center;
+}
+
 .remove-bill-item, .remove-sale-item {
   background: var(--danger-soft);
   color: var(--on-danger-soft);
@@ -4028,6 +4040,96 @@ input[type="number"] {
 .bill-items-foot strong {
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Billing script output (3.3): weights per line, the drafts sheet ---------- */
+.bill-weights {
+  margin-bottom: var(--sp-2);
+  padding: var(--sp-3);
+  border-left: 4px solid var(--mode-purchase);
+  border-radius: var(--r-control);
+  background: var(--surface-2);
+}
+
+.bill-weights-sale {
+  border-left-color: var(--mode-sale);
+}
+
+.bill-weights-title {
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-weight: var(--w-strong);
+}
+
+.bill-weights-list {
+  color: var(--ink-2);
+  font-family: monospace;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+#draftsContent .drafts-empty {
+  margin: 0;
+  padding: var(--sp-6) var(--sp-4);
+  color: var(--ink-3);
+  text-align: center;
+}
+
+#draftsContent .drafts-empty.tone-neg {
+  color: var(--negative);
+}
+
+.draft-card {
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--mode-purchase);
+  border-radius: var(--r-control);
+  background: var(--surface);
+}
+
+.draft-card-sale {
+  border-left-color: var(--mode-sale);
+}
+
+.draft-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--sp-2);
+}
+
+.draft-card-title {
+  color: var(--ink);
+  font-weight: var(--w-strong);
+}
+
+.draft-card-meta,
+.draft-card-date {
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+
+.draft-card-date {
+  margin-top: 2px;
+}
+
+.draft-card-customer {
+  margin-top: 4px;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+.draft-card-actions {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+
+.draft-card-actions > .btn {
+  flex: 1;
 }
 
 /* ---- css/voice.css ---- */
