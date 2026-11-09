@@ -30,6 +30,9 @@ const confirmed = new Set();
 /** kind → id of the bill being edited (left out of "Did you mean") */
 const editingId = new Map();
 let filling = false;
+let pointerHeld = false;
+/** kinds whose hint waits for the press to end */
+const waitingForRelease = new Set();
 
 const listId = (kind) => `partySuggest-${kind}`;
 const hintId = (kind) => `partyHint-${kind}`;
@@ -125,7 +128,7 @@ export function closeSuggestions(kind) {
 export function showSuggestions(kind) {
     const input = inputOf(kind);
     if (!input) return [];
-    const items = matchParties(entriesFor(kind), input.value, { limit: LIMIT });
+    const items = matchParties(entriesFor(kind, editingId.get(kind) ?? null), input.value, { limit: LIMIT });
     if (!items.length) {
         closeSuggestions(kind);
         return [];
@@ -217,6 +220,11 @@ export function renderNameHint(kind, draft = undefined) {
         return null;
     }
     let el = document.getElementById(hintId(kind));
+    // A new line would move what is under a press still held (Save): show it after the click
+    if (pointerHeld && (!el || el.hidden)) {
+        waitingForRelease.add(kind);
+        return null;
+    }
     if (!el) {
         el = document.createElement('div');
         el.id = hintId(kind);
@@ -288,6 +296,17 @@ export function bindPartySuggest() {
         showSuggestions(kind);
     });
     document.addEventListener('keydown', onKeydown, true);
+    document.addEventListener('pointerdown', () => { pointerHeld = true; }, true);
+    const release = () => {
+        pointerHeld = false;
+        if (!waitingForRelease.size) return;
+        const kinds = [...waitingForRelease];
+        waitingForRelease.clear();
+        // After the click this release makes has run
+        setTimeout(() => kinds.forEach(kind => renderNameHint(kind)), 0);
+    };
+    ['pointerup', 'pointercancel'].forEach(type => document.addEventListener(type, release, true));
+    window.addEventListener('blur', release);
     document.addEventListener('focusout', (e) => {
         const kind = KIND_OF[/** @type {HTMLElement} */ (e.target)?.id];
         if (!kind) return;

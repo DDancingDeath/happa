@@ -172,6 +172,37 @@ describe('Billing name field (ui/party-suggest)', () => {
         expect(renderNameHint('retail', {})?.name).toBe('Ramesh Kumar');
     });
 
+    test('editing a bill leaves that bill out of the list\'s dues too', () => {
+        renderNameHint('retail', { editingBill: { id: 'a' } });
+        type('sit');
+        expect(list().querySelector('[role="option"]').textContent).toBe('sita devino dues');
+        renderNameHint('retail', {});
+        type('sit');
+        expect(list().querySelector('[role="option"]').textContent).toBe('Sita Deviowes ₹200');
+    });
+
+    test('a press on Save that blurs the name keeps Save in place: the hint shows after the click', async () => {
+        const tick = () => new Promise(r => setTimeout(r, 0));
+        const save = document.createElement('button');
+        document.body.appendChild(save);
+        const saved = [];
+        save.addEventListener('click', () => saved.push(hint()?.hidden !== false));
+        type('Sita Devi Bhai');
+        save.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+        save.focus();
+        input.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: save }));
+        expect(renderNameHint('retail')).toBeNull();
+        await tick();
+        await new Promise(r => setTimeout(r, 300));
+        expect(hint()?.hidden ?? true).toBe(true);
+        save.dispatchEvent(new Event('pointerup', { bubbles: true }));
+        save.click();
+        expect(saved).toEqual([true]);
+        await tick();
+        expect(hint().hidden).toBe(false);
+        expect(hint().textContent).toContain('Did you mean Sita Devi');
+    });
+
     test('no suggestions or warning on a field it does not know', () => {
         expect(showSuggestions('wholesale')).toEqual([]);
         expect(renderNameHint('wholesale')).toBeNull();
