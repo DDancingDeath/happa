@@ -68,8 +68,9 @@ describe('FirebaseService.setupRealtimeListeners', () => {
         expect(AppState.historyLoadedFrom).toBe(defaultWindowStart(NOW));
     });
 
-    it('waits for server data when the first snapshot comes from cache', async () => {
-        install({ holdServer: true });
+    it('a phone with nothing cached yet (first sign-in) waits for the server', async () => {
+        fake = createFakeFirestore({ holdServer: true });
+        global.firebase = fake.firebase;
         let resolved = false;
         const ready = FirebaseService.setupRealtimeListeners().then(() => { resolved = true; });
         await fake.settle();
@@ -82,21 +83,37 @@ describe('FirebaseService.setupRealtimeListeners', () => {
         expect(resolved).toBe(true);
     });
 
-    it('with cached data, startup waits only the short grace for the server (#13)', async () => {
+    it('with cached data, startup goes on from the cache answers without waiting for the server (#59)', async () => {
         install({ holdServer: true });
         fake.seed('purchases', [bill('p1', NOW - 2000)]);
-        jest.useFakeTimers();
+        await FirebaseService.setupRealtimeListeners();
+        expect(AppState.purchaseHistory.map(p => p.id)).toEqual(['p1']);
+        expect(FirebaseService.getStartupListenerInfo().Purchases).toMatchObject({ first: 'cache', docs: 1, readyBy: 'cache' });
+        expect(FirebaseService.dataFreshness()).toBe('cache');
+
+        // The server's answer arrives later as an ordinary change
+        await fake.db.collection('purchases').doc('p2').set(bill('p2', NOW - 500));
+        fake.releaseServer();
+        await fake.settle();
+        await fake.settle();
+        expect(AppState.purchaseHistory.map(p => p.id)).toEqual(['p2', 'p1']);
+        expect(FirebaseService.dataFreshness()).toBe('server');
+    });
+
+    it('an older cached stock checkpoint waits for the server\'s (it could move the window start, #59)', async () => {
+        install({ holdServer: true });
+        fake.seed('stockCheckpoints', [{
+            id: 'current', formatVersion: STOCK_REPLAY_FORMAT, asOf: defaultWindowStart(NOW) - 86400000, state: [], resolutions: [],
+            itemsSignature: itemsSignature(ITEMS), stale: false, staleCount: 0, builtAt: NOW, fullBuiltAt: NOW
+        }]);
         let resolved = false;
         const ready = FirebaseService.setupRealtimeListeners().then(() => { resolved = true; });
-        for (let i = 0; i < 5 && !resolved; i++) {
-            await fake.settle();
-            jest.advanceTimersByTime(2600);
-            await fake.settle();
-        }
-        expect(resolved).toBe(true);
+        await fake.settle();
+        await fake.settle();
+        expect(resolved).toBe(false);
+        fake.releaseServer();
         await ready;
-        expect(AppState.purchaseHistory.map(p => p.id)).toEqual(['p1']);
-        expect(FirebaseService.getStartupListenerInfo().Purchases).toMatchObject({ first: 'cache', docs: 1, readyBy: 'cache-timeout' });
+        expect(resolved).toBe(true);
     });
 
     it('historyServerSynced() is false while bills come only from the offline cache (#65 roll-forward)', async () => {

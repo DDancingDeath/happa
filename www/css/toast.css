@@ -49,6 +49,37 @@
   background: #047857;
 }
 
+.sync-pill[data-state="updating"] {
+  background: linear-gradient(var(--info-soft), var(--info-soft)), var(--card-bg);
+  color: var(--info);
+}
+
+.sync-pill[data-state="stale"] {
+  background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--card-bg);
+  color: var(--on-warning-soft);
+}
+
+/* Figures from the phone's cache until the server answers (#59): ui/sync-status.js sets html[data-updating] */
+.updating-note,
+.updating-mark {
+  display: none;
+}
+
+html[data-updating] .updating-note {
+  display: block;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--info-soft);
+  color: var(--info);
+  font-size: var(--fs-caption);
+}
+
+html[data-updating] .updating-mark {
+  display: inline;
+  opacity: 0.8;
+}
+
 /* Per-row sync chip in History and Expenses (#70) */
 .sync-chip {
   display: inline-block;

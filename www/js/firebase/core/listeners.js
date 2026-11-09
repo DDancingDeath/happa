@@ -7,7 +7,7 @@
  */
 
 import {
-    applySnapshot, defaultMapDoc, FIRST_SNAPSHOT_CACHED_WAIT_MS, FIRST_SNAPSHOT_SERVER_WAIT_MS,
+    applySnapshot, defaultMapDoc, FIRST_SNAPSHOT_SERVER_WAIT_MS,
     listenerStartup, markDirty, pendingFirstSnapshots, pendingViews, resyncSnapshot, runView, unsubscribeFunctions
 } from './realtime.js';
 import { healPending, registerHealable, RELISTEN_TIMEOUT_MS, resetHeal, scheduleHeal } from './target-heal.js';
@@ -212,14 +212,19 @@ export const listenerMethods = {
                     if (!snapshot.metadata.fromCache || navigator.onLine === false) {
                         listenerStartup[label].readyBy = source === 'server' ? 'server' : 'offline-cache';
                         markReady();
+                    } else if (S.warmCache) {
+                        // This device has the app's data: the first screen comes from the cache answer
+                        // (#59). The server's answer follows as ordinary changes; until every listener
+                        // has one, the pages mark their figures "updating…" (utils/data-freshness.js).
+                        listenerStartup[label].readyBy = 'cache';
+                        markReady();
                     } else if (!readyTimer) {
-                        // This device already has cached data: show it after a
-                        // short wait instead of the full server grace; the live
-                        // listener applies the server copy as soon as it arrives.
+                        // Nothing cached yet (a first sign-in): wait for the server, never show an
+                        // empty cache as the shop's figures.
                         readyTimer = setTimeout(() => {
                             listenerStartup[label].readyBy = 'cache-timeout';
                             markReady();
-                        }, S.warmCache ? FIRST_SNAPSHOT_CACHED_WAIT_MS : FIRST_SNAPSHOT_SERVER_WAIT_MS);
+                        }, FIRST_SNAPSHOT_SERVER_WAIT_MS);
                     }
                 }
             };

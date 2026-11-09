@@ -9,11 +9,15 @@
 
 import { t, tn, getLang, LANG_CHANGE_EVENT } from '../i18n/index.js';
 import { formatDayTime, formatTimeOfDay, toLocalISODate } from '../utils/dates.js';
+import { on, DATA_FRESHNESS_CHANGED } from '../utils/events.js';
+import { dataFreshness } from '../utils/data-freshness.js';
 
 /** An online write must stay unacknowledged this long before it is shown as waiting. */
 export const PENDING_SHOW_DELAY_MS = 1500;
 /** How long "Synced" stays on screen. */
 export const SYNCED_SHOW_MS = 2500;
+/** Online with figures from the cache only this long: "Updating…" becomes "Not updated since …" (#59). */
+export const NOT_UPDATED_AFTER_MS = 15000;
 /** localStorage key: when this phone last got data from the server (ms). */
 export const SERVER_DATA_AT_KEY = 'happa.serverDataAt';
 /** Rows remembered as "Saved" this session (oldest dropped first). */
@@ -36,18 +40,23 @@ export function asOfText(at, now = Date.now()) {
 
 /**
  * Text of the pill for a state, or '' when nothing is shown.
- * @param {{online: boolean, pending: number, synced?: boolean, asOf?: string}} state
- *   asOf: when the data on screen last came from the server (offline only)
+ * @param {{online: boolean, pending: number, synced?: boolean, asOf?: string, updating?: boolean, stale?: boolean}} state
+ *   asOf: when the data on screen last came from the server (offline, or online and stale);
+ *   updating: the figures on screen come from the phone's cache until the server answers (#59);
+ *   stale: ...and it has not answered for NOT_UPDATED_AFTER_MS
  * @returns {string}
  */
-export function syncStatusText({ online, pending, synced = false, asOf = '' }) {
+export function syncStatusText({ online, pending, synced = false, asOf = '', updating = false, stale = false }) {
     const waiting = pending > 0 ? tn('ui.sync.waiting', pending) : '';
     if (!online) {
         const offline = asOf ? t('ui.sync.offline_as_of', { time: asOf }) : t('ui.sync.offline');
         return waiting ? `${offline} · ${waiting}` : offline;
     }
     if (waiting) return waiting;
-    return synced ? t('ui.sync.synced') : '';
+    if (synced) return t('ui.sync.synced');
+    if (!updating) return '';
+    if (!stale) return t('ui.sync.updating');
+    return asOf ? t('ui.sync.not_updated_since', { time: asOf }) : t('ui.sync.not_updated');
 }
 
 const SYNC_CHIP_KEYS = Object.freeze({ pending: 'ui.sync.row_pending', synced: 'ui.sync.row_saved' });
@@ -75,7 +84,7 @@ export function syncChipHtml(id, state = null) {
  *   left to send, or null when that can't be asked (FirebaseService.pendingWritesWaiter)
  * @param {Storage} [deps.storage] - keeps the last server-data time across restarts
  */
-export function createSyncStatus({ win = null, doc = null, pendingWrites: initialPendingWrites = () => null, storage = null } = {}) {
+export function createSyncStatus({ win = null, doc = null, pendingWrites: initialPendingWrites = () => null, storage = null, freshness = () => null } = {}) {
     let pendingWrites = initialPendingWrites;
     const writes = new Map();
     const listened = new Map();
@@ -94,6 +103,10 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
     let serverDataSavedAt = 0;
     // Listeners heard from the server since the phone came online: live until it goes offline.
     let serverSinceOnline = false;
+    // The session's figures come from the cache only (#59); stale once that lasted NOT_UPDATED_AFTER_MS.
+    let updating = false;
+    let stale = false;
+    let staleTimer = null;
     const saveServerDataAt = (at) => {
         serverDataSavedAt = at;
         try { storage?.setItem?.(SERVER_DATA_AT_KEY, String(at)); } catch (_) { /* storage full: the time is only shown */ }
@@ -141,6 +154,23 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
         return el;
     };
 
+    /** Pages show their "updating…" notes while this is set on <html> (CSS: [data-updating]). */
+    const markPages = () => {
+        const root = doc?.documentElement;
+        if (!root) return;
+        if (started && online && updating) root.setAttribute('data-updating', stale ? 'stale' : '');
+        else root.removeAttribute('data-updating');
+    };
+    /** No pending changes and nothing to flash: "Updating…" / "Not updated since …", or nothing. */
+    const paintIdle = () => {
+        if (!updating) {
+            paint('', '');
+            return;
+        }
+        const asOf = stale && serverDataAt ? asOfText(serverDataAt) : '';
+        paint(syncStatusText({ online, pending: 0, updating, stale, asOf }), stale ? 'stale' : 'updating');
+    };
+
     const paint = (text, kind) => {
         const node = element();
         if (!node) return;
@@ -172,6 +202,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
     };
 
     function render() {
+        markPages();
         if (!started) return;
         const pending = pendingCount();
         watchers.forEach(fn => { try { fn({ online, pending }); } catch (_) { /* a watcher never breaks the pill */ } });
@@ -207,12 +238,23 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
             return;
         }
         if (shown && !synced) {
-            paint('', '');
+            paintIdle();
             confirmSynced();
             return;
         }
-        paint('', '');
+        paintIdle();
     }
+
+    /** @param {?string} state utils/data-freshness.js: 'cache' while the figures come from the cache only */
+    const setFreshness = (state) => {
+        const next = state === 'cache';
+        if (next === updating) return;
+        updating = next;
+        stale = false;
+        clearTimeout(staleTimer);
+        staleTimer = updating ? setTimeout(() => { stale = true; render(); }, NOT_UPDATED_AFTER_MS) : null;
+        render();
+    };
 
     const onOnline = () => { online = true; serverSinceOnline = false; render(); };
     const onOffline = () => {
@@ -235,6 +277,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
             if (started || !win) return;
             started = true;
             online = win.navigator?.onLine !== false;
+            setFreshness(freshness());
             win.addEventListener('online', onOnline);
             win.addEventListener('offline', onOffline);
             win.addEventListener(LANG_CHANGE_EVENT, onLang);
@@ -256,8 +299,14 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
             syncedIds.clear();
             shown = false;
             synced = false;
+            updating = false;
+            stale = false;
+            clearTimeout(staleTimer);
+            staleTimer = null;
+            markPages();
             paint('', '');
         },
+        setFreshness,
         /**
          * Counts a write until it settles (acknowledged by the server or refused).
          * @param {string} path - Document path, so a doc also seen by a listener counts once
@@ -366,8 +415,12 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
 export const SyncStatus = createSyncStatus({
     win: typeof window !== 'undefined' ? window : null,
     doc: typeof document !== 'undefined' ? document : null,
-    storage: typeof localStorage !== 'undefined' ? localStorage : null
+    storage: typeof localStorage !== 'undefined' ? localStorage : null,
+    freshness: dataFreshness
 });
+
+// "Updating…" until every data listener heard from the server (#59)
+on(DATA_FRESHNESS_CHANGED, state => SyncStatus.setFreshness(state));
 
 // Row chips follow the pill's state (one watcher for every list).
 SyncStatus.watch(() => SyncStatus.fillSyncChips());

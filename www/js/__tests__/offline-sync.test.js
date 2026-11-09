@@ -2,7 +2,7 @@
  * @fileoverview Offline / waiting-to-sync pill (#70) and "Save failed — storage
  * full" instead of a false "Saved" (#153).
  */
-import { createSyncStatus, syncStatusText, PENDING_SHOW_DELAY_MS, SYNCED_SHOW_MS } from '../ui/sync-status.js';
+import { createSyncStatus, syncStatusText, PENDING_SHOW_DELAY_MS, SYNCED_SHOW_MS, NOT_UPDATED_AFTER_MS } from '../ui/sync-status.js';
 import { isStorageFullError, safeSetItem } from '../utils/storage-full.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { PurchaseManager } from '../modules/purchase.js';
@@ -49,6 +49,40 @@ describe('sync pill (#70)', () => {
 
     test('hidden while online with nothing waiting', () => {
         expect(pill().hidden).toBe(true);
+    });
+
+    test('figures from the cache only (#59): "Updating…" and the pages\' notes, "Not updated" after 15 s, gone once the server answered', () => {
+        const marked = () => document.documentElement.hasAttribute('data-updating');
+        status.setFreshness('cache');
+        expect(pill().textContent).toBe('Updating…');
+        expect(pill().dataset.state).toBe('updating');
+        expect(marked()).toBe(true);
+        jest.advanceTimersByTime(NOT_UPDATED_AFTER_MS);
+        expect(pill().textContent).toBe('Not updated yet');
+        expect(pill().dataset.state).toBe('stale');
+        // Offline says so itself; the pages' "updating…" notes go
+        go(false);
+        expect(pill().textContent).toBe('Offline');
+        expect(marked()).toBe(false);
+        go(true);
+        expect(marked()).toBe(true);
+        status.setFreshness('server');
+        expect(pill().hidden).toBe(true);
+        expect(marked()).toBe(false);
+    });
+
+    test('"Not updated since" gives the time this phone last heard from the server (#59)', () => {
+        status.stop();
+        const at = new Date(2026, 10, 9, 10, 42).getTime();
+        jest.setSystemTime(new Date(2026, 10, 9, 11, 0));
+        status = createSyncStatus({ win: window, doc: document, storage: { getItem: () => String(at), setItem: () => {} }, freshness: () => 'cache' });
+        status.start();
+        expect(pill().textContent).toBe('Updating…');
+        jest.advanceTimersByTime(NOT_UPDATED_AFTER_MS);
+        expect(pill().textContent).toBe('Not updated since 10:42 am');
+        setLang('hi');
+        expect(syncStatusText({ online: true, pending: 0, updating: true })).toBe('अपडेट हो रहा है…');
+        expect(syncStatusText({ online: true, pending: 0, updating: true, stale: true, asOf: '10:42 am' })).toBe('10:42 am के बाद अपडेट नहीं हुआ');
     });
 
     test('offline → "Offline"; back online → "Synced" once the SDK has nothing queued, then hides', async () => {
