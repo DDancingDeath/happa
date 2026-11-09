@@ -5,7 +5,7 @@
  */
 import { answerQuestion, parseQuestion } from '../utils/ask.js';
 import {
-    estimateReportReads, itemPurchaseReport, labourShares, matchKinds, mergeReportBills, reportCsv, reportDays,
+    estimateReportReads, ITEM_WORD_SYNONYMS, itemPurchaseReport, labourShares, matchKinds, mergeReportBills, reportCsv, reportDays,
     reportKinds, reportPeriod, reportSheets, sheetName, validateSpec
 } from '../utils/ask-report.js';
 import { purchaseItems } from '../utils/business-metrics.js';
@@ -78,6 +78,27 @@ describe('matchKinds: the kinds a word names', () => {
     });
     test('a word that only starts a name is offered, never counted', () => {
         expect(matchKinds(kinds, 'lahs')).toEqual({ kinds: [], near: expect.arrayContaining([expect.objectContaining({ name: 'Lahsun Desi' })]), unknown: ['lahs'] });
+    });
+    test('synonyms (ITEM_WORD_SYNONYMS): lah = lakh = लाख, katki = कदकी; Lahsun still never counted', () => {
+        const shop = reportKinds([{ id: 'lk', name: 'Lah Katki' }, { id: 'lp', name: 'Lakh Palash' }, { id: 'g', name: 'Garlic', hindiName: 'लहसुन' }, { id: 'lc', name: 'Lakhori Chilli' }],
+            [bill('x', '2026-11-01T10:00:00', '1', [line(null, 'लाख कदकी', 10, 300)])]);
+        const all = ['Lah Katki', 'Lakh Palash', 'लाख कदकी'];
+        ['lah', 'lakh', 'लाख', 'लाह', 'laakh'].forEach(w => {
+            const r = matchKinds(shop, w);
+            expect(names(r.kinds)).toEqual(all);
+            expect(names(r.near)).not.toContain('Lah Katki');
+        });
+        expect(names(matchKinds(shop, 'lah').near)).toEqual(['Garlic']);
+        expect(names(matchKinds(shop, 'lakh').near)).toEqual(['Lakhori Chilli']);
+        expect(names(matchKinds(shop, 'lah katki').kinds)).toEqual(['Lah Katki', 'लाख कदकी']);
+        expect(names(matchKinds(shop, 'lah palash').kinds)).toEqual(['Lakh Palash']);
+    });
+    test('each synonym word is in one group only, groups have two words or more', () => {
+        const seen = new Set();
+        ITEM_WORD_SYNONYMS.forEach(g => {
+            expect(g.length).toBeGreaterThan(1);
+            g.forEach(w => { expect(seen.has(w)).toBe(false); seen.add(w); });
+        });
     });
     test('the item-name table: chawal = Rice', () => {
         expect(names(matchKinds(reportKinds([{ id: 'i', name: 'Rice' }], []), 'chawal').kinds)).toEqual(['Rice']);

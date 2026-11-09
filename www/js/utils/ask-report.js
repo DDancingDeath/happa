@@ -56,9 +56,28 @@ function looseWord(/** @type {string} */ word) {
     return latin.replace(/aa/g, 'a').replace(/ee/g, 'i').replace(/oo/g, 'u').replace(/w/g, 'v').replace(/[^a-z0-9]/g, '');
 }
 
-/** The loose spellings of a word, also through the item-name table (#134: chawal = चावल = Rice). */
+/**
+ * Words that name the same item in this trade, in any spelling: a word matches its whole
+ * group, typed or in an item's name. Whole words only, so "Lahsun" never joins "lah".
+ * Add a group here when the shop's bills use another name for an item.
+ */
+export const ITEM_WORD_SYNONYMS = Object.freeze([
+    Object.freeze(['lah', 'lakh', 'लाह', 'लाख']),
+    Object.freeze(['katki', 'kadki', 'कटकी', 'कदकी'])
+]);
+/** loose word → the loose words of its synonym group */
+/** @type {Map<string, string[]>} */
+const SYNONYMS = new Map();
+ITEM_WORD_SYNONYMS.forEach(group => {
+    const keys = [...new Set(group.map(looseWord))];
+    keys.forEach(k => SYNONYMS.set(k, keys));
+});
+
+/** The loose spellings of a word, also through the item-name table (#134: chawal = चावल = Rice) and ITEM_WORD_SYNONYMS. */
 function wordVariants(/** @type {string} */ word) {
-    return new Set([word, suggestHindiName(word), suggestEnglishName(word)].map(w => looseWord(w || '')).filter(Boolean));
+    const out = new Set([word, suggestHindiName(word), suggestEnglishName(word)].map(w => looseWord(w || '')).filter(Boolean));
+    [...out].forEach(v => (SYNONYMS.get(v) || []).forEach(s => out.add(s)));
+    return out;
 }
 
 /** Loose spellings of every word of a name. */
