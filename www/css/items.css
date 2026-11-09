@@ -172,7 +172,7 @@
 }
 
 /* Items page on a phone: action buttons and the rates table fit the width (F28) */
-@media (max-width: 1023px) {
+@media (max-width: 1023.98px) {
   #itemsActionButtons {
     flex-wrap: wrap;
   }

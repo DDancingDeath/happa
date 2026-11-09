@@ -105,6 +105,28 @@ describe('side menu as a bottom sheet (redesign 4.1)', () => {
         expect(document.activeElement).toBe(link);
     });
 
+    test('when the opener is hidden while the sheet is open (business switch), focus goes to the opener showing now, else the title', () => {
+        document.body.insertAdjacentHTML('beforeend', '<header class="app-bar"><button class="hamburger">Menu</button><h1 id="appBarTitle" tabindex="-1">Rentals</h1></header>');
+        const more = document.querySelector('[data-tab="more"]');
+        const menu = document.querySelector('.app-bar .hamburger');
+        const shownEls = new Set([document.querySelector('#sideNav .close-btn'), more]);
+        Element.prototype.getClientRects.mockImplementation(function () { return shownEls.has(this) ? [{}] : []; });
+        more.focus();
+        NavigationManager.openMenu();
+        shownEls.delete(more);
+        shownEls.add(menu);
+        NavigationManager.setMenuOpen(false);
+        expect(document.activeElement).toBe(menu);
+
+        shownEls.delete(menu);
+        shownEls.add(more);
+        more.focus();
+        NavigationManager.openMenu();
+        shownEls.delete(more);
+        NavigationManager.setMenuOpen(false);
+        expect(document.activeElement).toBe(document.getElementById('appBarTitle'));
+    });
+
     test('trapFocus leaves Tab alone between the first and last control', () => {
         document.getElementById('sideNav').insertAdjacentHTML('beforeend', '<button id="last">x</button>');
         document.getElementById('link').focus();

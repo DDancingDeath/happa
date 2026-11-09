@@ -1,7 +1,7 @@
 /* App bar (redesign 4.1). Below the desktop width: the page title, the sync pill and the bell on the
    canvas colour; pages scroll under it. The menu button (.hamburger) shows only in Rentals, which has no
    tab bar. Desktop draws no bar: desktop.css keeps the bell and the pill in their places. */
-@media (max-width: 1023px) {
+@media (max-width: 1023.98px) {
   .app-bar {
     position: fixed;
     top: 0;

@@ -91,6 +91,30 @@ test('phone: More opens a modal sheet that keeps focus inside, closes on Esc and
     expect(problems.pageErrors).toEqual([]);
 });
 
+test('phone on its side: the sheet fits under the bar and scrolls', async ({ page, problems }, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone', 'phone shell');
+    await login(page, 'owner');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize({ width: 740, height: 360 });
+    await page.locator('.bottom-nav-item[data-tab="more"]').click();
+    await expect(page.locator('#sideNav')).toBeVisible();
+    await page.waitForFunction(() => getComputedStyle(document.getElementById('sideNav')).transform === 'none');
+    const box = await page.evaluate(() => {
+        const r = document.getElementById('sideNav').getBoundingClientRect();
+        const s = document.getElementById('sideNav');
+        return { top: r.top, bottom: r.bottom, vh: window.innerHeight, scrolls: s.scrollHeight > s.clientHeight, overflow: getComputedStyle(s).overflowY };
+    });
+    expect(box.top).toBeGreaterThanOrEqual(0);
+    expect(box.bottom).toBeLessThanOrEqual(box.vh + 1);
+    expect(box.scrolls).toBe(true);
+    expect(box.overflow).toBe('auto');
+    await expect(page.locator('#sideNav .close-btn')).toBeInViewport();
+    await expect(page.locator('#bizSwitch')).toBeInViewport();
+    await page.locator('#sideNav a[data-onclick*="diagnostics"]').scrollIntoViewIfNeeded();
+    await expect(page.locator('#sideNav a[data-onclick*="diagnostics"]')).toBeInViewport();
+    expect(problems.pageErrors).toEqual([]);
+});
+
 test('desktop: the sidebar keeps every page and the bell; no app bar title', async ({ page, problems }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'desktop shell');
     await login(page, 'owner');

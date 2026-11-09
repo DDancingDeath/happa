@@ -59,7 +59,7 @@
      on desktop the bar is not drawn and the bell and pill keep their places (desktop.css) -->
     <header class="app-bar" id="appBar">
         <button type="button" class="hamburger app-bar-btn" data-onclick="nav.toggleMenu()" aria-controls="sideNav" aria-expanded="false" aria-label="Menu" data-i18n-aria-label="ui.nav.menu"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-menu"/></svg></button>
-        <h1 class="app-bar-title" id="appBarTitle"></h1>
+        <h1 class="app-bar-title" id="appBarTitle" tabindex="-1"></h1>
         <div class="sync-pill" id="syncStatus" role="status" aria-live="polite" hidden></div>
         <!-- Notifications bell + inbox (#12) -->
         <button type="button" class="notif-bell app-bar-btn" id="notifBell" style="display: none;" data-onclick="notifications.toggle()" aria-label="Notifications" data-i18n-aria-label="ui.common.notifications" title="Notifications" data-i18n-title="ui.common.notifications">

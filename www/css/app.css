@@ -2527,7 +2527,7 @@ body {
 /* App bar (redesign 4.1). Below the desktop width: the page title, the sync pill and the bell on the
    canvas colour; pages scroll under it. The menu button (.hamburger) shows only in Rentals, which has no
    tab bar. Desktop draws no bar: desktop.css keeps the bell and the pill in their places. */
-@media (max-width: 1023px) {
+@media (max-width: 1023.98px) {
   .app-bar {
     position: fixed;
     top: 0;
@@ -2785,7 +2785,7 @@ body.biz-rentals .nav-menu a[data-biz="rentals"] { display: flex; }
 body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }
 /* Below the desktop width the menu is a bottom sheet (redesign 4.1): the business switch and the pages
    not on the tab bar, as a grid in groups. Closed, it is hidden from focus and screen readers. */
-@media (max-width: 1023px) {
+@media (max-width: 1023.98px) {
   .side-nav {
     top: auto;
     right: 0;
@@ -2794,6 +2794,7 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }
     width: auto;
     max-width: 560px;
     height: auto;
+    max-height: calc(100vh - var(--tab-top));
     max-height: calc(100dvh - var(--tab-top));
     margin: 0 auto;
     padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -2985,6 +2986,19 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }
   }
 }
 
+/* A short screen (a phone on its side): the whole sheet scrolls, not only the page grid between the header and Settings */
+@media (max-width: 1023.98px) and (max-height: 480px) {
+  .side-nav {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .side-nav .nav-menu {
+    flex: none;
+    overflow: visible;
+  }
+}
+
 /* Phone bottom bar (#142); desktop.css hides it */
 /* The app's own pull-to-refresh replaces the browser's (a full reload re-reads everything) */
 body {
@@ -3086,7 +3100,7 @@ body.typing .bottom-nav {
 }
 
 /* The Android update banner sits above the bar, not on it */
-@media (max-width: 1023px) {
+@media (max-width: 1023.98px) {
   body:not(.biz-rentals) .app-update-banner {
     bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
@@ -3993,7 +4007,7 @@ html[data-updating] .updating-mark {
 }
 
 /* Items page on a phone: action buttons and the rates table fit the width (F28) */
-@media (max-width: 1023px) {
+@media (max-width: 1023.98px) {
   #itemsActionButtons {
     flex-wrap: wrap;
   }
@@ -5207,7 +5221,7 @@ input[type="number"] {
 }
 
 /* Phone and tablet: the row is compact (payable, two icon buttons, Save) */
-@media (max-width: 1023px) {
+@media (max-width: 1023.98px) {
   #billing .bill-bar-total {
     display: block;
     flex: 1;
@@ -5265,7 +5279,7 @@ input[type="number"] {
 /* With room for it, the row is a bar above the tab bar, always in the same place (typing does not
    move it, so a tap that ends a field's focus still lands on Save). It runs down behind the tab bar.
    A short screen (a phone on its side, the app with its keyboard open) keeps the row at the end of the bill. */
-@media (max-width: 1023px) and (min-height: 481px) {
+@media (max-width: 1023.98px) and (min-height: 481px) {
   #billing .bill-actions {
     position: fixed;
     left: 0;
@@ -10223,7 +10237,7 @@ tr.finance-tappable td:first-child::after {
 }
 
 /* Sub-tab and date-filter bars: room for the tap hint, all five periods fit on a phone (F09) */
-@media (max-width: 1023px) {
+@media (max-width: 1023.98px) {
     #finance > .filter-buttons,
     #financeDashboardSection > .card {
         margin-bottom: 12px;

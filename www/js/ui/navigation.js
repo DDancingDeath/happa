@@ -12,6 +12,18 @@ const isSheet = () => typeof window === 'undefined' || !window.matchMedia || !wi
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+const shown = (el) => !!el && el.isConnected && el.getClientRects().length > 0;
+
+/**
+ * Focus back after the sheet closes: what opened it if it still shows, else the opener showing now
+ * (switching business swaps More for the bar's menu button), else the page title.
+ */
+function focusOpener(prev) {
+    const target = [prev, ...document.querySelectorAll('.bottom-nav-item[data-tab="more"], .app-bar .hamburger')].find(shown)
+        || document.getElementById('appBarTitle');
+    target?.focus?.({ preventScroll: true });
+}
+
 /** Keeps Tab / Shift+Tab inside `box` (its visible focusable elements). */
 export function trapFocus(e, box) {
     if (!box) return;
@@ -146,7 +158,7 @@ const NavigationManager = {
             sideNav.removeAttribute('role');
             sideNav.removeAttribute('aria-modal');
             sideNav.removeAttribute('aria-label');
-            if (sideNav.contains(document.activeElement)) this.menuReturn?.focus?.({ preventScroll: true });
+            if (sideNav.contains(document.activeElement)) focusOpener(this.menuReturn);
             this.menuReturn = null;
         }
     },
@@ -202,7 +214,7 @@ const NavigationManager = {
                 const t = e.touches && e.touches[0];
                 startX = t ? t.clientX : null;
                 startY = t ? t.clientY : null;
-                atTop = (sideNav.querySelector('.nav-menu')?.scrollTop || 0) <= 0;
+                atTop = sideNav.scrollTop <= 0 && (sideNav.querySelector('.nav-menu')?.scrollTop || 0) <= 0;
             }, { passive: true });
             sideNav.addEventListener('touchend', (e) => {
                 const t = e.changedTouches && e.changedTouches[0];
