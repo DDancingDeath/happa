@@ -268,8 +268,13 @@ In order:
   stores every bill it copies with its old due in `payment.due`
   (`canonicalDueBill()`, `legacyDue()`: only the migration, the due backfill and
   number check AC5 read the old fields). Writers set `payment.due` only; no code
-  writes `dueAmount` (`withCanonicalDue()` leaves it out, the rules no longer
-  check it, and the review rule `due-amount-vs-payment-due-drift` blocks a write).
+  writes `dueAmount` (`withCanonicalDue()` leaves it out, and the review rule
+  `due-amount-vs-payment-due-drift` blocks a write). **For one release the rules
+  tolerate the mirror** an app from before #126 still writes (`dueMirrorOk()`:
+  `dueAmount` absent, dropped or equal to `payment.due`; also in edit records and
+  payments), so a phone on the old code never has a bill refused. Tighten it to
+  "never set" in a later PR, once every phone is on the post-cut-over APK; the rules
+  tests "#126 (one release)" pin the tolerance until then.
 - **One tap = one write (#70, #95)**: every button that saves money or stock
   runs its write through `Helpers.runExclusive(key, buttonSelector, fn)`, which
   ignores a second tap and disables the buttons (`aria-busy`) until the save

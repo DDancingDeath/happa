@@ -84,7 +84,8 @@ service cloud.firestore {
       let before = get(billPath(usersCol, base, billId)).data;
       let n = after.get('editCount', null);
       let f = d.get('fields', null);
-      let moved = after.diff(before).affectedKeys().intersection(editLoggedFields().toSet());
+      let keys = after.diff(before).affectedKeys();
+      let moved = keys.intersection(editLoggedFields().toSet());
       return isApprovedIn(usersCol)
         && d.keys().hasOnly(['n', 'at', 'by', 'byName', 'reason', 'fields'])
         && n is int && editId == string(n) && d.get('n', null) == n
@@ -93,20 +94,20 @@ service cloud.firestore {
         && d.get('at', null) == request.time
         && reasonOk(d.get('reason', null))
         && (!('byName' in d) || (d.byName is string && d.byName.size() <= 200))
-        && f is map && moved.size() > 0
-        && f.keys().hasOnly(editLoggedFields()) && f.keys().toSet().hasAll(moved)
+        && f is map && (moved.size() > 0 || keys.hasAny(['dueAmount']))
+        && f.keys().hasOnly(['dueAmount'].concat(editLoggedFields())) && f.keys().toSet().hasAll(moved)
         && editFieldOk(f, before, after, 'items') && editFieldOk(f, before, after, 'customerName')
         && editFieldOk(f, before, after, 'grandTotal') && editFieldOk(f, before, after, 'amountPayable')
         && editFieldOk(f, before, after, 'total') && editFieldOk(f, before, after, 'billTotal')
         && editFieldOk(f, before, after, 'saleTotal') && editFieldOk(f, before, after, 'laborCharges')
         && editFieldOk(f, before, after, 'payment') && editFieldOk(f, before, after, 'cashPayment')
-        && editFieldOk(f, before, after, 'onlinePayment')
+        && editFieldOk(f, before, after, 'onlinePayment') && editFieldOk(f, before, after, 'dueAmount')
         && editFieldOk(f, before, after, 'date') && editFieldOk(f, before, after, 'timestamp');
     }
 
     function bookkeepingOnly(docId, changed) {
       return changed.hasOnly([
-          'payment', 'payments', 'openDue', 'clientVersion', 'paidAt',
+          'payment', 'payments', 'dueAmount', 'openDue', 'clientVersion', 'paidAt',
           'cleared', 'clearedAt', 'clearedBy', 'clearedByName',
           'timestamp', 'id'
         ])
@@ -131,12 +132,13 @@ service cloud.firestore {
       return !(key in m) || (m[key] is number && m[key] > -10000000000 && m[key] < 10000000000);
     }
 
-    function noDueAmount(keys) {
-      return !(keys.hasAny(['dueAmount']) && 'dueAmount' in request.resource.data);
+    function dueMirrorOk(keys) {
+      let d = request.resource.data;
+      return !keys.hasAny(['dueAmount']) || !('dueAmount' in d) || d.dueAmount == d.get('payment', {}).get('due', null);
     }
 
     function changedMoneyOk(keys) {
-      return !keys.hasAny(['openingBalance', 'amountPaid', 'due']) && noDueAmount(keys)
+      return !keys.hasAny(['openingBalance', 'amountPaid', 'due']) && dueMirrorOk(keys)
         && (keys.hasAny(['total', 'grandTotal', 'amountPayable', 'billTotal', 'saleTotal',
                          'payment', 'cashPayment', 'onlinePayment'])
             ? billMoneyOk(request.resource.data, request.resource.data.get('payment', {}))
@@ -215,7 +217,8 @@ service cloud.firestore {
       let p = resource.data.get('payment', {});
       let due = p is map ? p.get('due', null) : null;
       let at = d.payments[d.payments.size() - 1].get('at', null);
-      return (!changed.hasAny(['payments'])
+      return dueMirrorOk(changed)
+        && (!changed.hasAny(['payments'])
             || (appendsOneEntry('payments')
                 && at is number && at > request.time.toMillis() - 600000 && at < request.time.toMillis() + 600000))
         && (!changed.hasAny(['paidAt'])
@@ -256,7 +259,7 @@ service cloud.firestore {
                && withinBillWindowFor(usersCol, role)
                && d.get('createdAt', null) == resource.data.get('createdAt', null)))
           && (!changed.hasAny(editLoggedFields()) || changed.hasAny(['editCount']))
-          ? (role == 'owner' ? !changed.hasAny(['openingBalance', 'amountPaid', 'due']) && noDueAmount(changed) : changedMoneyOk(changed))
+          ? (role == 'owner' ? !changed.hasAny(['openingBalance', 'amountPaid', 'due']) && dueMirrorOk(changed) : changedMoneyOk(changed))
             && clearFieldsOk(changed, d)
         : bookkeepingOnly(docId, changed) ? paymentEditOk(changed)
         : false;

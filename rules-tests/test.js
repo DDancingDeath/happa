@@ -276,7 +276,7 @@ function defineSuite(prefix) {
     // ---- due backfill (#126: the owner stores each bill's due once, in payment.due) ----
 
     // The rules don't single out the backfill: it is an edit-logged write. The app offers it to the owner only.
-    t('due backfill: the owner writes payment.due on any bill, with its edit record; a manager, or a member on their own bill, only inside the edit window; nobody writes dueAmount (#126)', async () => {
+    t('due backfill: the owner writes payment.due on any bill, with its edit record; a manager, or a member on their own bill, only inside the edit window; a dueAmount is only ever the mirror (#126)', async () => {
         for (const coll of bills) {
             await seedBill(coll, 'legacy', { total: 1000, cashPayment: 400, onlinePayment: 0, dueAmount: '600' });
             const fix = { payment: { due: 600 }, clientVersion: 5 };
@@ -284,24 +284,24 @@ function defineSuite(prefix) {
             // As the app writes it: with its edit record (#121), payment only
             await seedBill(coll, 'legacy2', { total: 1000, cashPayment: 400, onlinePayment: 0, dueAmount: '600' });
             for (const uid of ['staff1', 'manager1']) await assertFails(logged(uid, coll, 'legacy2', 1, fix, { cv: 5 }));
-            await assertFails(logged('legacyOwner', coll, 'legacy2', 1, { ...fix, dueAmount: 600 }, { cv: 5 }));
+            await assertFails(logged('legacyOwner', coll, 'legacy2', 1, { ...fix, dueAmount: 650 }, { cv: 5 }));
             await assertSucceeds(logged('legacyOwner', coll, 'legacy', 1, fix, { cv: 5 }));
-            // The legacy copy is not written any more, not even by the owner with an edit record
+            // An old client's backfill (main before #126) sets the mirror equal to payment.due: tolerated for one release
             const pay = { cash: 400, online: 0, due: 600, total: 1000 };
             await seedBill(coll, 'drift', { userId: 'staff1', total: 1000, payment: pay, dueAmount: 650, ...fresh() });
-            await assertFails(logged('legacyOwner', coll, 'drift', 1, { dueAmount: 600 }, { cv: 5,
+            await assertFails(as('legacyOwner').collection(coll).doc('drift').update({ dueAmount: 640, clientVersion: 5 }));
+            await assertSucceeds(logged('legacyOwner', coll, 'drift', 1, { dueAmount: 600 }, { cv: 5,
                 rec: { fields: { dueAmount: { before: 650, after: 600 }, payment: { before: pay, after: pay } } } }));
-            await assertFails(as('legacyOwner').collection(coll).doc('drift').update({ dueAmount: 600, clientVersion: 5 }));
             // Inside the edit window the same logged write is an ordinary edit: a member on their own bill, a manager on any
             for (const uid of ['staff1', 'manager1']) {
                 await seedBill(coll, `in-${uid}`, { userId: 'staff1', total: 1000, cashPayment: 400, onlinePayment: 0, ...fresh() });
                 await assertSucceeds(logged(uid, coll, `in-${uid}`, 1, fix, { cv: 5 }));
                 await seedBill(coll, `copy-${uid}`, { userId: 'staff1', total: 1000, payment: pay, ...fresh() });
-                await assertFails(logged(uid, coll, `copy-${uid}`, 1, { dueAmount: 600 }, { cv: 5 }));
+                await assertFails(logged(uid, coll, `copy-${uid}`, 1, { dueAmount: 500 }, { cv: 5 }));
             }
         }
     });
-    t('#126: a write may drop an older bill\'s dueAmount copy, never set one; a create never has one', async () => {
+    t('#126 (one release): an old client\'s dueAmount mirror is tolerated only equal to payment.due; a write may drop it', async () => {
         for (const coll of bills) {
             for (const uid of ['legacyOwner', 'manager1', 'staff1']) {
                 await seedBill(coll, `old-${uid}`, { userId: 'staff1', total: 100, payment: { cash: 40, online: 0, due: 60, total: 100 }, dueAmount: 60, ...fresh() });
@@ -312,8 +312,23 @@ function defineSuite(prefix) {
             }
             const c = as('staff1').collection(coll);
             const bill = { userId: 'staff1', total: 100, payment: { cash: 100, online: 0, due: 0, total: 100 }, clientVersion: 5, createdAt: serverTimestamp(), timestamp: Date.now() };
-            await assertFails(c.doc('withCopy').set({ ...bill, dueAmount: 0 }));
+            // A bill from an app before #126: dueAmount = payment.due
+            await assertSucceeds(c.doc('withCopy').set({ ...bill, dueAmount: 0 }));
+            await assertFails(c.doc('badCopy').set({ ...bill, dueAmount: 5 }));
             await assertSucceeds(c.doc('noCopy').set(bill));
+            // An old client's due payment on a bill that has the copy
+            const at = Date.now();
+            await seedBill(coll, 'pay', { userId: 'manager1', total: 100, payment: { cash: 0, online: 0, due: 100, total: 0 }, dueAmount: 100, openDue: true, clientVersion: 3 });
+            const pay = (dueAmount) => ({ payment: { cash: 40, online: 0, due: 60, total: 40 }, dueAmount, openDue: true, clientVersion: 3,
+                payments: [{ id: 'p1', amount: 40, cash: 40, online: 0, at }], paidAt: at });
+            await assertFails(as('staff1').collection(coll).doc('pay').update(pay(70)));
+            await assertSucceeds(as('staff1').collection(coll).doc('pay').update(pay(60)));
+            // An old client's money edit: the bill with its mirror, the record with dueAmount before/after
+            await seedBill(coll, 'edit', { userId: 'staff1', total: 100, payment: { cash: 40, online: 0, due: 60, total: 100 }, dueAmount: 60, ...fresh() });
+            await assertFails(logged('staff1', coll, 'edit', 1, { total: 90, 'payment.due': 50, dueAmount: 55 }, { cv: 5,
+                rec: { fields: { total: { before: 100, after: 90 }, payment: { before: { cash: 40, online: 0, due: 60, total: 100 }, after: { cash: 40, online: 0, due: 50, total: 100 } }, dueAmount: { before: 60, after: 55 } } } }));
+            await assertSucceeds(logged('staff1', coll, 'edit', 1, { total: 90, 'payment.due': 50, dueAmount: 50 }, { cv: 5,
+                rec: { fields: { total: { before: 100, after: 90 }, payment: { before: { cash: 40, online: 0, due: 60, total: 100 }, after: { cash: 40, online: 0, due: 50, total: 100 } }, dueAmount: { before: 60, after: 50 } } } }));
         }
     });
     t('members can\'t create a bill that is voided or has an edit count', async () => {
@@ -2148,7 +2163,10 @@ function defineSuite(prefix) {
             const ref = as('staff1').collection(coll).doc('f');
             await assertFails(ref.update({ 'payment.due': 0, clientVersion: 3 }));
             await assertFails(ref.update({ dueAmount: 0, clientVersion: 3 }));
-            await assertFails(ref.update({ ...write, dueAmount: 60 }));
+            await assertFails(ref.update({ ...write, dueAmount: 61 }));
+            await seedBill(coll, 'f', flat);
+            await assertSucceeds(ref.update({ ...write, dueAmount: 60 }));
+            await seedBill(coll, 'f', flat);
             await assertSucceeds(ref.update(write));
             // A legacy copy alone is not read: no due to pay against
             await seedBill(coll, 'legacy', { userId: 'manager1', total: 100, cashPayment: 0, onlinePayment: 0, dueAmount: 100, timestamp: 1, clientVersion: 3 });

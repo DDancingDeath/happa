@@ -143,6 +143,14 @@ describe('dues are the ones plan carries (same rules and options)', () => {
     test('nothing is written: only a count of what the migration would write', () => {
         expect(run().writes).toEqual({ parties: 11, directory: 1, bills: 0 });
     });
+
+    test('#126: a bill with only the legacy dueAmount counts in "Outstanding of these bills" as the old app showed it', () => {
+        const backup = load();
+        backup.collections.retailSales.push({ id: 'r-due-only', data: { billNumber: 'S-OLD-99', customerName: 'Due Only', date: '2026-10-01', total: 300, dueAmount: 300 } });
+        const r = run({}, backup);
+        expect(r.totals.check.retail).toMatchObject({ plan: planTotal(load(), {}, 'retail') + 300, outstanding: 1540, notCarried: 0, matches: true });
+        expect(byName(r, 'Due Only').dues).toMatchObject({ retail: 300 });
+    });
 });
 describe('merge suggestions', () => {
     const r = run();

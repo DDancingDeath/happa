@@ -17,6 +17,7 @@ import { latinToDevanagari } from '../../../www/js/utils/item-name-autofill.js';
 import { buildAging } from '../../../www/js/utils/aging.js';
 import { billDateOf } from '../../../www/js/utils/history-filters.js';
 import { isActiveBill, round2 } from '../../../www/js/utils/money.js';
+import { canonicalDueBill } from '../../../www/js/firebase/repos/bill-due.js';
 
 export const DRYRUN_FORMAT = 'aadhat-parties-dryrun-v1';
 export const PARTY_ID_RE = /^p-[0-9a-f]{16}$/;
@@ -107,7 +108,8 @@ export function proposeParties(backup, { salt, scope = 'due', options = {} } = {
             Object.defineProperty(bill, '__docId', { value: d.id, enumerable: false });
             records[list].push(bill);
             if (!isActiveBill(bill)) { voided++; return; }
-            active[list].push(bill);
+            // Read as the old app read it (#126: the app reads payment.due only), as plan's dueSet does
+            active[list].push(canonicalDueBill(bill));
             const name = partyNameSpelling(bill.customerName || bill.supplierName);
             const key = partyNameKey(name);
             if (!key) { unnamed.bills++; return; }
