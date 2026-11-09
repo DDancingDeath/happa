@@ -22,6 +22,17 @@ rebuilds and writes the checkpoint, the others wait for it), previews and
 localhost use the `dev_` test data, the cash page reads 5–38 documents instead of
 ~1,800 (#38, #40), and the nightly backup skips audit and telemetry (~132 reads).
 
+## Status (#159)
+
+- **Root cause:** written up above (2026-10-21, old app).
+- **Guards done:** the shared stock-rebuild lease, previews and localhost on `dev_` data, the cheaper
+  cash page (#38, #40), the lighter nightly backup, the read meter, the quota banner, the
+  heavy-session warning, the session cap, the `pauseBackgroundReads` kill switch, the TIP
+  `SessionReads` alerts, the read budget in CI, and the resumable stock rebuild (all below).
+- **Still to measure:** a normal day's reads (target under 50% of the quota, from the Firebase
+  console usage graph), in week 1 after the cut-over to `bahi-happa`
+  ([owner-device-checklist.md](owner-device-checklist.md)).
+
 ## Guards in the app
 
 | Guard | What it does | Code |
