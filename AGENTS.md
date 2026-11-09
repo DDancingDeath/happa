@@ -37,7 +37,21 @@ and is wrapped in **Capacitor** for Android distribution.
   `BAHI_CUTOVER` is `true`; secrets `FIREBASE_SERVICE_ACCOUNT_BAHI_HAPPA` and
   `FIREBASE_SERVICE_ACCOUNT_BAHI_HAPPA_DEV`. **At cut-over**: set `BAHI_CUTOVER=true`,
   disable `firebase-hosting-merge.yml` (it still deploys to `happa-bfc07`), then flip
-  `firebase` in `happa.config.json` to the prod values. Sample data for dev only:
+  `firebase` in `happa.config.json` to the prod values. **In the same step as that flip**,
+  re-point the old secrets to `bahi-happa` service-account keys (same names, new values;
+  no workflow edit), or every guard below fails with "belongs to happa-bfc07" and prod
+  gets no backups:
+  - `FIREBASE_BACKUP_SERVICE_ACCOUNT_HAPPA` (falls back to `FIREBASE_SERVICE_ACCOUNT_HAPPA`):
+    `firestore-backup.yml` (daily backup) and `tip-autobugs.yml`. Roles: **Cloud Datastore
+    Viewer** (`roles/datastore.viewer`) only; Cloud Datastore User also works.
+  - `FIREBASE_SERVICE_ACCOUNT_HAPPA`: `firebase-hosting-pull-request.yml` (PR previews; on
+    `bahi-happa` with `dev_` data until they move to dev), `firestore-rules-deploy.yml`
+    (manual rules dispatch) and the backup/TIP fallback. Roles: the same as
+    `FIREBASE_SERVICE_ACCOUNT_BAHI_HAPPA` (Firebase Hosting Admin, Firebase Rules Admin,
+    Cloud Datastore Index Admin; Cloud Datastore User for the fallback).
+  Alternative: switch those workflows to the `_BAHI_HAPPA` secret names in the flip PR.
+  Then run `firestore-backup.yml` by hand once and check it backs up `bahi-happa`.
+  Sample data for dev only:
   `node tools/dev/load-sample-data.js [--apply] [--prefix dev_]` (refuses any project
   not ending in `-dev`). The `dev_` collection prefix (rule 2) stays for one more release.
 - **Old app (archived, never changed)**: Android `com.hitesh.aadhat`, Firebase
