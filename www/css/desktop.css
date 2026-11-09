@@ -691,3 +691,10 @@
   .st-view > .st-csv-option { grid-column: 1; grid-row: 4; }
   .st-view > .st-doc { grid-column: 2; grid-row: 2 / span 3; margin-top: 0; min-width: 0; }
 }
+
+@media (min-width: 1024px) {
+  .theme-preview-bar {
+    bottom: 24px;
+    left: calc(50% + var(--desktop-nav-width) / 2);
+  }
+}

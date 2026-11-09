@@ -370,9 +370,6 @@ body.no-perm-contacts [data-perm~="contacts"] {
   color: var(--toast-ink);
 }
 
-@media (min-width: 1024px) {
-  .theme-preview-bar {
-    bottom: 24px;
-    left: calc(50% + var(--desktop-nav-width) / 2);
-  }
+.theme-preview-bar .theme-preview-apply {
+  border-color: var(--preview-apply-line);
 }

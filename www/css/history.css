@@ -646,7 +646,7 @@
 }
 
 .bill-action-btn.btn-share:hover {
-  background: #065f46;
+  background-image: linear-gradient(var(--state-hover), var(--state-hover));
 }
 
 @media (max-width: 480px) {

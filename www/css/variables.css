@@ -109,6 +109,7 @@
   --btn-sale-ink: var(--on-mode-sale);
   --btn-danger-bg: var(--negative-fill);
   --btn-danger-ink: #ffffff;
+  --preview-apply-line: transparent;
 
   /* Old names (32 stylesheets and script-written styles use them); new code uses the tokens above */
   --primary-color: var(--accent-text);

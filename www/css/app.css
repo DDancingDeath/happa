@@ -111,6 +111,7 @@
   --btn-sale-ink: var(--on-mode-sale);
   --btn-danger-bg: var(--negative-fill);
   --btn-danger-ink: #ffffff;
+  --preview-apply-line: transparent;
 
   /* Old names (32 stylesheets and script-written styles use them); new code uses the tokens above */
   --primary-color: var(--accent-text);
@@ -868,6 +869,7 @@ input[type="number"],
     --seg-on: #2a2a2a;
     --toast-bg: #f5f5f5;
     --toast-ink: #0f0f0f;
+    --preview-apply-line: #0f0f0f;
     --toast-pos: #15803d;
     --toast-neg: #be123c;
     --toast-warn: #b45309;
@@ -4881,7 +4883,7 @@ body.dark-mode .party-due-line.party-due-old {
 }
 
 .bill-action-btn.btn-share:hover {
-  background: #065f46;
+  background-image: linear-gradient(var(--state-hover), var(--state-hover));
 }
 
 @media (max-width: 480px) {
@@ -7552,11 +7554,8 @@ body.no-perm-contacts [data-perm~="contacts"] {
   color: var(--toast-ink);
 }
 
-@media (min-width: 1024px) {
-  .theme-preview-bar {
-    bottom: 24px;
-    left: calc(50% + var(--desktop-nav-width) / 2);
-  }
+.theme-preview-bar .theme-preview-apply {
+  border-color: var(--preview-apply-line);
 }
 
 /* ---- css/day.css ---- */
@@ -10434,4 +10433,11 @@ body.dark-mode .notif-panel-actions {
   .st-view > .st-actions { grid-column: 1; grid-row: 3; grid-template-columns: 1fr; }
   .st-view > .st-csv-option { grid-column: 1; grid-row: 4; }
   .st-view > .st-doc { grid-column: 2; grid-row: 2 / span 3; margin-top: 0; min-width: 0; }
+}
+
+@media (min-width: 1024px) {
+  .theme-preview-bar {
+    bottom: 24px;
+    left: calc(50% + var(--desktop-nav-width) / 2);
+  }
 }
