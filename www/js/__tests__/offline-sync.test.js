@@ -2,7 +2,7 @@
  * @fileoverview Offline / waiting-to-sync pill (#70) and "Save failed — storage
  * full" instead of a false "Saved" (#153).
  */
-import { createSyncStatus, syncStatusText, PENDING_SHOW_DELAY_MS, SYNCED_SHOW_MS } from '../ui/sync-status.js';
+import { createSyncStatus, syncStatusText, PENDING_SHOW_DELAY_MS, SYNCED_SHOW_MS, NOT_UPDATED_AFTER_MS, CONFIRMED_AT_KEY } from '../ui/sync-status.js';
 import { isStorageFullError, safeSetItem } from '../utils/storage-full.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { PurchaseManager } from '../modules/purchase.js';
@@ -49,6 +49,69 @@ describe('sync pill (#70)', () => {
 
     test('hidden while online with nothing waiting', () => {
         expect(pill().hidden).toBe(true);
+    });
+
+    test('figures from the cache only (#59): "Updating…" and the pages\' notes, "Not updated" after 15 s, gone once the server answered', () => {
+        const marked = () => document.documentElement.hasAttribute('data-updating');
+        status.setFreshness('cache');
+        expect(pill().textContent).toBe('Updating…');
+        expect(pill().dataset.state).toBe('updating');
+        expect(marked()).toBe(true);
+        jest.advanceTimersByTime(NOT_UPDATED_AFTER_MS);
+        expect(pill().textContent).toBe('Not updated yet');
+        expect(pill().dataset.state).toBe('stale');
+        // Offline says so itself; the pages' "updating…" notes go
+        go(false);
+        expect(pill().textContent).toBe('Offline');
+        expect(marked()).toBe(false);
+        go(true);
+        expect(marked()).toBe(true);
+        // Back online the server gets its full wait again
+        expect(pill().textContent).toBe('Updating…');
+        jest.advanceTimersByTime(NOT_UPDATED_AFTER_MS);
+        expect(pill().textContent).toBe('Not updated yet');
+        status.setFreshness('server');
+        expect(pill().hidden).toBe(true);
+        expect(marked()).toBe(false);
+    });
+
+    test('"Not updated since" gives the time this phone last heard from the server (#59)', () => {
+        status.stop();
+        const at = new Date(2026, 10, 9, 10, 42).getTime();
+        jest.setSystemTime(new Date(2026, 10, 9, 11, 0));
+        status = createSyncStatus({ win: window, doc: document, storage: { getItem: () => String(at), setItem: () => {} }, freshness: () => 'cache' });
+        status.start();
+        expect(pill().textContent).toBe('Updating…');
+        // One listener's server answer doesn't make the figures current: the others are still cached
+        status.noteServerData();
+        jest.advanceTimersByTime(NOT_UPDATED_AFTER_MS);
+        expect(pill().textContent).toBe('Not updated since 10:42 am');
+        setLang('hi');
+        expect(syncStatusText({ online: true, pending: 0, updating: true })).toBe('अपडेट हो रहा है…');
+        expect(syncStatusText({ online: true, pending: 0, updating: true, stale: true, asOf: '10:42 am' })).toBe('10:42 am से अपडेट नहीं हुआ');
+        expect(syncStatusText({ online: true, pending: 0, updating: true, stale: true })).toBe('अभी तक अपडेट नहीं हुआ');
+    });
+
+    test('the time every figure was confirmed is kept only while the session is confirmed (#59)', () => {
+        status.stop();
+        const saved = {};
+        const storage = { getItem: k => saved[k] ?? null, setItem: (k, v) => { saved[k] = v; } };
+        jest.setSystemTime(new Date(2026, 10, 9, 10, 0));
+        status = createSyncStatus({ win: window, doc: document, storage });
+        status.start();
+        status.setFreshness('cache');
+        status.noteServerData();
+        expect(saved[CONFIRMED_AT_KEY]).toBeUndefined();
+        jest.setSystemTime(new Date(2026, 10, 9, 10, 5));
+        status.setFreshness('server');
+        expect(Number(saved[CONFIRMED_AT_KEY])).toBe(new Date(2026, 10, 9, 10, 5).getTime());
+        // The next session: one listener answers at 11:00, the others stay cached
+        status.setFreshness(null);
+        jest.setSystemTime(new Date(2026, 10, 9, 11, 0));
+        status.setFreshness('cache');
+        status.noteServerData();
+        jest.advanceTimersByTime(NOT_UPDATED_AFTER_MS);
+        expect(pill().textContent).toBe('Not updated since 10:05 am');
     });
 
     test('offline → "Offline"; back online → "Synced" once the SDK has nothing queued, then hides', async () => {

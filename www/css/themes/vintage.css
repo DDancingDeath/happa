@@ -1,0 +1,100 @@
+/* Vintage (redesign 3.4, DIRECTION 4.2): parchment, sepia ink, oxblood; serif titles and figures,
+   italic section titles (not in Hindi), dashed ledger rules. Screen-only, so print stays Modern. */
+@media screen {
+  [data-theme="vintage"] {
+    --font-display: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "Noto Serif", "Nirmala UI", "Noto Sans Devanagari", serif;
+    --w-display: 700;
+    --tracking-display: 0;
+    --title-style: italic;
+    --hero-nums: oldstyle-nums;
+    --rule-style: dashed;
+    --r-control: 4px;
+    --r-panel: 6px;
+    --r-chip: 4px;
+    --r-sheet: 8px;
+  }
+
+  [data-theme="vintage"]:not([data-mode="dark"]) {
+    color-scheme: light;
+    --bg: #efe6d2;
+    --surface: #fbf6ea;
+    --surface-2: #f2e8d3;
+    --surface-3: #e6d9bd;
+    --line: #ddcfb1;
+    --line-strong: #c4b18b;
+    --ink: #2e2418;
+    --ink-2: #57472f;
+    --ink-3: #6a5840;
+    --ink-placeholder: #6f5d44;
+    --accent: #8f3a22;
+    --accent-hover: #7a3019;
+    --accent-strong: #7a3019;
+    --accent-text: #8f3a22;
+    --accent-soft: #f2dccd;
+    --accent-line: #dcae95;
+    --on-accent: #fff8ec;
+    --mode-sale: #3f6b36;
+    --mode-sale-soft: #e3ead3;
+    --mode-wholesale: #6b4a8a;
+    --mode-wholesale-soft: #ece3f2;
+    --mode-rentals: #2f6670;
+    --positive: #3f6b36;
+    --positive-soft: #e3ead3;
+    --negative: #a1281f;
+    --negative-soft: #f7ddd3;
+    --negative-fill: #a1281f;
+    --warning: #87560a;
+    --warning-soft: #f6e6c2;
+    --warning-dot: #c98a1b;
+    --focus: 0 0 0 3px rgba(143, 58, 34, 0.25);
+    --e1: 0 1px 0 rgba(90, 60, 20, 0.12);
+    --panel-shadow: 0 1px 0 #d6c6a4, 0 2px 0 rgba(90, 60, 20, 0.06);
+    --input-bg: #fffdf6;
+    --bar-bg: #f6eedb;
+    --seg-track: #e6d9bd;
+    --seg-on: #fbf6ea;
+    --toast-bg: #2e2418;
+    --toast-ink: #fbf6ea;
+    --btn-primary-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18);
+  }
+
+  [data-theme="vintage"][data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #17120d;
+    --surface: #221a13;
+    --surface-2: #2b2219;
+    --surface-3: #362b1f;
+    --line: rgba(240, 220, 190, 0.1);
+    --line-strong: rgba(240, 220, 190, 0.2);
+    --ink: #f1e6d2;
+    --ink-2: #cdbb9d;
+    --ink-3: #ab987b;
+    --ink-placeholder: #a08e72;
+    --accent: #d98a5c;
+    --accent-hover: #e39a6f;
+    --accent-strong: #7a3019;
+    --accent-text: #e9a77f;
+    --accent-soft: rgba(217, 138, 92, 0.16);
+    --accent-line: rgba(217, 138, 92, 0.4);
+    --on-accent: #1d120a;
+    --mode-sale: #93b884;
+    --on-mode-sale: #142010;
+    --mode-sale-soft: rgba(147, 184, 132, 0.14);
+    --mode-wholesale: #b99ad6;
+    --on-mode-wholesale: #1c1226;
+    --mode-wholesale-soft: rgba(185, 154, 214, 0.14);
+    --mode-rentals: #7fb7c0;
+    --positive: #9fc48f;
+    --positive-soft: rgba(147, 184, 132, 0.14);
+    --negative: #f08a7a;
+    --negative-soft: rgba(240, 138, 122, 0.14);
+    --warning: #e8bd66;
+    --warning-soft: rgba(232, 189, 102, 0.14);
+    --input-bg: #1d1610;
+    --bar-bg: #1d1610;
+    --seg-track: #2b2219;
+    --seg-on: #3a2e21;
+    --toast-bg: #3a2e21;
+    --toast-ink: #f1e6d2;
+  }
+}

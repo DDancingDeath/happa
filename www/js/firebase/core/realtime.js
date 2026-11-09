@@ -127,9 +127,12 @@ const VIEWS = {
 /** Debounce window that coalesces bursts of snapshot events (ms). */
 const RENDER_DEBOUNCE_MS = 150;
 
-/** Max wait for server data at startup once cached data is available (ms). */
+/** Max wait for server data at startup when the device has no cached data for the app yet (ms). */
 export const FIRST_SNAPSHOT_SERVER_WAIT_MS = 10000;
-/** ...when this device already has cached data for the app (#13). */
+/**
+ * Max wait for the server's stock checkpoint when the cached one doesn't cover the history window
+ * (its window start could change, #13). The data listeners don't wait with a warm cache (#59).
+ */
 export const FIRST_SNAPSHOT_CACHED_WAIT_MS = 2500;
 /** Per-listener startup facts for Diagnostics (first source, doc count, what made it ready). */
 export const listenerStartup = {};
