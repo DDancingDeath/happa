@@ -11,7 +11,7 @@ import { SessionReadsTest, STARTUP_READS_WARN, STARTUP_READS_FAIL } from '../tip
 import { PrintTest, printProps } from '../tip/scenarios/print.js';
 import { SyncTest, SYNC_LIMIT_MS, createSyncWatcher } from '../tip/scenarios/sync.js';
 import { StockCheckpointTest, checkpointProps } from '../tip/scenarios/stock-checkpoint.js';
-import { NumberChecksTest, numberChecksProps, claimToday } from '../tip/scenarios/number-checks.js';
+import { NumberChecksTest, numberChecksProps, claimToday, runNumberChecksOnce } from '../tip/scenarios/number-checks.js';
 import { MainThreadTest, createWatchdog, FREEZE_MS, WINDOW_MS, SLEEP_MS, TICK_MS, MAX_SAMPLES } from '../tip/scenarios/main-thread.js';
 import { SCENARIOS } from '../tip/index.js';
 
@@ -335,6 +335,22 @@ describe('NumberChecks (#161)', () => {
         expect(claimToday(store, '20261101')).toBe(true);
         expect(claimToday(store, '20261101')).toBe(false);
         expect(claimToday(store, '20261102')).toBe(true);
+    });
+
+    it('claims the day only after the checks code loaded: a failed import is tried again at the next start (#59)', async () => {
+        const store = { v: null, getItem() { return this.v; }, setItem(_, v) { this.v = v; } };
+        const run = jest.fn();
+        const failing = () => Promise.reject(new Error('offline'));
+        await expect(runNumberChecksOnce({ store, dayKey: '20261101', load: failing, run })).rejects.toThrow('offline');
+        expect(store.v).toBeNull();
+        expect(run).not.toHaveBeenCalled();
+        const load = jest.fn(async () => 'checks');
+        await expect(runNumberChecksOnce({ store, dayKey: '20261101', load, run })).resolves.toBe(true);
+        expect(run).toHaveBeenCalledWith('checks');
+        expect(store.v).toBe('20261101');
+        await expect(runNumberChecksOnce({ store, dayKey: '20261101', load, run })).resolves.toBe(false);
+        expect(load).toHaveBeenCalledTimes(1);
+        expect(run).toHaveBeenCalledTimes(1);
     });
 });
 
