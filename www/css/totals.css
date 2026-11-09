@@ -337,26 +337,8 @@
   line-height: 1.4;
 }
 
+/* Phone and tablet: the row is compact (payable, two icon buttons, Save) */
 @media (max-width: 1023px) {
-  /* Phone and tablet: one bar above the tab bar, always in the same place (typing does not move it,
-     so a tap that ends a field's focus still lands on Save). It runs down behind the tab bar. */
-  #billing .bill-actions {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 940;
-    margin: 0;
-    padding: 10px max(var(--sp-4), calc((100vw - 480px) / 2 + var(--sp-4)));
-    padding-bottom: calc(10px + 56px + env(safe-area-inset-bottom, 0px));
-    border-top: 1px solid var(--line);
-    background: var(--surface);
-  }
-
-  body.biz-rentals #billing .bill-actions {
-    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-  }
-
   #billing .bill-bar-total {
     display: block;
     flex: 1;
@@ -407,6 +389,28 @@
 
   #billing .bill-actions > button[data-kbd]::before {
     content: none;
+  }
+}
+
+/* With room for it, the row is a bar above the tab bar, always in the same place (typing does not
+   move it, so a tap that ends a field's focus still lands on Save). It runs down behind the tab bar.
+   A short screen (a phone on its side, the app with its keyboard open) keeps the row at the end of the bill. */
+@media (max-width: 1023px) and (min-height: 481px) {
+  #billing .bill-actions {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 940;
+    margin: 0;
+    padding: 10px max(var(--sp-4), calc((100vw - 480px) / 2 + var(--sp-4)));
+    padding-bottom: calc(10px + 56px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+  }
+
+  body.biz-rentals #billing .bill-actions {
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   }
 
   /* Room under the last field (notes, date) to scroll clear of the bar, and for focus scrolling */
