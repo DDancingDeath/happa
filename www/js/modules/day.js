@@ -30,6 +30,24 @@ const CHANNELS = { retail: 'Retail', wholesale: 'Wholesale', purchase: 'Purchase
 const BILL_KIND_KEYS = { retail: 'ui.finance.bill_retail', wholesale: 'ui.finance.bill_wholesale', purchase: 'ui.reports.pdf_purchase' };
 const BILLS_SHOWN = 8;
 
+let anomaliesManager = null;
+let anomaliesLoading = null;
+/**
+ * anomalies.js (Today's day report, the Anomalies page) is imported on first use (#59);
+ * a failed import is tried again next time. main.js uses the same loader.
+ * @returns {Promise<Object>} AnomaliesManager
+ */
+export function loadAnomalies() {
+    if (!anomaliesLoading) {
+        anomaliesLoading = import('./anomalies.js')
+            .then(m => (anomaliesManager = m.AnomaliesManager))
+            .catch(e => { anomaliesLoading = null; throw e; });
+    }
+    return anomaliesLoading;
+}
+/** AnomaliesManager once imported, else null (for callers that can't wait). */
+export const loadedAnomalies = () => anomaliesManager;
+
 export const DayManager = {
     currentSubTab: 'today',
     
@@ -222,7 +240,7 @@ export const DayManager = {
             labourToPay: labour.toPay
         };
         const todaySession = session && session.date === todayIso ? session : null;
-        import('./anomalies.js').then(({ AnomaliesManager }) => AnomaliesManager.renderDayReport(totals, todaySession))
+        loadAnomalies().then(m => m.renderDayReport(totals, todaySession))
             .catch(e => console.warn('Day report failed:', e));
 
         // App health banner (#217): a live check below its target today (owner/manager)

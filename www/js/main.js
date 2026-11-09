@@ -28,7 +28,7 @@ import { OutstandingManager } from './modules/outstanding.js';
 import { ExpensesManager } from './modules/miscellaneous.js';
 import { SettingsManager } from './modules/settings.js';
 import { CashManagementManager } from './modules/cash-management.js';
-import { DayManager } from './modules/day.js';
+import { DayManager, loadAnomalies, loadedAnomalies } from './modules/day.js';
 import { ManualReminders } from './ui/manual-reminders.js';
 import { RolesAccessManager } from './modules/roles-access.js';
 import { tip, configureTip, startTipReporting, tipDeviceId } from './tip/index.js';
@@ -113,13 +113,14 @@ function loadInsights() {
     return insightsLoading;
 }
 
-// Statements page (redesign phase 4): statements.js is imported on first use
+// Statements page (redesign phase 4): statements.js is imported on first use, with both
+// language catalogues for the CSV in English (#59)
 let statements = null;
 let statementsLoading = null;
 function loadStatements() {
     if (!statementsLoading) {
-        statementsLoading = import('./modules/statements.js')
-            .then(m => (statements = m.StatementsManager))
+        statementsLoading = Promise.all([import('./modules/statements.js'), loadAllCatalogues()])
+            .then(([m]) => (statements = m.StatementsManager))
             .catch(e => { statementsLoading = null; throw e; });
     }
     return statementsLoading;
@@ -145,15 +146,13 @@ function onDemand(load) {
         return loading;
     };
 }
-// Anomalies, App health, Diagnostics and Admin: the set variable is for the callers that can't wait (language redraw)
-let anomalies = null;
+// App health, Diagnostics and Admin (Anomalies: loadAnomalies in day.js): the set variable is for the
+// language redraw, which can't wait
 let health = null;
 let diagnostics = null;
 let admin = null;
-// The number-check flags and the audit CSV are written in both languages / English
-const loadAnomalies = onDemand(() => Promise.all([import('./modules/anomalies.js'), loadAllCatalogues()])
-    .then(([m]) => (anomalies = m.AnomaliesManager)));
 const loadHealth = onDemand(() => import('./modules/health.js').then(m => (health = m.HealthManager)));
+// The number-check flags are written in both languages and the audit CSV in English
 const loadDiagnostics = onDemand(() => Promise.all([import('./modules/diagnostics.js'), loadAllCatalogues()])
     .then(([m]) => (diagnostics = m.DiagnosticsManager)));
 const loadAdmin = onDemand(() => import('./modules/admin.js').then(m => (admin = m.AdminManager)));
@@ -275,7 +274,7 @@ function refreshForLanguage(lang) {
         day: () => {
             DayManager.updateTodayHeader();
             DayManager.loadTodayData();
-            loadAnomalies().then(m => m.drawDayReport()).catch(e => console.warn('[i18n] day report redraw failed:', e));
+            loadedAnomalies()?.drawDayReport();
         },
         due: () => OutstandingManager.renderDue(),
         history: () => {
@@ -299,7 +298,7 @@ function refreshForLanguage(lang) {
         insights: () => insights?.render(),
         statements: () => { statements?.renderControls(); statements?.render(); },
         billing: () => BillingManager.refreshForLanguage(),
-        anomalies: () => anomalies?.refreshForLanguage(),
+        anomalies: () => loadedAnomalies()?.refreshForLanguage(),
         stock: () => StockManager.refreshForLanguage(),
         admin: () => { admin?.renderTabs(); admin?.renderContent(); },
         health: () => { if (health?.data) health.render(); }
@@ -1314,7 +1313,7 @@ window.app = {
             'shareDayReport', 'printDayReport', 'refreshNow']
             .map(name => [name, (...args) => loadAnomalies().then(m => m[name](...args))])),
         // The cash-close screen's line, when the code is loaded (owner/manager phones load it after the first screen)
-        cashCloseLine: () => anomalies?.cashCloseLine()
+        cashCloseLine: () => loadedAnomalies()?.cashCloseLine()
     },
 
     // Rate trends (#65): monthly rate history per item + seasonal estimate
