@@ -10,7 +10,7 @@ import { todaySummary } from '../utils/calc/today.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { CashManagementManager } from './cash-management.js';
 import { sessionForDate } from '../utils/cash-session.js';
-import { t, tn, getLang } from '../i18n/index.js';
+import { t, tn, getLang, loadAllCatalogues } from '../i18n/index.js';
 import { canOpenPage } from '../utils/role-access.js';
 import { on, REFRESH } from '../utils/events.js';
 import { overdueReminder, rentReminder, leaseReminder, leaseReminderText } from '../utils/reminders.js';
@@ -33,14 +33,15 @@ const BILLS_SHOWN = 8;
 let anomaliesManager = null;
 let anomaliesLoading = null;
 /**
- * anomalies.js (Today's day report, the Anomalies page) is imported on first use (#59);
- * a failed import is tried again next time. main.js uses the same loader.
+ * anomalies.js (Today's day report, the Anomalies page) is imported on first use (#59), with
+ * both language catalogues: its scans save flags in both languages. A failed import is tried
+ * again next time. main.js uses the same loader.
  * @returns {Promise<Object>} AnomaliesManager
  */
 export function loadAnomalies() {
     if (!anomaliesLoading) {
-        anomaliesLoading = import('./anomalies.js')
-            .then(m => (anomaliesManager = m.AnomaliesManager))
+        anomaliesLoading = Promise.all([import('./anomalies.js'), loadAllCatalogues()])
+            .then(([m]) => (anomaliesManager = m.AnomaliesManager))
             .catch(e => { anomaliesLoading = null; throw e; });
     }
     return anomaliesLoading;
