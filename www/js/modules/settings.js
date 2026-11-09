@@ -239,12 +239,22 @@ export class SettingsManager {
         if (!id) return;
         ThemeManager.apply({ theme: id });
         this.syncTheme();
+        this.focusThemeCard(id);
         UIManager.showToast(t('msg.settings.theme_set', { name: t(`ui.settings.theme_${id}`) }));
     }
 
     static cancelThemePreview() {
+        const id = ThemeManager.previewing;
         ThemeManager.cancelPreview();
         this.syncTheme();
+        if (id) this.focusThemeCard(id);
+    }
+
+    /** The preview bar hides under the focused Apply / Cancel: keep keyboard focus in the gallery. */
+    static focusThemeCard(id) {
+        const bar = document.getElementById('themePreviewBar');
+        if (bar && !bar.contains(document.activeElement) && document.activeElement !== document.body) return;
+        document.querySelector(`[data-theme-choice="${id}"]`)?.focus({ preventScroll: true });
     }
 
     /** Modern Minimal and the default appearance (System). */

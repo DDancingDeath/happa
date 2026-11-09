@@ -59,7 +59,7 @@
 .btn.danger {
   border-color: transparent;
   background-color: var(--btn-danger-bg);
-  color: var(--on-accent);
+  color: var(--btn-danger-ink);
 }
 
 .btn-success {

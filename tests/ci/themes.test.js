@@ -60,6 +60,23 @@ test.each(OWN.map((th) => [th.id, th.kind]))('%s: tokens only, colours on screen
     if (kind === 'both') expect(src).toContain(`[data-theme="${id}"][data-mode="dark"]`);
 });
 
+test('text on a theme fill uses its ink token, never literal white (the dark themes have light fills)', () => {
+    const FILL = /background(?:-color)?\s*:[^;]*var\(--(btn-success|btn-sale-bg|mode-sale|sale-color|btn-primary|btn-primary-bg|accent|accent-hover|wholesale-color|mode-wholesale|success-color|positive|danger-color|negative)\)/;
+    const WHITE = /(?:^|[;{\s])color\s*:\s*(#fff\b|#ffffff\b|white\b)/i;
+    const sources = [
+        ...fs.readdirSync(path.join(WWW, 'css')).filter((f) => f.endsWith('.css') && f !== 'app.css').map((f) => `css/${f}`),
+        ...fs.readdirSync(path.join(WWW, 'templates')).filter((f) => f.endsWith('.html')).map((f) => `templates/${f}`),
+    ];
+    const bad = [];
+    for (const rel of sources) {
+        const src = read(rel).replace(/\/\*[\s\S]*?\*\//g, '');
+        for (const [, sel, body] of src.matchAll(/([^{}<>]+)\{([^{}]*)\}/g)) {
+            if (FILL.test(body) && WHITE.test(body)) bad.push(`${rel}: ${sel.trim().split('\n').pop()}`);
+        }
+    }
+    expect(bad).toEqual([]);
+});
+
 test.each(['en', 'hi'])('every theme has a name and a description (%s)', (lang) => {
     const cat = read(`js/i18n/${lang}.js`);
     for (const th of THEMES) {

@@ -23,6 +23,7 @@
   --accent-hover: #4338ca;
   /* Deep fill for hero cards: their translucent white text keeps AA in both modes */
   --accent-strong: #4338ca;
+  --on-accent-strong: #ffffff;
   --accent-text: #4338ca;
   --accent-soft: #eef0ff;
   --accent-line: #c9cdfb;
@@ -33,6 +34,7 @@
   --on-mode-sale: #ffffff;
   --mode-wholesale: #6d28d9;
   --mode-wholesale-soft: #f3effe;
+  --on-mode-wholesale: #ffffff;
   --mode-rentals: #0e7490;
   --mode-rentals-soft: #e5f5f8;
 
@@ -108,6 +110,7 @@
   --btn-sale-bg: var(--mode-sale);
   --btn-sale-ink: var(--on-mode-sale);
   --btn-danger-bg: var(--negative-fill);
+  --btn-danger-ink: #ffffff;
 
   /* Old names (32 stylesheets and script-written styles use them); new code uses the tokens above */
   --primary-color: var(--accent-text);
@@ -714,6 +717,7 @@ input[type="number"],
     --on-mode-sale: #0f1f15;
     --mode-sale-soft: rgba(140, 191, 159, 0.14);
     --mode-wholesale: #b3a6d9;
+    --on-mode-wholesale: #17122a;
     --mode-wholesale-soft: rgba(179, 166, 217, 0.14);
     --mode-rentals: #84c2c8;
     --positive: #8cbf9f;
@@ -800,6 +804,7 @@ input[type="number"],
     --on-mode-sale: #13240c;
     --mode-sale-soft: rgba(159, 207, 138, 0.14);
     --mode-wholesale: #d9bf6a;
+    --on-mode-wholesale: #241a04;
     --mode-wholesale-soft: rgba(217, 191, 106, 0.14);
     --mode-rentals: #7cc4c4;
     --positive: #9fcf8a;
@@ -843,6 +848,7 @@ input[type="number"],
     --on-mode-sale: #0f0f0f;
     --mode-sale-soft: rgba(74, 222, 128, 0.12);
     --mode-wholesale: #c084fc;
+    --on-mode-wholesale: #0f0f0f;
     --mode-wholesale-soft: rgba(192, 132, 252, 0.12);
     --mode-rentals: #22d3ee;
     --positive: #4ade80;
@@ -897,6 +903,7 @@ input[type="number"],
     --on-mode-sale: #04170b;
     --mode-sale-soft: rgba(74, 222, 128, 0.12);
     --mode-wholesale: #c4b5fd;
+    --on-mode-wholesale: #04121f;
     --mode-wholesale-soft: rgba(196, 181, 253, 0.12);
     --mode-rentals: #5eead4;
     --positive: #4ade80;
@@ -1016,7 +1023,7 @@ input[type="number"],
 .btn.danger {
   border-color: transparent;
   background-color: var(--btn-danger-bg);
-  color: var(--on-accent);
+  color: var(--btn-danger-ink);
 }
 
 .btn-success {
@@ -2985,10 +2992,12 @@ body.typing .bottom-nav {
 .save-btn[data-cash-save="open"],
 .save-btn[data-cash-save="entry"] {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 .save-btn[data-cash-save="close"] {
   background: var(--btn-danger);
+  color: var(--btn-danger-ink);
 }
 
 /* -------------------- PRINT BUTTON -------------------- */
@@ -3485,6 +3494,7 @@ input[type="number"] {
 
 .tab.sale-theme .quick-add-btn-inline {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 
@@ -3614,6 +3624,7 @@ input[type="number"] {
 #wholesale-sales .add-to-bill-btn,
 .items-add-btn {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 
@@ -3632,6 +3643,7 @@ input[type="number"] {
 
 .tab.sale-theme .add-to-bill-btn {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 .tab.purchase-theme .bill-totals {
@@ -3716,14 +3728,17 @@ input[type="number"] {
 
 .add-rate-plus.purchase {
   background: var(--btn-primary);
+  color: var(--btn-primary-ink);
 }
 
 .add-rate-plus.wholesale {
   background: var(--wholesale-color);
+  color: var(--on-mode-wholesale);
 }
 
 .add-rate-plus.sale {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 .add-rate-plus:hover {
@@ -4862,7 +4877,7 @@ body.dark-mode .party-due-line.party-due-old {
 
 .bill-action-btn.btn-share {
   background: var(--btn-success);
-  color: #fff;
+  color: var(--btn-sale-ink);
 }
 
 .bill-action-btn.btn-share:hover {
@@ -5329,7 +5344,7 @@ body.dark-mode .party-due-line.party-due-old {
 .aging-btn.aging-remind {
     background: var(--btn-success);
     border-color: var(--btn-success);
-    color: #fff;
+    color: var(--btn-sale-ink);
 }
 
 .aging-badge {
@@ -5660,8 +5675,8 @@ body.dark-mode .stock-row__qty {
 }
 
 .export-btn.csv:hover {
-    background: var(--success-color);
-    color: white;
+    background: var(--btn-success);
+    color: var(--btn-sale-ink);
 }
 
 .export-btn.pdf {
@@ -5670,8 +5685,8 @@ body.dark-mode .stock-row__qty {
 }
 
 .export-btn.pdf:hover {
-    background: var(--danger-color);
-    color: white;
+    background: var(--btn-danger);
+    color: var(--btn-danger-ink);
 }
 
 /* Tab Navigation */
@@ -5808,6 +5823,7 @@ body.dark-mode .stock-row__qty {
 
 .reports-hero-card.sale-theme {
     background: var(--btn-success);
+    color: var(--btn-sale-ink);
 }
 
 .hero-stat {
@@ -6275,7 +6291,7 @@ body.dark-mode .stock-row__qty {
 
 .compare-card.sale {
     background: var(--btn-success);
-    color: white;
+    color: var(--btn-sale-ink);
 }
 
 .compare-icon {
@@ -6667,7 +6683,7 @@ html {
 /* -------------------- MODE TOGGLE BUTTON -------------------- */
 .mode-toggle-btn {
   background: var(--btn-success);
-  color: white;
+  color: var(--btn-sale-ink);
   border: none;
   padding: 10px 20px;
   border-radius: var(--radius-full);
@@ -6689,6 +6705,7 @@ html {
 
 .mode-toggle-btn.sale-mode {
   background: var(--btn-primary);
+  color: var(--btn-primary-ink);
 }
 
 /* -------------------- MODAL POPUP -------------------- */
@@ -6795,6 +6812,7 @@ body:has(.tab.purchase-theme.active) .modal-btn-confirm:hover {
 
 body:has(.tab.sale-theme.active) .modal-btn-confirm {
   background: var(--btn-success);
+  color: var(--btn-sale-ink);
 }
 
 body:has(.tab.sale-theme.active) .modal-btn-confirm:hover {
@@ -8008,7 +8026,7 @@ body.dark-mode .today-labour-diff {
   border: none;
   border-radius: 10px;
   background: var(--btn-success);
-  color: #fff;
+  color: var(--btn-sale-ink);
   font-size: var(--fs-body);
   font-weight: var(--w-strong);
   cursor: pointer;
@@ -8690,8 +8708,8 @@ body.dark-mode .today-cash-prompt {
 }
 
 .modal-close:hover {
-    background: var(--danger-color);
-    color: white;
+    background: var(--btn-danger);
+    color: var(--btn-danger-ink);
 }
 
 .modal-body {
@@ -9160,7 +9178,7 @@ tr.finance-tappable td:first-child::after {
 
 .app-update-download {
   background: var(--btn-success);
-  color: #fff;
+  color: var(--btn-sale-ink);
   border: 0;
   border-radius: 8px;
   padding: 8px 12px;
@@ -9775,7 +9793,7 @@ body.dark-mode .notif-panel-actions {
     height: 40px;
     border-color: transparent;
     background: rgba(255, 255, 255, 0.18);
-    color: var(--on-accent);
+    color: var(--on-accent-strong);
     box-shadow: none;
   }
 

@@ -70,6 +70,7 @@ test('the gallery previews without saving; Cancel, leaving Settings and Apply be
     await page.click('#themePreviewBar .theme-preview-cancel');
     expect(await html()).toEqual(['modern', 'light']);
     await expect(bar).toBeHidden();
+    await expect(page.locator('[data-theme-choice="nordic"]')).toBeFocused();
 
     await page.click('[data-theme-choice="midnight"]');
     expect(await html()).toEqual(['midnight', 'dark']);
@@ -83,6 +84,7 @@ test('the gallery previews without saving; Cancel, leaving Settings and Apply be
     await page.click('#themePreviewBar .theme-preview-apply');
     expect(await html()).toEqual(['nature', 'light']);
     await expect(bar).toBeHidden();
+    await expect(page.locator('[data-theme-choice="nature"]')).toBeFocused();
     expect(await page.evaluate(() => localStorage.getItem('happa.theme'))).toBe('nature');
     await expect(page.locator('[data-theme-choice="nature"]')).toHaveAttribute('aria-pressed', 'true');
 

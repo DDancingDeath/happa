@@ -642,7 +642,7 @@
 
 .bill-action-btn.btn-share {
   background: var(--btn-success);
-  color: #fff;
+  color: var(--btn-sale-ink);
 }
 
 .bill-action-btn.btn-share:hover {

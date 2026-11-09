@@ -49,7 +49,7 @@
     height: 40px;
     border-color: transparent;
     background: rgba(255, 255, 255, 0.18);
-    color: var(--on-accent);
+    color: var(--on-accent-strong);
     box-shadow: none;
   }
 
