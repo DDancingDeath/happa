@@ -170,25 +170,14 @@
     margin-top: 0;
   }
 
-  #billing .bill-col-entry > .bill-totals,
   #wholesale-sales .bill-col-entry > .bill-totals {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 16px;
   }
 
-  #billing .bill-col-entry > .bill-totals > *,
   #wholesale-sales .bill-col-entry > .bill-totals > * {
     grid-column: 1 / -1;
-  }
-
-  #billing .bill-col-entry > .bill-totals > .form-row:nth-child(1),
-  #billing .bill-col-entry > .bill-totals > .form-row:nth-child(2) {
-    grid-column: auto;
-  }
-
-  #billing .bill-col-entry > .bill-totals > .form-row:nth-child(2) label {
-    width: auto;
   }
 
   #billTable,
