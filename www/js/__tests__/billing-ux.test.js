@@ -194,6 +194,36 @@ describe('unsaved-bill banner (#117)', () => {
         expect(BillDrafts.saveDraft).toHaveBeenCalledTimes(1);
         expect(BillDrafts.saveDraft.mock.calls[0][0]).toMatchObject({ mode: 'purchase', billTotal: 1250 });
         expect(BillDrafts.saveDraft.mock.invocationCallOrder[0]).toBeLessThan(BillDrafts.deleteAutoSave.mock.invocationCallOrder[0]);
+        // The banner never offered it: the move to Drafts is said
+        expect(UIManager.showToast).toHaveBeenCalledWith(expect.any(String), 'info');
+    });
+
+    test('an unfinished edit typed over during the check is kept as a draft of that edit (#59, #93)', async () => {
+        let answer;
+        BillDrafts.getAutoSave.mockReturnValue(new Promise(resolve => { answer = resolve; }));
+        BillingManager.checkAutoSave();
+        PurchaseManager.setBillItems([{ name: 'Maize', qty: 1, rate: 1, total: 1 }]);
+        const typed = BillingManager.autoSaveToCloud();
+        answer({ ...saved, editingBillId: 'b9', editingBillType: 'purchase', editingBase: 'v1' });
+        await typed;
+        expect(BillDrafts.saveDraft).toHaveBeenCalledTimes(1);
+        expect(BillDrafts.saveDraft.mock.calls[0][0]).toMatchObject({
+            mode: 'purchase', editingBillId: 'b9', editingBillType: 'purchase', editingBase: 'v1', pendingBill: null
+        });
+        expect(BillDrafts.saveAutoSave.mock.calls[0][1].purchase.items.map(i => i.name)).toEqual(['Maize']);
+    });
+
+    test('a check that answers after another user signed in offers nothing (#59)', async () => {
+        let answer;
+        BillDrafts.getAutoSave.mockReturnValueOnce(new Promise(resolve => { answer = resolve; }));
+        const first = BillingManager.checkAutoSave();
+        AppState.currentUser = { uid: 'u2' };
+        BillDrafts.getAutoSave.mockResolvedValueOnce(null);
+        await BillingManager.checkAutoSave();
+        answer(saved);
+        await first;
+        expect(BillingManager.pendingRecovery).toBeNull();
+        expect(document.getElementById('autoSaveBanner').hidden).toBe(true);
     });
 });
 
