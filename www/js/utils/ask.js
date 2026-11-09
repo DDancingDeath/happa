@@ -14,7 +14,7 @@ import { stockRows } from './calc/stock.js';
 import { buildAging, dueRows } from './aging.js';
 import { partyNameKey } from './parties.js';
 import { devanagariToLatin, latinToDevanagari, suggestEnglishName, suggestHindiName } from './item-name-autofill.js';
-import { itemReport, kgOnlyReport, matchKinds, reportBillTypes, reportKinds, reportParties, reportPeriod, validateSpec } from './ask-report.js';
+import { itemReport, kgOnlyReport, matchKinds, reportBillTypes, reportKinds, reportParties, reportPeriod, startsKindName, validateSpec } from './ask-report.js';
 
 /** Answer → its spec ID in docs/calculations.md. */
 export const ASK_SPEC = Object.freeze({
@@ -108,10 +108,11 @@ const POINTERS = words(['this', 'that', 'ne', 'इस', 'उस', 'ने']);
 // "Mohan ne kharida", "lah kisne kharida": the party bought, so it was our sale (and "ne becha" our purchase)
 const BY_THEM = words(['ne', 'ने', 'kisne', 'किसने']);
 const FIRST_PERSON = words(['main', 'mai', 'mein', 'hum', 'ham', 'मैं', 'मै', 'हम']);
+const HONORIFIC = words(['ji', 'jee', 'जी']);
 // "Mohan ne humse kya kharida": us, never a name
 const US = words(['humse', 'hamse', 'mujhse', 'hume', 'humein', 'hamein', 'mujhe', 'humko', 'hamko', 'हमसे', 'मुझसे', 'हमें', 'मुझे', 'हमको']);
 const PERIOD_BEFORE = words(['is', 'iss', 'this', 'pichle', 'pichhle', 'pichla', 'last', 'previous', 'agle', 'next', 'इस', 'पिछले', 'पिछला']);
-const MONTH_FIRST = /^(month|mahine|mahina|महीने|महीना)/;
+const MONTH_BY_RECKONING = /^(mahine|mahina|month|महीने|महीना)\s+(ke|ki|के|की)\s+(hisab|hisaab|हिसाब)/;
 /** A report by month with no period named covers last month and this one: still on the phone. */
 const MONTHLY_DEFAULT = 'since-last-month';
 
@@ -126,7 +127,8 @@ const hasAny = (/** @type {string[]} */ tokens, /** @type {Set<string>} */ set) 
 function subjectWords(tokens) {
     const KEYWORDS = [LINK, TODAY, TOTAL, NOISE, DUES, STOCK, GOODS, SALES, PURCHASES, EXPENSES, BOUGHT, SOLD, REPORT, MONTH, YEAR, LAST, FY,
         SINCE, ALL_TIME, OTHER_DAY, AMBIGUOUS, RETAIL, WHOLESALE, BY_PARTY, ITEM_WORDS, REPORT_ASK, POINTERS, FIRST_PERSON, US];
-    return tokens.filter(w => !KEYWORDS.some(s => s.has(w)) && !/^[\d\u0966-\u096F]/.test(w));
+    // "ji" stays: "Sharma ji" is the party Sharma Ji, "Sharma" the party Sharma
+    return tokens.filter(w => (HONORIFIC.has(w) || !KEYWORDS.some(s => s.has(w))) && !/^[\d\u0966-\u096F]/.test(w));
 }
 
 /**
@@ -221,9 +223,9 @@ function itemReportQuestion(text, sale) {
     const lower = String(text || '').normalize('NFC').toLowerCase();
     let monthly = false;
     const plain = lower.replace(BY_MONTH, (/** @type {string} */ m, /** @type {string} */ lead, /** @type {string} */ phrase, ...rest) => {
-        // "pichle mahine ke hisab se", "is month wise": that month is the period, not a grouping
+        // "pichle mahine ke hisab se" ("going by last month"): that month is the period, not a grouping
         const before = String(rest[rest.length - 1]).slice(0, Number(rest[rest.length - 2])).trim().split(/\s+/).pop() || '';
-        if (PERIOD_BEFORE.has(before) && MONTH_FIRST.test(phrase)) return m;
+        if (PERIOD_BEFORE.has(before) && MONTH_BY_RECKONING.test(phrase)) return m;
         monthly = true;
         return `${lead} `;
     });
@@ -398,24 +400,33 @@ export function answerQuestion(q, src = {}, { role = 'staff', wholesale = false,
             const kinds = picked ? pool.filter(k => picked.has(k.key)) : m.kinds;
             const near = picked ? pool.filter(k => !picked.has(k.key)) : m.near;
             Object.assign(base, { kinds, pool, picked: !!picked, near: near.slice(0, ASK_MATCH_LIMIT), nearMore: Math.max(0, near.length - ASK_MATCH_LIMIT) });
-            // a word that only started a kind's name ("chaw"), once that kind is picked by hand, is not a party
-            const partyWords = picked ? m.unknown.filter(w => !m.partial.includes(w) || !kinds.length) : m.unknown;
-            if (partyWords.length) {
+            if (m.unknown.length) {
                 // "Ramesh se lah kitna kharida", "Ramesh ko kya kya becha": the words that name no item name a party
-                const typed = spellings(partyWords.join(' '));
-                // "Ramesh Ji" typed as "Ramesh ji ko": the words a question drops are not needed
-                const namesOf = (/** @type {{key: string, name: string}} */ p) => [p.key, ...spellings(p.name), ...spellings(subjectWords(questionWords(p.name)).join(' '))];
-                const hits = matchNames(reportParties(all), namesOf, typed);
-                // only a name that starts with the words ("bhai" → Bhairav Traders) is offered, never counted
-                const exact = hits.length === 1 && namesOf(hits[0]).some(n => typed.includes(n));
-                if (hits.length > 1 || (hits.length && !exact)) return { ...base, partyMatches: hits.slice(0, ASK_MATCH_LIMIT).map(h => h.name), partyMore: Math.max(0, hits.length - ASK_MATCH_LIMIT) };
-                if (!hits.length) {
+                const parties = reportParties(all);
+                const namesOf = (/** @type {{key: string, name: string}} */ p) => [p.key, ...spellings(p.name)];
+                const lookUp = (/** @type {string[]} */ ws) => {
+                    const typed = spellings(ws.join(' '));
+                    const hits = matchNames(parties, namesOf, typed);
+                    // only a name that starts with the words ("bhai" → Bhairav Traders) is offered, never counted
+                    return { hits, one: hits.length === 1 && namesOf(hits[0]).some(n => typed.includes(n)) ? hits[0] : null };
+                };
+                let partyWords = m.unknown;
+                let found = lookUp(partyWords);
+                // "chaw" only started the name of the kind then picked by hand (Chawal): not a party
+                if (!found.one && picked && kinds.length) {
+                    partyWords = m.unknown.filter(w => !kinds.some(k => startsKindName(w, k)));
+                    found = partyWords.length ? lookUp(partyWords) : { hits: [], one: null };
+                }
+                if (found.one) {
+                    partyKey = found.one.key;
+                    base.party = found.one.name;
+                } else if (found.hits.length) {
+                    return { ...base, partyMatches: found.hits.slice(0, ASK_MATCH_LIMIT).map(h => h.name), partyMore: Math.max(0, found.hits.length - ASK_MATCH_LIMIT) };
+                } else if (partyWords.length) {
                     // A name only on bills older than this phone has may still be found once they are read
                     if (!covered) return { ...base, ...older };
-                    return m.kinds.length ? { ...base, notItems: partyWords } : base;
+                    return kinds.length ? { ...base, notItems: partyWords } : base;
                 }
-                partyKey = hits[0].key;
-                base.party = hits[0].name;
             }
             // only a party named: every item it bought or sold
             if (!m.kinds.length && !picked) Object.assign(base, { kinds: null, pool: [], near: [], nearMore: 0 });

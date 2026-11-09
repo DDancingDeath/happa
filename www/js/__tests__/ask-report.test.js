@@ -65,6 +65,9 @@ describe('parseQuestion: item reports', () => {
         ['pichle mahine ke hisab se lah kitna becha', R('sale', 'lah', 'last-month')],
         ['is mahine ke hisab se lah kitna becha', R('sale', 'lah', 'this-month')],
         ['pichle saal ki bikri mahine ke hisab se', R('sale', '', 'last-year', 'month')],
+        ['what is monthly sale of chawal', R('sale', 'chawal', 'since-last-month', 'month')],
+        ['what is month wise sale of chawal', R('sale', 'chawal', 'since-last-month', 'month')],
+        ['Sharma ji ko kya kya becha', R('sale', 'sharma ji', 'this-month')],
         ['this month lah purchase', R('purchase', 'lah', 'this-month')],
         ['aaj ki bikri', { intent: 'sales_today' }],
         ['aaj kitna bika', { intent: 'sales_today' }],
@@ -112,7 +115,7 @@ describe('matchKinds: the kinds a word names', () => {
         expect(matchKinds(kinds, 'lah ramesh')).toMatchObject({ unknown: ['ramesh'] });
     });
     test('a word that only starts a name is offered, never counted', () => {
-        expect(matchKinds(kinds, 'lahs')).toEqual({ kinds: [], near: expect.arrayContaining([expect.objectContaining({ name: 'Lahsun Desi' })]), unknown: ['lahs'], partial: ['lahs'] });
+        expect(matchKinds(kinds, 'lahs')).toEqual({ kinds: [], near: expect.arrayContaining([expect.objectContaining({ name: 'Lahsun Desi' })]), unknown: ['lahs'] });
     });
     test('synonyms (ITEM_WORD_SYNONYMS): lah = lakh = लाख, katki = कदकी; Lahsun still never counted', () => {
         const shop = reportKinds([{ id: 'lk', name: 'Lah Katki' }, { id: 'lp', name: 'Lakh Palash' }, { id: 'g', name: 'Garlic', hindiName: 'लहसुन' }, { id: 'lc', name: 'Lakhori Chilli' }],
@@ -319,10 +322,21 @@ describe('sales, parties and months (ASK-6, ASK-5)', () => {
         expect(a).toMatchObject({ partyMatches: ['Bhairav Traders'] });
         expect(a.report).toBeUndefined();
     });
-    test('a party named with "ji": the words a question drops are not needed for an exact match', () => {
-        const s = { ...src, bills: { ...src.bills, retailSales: [...retail, sale('s7', '2026-11-03T10:00:00', 'R7', 'Sharma Ji', [line('r', 'Rice', 7, 40)])] } };
-        const a = answerQuestion(parseQuestion('Sharma ji ko kya kya becha'), s, { role: 'owner', today });
-        expect(a).toMatchObject({ party: 'Sharma Ji', report: { totals: { kg: 7 } } });
+    test('"Sharma ji" is the party Sharma Ji, "Sharma" the party Sharma', () => {
+        const s = { ...src, bills: { ...src.bills, retailSales: [...retail, sale('s7', '2026-11-03T10:00:00', 'R7', 'Sharma Ji', [line('r', 'Rice', 7, 40)]),
+            sale('s6', '2026-11-03T10:00:00', 'R6', 'Sharma', [line('r', 'Rice', 3, 40)])] } };
+        expect(answerQuestion(parseQuestion('Sharma ji ko kya kya becha'), s, { role: 'owner', today })).toMatchObject({ party: 'Sharma Ji', report: { totals: { kg: 7 } } });
+        expect(answerQuestion(parseQuestion('Sharma ko kya kya becha'), s, { role: 'owner', today })).toMatchObject({ party: 'Sharma', report: { totals: { kg: 3 } } });
+    });
+    test('a party whose name starts an item\'s name stays the party when kinds are picked by hand', () => {
+        const its = [...items, { id: 'rj', name: 'Rajma', hindiName: '' }];
+        const s = { bills: { retailSales: [sale('x1', '2026-11-03T10:00:00', 'X1', 'Raj', [line('r', 'Rice', 10, 40)]), sale('x2', '2026-11-04T10:00:00', 'X2', 'Suresh', [line('r', 'Rice', 50, 40)])] }, items: its };
+        const q = parseQuestion('Raj ko chawal kitna becha is mahine');
+        expect(answerQuestion(q, s, { role: 'owner', today })).toMatchObject({ party: 'Raj', report: { totals: { kg: 10 } } });
+        ['r', 'rj'].forEach(k => expect(answerQuestion({ ...q, keys: ['r', k] }, s, { role: 'owner', today })).toMatchObject({ party: 'Raj', report: { totals: { kg: 10 } } }));
+        const noParty = answerQuestion({ ...parseQuestion('is mahine Mohan se lahs kitna kharida'), keys: ['g'] }, { bills: { purchases: PURCHASES }, items: ITEMS }, { role: 'owner', today });
+        expect(noParty).toMatchObject({ notItems: ['mohan'] });
+        expect(noParty.report).toBeUndefined();
     });
     test('a word that only starts a kind\'s name: once that kind is picked by hand, it is reported', () => {
         const s = { bills: { purchases: PURCHASES }, items: [{ id: 'g', name: 'Garlic', hindiName: 'लहसुन' }] };

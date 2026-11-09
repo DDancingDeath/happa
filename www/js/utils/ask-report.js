@@ -144,8 +144,7 @@ export function reportKinds(items, bills) {
  * name: the report would not be about it, so the answer gives no figure).
  * @param {Array<{key: string, name: string, hindiName: string}>} kinds reportKinds()
  * @param {string} text the typed subject
- * @returns {{kinds: Array<{key: string, name: string, hindiName: string}>, near: Array<{key: string, name: string, hindiName: string}>, unknown: string[], partial: string[]}}
- *   partial: the unknown words that start a word of some kind's name ("chaw" for Chawal)
+ * @returns {{kinds: Array<{key: string, name: string, hindiName: string}>, near: Array<{key: string, name: string, hindiName: string}>, unknown: string[]}}
  */
 export function matchKinds(kinds, text) {
     const words = partyNameKey(text).split(' ').filter(Boolean).map(w => ({ w, v: wordVariants(w) }));
@@ -158,9 +157,19 @@ export function matchKinds(kinds, text) {
     const loose = words.map(x => looseWord(x.w)).filter(w => w.length >= 2);
     const near = withWords.filter(x => !found.includes(x.k) && loose.some(w => [...x.own].some(s => s.startsWith(w) && s !== w))).map(x => x.k);
     const unknown = words.filter((x, i) => !hits[i].length).map(x => x.w);
-    const partial = unknown.filter(w => { const l = looseWord(w); return l.length >= 2 && withWords.some(x => [...x.own].some(s => s.startsWith(l) && s !== l)); });
     const byName = (/** @type {{name: string, hindiName: string}} */ a, /** @type {{name: string, hindiName: string}} */ b) => (a.name || a.hindiName).localeCompare(b.name || b.hindiName);
-    return { kinds: [...found].sort(byName), near: near.sort(byName), unknown, partial };
+    return { kinds: [...found].sort(byName), near: near.sort(byName), unknown };
+}
+
+/**
+ * Whether a typed word starts a word of a kind's own name, in any spelling ("chaw" → Chawal, "lahs" → लहसुन).
+ * @param {string} word
+ * @param {{name: string, hindiName: string}} kind
+ * @returns {boolean}
+ */
+export function startsKindName(word, kind) {
+    const l = looseWord(word);
+    return l.length >= 2 && [...nameWords([kind.name, kind.hindiName], false)].some(s => s.startsWith(l));
 }
 
 const billNo = (/** @type {Rec} */ b) => String(b?.billNumber || b?.billNo || '');
