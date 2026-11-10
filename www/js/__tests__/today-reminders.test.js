@@ -7,6 +7,7 @@ import { DayManager } from '../modules/day.js';
 import { drillReminder, recordDrill } from '../utils/backup-verify.js';
 import { AppState } from '../utils/state.js';
 import { setLang } from '../i18n/index.js';
+import { savePayDue, payDueReminder, payDueStale } from '../utils/pay-reminder.js';
 
 const TODAY = new Date(2026, 10, 15, 10, 0, 0);
 const daysAgo = (n) => `${String(new Date(2026, 10, 15 - n).getDate()).padStart(2, '0')}/${String(new Date(2026, 10, 15 - n).getMonth() + 1).padStart(2, '0')}/2026`;
@@ -193,5 +194,57 @@ describe('REM-3 backup check (#63)', () => {
         localStorage.setItem('happa.restoreDrill', '{bad');
         expect(drillReminder(localStorage, 'u2', now).due).toBe(true);
         expect(recordDrill({ setItem() { throw new Error('full'); } }, { uid: 'u1', at: now })).toBe(false);
+    });
+});
+describe('WP-11 salaries due (#373)', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '<div id="todayReminders" hidden></div>';
+        AppState.currentUser = { uid: 'u1' };
+        AppState.settings = {};
+        AppState.retailSalesHistory = [];
+        AppState.salesHistory = [];
+        AppState.purchaseHistory = [];
+        localStorage.clear();
+    });
+    afterEach(() => { setLang('en'); AppState.userRole = null; });
+    const card = () => document.querySelector('[data-reminder="salaries"]');
+    const keep = (months, uid = 'u1', at = TODAY.getTime()) => savePayDue(localStorage, { uid, months, at });
+
+    test('the owner sees who is still to be paid this month and opens Workers / Salaries; nobody else does', () => {
+        AppState.userRole = 'owner';
+        DayManager.renderReminders(TODAY);
+        expect(card()).toBeNull();
+        keep({ '2026-11': { count: 2, due: 15000 }, '2026-12': { count: 3, due: 24000 } });
+        DayManager.renderReminders(TODAY);
+        expect(card().textContent).toContain('Salaries due ₹15,000');
+        expect(card().textContent).toContain('2 workers still to be paid');
+        expect(card().querySelector('button').getAttribute('data-onclick')).toBe("nav.showTab('workers')");
+        keep({ '2026-11': { count: 1, due: 6000 } });
+        DayManager.renderReminders(TODAY);
+        expect(card().textContent).toContain('1 worker still to be paid');
+        setLang('hi');
+        DayManager.renderReminders(TODAY);
+        expect(card().textContent).toContain('वेतन बाकी ₹6,000');
+        expect(card().textContent).toContain('1 कर्मचारी का वेतन देना बाकी');
+        for (const role of ['manager', 'staff']) {
+            AppState.userRole = role;
+            DayManager.renderReminders(TODAY);
+            expect(card()).toBeNull();
+        }
+    });
+
+    test('kept per owner and month; nothing due shows nothing; stale only when kept from an earlier day', () => {
+        const s = memStore();
+        expect(payDueStale(s, 'u1', TODAY)).toBe(false);
+        savePayDue(s, { uid: 'u1', months: { '2026-11': { count: 1, due: 500 }, '2026-12': { count: 0, due: 0 } }, at: TODAY.getTime() });
+        expect(payDueReminder(s, 'u1', '2026-11')).toEqual({ count: 1, due: 500, at: TODAY.getTime() });
+        expect(payDueReminder(s, 'u2', '2026-11')).toBeNull();
+        expect(payDueReminder(s, 'u1', '2026-12')).toBeNull();
+        expect(payDueReminder(s, 'u1', '2027-01')).toBeNull();
+        expect(payDueStale(s, 'u1', TODAY)).toBe(false);
+        expect(payDueStale(s, 'u2', TODAY)).toBe(false);
+        expect(payDueStale(s, 'u1', new Date(2026, 10, 16, 0, 1))).toBe(true);
+        expect(payDueReminder({ getItem: () => '{bad' }, 'u1', '2026-11')).toBeNull();
+        expect(payDueStale({ getItem: () => '{bad' }, 'u1')).toBe(false);
     });
 });

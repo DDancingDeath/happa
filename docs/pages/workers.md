@@ -29,5 +29,9 @@ state and the balance carried on; **Payments and advances** lists every entry.
 the money given in the month whatever month it was for (WP-8), still to pay (WP-9) and advances
 carried (WP-10), and how many workers are paid, part-paid and due.
 
+**On Today.** A month's pay counts as due from the 1st of that month: from then on, while someone is
+still to be paid, Today shows **Salaries due** with the total and how many workers (WP-11), and
+**Open Workers / Salaries** brings you here.
+
 **Not in Money yet.** Pay recorded here does not change Money › Spending, Today or the cash drawer:
 the owner has not yet decided how it fits with the labour expense type. Saving needs the internet.

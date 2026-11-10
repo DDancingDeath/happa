@@ -356,7 +356,7 @@ a balance carried to the next month. Whole rupees. **Not linked to Money:** work
 expense here and changes no M*, T*, C* or ST* figure (Money › Spending, Today, the cash drawer stay as
 they were) until the owner decides how it fits with the labour expense type (#373, V2 OD-03 / OD-09).
 Reads: one query of `workers` each time the page opens (one read per worker; one when there are none);
-nothing at start. Oracle: `tests/oracle/worker-pay.test.js`.
+nothing at start; Today's salaries line (WP-11) at most once per session on the owner's phone. Oracle: `tests/oracle/worker-pay.test.js`.
 
 | ID | On screen | Definition |
 |---|---|---|
@@ -370,6 +370,7 @@ nothing at start. Oracle: `tests/oracle/worker-pay.test.js`.
 | WP-8 | Paid out in the month (page card) — as OD-07 | Money that went out in the month: Σ amount of every entry whose `date` is in the month, whatever month it pays. |
 | WP-9 | Still to pay (page card) | Σ WP-5 at the end of the month shown, over workers whose WP-5 is above 0 (those who left too). |
 | WP-10 | Advances carried (page card) | Σ −WP-5 over workers whose WP-5 is below 0. WP-9 − WP-10 = Σ WP-1 of all months − Σ WP-2 of all months (up to the month shown). |
+| WP-11 | Today › Reminders: "Salaries due ₹X", "N workers still to be paid" (owner only) | **When pay counts as due:** a month's pay is due from the **1st of that month** (as rent; the pay recorded here is the current month's, with advances mid-month), so from the 1st the line shows whenever someone is still owed. N = workers whose WP-5 at the end of the current month is above 0 (arrears from earlier months and those who left included); X = Σ of those WP-5 (= WP-9 of the current month). Not shown when nothing is owed. Worked out from the loaded workers when the Workers page loads or saves (no reads) and kept on this phone for the owner with the time ("As worked out on …"), for this and the next 2 months (no entry can be for a later month). **Reads:** none at start for anyone. On the owner's phone, once per session, about 20 s after the first screen when the phone is idle and online, and only when this phone keeps the line from an earlier day: one query of `workers` (one read per worker); never when Workers was not opened on this phone. Tapping **Open Workers / Salaries** opens the page. Code: `payDue`, `payDueMonths` (`utils/worker-pay.js`), `utils/pay-reminder.js`. |
 
 ---
 
@@ -508,6 +509,8 @@ Counts about this phone, never business figures. Nothing is read from the server
 | ADM-2 | Bills, Bill total per person | Bills on this phone (purchases, retail, wholesale) that count (`activityBills`: not voided, not opening records) saved by that person (`userId`, wholesale `createdBy`) with their first-save time (`createdAt`, else `timestamp`, else the bill date) in the range [from, to) of local days; total = Σ BILL-TOTAL, rounded to whole rupees at the end |
 | ADM-3 | Payments, Edits, Voids, Last active | That person's audit entries in the range: payments = `RECORD_PAYMENT` + `UPDATE_PAYMENT` + `CLEAR_DUE`, edits = `EDIT_BILL` + `EDIT_SALE`, voids = `VOID_BILL`; last active = their latest bill (ADM-2) or audit entry in the range. Ranges: Today, Last 7 days (today and 6 days before), This month (from the 1st), Last month. One read per tap of the range's audit entries (`timestamp` in [from, to)), at most the newest 300 (the page says so when it hits that) |
 ## Today › Reminders (#86) — no reads, except one listener for manual reminders (REM-5)
+
+Salaries due (owner only) is WP-11, in the Workers / Salaries section.
 
 | ID | Shown | Definition |
 |---|---|---|

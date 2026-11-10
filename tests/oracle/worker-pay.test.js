@@ -5,7 +5,7 @@
  */
 import fc from 'fast-check';
 import {
-    payFor, workerLedger, paySummary, withPay, withStart, monthState, checkEntry, wholeRupees
+    payFor, workerLedger, paySummary, withPay, withStart, monthState, checkEntry, wholeRupees, payDue, payDueMonths
 } from '../../www/js/utils/worker-pay.js';
 
 const MONTHS = ['2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06'];
@@ -85,6 +85,28 @@ describe('WP-7 … WP-10: the page cards', () => {
             const states = list.map(w => oracleMonth(w, m).state);
             expect(s.counts).toEqual({ paid: states.filter(x => x === 'paid').length, part: states.filter(x => x === 'part').length, due: states.filter(x => x === 'due').length });
         }), { numRuns: 200 });
+    });
+});
+
+describe('WP-11: salaries due on Today', () => {
+    test('workers still owed at the end of the month and what they are owed, this month and the next ones', () => {
+        fc.assert(fc.property(fc.array(workerArb, { maxLength: 5 }), month, (list, m) => {
+            const owed = list.map(w => oracleBalance(w, m)).filter(b => b > 0);
+            expect(payDue(list, m)).toEqual({ count: owed.length, due: owed.reduce((t, b) => t + b, 0) });
+            expect(payDue(list, m).due).toBe(paySummary(list, m).toPay);
+            const months = payDueMonths(list, m, 3);
+            expect(Object.keys(months)).toHaveLength(3);
+            for (const [k, v] of Object.entries(months)) expect(v).toEqual(payDue(list, k));
+        }), { numRuns: 200 });
+    });
+
+    test('due from the 1st of the month: an unpaid month counts at once; an advance ahead does not', () => {
+        const pays = [{ from: '2026-01', amount: 9000 }];
+        const ramu = { name: 'Ramu', startMonth: '2026-01', active: true, pays, entries: [] };
+        const ahead = { ...ramu, entries: [{ id: 'a', month: '2026-01', date: '2026-01-05', amount: 12000, kind: 'advance', mode: 'cash' }] };
+        expect(payDue([ramu, ahead], '2026-01')).toEqual({ count: 1, due: 9000 });
+        expect(payDue([ramu, ahead], '2026-02')).toEqual({ count: 2, due: 18000 + 6000 });
+        expect(payDue([], '2026-01')).toEqual({ count: 0, due: 0 });
     });
 });
 

@@ -37,6 +37,7 @@ import { createSyncWatcher } from './tip/scenarios/sync.js';
 import { createWatchdog, TICK_MS as WATCHDOG_TICK_MS } from './tip/scenarios/main-thread.js';
 import { runNumberChecksOnce, numberChecksProps } from './tip/scenarios/number-checks.js';
 import { whenIdle } from './utils/background-tasks.js';
+import { payDueStale } from './utils/pay-reminder.js';
 import { startAppCheck } from './services/app-check.js';
 import { APP_VERSION } from './version.js';
 import { AuditService } from './services/audit.js';
@@ -64,7 +65,7 @@ const langReady = loadCatalogue(getLang()).catch(e => console.error('Language ca
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261108cu-worker-pay';
+const BUILD_ID = '20261108cw-pay-reminder';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -159,6 +160,22 @@ const loadDiagnostics = onDemand(() => Promise.all([import('./modules/diagnostic
 const loadAdmin = onDemand(() => import('./modules/admin.js').then(m => (admin = m.AdminManager)));
 let workers = null;
 const loadWorkers = onDemand(() => import('./modules/workers.js').then(m => (workers = m.WorkersManager)));
+let payDueCheckedFor = null;
+/**
+ * Today's salaries line (#373, WP-11): once per session on the owner's phone, after the first screen,
+ * and only when this phone keeps it from an earlier day (Workers was opened here): one read per worker.
+ */
+function schedulePayDueRefresh() {
+    const uid = AppState.currentUser?.uid;
+    if (AppState.userRole !== 'owner' || !uid || payDueCheckedFor === uid) return;
+    payDueCheckedFor = uid;
+    whenIdle(() => {
+        if (AppState.currentUser?.uid !== uid || AppState.userRole !== 'owner' || navigator.onLine === false) return;
+        if (!backgroundReadsAllowed() || !payDueStale(localStorage, uid)) return;
+        loadWorkers().then(m => m.refreshPayDue())
+            .catch(e => console.warn('Salaries due not refreshed:', e?.code || e?.message || e));
+    }, { minDelayMs: 20000 });
+}
 
 // Data changes re-render the open lazy pages (firestore-service.js emits, utils/events.js);
 // the eager pages subscribe in their own modules. Money, Insights and Statements subscribe
@@ -689,6 +706,7 @@ async function initializeUserData() {
                 .then(([m, confirmed]) => confirmed && m.scheduleDailyScan(Math.max(0, DAILY_SCAN_DELAY_MS - (Date.now() - shownAt))))
                 .catch(e => console.warn('Anomalies not loaded:', e?.message || e));
         }, { timeoutMs: 4000 });
+        schedulePayDueRefresh();
 
         // Team directory (#87): managers read names and roles from it; once a day the owner's phone
         // rebuilds it from the profiles when they differ (late, so it never slows the first screens)
