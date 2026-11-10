@@ -120,6 +120,7 @@ test('Today\'s salaries due (WP-11) is kept when the page loads and saves, witho
     expect(repo.loadWorkers).toHaveBeenCalledTimes(1);
 
     localStorage.clear();
+    W.reset();
     repo.loadWorkers.mockResolvedValue([ramu()]);
     expect(await W.refreshPayDue()).toBe(true);
     expect(repo.loadWorkers).toHaveBeenCalledTimes(2);
@@ -128,5 +129,23 @@ test('Today\'s salaries due (WP-11) is kept when the page loads and saves, witho
     AppState.userRole = 'manager';
     expect(await W.refreshPayDue()).toBe(false);
     expect(repo.loadWorkers).toHaveBeenCalledTimes(2);
+    AppState.currentUser = null;
+});
+
+test('a background refresh still in flight when the page loads and saves never overwrites the page\'s newer figure', async () => {
+    localStorage.clear();
+    AppState.currentUser = { uid: 'o1' };
+    let answer;
+    repo.loadWorkers.mockReturnValueOnce(new Promise(r => { answer = r; }));
+    const refresh = W.refreshPayDue();
+    await W.init();
+    W.open('w1');
+    W.showForm('pay');
+    document.getElementById('wpAmount').value = '6000';
+    await W.savePay();
+    expect(payDueReminder(localStorage, 'o1', NOW)).toBeNull();
+    answer([ramu()]);
+    expect(await refresh).toBe(false);
+    expect(payDueReminder(localStorage, 'o1', NOW)).toBeNull();
     AppState.currentUser = null;
 });

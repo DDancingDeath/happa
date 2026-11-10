@@ -248,8 +248,11 @@ function noteDue(list = state.workers, uid = AppState.currentUser?.uid) {
 export async function refreshPayDue() {
     const uid = AppState.currentUser?.uid;
     if (!isOwner() || !uid) return false;
+    const seq = state.seq;
     const list = await repo.loadWorkers();
     if (AppState.currentUser?.uid !== uid || !isOwner()) return false;
+    // The page opened or saved meanwhile: its figure is newer than this read
+    if (seq !== state.seq || state.loaded) return false;
     noteDue(list, uid);
     return true;
 }
