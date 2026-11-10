@@ -588,3 +588,25 @@ export function pickVoiceBill(alternatives, items = [], knownNames = []) {
     for (const b of parsed) if (score(b) > score(best)) best = b;
     return best || parseVoiceBill('', items);
 }
+
+/** Whole utterances that undo the last voice change (#131); one script per phrase. */
+const UNDO_PHRASES = wordSet([
+    'undo', 'undo it', 'undo that', 'undo last', 'undo karo', 'cancel last', 'remove last', 'delete last',
+    'wapas', 'vapas', 'wapas lo', 'vapas lo', 'wapas karo', 'vapas karo', 'pichla hatao', 'pichhla hatao',
+    'hatao', 'hata do', 'galat', 'galat hai',
+    'वापस', 'वापस लो', 'वापस करो', 'पिछला हटाओ', 'हटाओ', 'हटा दो', 'गलत', 'ग़लत', 'गलत है', 'ग़लत है',
+    'अनडू', 'अन्डू', 'अनडू करो'
+]);
+
+/**
+ * True when the recogniser's best guess is only an undo command ("undo", "वापस", "pichla hatao"),
+ * never when it also names an item or a number.
+ * @param {string[]|string} alternatives
+ * @returns {boolean}
+ */
+export function isUndoCommand(alternatives) {
+    const first = (Array.isArray(alternatives) ? alternatives : [alternatives]).find(a => String(a || '').trim());
+    if (!first) return false;
+    const words = voiceTokens(first).filter(w => w !== '.' && w !== 'please' && w !== 'कृपया');
+    return words.length > 0 && UNDO_PHRASES.has(words.join(' '));
+}

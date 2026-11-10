@@ -8,7 +8,7 @@ import { t } from '../i18n/index.js';
 import { Helpers } from '../utils/helpers.js';
 import { UIManager } from './ui-manager.js';
 import { Usage } from '../services/usage.js';
-import { topUsage } from '../utils/usage-stats.js';
+import { topUsage, VOICE_MISS_PHRASE } from '../utils/usage-stats.js';
 import { todayLocalISO, localISODaysAgo } from '../utils/dates.js';
 
 export const PAGE_KEYS = {
@@ -28,6 +28,7 @@ export function usageLabel(event) {
         const id = event.slice(5);
         return t('ui.usage.page_opened', { page: PAGE_KEYS[id] ? t(PAGE_KEYS[id]) : id });
     }
+    if (VOICE_MISS_PHRASE.test(event)) return t('ui.usage.voice_miss_phrase', { code: event.slice(11) });
     return t(`ui.usage.e_${event.replace(/\./g, '_')}`);
 }
 

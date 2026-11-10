@@ -19,6 +19,7 @@ import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
 import { settlePendingLine } from '../ui/pending-line.js';
 import { checkBagWeight, checkLineRate, confirmLineBags, keptBagChecks } from '../ui/rate-check.js';
 import { t, tn } from '../i18n/index.js';
+import { emit, BILL_CLEARED } from '../utils/events.js';
 import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity, isArchivedItem } from '../utils/item-catalog.js';
@@ -735,6 +736,7 @@ const PurchaseManager = {
             // Clear bill
             pendingBill = null;
             billItems = [];
+            emit(BILL_CLEARED, 'purchase');
             editedLine = null;
             weights = [];
             weightChecks = [];
@@ -849,6 +851,7 @@ const PurchaseManager = {
     clearBill() {
         pendingBill = null;
         billItems = [];
+        emit(BILL_CLEARED, 'purchase');
         editedLine = null;
         weights = [];
         weightChecks = [];
@@ -956,6 +959,12 @@ const PurchaseManager = {
      */
     setBillItems(items) {
         billItems = items || [];
+        emit(BILL_CLEARED, 'purchase');
+    },
+
+    /** A bill line taken back into the form to edit (#131: voice undo waits for it). */
+    isEditingLine() {
+        return !!editedLine;
     },
 
     /**

@@ -6,8 +6,9 @@
  * @module services/usage
  */
 
-import { isUsageEvent, usageKey, mergeUsage, expiredUsage, USAGE_KEEP_DAYS } from '../utils/usage-stats.js';
+import { isUsageEvent, usageKey, mergeUsage, expiredUsage, USAGE_KEEP_DAYS, voiceMissEvent } from '../utils/usage-stats.js';
 import { toLocalISODate, localISODaysAgo } from '../utils/dates.js';
+import { safeSetItem } from '../utils/storage-full.js';
 
 const DB_NAME = 'happa-usage';
 const STORE = 'counters';
@@ -175,6 +176,43 @@ export const Usage = createUsage();
 
 /** Shorthand: Usage.track(event). */
 export const track = (event) => Usage.track(event);
+
+/** This phone's random salt for voice phrase codes (#131, Q75): made once, kept only here, never exported. */
+export const PHRASE_SALT_KEY = 'happa.voicePhraseSalt';
+
+/**
+ * @returns {?string} the salt, made on first use; null when storage or Web Crypto is missing
+ */
+export function phraseSalt(ls = globalThis.localStorage, rnd = globalThis.crypto) {
+    try {
+        let salt = ls.getItem(PHRASE_SALT_KEY);
+        if (!salt) {
+            const bytes = new Uint8Array(16);
+            rnd.getRandomValues(bytes);
+            salt = [...bytes].map(n => n.toString(16).padStart(2, '0')).join('');
+            if (!safeSetItem(PHRASE_SALT_KEY, salt, ls).ok) return null;
+        }
+        return salt;
+    } catch (_) {
+        return null;
+    }
+}
+
+/**
+ * A voice sentence with nothing understood (#131 C13): counts voice.miss, then its salted code.
+ * The words are never stored. Never throws.
+ * @param {string} text
+ * @returns {Promise<void>}
+ */
+export async function trackVoiceMiss(text) {
+    track('voice.miss');
+    try {
+        const event = await voiceMissEvent(text, phraseSalt());
+        if (event) track(event);
+    } catch (e) {
+        warn('phrase not counted', e);
+    }
+}
 
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     try {

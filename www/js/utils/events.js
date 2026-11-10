@@ -35,6 +35,9 @@ export const PRINT_STATUS_CHANGED = 'printStatus:changed';
 
 export const REMINDERS_CHANGED = 'reminders:changed';
 
+/** Billing's purchase or retail bill was saved or cleared (purchase.js, retail-sale.js); payload `'purchase'|'sale'`. */
+export const BILL_CLEARED = 'bill:cleared';
+
 /** An error toast was shown (ui-manager.js); payload `{ message, ref }`. Telemetry logs it under `ref`. */
 export const TOAST_ERROR = 'toast:error';
 

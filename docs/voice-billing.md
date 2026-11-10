@@ -28,7 +28,7 @@ check stops a line (the user taps Fix), that line stays in the form, the later
 lines are not added, and the message says how many were. Voice refuses to switch
 the item while weights for another item are already entered (they would move to
 the spoken item), and adds no lines while a weight is typed or entered but not
-added. Nothing heard is stored, logged or sent anywhere by the app.
+added. Nothing heard is stored, logged or sent anywhere by the app (a phrase not\nunderstood is counted on the phone by a hash only, see tier B below).
 
 **Several lines (A2).** "गेहूं 50 kg 25 रुपये, सरसों 30 kg 55 रुपये": lines are split
 at "aur" / "और" / "and" / "phir" / "फिर", a comma, a full stop or "।", or between two
@@ -69,6 +69,42 @@ warns and the user types them (also "300 rupaye ke 10 kilo", "10 kilo 300 mein",
 "100 rupaye ka chawal" with no weight, an amount to buy). More
 numbers than a weight and a rate are flagged too, and so is a rate more than 3×
 above or below every rate kept for that item (likely a total).
+
+## Tier B (#131): correct, transcript, undo, beep, missed phrases
+
+All on the phone: no new service, permission or Firestore read.
+
+- **Correct a line.** Each line in the check dialog has a **Correct** button (keyboard
+  reachable, `aria-expanded`) that opens boxes for its item, weight (kg) and rate,
+  filled with what was heard. A change shows in the row at once; a line that was
+  missing its weight or rate becomes tickable once both are typed. OK uses the
+  corrected values (still through the form's own checks).
+- **Transcript.** Under 🎤 a line (`role="status"`, `aria-live="polite"`) shows
+  "Listening…", then what was heard and what came of it (check it, cancelled, filled,
+  lines added, not understood, undone). It stays until the next listen; it is shown
+  only while voice billing is on and is never stored.
+- **Undo.** Each voice change on a form (lines added, the customer, item, rate and
+  weight boxes) is kept on that form, the last 10 (`utils/voice-undo.js`).
+  **Undo voice** under 🎤, or saying only "undo" / "wapas" / "pichla hatao" /
+  "वापस" / "पिछला हटाओ" / "ग़लत" (`isUndoCommand`), takes back the last one: it
+  removes the lines it added and puts the boxes back, but only what is still as voice
+  left it. A line removed or edited since, or a box typed over, is kept, and the
+  message says so. It waits (and says so) while the bill is saving, and puts the
+  item and rate back only when no weights are entered and no bill line is being
+  edited (those weights would be billed as the old item). Saving or clearing the
+  bill ends its voice changes, so Undo is never offered across bills. A voice
+  result is not applied while the bill is saving either.
+- **Beep.** Settings › Voice billing › **Beep after listening** (per device,
+  `aadhat.voiceBeep`, off by default): a short high tone when something was
+  understood, a low one when not (Web Audio, made on the phone).
+- **Missed phrases (C13).** A sentence in which nothing was understood counts
+  `voice.miss` and `voice.miss.<8 hex>` in the local usage counters of #136
+  (Settings › Usage on this phone; 90 days, never sent). The 8 hex digits are the
+  start of an HMAC-SHA-256 (Web Crypto) of the lower-cased words, keyed with a random
+  salt made once on this phone (`happa.voicePhraseSalt`, never exported or sent), so a
+  phrase that keeps failing shows as one repeated code on this phone, and the code
+  can't be turned back into the words; the words themselves are never kept (Q75). `voice.undo` and
+  `voice.edit` count undos and corrected lines.
 
 ## Findings (validated 1 Nov 2026)
 
@@ -135,9 +171,10 @@ unless the user switches voice on and taps 🎤.
 - #81: the wake word (A0, needs a Picovoice key), Hindi number words above 99
   except hundreds; a native text-to-speech plugin if the Android app turns out to
   have no voice for the readback.
-- #131: continuous dictation, "undo", edit a row by voice, a transcript strip, a
-  beep, counting missed phrases (C13, through the local usage counters of #136),
-  and the Android App Actions shortcut ("Bill banao").
+- #131: continuous dictation, editing a row by voice ("line 2 rate 30"), and the
+  Android App Actions shortcut ("Bill banao", a native `shortcuts.xml` change). Undo,
+  correcting a line in the dialog, the transcript strip, the beep and counting missed
+  phrases are in (above).
 - Quintal (100 kg) as a weight word; rates per quintal.
 
 Recommendation: test on a real phone with the shop's own items (Hindi and English,

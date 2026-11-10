@@ -4,7 +4,12 @@
 import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
-import { isUsageEvent, mergeUsage, topUsage, expiredUsage, usageKey } from '../utils/usage-stats.js';
+import { isUsageEvent, mergeUsage, topUsage, expiredUsage, usageKey, voicePhraseHash, voiceMissEvent } from '../utils/usage-stats.js';
+import { phraseSalt, PHRASE_SALT_KEY } from '../services/usage.js';
+import { webcrypto } from 'crypto';
+import { TextEncoder as NodeTextEncoder } from 'util';
+
+globalThis.TextEncoder = globalThis.TextEncoder || NodeTextEncoder;
 import { createUsage, localStore, idbStore } from '../services/usage.js';
 import { UsageView, usageLabel, PAGE_KEYS } from '../ui/usage-view.js';
 import { Usage } from '../services/usage.js';
@@ -193,5 +198,39 @@ describe('Settings › Usage on this phone', () => {
         jest.spyOn(Usage, 'rows').mockResolvedValue([]);
         await UsageView.render();
         expect(document.getElementById('usageList').textContent).toContain('Nothing counted yet.');
+    });
+});
+
+describe('voice phrases not understood (#131 C13, Q75)', () => {
+    const { subtle } = webcrypto;
+
+    test('counted by an HMAC of the words with this phone\'s salt, never the words', async () => {
+        const event = await voiceMissEvent('Hello  there,', 'salt-a', subtle);
+        expect(event).toMatch(/^voice\.miss\.[0-9a-f]{8}$/);
+        expect(isUsageEvent(event)).toBe(true);
+        expect(await voicePhraseHash('HELLO there.', 'salt-a', subtle)).toBe(event.slice(11));
+        expect(await voicePhraseHash('hello where', 'salt-a', subtle)).not.toBe(event.slice(11));
+        expect(await voicePhraseHash('hello there', 'salt-b', subtle)).not.toBe(event.slice(11));
+        expect(await voicePhraseHash('नमस्ते', 'salt-a', subtle)).toMatch(/^[0-9a-f]{8}$/);
+        expect(await voicePhraseHash('hello', null, subtle)).toBeNull();
+        expect(await voiceMissEvent('hello', 'salt-a', null)).toBeNull();
+        expect(isUsageEvent('voice.miss.hello there')).toBe(false);
+        expect(isUsageEvent('voice.miss')).toBe(true);
+    });
+
+    test('the salt is random, made once and kept on this phone', () => {
+        const store = new Map();
+        const ls = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+        const salt = phraseSalt(ls, webcrypto);
+        expect(salt).toMatch(/^[0-9a-f]{32}$/);
+        expect(phraseSalt(ls, webcrypto)).toBe(salt);
+        expect(store.get(PHRASE_SALT_KEY)).toBe(salt);
+        expect(phraseSalt({ getItem: () => { throw new Error('blocked'); } }, webcrypto)).toBeNull();
+        expect(phraseSalt(ls, webcrypto)).not.toBe(phraseSalt({ getItem: () => null, setItem: () => {} }, webcrypto));
+    });
+
+    test('Settings › Usage names them in the app language', () => {
+        expect(usageLabel('voice.miss.0a1b2c3d')).toBe('Same voice phrase not understood (code 0a1b2c3d)');
+        expect(usageLabel('voice.undo')).toBe('Voice change undone');
     });
 });

@@ -48,5 +48,8 @@ While a bill is being typed:
   say the item, weight and rate. Several lines can be said in one go ("… and …"),
   and "customer" before a name fills the customer. The app shows what it understood
   (and reads it aloud, unless muted in the dialog) and acts only after OK: one line
-  fills the form, several ticked lines are added to the bill. Voice never saves. See
+  fills the form, several ticked lines are added to the bill. Voice never saves. A
+  heard line can be corrected in the dialog (**Correct**: item, kg, rate); what was
+  heard stays in a line under 🎤; **Undo voice** (or saying "undo") takes back the
+  last voice change; Settings can add a short beep after listening. See
   [voice-billing.md](../voice-billing.md).
