@@ -108,3 +108,59 @@ test('one sentence: customer and several lines, read back, a line unticked, the 
     expect(problems.pageErrors).toEqual([]);
     await page.evaluate(() => window.app.i18n.setLang('en'));
 });
+
+test('tier B: correct a line, the transcript, undo by keyboard and by voice, English and Hindi (#131)', async ({ page, problems }) => {
+    await fakeSpeech(page);
+    await login(page, 'staff');
+    await showTab(page, 'billing');
+    await page.click('#purchaseModeBtn');
+    const dialog = page.locator('#modalMessage #voiceCheck');
+    const strip = page.locator('#voiceTranscriptPurchase');
+    const bill = page.locator('#billTable tbody');
+    await expect(strip).toHaveAttribute('aria-live', 'polite');
+
+    // ---- English, purchase: the second line's rate was not heard; Correct fills it ----
+    await say(page, 'wheat 50 kg 22 rupees, mustard 30 kg');
+    await page.click('#voiceMicPurchase');
+    await expect(dialog).toBeVisible();
+    await expect(strip).toHaveText('Heard: “wheat 50 kg 22 rupees, mustard 30 kg”. Check it and tap OK.');
+    await expect(dialog.locator('[data-voice-line="1"]')).toBeDisabled();
+    await dialog.locator('[data-voice-edit-btn="1"]').click();
+    await expect(dialog.locator('[data-voice-edit-btn="1"]')).toHaveAttribute('aria-expanded', 'true');
+    await dialog.locator('[data-voice-edit="1"] [data-voice-field="rate"]').fill('55');
+    await expect(dialog.locator('[data-voice-line="1"]')).toBeChecked();
+    await page.click('#modalConfirm');
+    await expectToast(page, /Lines added to the bill: 2\./);
+    await expect(bill).toContainText('Mustard');
+    await expect(strip).toContainText('Lines added to the bill: 2.');
+
+    // Undo voice from the keyboard takes both lines off
+    const undo = page.locator('#voiceUndoPurchase');
+    await expect(undo).toBeVisible();
+    await undo.focus();
+    await page.keyboard.press('Enter');
+    await expect(bill).not.toContainText('Mustard');
+    await expect(bill).not.toContainText('Wheat');
+    await expect(undo).toBeHidden();
+    await expect(strip).toHaveText('Last voice change undone.');
+
+    // ---- Hindi, retail sale: one line fills the form, "वापस" said takes it back ----
+    await page.evaluate(() => window.app.i18n.setLang('hi'));
+    await page.click('#saleModeBtn');
+    const saleStrip = page.locator('#voiceTranscriptSale');
+    await say(page, `गेहूँ 5 ${KILO} 26 रुपये`);
+    await page.click('#voiceMicSale');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('.voice-edit-btn')).toHaveText('सुधारें');
+    await page.click('#modalConfirm');
+    await expect(page.locator('#saleWeight')).toHaveValue('5');
+    await expect(page.locator('#voiceUndoSale')).toBeVisible();
+    await say(page, 'वापस');
+    await page.click('#voiceMicSale');
+    await expect(page.locator('#saleWeight')).toHaveValue('');
+    await expect(saleStrip).toHaveText('सुना: “वापस”। आवाज़ से किया पिछला बदलाव वापस लिया।');
+    await expect(page.locator('#voiceUndoSale')).toBeHidden();
+
+    expect(problems.pageErrors).toEqual([]);
+    await page.evaluate(() => window.app.i18n.setLang('en'));
+});

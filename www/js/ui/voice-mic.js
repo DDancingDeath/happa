@@ -8,6 +8,8 @@
 import { safeSetItem } from '../utils/storage-full.js';
 
 export const VOICE_KEY = 'aadhat.voiceBilling';
+/** A short tone after each listen (#131); off unless switched on, per device. */
+export const BEEP_KEY = 'aadhat.voiceBeep';
 
 /**
  * The speech engine this device can use: the Android app's own recogniser (native
@@ -35,6 +37,15 @@ export const VoiceMic = {
         this.apply();
     },
 
+    beepOn() {
+        try { return localStorage.getItem(BEEP_KEY) === '1'; } catch { return false; }
+    },
+
+    setBeep(on) {
+        safeSetItem(BEEP_KEY, on ? '1' : '0');
+        this.apply();
+    },
+
     /** Settings checkbox, its "not available" note and the Billing mic buttons. */
     apply() {
         const engine = voiceEngine();
@@ -46,7 +57,12 @@ export const VoiceMic = {
         }
         const note = document.getElementById('voiceBillingUnavailable');
         if (note) note.hidden = !!engine;
-        document.querySelectorAll('.voice-mic-btn').forEach(b => { b.hidden = !show; });
+        document.querySelectorAll('.voice-mic-btn, .voice-strip').forEach(b => { b.hidden = !show; });
+        const beep = document.getElementById('settingVoiceBeep');
+        if (beep) {
+            beep.checked = this.beepOn();
+            beep.disabled = !show;
+        }
     },
 
     /**
@@ -62,5 +78,19 @@ export const VoiceMic = {
     /** The check dialog's "Read aloud" switch (the dialog is open, so the module is loaded). */
     setReadback(on) {
         return import('../modules/voice-billing.js').then(m => m.VoiceBilling.setReadback(on));
+    },
+
+    /** The Undo button under the mic (#131): shown only after a voice change, so the module is loaded. */
+    undo(mode) {
+        return import('../modules/voice-billing.js').then(m => m.VoiceBilling.undoLast(mode));
+    },
+
+    /** The check dialog's Correct button and boxes (#131). */
+    editLine(i) {
+        return import('../modules/voice-billing.js').then(m => m.VoiceBilling.editLine(i));
+    },
+
+    lineChanged(i) {
+        return import('../modules/voice-billing.js').then(m => m.VoiceBilling.lineChanged(i));
     }
 };

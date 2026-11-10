@@ -499,7 +499,7 @@ Counts about this phone, never business figures. Nothing is read from the server
 
 | ID | Shown | Definition |
 |---|---|---|
-| USE-1 | Uses per feature, Today / Last 7 days / Last 30 days | For each documented event (`utils/usage-stats.js` `USAGE_EVENTS`, and `page.<id>`) the sum of this phone's daily counts from the first day of the range to today (local days), most used first (ties by name), top 10. One `track()` call counts 1; the counts stay in IndexedDB on the phone (localStorage without it) for 90 days and are never sent |
+| USE-1 | Uses per feature, Today / Last 7 days / Last 30 days | For each documented event (`utils/usage-stats.js` `USAGE_EVENTS`, `page.<id>`, and `voice.miss.<8 hex>`: a voice phrase not understood, by a hash of its words only, #131) the sum of this phone's daily counts from the first day of the range to today (local days), most used first (ties by name), top 10. One `track()` call counts 1; the counts stay in IndexedDB on the phone (localStorage without it) for 90 days and are never sent |
 ## Admin › Users: counts and activity by person (owner) — #145
 
 | ID | Shown | Definition |

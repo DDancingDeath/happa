@@ -7,8 +7,9 @@ import { BillingManager } from '../modules/billing.js';
 import { PurchaseManager } from '../modules/purchase.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
-import { VoiceMic, VOICE_KEY, voiceEngine } from '../ui/voice-mic.js';
-import { VoiceBilling, listenNative, voiceErrorKey, localVoice, Readback, READBACK_KEY } from '../modules/voice-billing.js';
+import { VoiceMic, VOICE_KEY, BEEP_KEY, voiceEngine } from '../ui/voice-mic.js';
+import { VoiceBilling, listenNative, voiceErrorKey, localVoice, Readback, READBACK_KEY, beep } from '../modules/voice-billing.js';
+import { Usage } from '../services/usage.js';
 import { setLang } from '../i18n/index.js';
 
 jest.mock('../firebase/repos/bill-drafts.js', () => ({
@@ -24,6 +25,7 @@ const DOM = `
   <div id="purchaseSection">
     <input id="customerName"><datalist id="customerOptions"><option value="Ramesh kumar"></option></datalist>
     <button class="voice-mic-btn" id="voiceMicPurchase" hidden></button>
+    <div class="voice-strip" hidden><p id="voiceTranscriptPurchase" aria-live="polite"></p><button id="voiceUndoPurchase" hidden></button></div>
     <select id="billItem"><option value="0">Rice</option><option value="1">Wheat</option></select>
     <input id="billRate"><datalist id="rateOptions"></datalist><input id="newWeight"><div id="weightsDisplay"></div>
     <table id="billTable"><tbody></tbody></table>
@@ -51,6 +53,8 @@ beforeEach(() => {
     BillingManager.init();
     PurchaseManager.setWeights([]);
     PurchaseManager.setBillItems([]);
+    VoiceBilling.undo.purchase.clear();
+    VoiceBilling.undo.sale.clear();
 });
 
 afterEach(() => {
@@ -238,7 +242,7 @@ describe('several lines in one sentence (#81 A2)', () => {
         const modal = dialog(true);
         await VoiceBilling.listenOnce('purchase', 'web');
         expect(modal.mock.calls[0][0]).toMatch(/data-voice-line="1"[^>]*disabled/);
-        expect(modal.mock.calls[0][0]).toContain('this line can&#039;t be added. Type it.');
+        expect(modal.mock.calls[0][0]).toContain('tap Correct to fill it in');
         expect(billLines()).toEqual([['Wheat', 10, 24]]);
     });
 
@@ -380,5 +384,124 @@ describe('spoken readback (#81 A1)', () => {
         expect(localVoice('en-IN', { speechSynthesis: { speak: () => {}, getVoices: () => [] }, SpeechSynthesisUtterance: U })).toBeNull();
         expect(localVoice('en-IN', { get speechSynthesis() { throw new Error('blocked'); } })).toBeNull();
         expect(Readback.speak('hello', 'en-IN', {})).toBe(false);
+    });
+});
+
+describe('tier B (#131): transcript, undo, correct a line, beep, missed phrases', () => {
+    const billLines = () => PurchaseManager.getBillItems().map(({ name, qty, rate }) => [name, qty, rate]);
+    const strip = () => document.getElementById('voiceTranscriptPurchase').textContent;
+    const undoBtn = () => document.getElementById('voiceUndoPurchase');
+    const val = (id) => document.getElementById(id).value;
+
+    test('what was heard and what came of it stay under the mic', async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['wheat 10 kg 24 aur rice 5 kg 30']);
+        dialog(true, () => { expect(strip()).toBe('Heard: “wheat 10 kg 24 aur rice 5 kg 30”. Check it and tap OK.'); });
+        await VoiceBilling.listenOnce('purchase', 'web');
+        expect(strip()).toBe('Heard: “wheat 10 kg 24 aur rice 5 kg 30”. Lines added to the bill: 2. Check them, then save.');
+
+        window.webkitSpeechRecognition = fakeWebSpeech(['wheat 1 kg 2']);
+        dialog(false);
+        await VoiceBilling.listenOnce('purchase', 'web');
+        expect(strip()).toBe('Heard: “wheat 1 kg 2”. Cancelled; nothing changed.');
+    });
+
+    test('Undo removes the lines voice added and puts the customer back; then nothing is left', async () => {
+        document.getElementById('customerName').value = 'Old Name';
+        PurchaseManager.setBillItems([{ name: 'Typed', qty: 1, rate: 1 }]);
+        window.webkitSpeechRecognition = fakeWebSpeech(['customer Suresh, wheat 10 kg 24 aur rice 5 kg 30']);
+        dialog(true);
+        await VoiceBilling.listenOnce('purchase', 'web');
+        expect(billLines()).toEqual([['Typed', 1, 1], ['Wheat', 10, 24], ['Rice', 5, 30]]);
+        expect(undoBtn().hidden).toBe(false);
+
+        expect(VoiceBilling.undoLast('purchase')).toBe(true);
+        expect(billLines()).toEqual([['Typed', 1, 1]]);
+        expect(val('customerName')).toBe('Old Name');
+        expect(undoBtn().hidden).toBe(true);
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('Last voice change undone.', 4000);
+        expect(strip()).toBe('Last voice change undone.');
+
+        expect(VoiceBilling.undoLast('purchase')).toBe(false);
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('Nothing to undo.', 4000);
+    });
+
+    test('saying "undo" undoes a filled line; a box typed over since is kept', async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['10 kg wheat 25 rupees']);
+        dialog(true);
+        await VoiceBilling.listenOnce('purchase', 'web');
+        expect([val('billItem'), val('billRate'), val('newWeight')]).toEqual(['1', '25', '10']);
+        document.getElementById('newWeight').value = '12';
+
+        window.webkitSpeechRecognition = fakeWebSpeech(['undo']);
+        const modal = dialog(true);
+        modal.mockClear();
+        await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(false);
+        expect(modal).not.toHaveBeenCalled();
+        expect([val('billItem'), val('billRate'), val('newWeight')]).toEqual(['0', '', '12']);
+        expect(strip()).toMatch(/^Heard: “undo”\. Undone where nothing changed since/);
+    });
+
+    test('a line can be corrected in the dialog: a missing rate filled makes it addable', async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['wheat 10 kg 24, rice 5 kg']);
+        const track = jest.spyOn(Usage, 'track');
+        dialog(true, () => {
+            VoiceBilling.editLine(1);
+            expect(document.querySelector('[data-voice-edit="1"]').hidden).toBe(false);
+            expect(document.querySelector('[data-voice-edit-btn="1"]').getAttribute('aria-expanded')).toBe('true');
+            document.querySelector('[data-voice-edit="1"] [data-voice-field="rate"]').value = '31';
+            VoiceBilling.lineChanged(1);
+            const tick = document.querySelector('[data-voice-line="1"]');
+            expect([tick.disabled, tick.checked]).toEqual([false, true]);
+            expect(document.querySelector('[data-voice-row="1"] [data-voice-cell="rate"]').textContent).toBe('31');
+            expect(document.querySelector('[data-voice-incomplete="1"]').hidden).toBe(true);
+        });
+        await VoiceBilling.listenOnce('purchase', 'web');
+        expect(billLines()).toEqual([['Wheat', 10, 24], ['Rice', 5, 31]]);
+        expect(track).toHaveBeenCalledWith('voice.edit');
+    });
+
+    test('one line: the item, kg and rate can be changed before it fills the form', async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['10 kg wheat 25']);
+        dialog(true, () => {
+            VoiceBilling.editLine(0);
+            const box = document.querySelector('[data-voice-edit="0"]');
+            box.querySelector('[data-voice-field="item"]').value = '0';
+            box.querySelector('[data-voice-field="weight"]').value = '12.5';
+            box.querySelector('[data-voice-field="rate"]').value = 'x';
+            VoiceBilling.lineChanged(0);
+        });
+        await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(true);
+        expect([val('billItem'), val('billRate'), val('newWeight')]).toEqual(['0', '', '12.5']);
+    });
+
+    test('nothing understood: counted by a hash of the words only; a low beep when switched on', async () => {
+        const tones = [];
+        window.AudioContext = function Ctx() {
+            this.currentTime = 0;
+            this.destination = {};
+            this.createGain = () => ({ gain: {}, connect: () => {} });
+            this.createOscillator = () => {
+                const osc = { frequency: {}, connect: () => {}, start: () => tones.push(osc.frequency.value), stop: () => {} };
+                return osc;
+            };
+        };
+        const track = jest.spyOn(Usage, 'track');
+        window.webkitSpeechRecognition = fakeWebSpeech(['hello there']);
+        await VoiceBilling.listenOnce('purchase', 'web');
+        expect(tones).toEqual([]);
+        expect(track.mock.calls.map(c => c[0])).toEqual(['voice.miss', expect.stringMatching(/^voice\.miss\.[0-9a-f]{8}$/)]);
+        expect(JSON.stringify(track.mock.calls)).not.toContain('hello');
+
+        VoiceMic.setBeep(true);
+        expect(localStorage.getItem(BEEP_KEY)).toBe('1');
+        await VoiceBilling.listenOnce('purchase', 'web');
+        window.webkitSpeechRecognition = fakeWebSpeech(['10 kg wheat 25']);
+        dialog(false);
+        await VoiceBilling.listenOnce('purchase', 'web');
+        expect(tones).toEqual([220, 880]);
+        delete window.AudioContext;
+        expect(beep('ok', {})).toBe(false);
+        VoiceMic.setBeep(false);
+        expect(beep('ok', { AudioContext: window.Object })).toBe(false);
     });
 });

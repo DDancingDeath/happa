@@ -4,7 +4,7 @@
 import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
-import { isUsageEvent, mergeUsage, topUsage, expiredUsage, usageKey } from '../utils/usage-stats.js';
+import { isUsageEvent, mergeUsage, topUsage, expiredUsage, usageKey, voicePhraseHash, voiceMissEvent } from '../utils/usage-stats.js';
 import { createUsage, localStore, idbStore } from '../services/usage.js';
 import { UsageView, usageLabel, PAGE_KEYS } from '../ui/usage-view.js';
 import { Usage } from '../services/usage.js';
@@ -193,5 +193,25 @@ describe('Settings › Usage on this phone', () => {
         jest.spyOn(Usage, 'rows').mockResolvedValue([]);
         await UsageView.render();
         expect(document.getElementById('usageList').textContent).toContain('Nothing counted yet.');
+    });
+});
+
+describe('voice phrases not understood (#131 C13, Q75)', () => {
+    test('counted by a hash of the words, never the words', () => {
+        const event = voiceMissEvent('Hello  there,');
+        expect(event).toMatch(/^voice\.miss\.[0-9a-f]{8}$/);
+        expect(event).not.toContain('hello');
+        expect(isUsageEvent(event)).toBe(true);
+        expect(voicePhraseHash('hello there')).toBe(event.slice(11));
+        expect(voicePhraseHash('HELLO there.')).toBe(event.slice(11));
+        expect(voicePhraseHash('hello where')).not.toBe(event.slice(11));
+        expect(voicePhraseHash('नमस्ते')).toMatch(/^[0-9a-f]{8}$/);
+        expect(isUsageEvent('voice.miss.hello there')).toBe(false);
+        expect(isUsageEvent('voice.miss')).toBe(true);
+    });
+
+    test('Settings › Usage names them in the app language', () => {
+        expect(usageLabel('voice.miss.0a1b2c3d')).toBe('Same voice phrase not understood (code 0a1b2c3d)');
+        expect(usageLabel('voice.undo')).toBe('Voice change undone');
     });
 });

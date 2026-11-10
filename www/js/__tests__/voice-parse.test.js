@@ -2,7 +2,7 @@
  * @fileoverview Voice billing parser (#81, spec VB-1): one spoken line → item,
  * weight and rate exactly as heard, in English, Hindi and mixed speech.
  */
-import { parseVoiceLine, pickVoiceLine, hasVoiceValues, isUnusualRate, voiceTokens, parseVoiceBill, pickVoiceBill, hasVoiceBillValues } from '../utils/voice-parse.js';
+import { parseVoiceLine, pickVoiceLine, hasVoiceValues, isUnusualRate, voiceTokens, parseVoiceBill, pickVoiceBill, hasVoiceBillValues, isUndoCommand } from '../utils/voice-parse.js';
 
 const ITEMS = [
     { id: 'a', name: 'Aloo', hindiName: 'आलू' },
@@ -283,5 +283,23 @@ describe('parseVoiceBill: several lines and the customer (#81 A2, A3)', () => {
         expect(best.heard).toBe('wheat 10 kg 22 aur mustard 5 kg 55');
         expect(pickVoiceBill(['hmm', 'okay'], ITEMS2).heard).toBe('hmm');
         expect(pickVoiceBill([], ITEMS2)).toEqual({ heard: '', customer: null, lines: [] });
+    });
+});
+
+describe('isUndoCommand (#131)', () => {
+    test('an undo said alone, in English, Hinglish or Hindi', () => {
+        for (const said of ['Undo', 'undo that.', 'cancel last', 'wapas lo', 'Pichla hatao', 'वापस', 'पिछला हटाओ', 'ग़लत है', 'अनडू']) {
+            expect([said, isUndoCommand([said])]).toEqual([said, true]);
+        }
+        expect(isUndoCommand('undo please')).toBe(true);
+    });
+
+    test('never a bill line, and only the best guess counts', () => {
+        for (const said of ['undo 10 kg rice', 'aloo hatao 5 kg', 'वापस 10 kg आलू', 'rice 10 kg', '', '   ']) {
+            expect([said, isUndoCommand([said])]).toEqual([said, false]);
+        }
+        expect(isUndoCommand(['rice 10 kg', 'undo'])).toBe(false);
+        expect(isUndoCommand(['', 'undo'])).toBe(true);
+        expect(isUndoCommand([])).toBe(false);
     });
 });

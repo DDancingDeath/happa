@@ -17,13 +17,37 @@
  * - `print.bill`: a bill was sent to the printer
  * - `share.whatsapp`: a bill was shared on WhatsApp
  * - `perf.diagnostic_run`: Diagnostics › Status speed check (#83)
+ * - `voice.miss`: a voice line was heard but nothing in it was understood (#131, C13)
+ * - `voice.miss.<8 hex>`: the same, per phrase: a hash of the words (voicePhraseHash), never the words (Q75)
+ * - `voice.undo`: the last voice change was undone; `voice.edit`: a heard line was corrected before use
  */
 export const USAGE_EVENTS = Object.freeze([
     'bill.save.purchases', 'bill.save.retailSales', 'bill.save.wholesaleSales',
-    'payment.record', 'cash.close', 'print.bill', 'share.whatsapp', 'perf.diagnostic_run'
+    'payment.record', 'cash.close', 'print.bill', 'share.whatsapp', 'perf.diagnostic_run',
+    'voice.miss', 'voice.undo', 'voice.edit'
 ]);
 
 const PAGE_EVENT = /^page\.[a-z][a-z0-9-]{0,39}$/;
+export const VOICE_MISS_PHRASE = /^voice\.miss\.[0-9a-f]{8}$/;
+
+/**
+ * FNV-1a (32 bit) of a phrase, lower-cased with its spacing and punctuation evened out: the
+ * same words count together, and the words themselves are never kept (#131 C13, Q75).
+ * @param {string} text
+ * @returns {string} 8 hex digits
+ */
+export function voicePhraseHash(text) {
+    const s = String(text || '').normalize('NFC').toLowerCase().replace(/[\s,.;:!?।"“”'‘’()]+/g, ' ').trim();
+    let h = 0x811c9dc5;
+    for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return h.toString(16).padStart(8, '0');
+}
+
+/** The per-phrase miss counter's name. */
+export const voiceMissEvent = (/** @type {string} */ text) => `voice.miss.${voicePhraseHash(text)}`;
 
 /** Days kept on the phone. */
 export const USAGE_KEEP_DAYS = 90;
@@ -33,7 +57,7 @@ export const USAGE_KEEP_DAYS = 90;
  * @returns {boolean} true for a documented event name
  */
 export function isUsageEvent(name) {
-    return typeof name === 'string' && (USAGE_EVENTS.includes(name) || PAGE_EVENT.test(name));
+    return typeof name === 'string' && (USAGE_EVENTS.includes(name) || PAGE_EVENT.test(name) || VOICE_MISS_PHRASE.test(name));
 }
 
 /** Store key of one counter. */
