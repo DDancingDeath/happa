@@ -178,6 +178,7 @@ const STATIC_ASSETS = [
     '/js/utils/print-status.js',
     '/js/utils/user-activity.js',
     '/js/utils/reminders.js',
+    '/js/utils/pay-reminder.js',
     '/js/utils/perf-probe.js',
     '/js/utils/status-report.js',
     '/js/utils/usage-stats.js',

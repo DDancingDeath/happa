@@ -1,6 +1,6 @@
 /**
  * Workers / Salaries (#373, WP-*): the owner adds a worker, records a mid-month advance (part-paid),
- * then more than the rest (paid, advance carried); the page reads the workers once per open and
+ * then more than the rest (paid, advance carried); Today shows the salaries due (WP-11); the page reads the workers once per open and
  * works in Hindi; managers and members cannot open it.
  */
 const { test, expect, login, showTab, clickAfterTyping } = require('./support/app');
@@ -28,6 +28,16 @@ test('the owner records an advance and the rest; the month goes part-paid, then 
     await expect(page.locator('#toast')).toHaveText(`₹3,000 recorded for ${name}`, { timeout: 30000 });
     await expect(row(page, name).locator('[data-wp-state]')).toHaveText('Part-paid, ₹3,000 of ₹9,000');
     await expect(row(page, name)).toContainText('₹6,000 still to pay');
+
+    // WP-11: Today shows the salaries still to pay (the page's "Still to pay"), and its button opens the page
+    const toPay = (await page.locator('#workersBody [data-wp="WP-9"]').textContent()).trim();
+    await showTab(page, 'day');
+    const salaries = page.locator('#todayReminders [data-reminder="salaries"]');
+    await expect(salaries).toContainText(`Salaries due ${toPay}`);
+    await expect(salaries).toContainText(/\d+ workers? still to be paid/);
+    await salaries.locator('button').click();
+    await expect(page.locator('#workers.tab.active')).toBeVisible();
+    await expect(row(page, name).locator('[data-wp-state]')).toHaveText('Part-paid, ₹3,000 of ₹9,000');
 
     await page.click('#wpDetail [data-onclick="workers.showForm(\'pay\')"]');
     await page.fill('#wpAmount', '8000');

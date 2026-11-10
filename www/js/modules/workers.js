@@ -15,8 +15,9 @@ import { formatMonth, formatDay, todayLocalISO } from '../utils/dates.js';
 import * as repo from '../firebase/repos/workers.js';
 import {
     MAX_NAME, MAX_NOTE, MAX_PAY_STEPS, leftFrom, lastPay, monthKeyOf, addMonthKey, payFor, withPay, withStart,
-    paySummary, balanceParts, checkEntry, checkWorker, isMonthKey
+    paySummary, balanceParts, checkEntry, checkWorker, isMonthKey, payDueMonths
 } from '../utils/worker-pay.js';
+import { savePayDue } from '../utils/pay-reminder.js';
 
 const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const js = (v) => Helpers.escapeJsAttr(v);
@@ -234,6 +235,28 @@ function ensureCss() {
     document.head.appendChild(link);
 }
 
+/** Keeps WP-11 for Today from the loaded workers (no reads). */
+function noteDue(list = state.workers, uid = AppState.currentUser?.uid) {
+    if (!uid) return;
+    try { savePayDue(localStorage, { uid, months: payDueMonths(list, thisMonth()) }); } catch (_) { /* never break the page */ }
+}
+
+/**
+ * Today's salaries line (WP-11), once a day on the owner's phone (main.js, after the first screen):
+ * one read per worker. Nothing on the page changes.
+ */
+export async function refreshPayDue() {
+    const uid = AppState.currentUser?.uid;
+    if (!isOwner() || !uid) return false;
+    const seq = state.seq;
+    const list = await repo.loadWorkers();
+    if (AppState.currentUser?.uid !== uid || !isOwner()) return false;
+    // The page opened or saved meanwhile: its figure is newer than this read
+    if (seq !== state.seq || state.loaded) return false;
+    noteDue(list, uid);
+    return true;
+}
+
 /** Opens the page: reads every worker once (one read each). */
 export async function init() {
     ensureCss();
@@ -248,6 +271,7 @@ export async function init() {
         if (seq !== state.seq) return;
         state.workers = list;
         state.loaded = true;
+        noteDue();
     } catch (e) {
         console.warn('Workers not loaded:', e?.code || e);
         if (seq === state.seq) state.error = true;
@@ -294,6 +318,7 @@ async function save(key, fn, doneKey, params) {
     }
     try {
         await Helpers.runExclusive(key, '#workers .btn', fn);
+        noteDue();
         state.form = '';
         state.rejoining = false;
         render();
@@ -398,4 +423,4 @@ export function reset() {
     Object.assign(state, { workers: [], loaded: false, error: false, month: null, open: '', form: '', seq: state.seq + 1, rejoining: false });
 }
 
-export const WorkersManager = { init, render, reset, step, open, showForm, cancel, saveWorker, savePay, saveEdit, saveLeft, rejoin, removeEntry };
+export const WorkersManager = { init, render, reset, step, open, showForm, cancel, saveWorker, savePay, saveEdit, saveLeft, rejoin, removeEntry, refreshPayDue };
