@@ -15,6 +15,7 @@ import { WorkersManager as W } from '../modules/workers.js';
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { monthKeyOf, addMonthKey } from '../utils/worker-pay.js';
+import { payDueReminder } from '../utils/pay-reminder.js';
 
 const NOW = monthKeyOf(new Date());
 const PREV = addMonthKey(NOW, -1);
@@ -103,4 +104,29 @@ test('working again with no earlier pay asks for the pay instead of a dead end',
     document.getElementById('wpPay').value = '8000';
     await W.saveEdit();
     expect(repo.updateWorker).toHaveBeenLastCalledWith('w1', { name: 'Ramu', startMonth: PREV, active: true, pays: [{ from: PREV, amount: 0 }, { from: NOW, amount: 8000 }] });
+});
+
+test('Today\'s salaries due (WP-11) is kept when the page loads and saves, without another read; the daily refresh reads once, owner only', async () => {
+    localStorage.clear();
+    AppState.currentUser = { uid: 'o1' };
+    await W.init();
+    expect(repo.loadWorkers).toHaveBeenCalledTimes(1);
+    expect(payDueReminder(localStorage, 'o1', NOW)).toMatchObject({ count: 1, due: 6000 });
+    W.open('w1');
+    W.showForm('pay');
+    document.getElementById('wpAmount').value = '6000';
+    await W.savePay();
+    expect(payDueReminder(localStorage, 'o1', NOW)).toBeNull();
+    expect(repo.loadWorkers).toHaveBeenCalledTimes(1);
+
+    localStorage.clear();
+    repo.loadWorkers.mockResolvedValue([ramu()]);
+    expect(await W.refreshPayDue()).toBe(true);
+    expect(repo.loadWorkers).toHaveBeenCalledTimes(2);
+    expect(payDueReminder(localStorage, 'o1', NOW)).toMatchObject({ count: 1, due: 6000 });
+    expect(payDueReminder(localStorage, 'o1', addMonthKey(NOW, 1))).toMatchObject({ count: 1, due: 15000 });
+    AppState.userRole = 'manager';
+    expect(await W.refreshPayDue()).toBe(false);
+    expect(repo.loadWorkers).toHaveBeenCalledTimes(2);
+    AppState.currentUser = null;
 });

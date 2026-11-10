@@ -194,6 +194,39 @@ export function paySummary(workers, month) {
 }
 
 /**
+ * WP-11: salaries due for `month` (Today). A month's pay counts as due from the 1st of that month,
+ * as rent does: the workers whose balance at the end of the month (WP-5) is above 0, and Σ of those
+ * balances (= WP-9 of the month).
+ * @param {Worker[]} workers
+ * @param {string} month
+ * @returns {{count: number, due: number}}
+ */
+export function payDue(workers, month) {
+    let count = 0;
+    let due = 0;
+    for (const w of workers || []) {
+        const { balance } = workerLedger(w, month);
+        if (balance > 0) { count++; due += balance; }
+    }
+    return { count, due };
+}
+
+/**
+ * WP-11 for `month` and the `n - 1` months after it, kept for Today. No entry can be for a later
+ * month than the current one, so these hold until something new is recorded.
+ * @param {Worker[]} workers
+ * @param {string} month
+ * @param {number} [n]
+ * @returns {Record<string, {count: number, due: number}>}
+ */
+export function payDueMonths(workers, month, n = 3) {
+    /** @type {Record<string, {count: number, due: number}>} */
+    const out = {};
+    for (let i = 0; i < n; i++) out[addMonthKey(month, i)] = payDue(workers, addMonthKey(month, i));
+    return out;
+}
+
+/**
  * A new entry from the form, or the i18n key of what is wrong.
  * @param {{amount: *, month: string, date: string, kind: string, mode: string, note?: string}} f
  * @param {string} thisMonth

@@ -12,7 +12,7 @@ import { CashManagementManager } from './cash-management.js';
 import { sessionForDate } from '../utils/cash-session.js';
 import { t, tn, getLang, loadAllCatalogues } from '../i18n/index.js';
 import { canOpenPage } from '../utils/role-access.js';
-import { on, REFRESH } from '../utils/events.js';
+import { on, REFRESH, REMINDERS_CHANGED } from '../utils/events.js';
 import { overdueReminder, rentReminder, leaseReminder, leaseReminderText } from '../utils/reminders.js';
 import { drillReminder } from '../utils/backup-verify.js';
 import { billsForKind } from '../utils/party-due.js';
@@ -20,6 +20,7 @@ import { rentalsRole } from '../ui/business-switcher.js';
 import { formatINR } from '../utils/due-reminder.js';
 import { formatRate } from '../utils/money.js';
 import { ManualReminders } from '../ui/manual-reminders.js';
+import { payDueReminder } from '../utils/pay-reminder.js';
 
 // Use helper functions
 const formatCurrency = (amount) => Helpers.formatCurrency(amount);
@@ -329,6 +330,15 @@ export const DayManager = {
         }
         // REM-3 (#63): the owner checks a backup file at least every 30 days
         if (AppState.userRole === 'owner') {
+            // WP-11 (#373): salaries due, as the Workers page last worked them out on this phone
+            let pay = null;
+            try { pay = payDueReminder(localStorage, AppState.currentUser?.uid, toLocalISODate(now).slice(0, 7)); } catch (_) { pay = null; }
+            if (pay) {
+                parts.push(`<div class="today-reminder" data-reminder="salaries"><div class="today-reminder-head"><strong>${e(t('ui.today.reminder_salaries'))}</strong> ${e(formatINR(pay.due))}</div>`
+                    + `<div>${e(tn('ui.today.reminder_salaries_workers', pay.count))}</div>`
+                    + `<div class="today-reminder-more">${e(t('ui.today.reminder_salaries_as_of', { time: formatDayTime(pay.at, { lang: getLang() }) }))}</div>`
+                    + `<button type="button" class="filter-btn" data-onclick="nav.showTab('workers')">${e(t('ui.today.reminder_open_workers'))}</button></div>`);
+            }
             let drill = null;
             try { drill = drillReminder(localStorage, AppState.currentUser?.uid || '', now.getTime()); } catch (_) { drill = null; }
             if (drill?.due) {
@@ -642,3 +652,6 @@ export const DayManager = {
 
 // Bills or expenses changed (another phone, a void): redraw Today while it shows.
 on(REFRESH.today, () => { if (DayManager.currentSubTab === 'today') DayManager.loadTodayData(); });
+on(REMINDERS_CHANGED, () => {
+    if (DayManager.currentSubTab === 'today' && document.getElementById('day')?.classList.contains('active')) DayManager.renderReminders();
+});
