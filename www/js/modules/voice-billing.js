@@ -15,10 +15,10 @@ import { Helpers } from '../utils/helpers.js';
 import { t, getLang } from '../i18n/index.js';
 import { pickVoiceBill, hasVoiceBillValues, isUndoCommand } from '../utils/voice-parse.js';
 import { createVoiceUndo, planUndo, fieldChanges } from '../utils/voice-undo.js';
-import { voiceMissEvent } from '../utils/usage-stats.js';
 import { isArchivedItem } from '../utils/item-catalog.js';
 import { safeSetItem } from '../utils/storage-full.js';
-import { track } from '../services/usage.js';
+import { track, trackVoiceMiss } from '../services/usage.js';
+import { on, BILL_CLEARED } from '../utils/events.js';
 import { VoiceMic } from '../ui/voice-mic.js';
 import { BillingManager, PurchaseManager, RetailSaleManager } from './billing.js';
 
@@ -26,7 +26,8 @@ const FIELDS = {
     purchase: {
         mic: 'voiceMicPurchase', item: 'billItem', rate: 'billRate', weight: 'newWeight',
         customer: 'customerName', customerNames: 'customerOptions',
-        transcript: 'voiceTranscriptPurchase', undo: 'voiceUndoPurchase',
+        transcript: 'voiceTranscriptPurchase', undo: 'voiceUndoPurchase', lock: 'purchase',
+        editing: () => !!PurchaseManager.isEditingLine?.(),
         pending: () => PurchaseManager.getWeights() || [],
         loadRates: () => BillingManager.loadRates(),
         addLine: () => PurchaseManager.addToBill(),
@@ -37,7 +38,8 @@ const FIELDS = {
     sale: {
         mic: 'voiceMicSale', item: 'saleItem', rate: 'saleRate', weight: 'saleWeight',
         customer: 'saleCustomerName', customerNames: 'saleCustomerOptions',
-        transcript: 'voiceTranscriptSale', undo: 'voiceUndoSale',
+        transcript: 'voiceTranscriptSale', undo: 'voiceUndoSale', lock: 'retail',
+        editing: () => !!RetailSaleManager.isEditingLine?.(),
         pending: () => RetailSaleManager.getSaleWeights() || [],
         loadRates: () => BillingManager.loadSaleRates(),
         addLine: () => RetailSaleManager.addToSalesBill(),
@@ -281,8 +283,7 @@ export const VoiceBilling = {
             this.heardNow = bill.heard;
             if (!hasVoiceBillValues(bill)) {
                 beep('fail');
-                track('voice.miss');
-                track(voiceMissEvent(bill.heard));
+                trackVoiceMiss(bill.heard);
                 this.tell(f, t('msg.voice.not_understood', { heard: bill.heard }), 4000);
                 return false;
             }
@@ -301,6 +302,10 @@ export const VoiceBilling = {
             Readback.stop();
             if (!ok) {
                 this.setStrip(f, bill.heard, t('ui.voice.strip_cancelled'));
+                return false;
+            }
+            if (Helpers.isBusy(f.lock)) {
+                this.tell(f, t('msg.voice.finish_saving'), 4000);
                 return false;
             }
             const used = lines.map((line, i) => this.correctedLine(line, i));
@@ -383,9 +388,17 @@ export const VoiceBilling = {
         const f = FIELDS[key];
         if (this.busy && !spoken) return false;
         if (!spoken) this.heardNow = '';
-        const change = this.undo[key].pop();
+        if (Helpers.isBusy(f.lock)) {
+            this.tell(f, t('msg.voice.finish_saving'), 4000);
+            return false;
+        }
+        const plan = planUndo(this.undo[key].peek(), { lines: f.lines(), fields: boxes(f) });
+        if (('item' in plan.restore || 'rate' in plan.restore) && (f.pending().length > 0 || f.editing())) {
+            this.tell(f, t('msg.voice.finish_weights'), 4000);
+            return false;
+        }
+        this.undo[key].pop();
         this.refreshUndo(key);
-        const plan = planUndo(change, { lines: f.lines(), fields: boxes(f) });
         if (!plan.any) {
             this.tell(f, t('msg.voice.undo_none'), 4000);
             return false;
@@ -626,3 +639,9 @@ export const VoiceBilling = {
         return true;
     }
 };
+
+// A saved or cleared bill ends its voice changes: Undo is never offered across bills.
+on(BILL_CLEARED, (mode) => {
+    VoiceBilling.undo[formKey(mode)].clear();
+    VoiceBilling.refreshUndo(mode);
+});

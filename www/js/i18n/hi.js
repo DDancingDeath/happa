@@ -454,6 +454,7 @@ export default {
     'msg.voice.customer_filled': "ग्राहक का नाम भर दिया: {name}।",
     'msg.voice.failed': "आवाज़ से नहीं हुआ। फिर से बोलें या टाइप करें।",
     'msg.voice.filled': "भर दिया। लाइन जांचें, फिर {add} दबाएं।",
+    'msg.voice.finish_saving': "बिल सेव होने तक रुकें, फिर दोबारा करें।",
     'msg.voice.finish_weights': "पहले लिखे गए वज़न बिल में जोड़ें, फिर अगली लाइन बोलें।",
     'msg.voice.item_changed': "जांचते समय आइटम की सूची बदल गई। लाइन फिर से बोलें।",
     'msg.voice.lines_added': "बिल में जोड़ी गई लाइनें: {n}। जांचें, फिर सेव करें।",

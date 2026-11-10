@@ -18,7 +18,7 @@
  * - `share.whatsapp`: a bill was shared on WhatsApp
  * - `perf.diagnostic_run`: Diagnostics › Status speed check (#83)
  * - `voice.miss`: a voice line was heard but nothing in it was understood (#131, C13)
- * - `voice.miss.<8 hex>`: the same, per phrase: a hash of the words (voicePhraseHash), never the words (Q75)
+ * - `voice.miss.<8 hex>`: the same, per phrase: a salted hash of the words (voicePhraseHash), never the words (Q75)
  * - `voice.undo`: the last voice change was undone; `voice.edit`: a heard line was corrected before use
  */
 export const USAGE_EVENTS = Object.freeze([
@@ -31,23 +31,42 @@ const PAGE_EVENT = /^page\.[a-z][a-z0-9-]{0,39}$/;
 export const VOICE_MISS_PHRASE = /^voice\.miss\.[0-9a-f]{8}$/;
 
 /**
- * FNV-1a (32 bit) of a phrase, lower-cased with its spacing and punctuation evened out: the
- * same words count together, and the words themselves are never kept (#131 C13, Q75).
+ * A phrase lower-cased with its spacing and punctuation evened out, so the same words count together.
  * @param {string} text
- * @returns {string} 8 hex digits
+ * @returns {string}
  */
-export function voicePhraseHash(text) {
-    const s = String(text || '').normalize('NFC').toLowerCase().replace(/[\s,.;:!?।"“”'‘’()]+/g, ' ').trim();
-    let h = 0x811c9dc5;
-    for (let i = 0; i < s.length; i++) {
-        h ^= s.charCodeAt(i);
-        h = Math.imul(h, 0x01000193) >>> 0;
-    }
-    return h.toString(16).padStart(8, '0');
+export function voicePhraseText(text) {
+    return String(text || '').normalize('NFC').toLowerCase().replace(/[\s,.;:!?।"“”'‘’()]+/g, ' ').trim();
 }
 
-/** The per-phrase miss counter's name. */
-export const voiceMissEvent = (/** @type {string} */ text) => `voice.miss.${voicePhraseHash(text)}`;
+/**
+ * HMAC-SHA-256 of the phrase keyed with this phone's random salt, first 8 hex digits: the same
+ * words on this phone give the same code, and the code can't be turned back into the words
+ * without the salt, which never leaves the phone (#131 C13, Q75).
+ * @param {string} text
+ * @param {?string} salt this phone's salt (services/usage.js phraseSalt)
+ * @param {?SubtleCrypto} [subtle]
+ * @returns {Promise<?string>} 8 hex digits, or null without a salt or Web Crypto
+ */
+export async function voicePhraseHash(text, salt, subtle = globalThis.crypto?.subtle) {
+    if (!salt || !subtle) return null;
+    const enc = new TextEncoder();
+    const key = await subtle.importKey('raw', enc.encode(salt), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sig = new Uint8Array(await subtle.sign('HMAC', key, enc.encode(voicePhraseText(text))));
+    return [...sig.slice(0, 4)].map(n => n.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * The per-phrase miss counter's name, or null when it can't be hashed.
+ * @param {string} text
+ * @param {?string} salt
+ * @param {?SubtleCrypto} [subtle]
+ * @returns {Promise<?string>}
+ */
+export async function voiceMissEvent(text, salt, subtle = globalThis.crypto?.subtle) {
+    const h = await voicePhraseHash(text, salt, subtle);
+    return h ? `voice.miss.${h}` : null;
+}
 
 /** Days kept on the phone. */
 export const USAGE_KEEP_DAYS = 90;

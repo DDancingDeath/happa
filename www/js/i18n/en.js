@@ -454,6 +454,7 @@ export default {
     'msg.voice.customer_filled': "Customer name filled: {name}.",
     'msg.voice.failed': "Voice didn't work. Try again or type.",
     'msg.voice.filled': "Filled. Check the line, then tap {add}.",
+    'msg.voice.finish_saving': "Wait until the bill has finished saving, then try again.",
     'msg.voice.finish_weights': "First add the weights already entered to the bill, then speak the next line.",
     'msg.voice.item_changed': "The item list changed while you were checking. Speak the line again.",
     'msg.voice.lines_added': "Lines added to the bill: {n}. Check them, then save.",

@@ -89,15 +89,21 @@ All on the phone: no new service, permission or Firestore read.
   "वापस" / "पिछला हटाओ" / "ग़लत" (`isUndoCommand`), takes back the last one: it
   removes the lines it added and puts the boxes back, but only what is still as voice
   left it. A line removed or edited since, or a box typed over, is kept, and the
-  message says so. After the bill is saved there is nothing left to undo.
+  message says so. It waits (and says so) while the bill is saving, and puts the
+  item and rate back only when no weights are entered and no bill line is being
+  edited (those weights would be billed as the old item). Saving or clearing the
+  bill ends its voice changes, so Undo is never offered across bills. A voice
+  result is not applied while the bill is saving either.
 - **Beep.** Settings › Voice billing › **Beep after listening** (per device,
   `aadhat.voiceBeep`, off by default): a short high tone when something was
   understood, a low one when not (Web Audio, made on the phone).
 - **Missed phrases (C13).** A sentence in which nothing was understood counts
   `voice.miss` and `voice.miss.<8 hex>` in the local usage counters of #136
-  (Settings › Usage on this phone; 90 days, never sent). The 8 hex digits are a hash
-  (FNV-1a) of the lower-cased words, so a phrase that keeps failing shows as one
-  repeated code; the words themselves are never kept (Q75). `voice.undo` and
+  (Settings › Usage on this phone; 90 days, never sent). The 8 hex digits are the
+  start of an HMAC-SHA-256 (Web Crypto) of the lower-cased words, keyed with a random
+  salt made once on this phone (`happa.voicePhraseSalt`, never exported or sent), so a
+  phrase that keeps failing shows as one repeated code on this phone, and the code
+  can't be turned back into the words; the words themselves are never kept (Q75). `voice.undo` and
   `voice.edit` count undos and corrected lines.
 
 ## Findings (validated 1 Nov 2026)

@@ -10,6 +10,13 @@ import { AppState } from '../utils/state.js';
 import { VoiceMic, VOICE_KEY, BEEP_KEY, voiceEngine } from '../ui/voice-mic.js';
 import { VoiceBilling, listenNative, voiceErrorKey, localVoice, Readback, READBACK_KEY, beep } from '../modules/voice-billing.js';
 import { Usage } from '../services/usage.js';
+import { Helpers } from '../utils/helpers.js';
+import { webcrypto } from 'crypto';
+import { TextEncoder as NodeTextEncoder } from 'util';
+
+// jsdom has no Web Crypto or TextEncoder: the phrase codes use Node's
+globalThis.TextEncoder = globalThis.TextEncoder || NodeTextEncoder;
+if (!globalThis.crypto?.subtle) Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true });
 import { setLang } from '../i18n/index.js';
 
 jest.mock('../firebase/repos/bill-drafts.js', () => ({
@@ -489,6 +496,7 @@ describe('tier B (#131): transcript, undo, correct a line, beep, missed phrases'
         window.webkitSpeechRecognition = fakeWebSpeech(['hello there']);
         await VoiceBilling.listenOnce('purchase', 'web');
         expect(tones).toEqual([]);
+        for (let i = 0; i < 50 && track.mock.calls.length < 2; i++) await new Promise(r => setTimeout(r, 10));
         expect(track.mock.calls.map(c => c[0])).toEqual(['voice.miss', expect.stringMatching(/^voice\.miss\.[0-9a-f]{8}$/)]);
         expect(JSON.stringify(track.mock.calls)).not.toContain('hello');
 
@@ -503,5 +511,63 @@ describe('tier B (#131): transcript, undo, correct a line, beep, missed phrases'
         expect(beep('ok', {})).toBe(false);
         VoiceMic.setBeep(false);
         expect(beep('ok', { AudioContext: window.Object })).toBe(false);
+    });
+});
+
+describe('undo waits for a save, for typed weights and for a line being edited (#131 review)', () => {
+    const billLines = () => PurchaseManager.getBillItems().map(({ name, qty, rate }) => [name, qty, rate]);
+    const val = (id) => document.getElementById(id).value;
+    /** Holds the purchase save lock, as a save waiting for its confirm dialog does. */
+    const holdSave = () => {
+        let release;
+        const done = Helpers.runExclusive('purchase', null, () => new Promise(r => { release = r; }));
+        return async () => { release(); await done; };
+    };
+
+    test('while a bill is saving, neither Undo (button or said) nor a voice result changes it', async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['wheat 10 kg 24 aur rice 5 kg 30']);
+        dialog(true);
+        await VoiceBilling.listenOnce('purchase', 'web');
+        expect(billLines()).toHaveLength(2);
+
+        const release = holdSave();
+        expect(VoiceBilling.undoLast('purchase')).toBe(false);
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('Wait until the bill has finished saving, then try again.', 4000);
+        window.webkitSpeechRecognition = fakeWebSpeech(['undo']);
+        await VoiceBilling.listenOnce('purchase', 'web');
+        window.webkitSpeechRecognition = fakeWebSpeech(['wheat 2 kg 25 aur rice 3 kg 31']);
+        await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(false);
+        expect(billLines()).toEqual([['Wheat', 10, 24], ['Rice', 5, 30]]);
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('Wait until the bill has finished saving, then try again.', 4000);
+        await release();
+
+        expect(VoiceBilling.undoLast('purchase')).toBe(true);
+        expect(billLines()).toEqual([]);
+    });
+
+    test('weights entered after a filled line: the item and rate are not put back', async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['10 kg wheat 25 rupees']);
+        dialog(true);
+        await VoiceBilling.listenOnce('purchase', 'web');
+        PurchaseManager.setWeights([40, 42]);
+        expect(VoiceBilling.undoLast('purchase')).toBe(false);
+        expect(UIManager.showToast).toHaveBeenLastCalledWith(expect.stringMatching(/weights already entered/), 4000);
+        expect([val('billItem'), val('billRate')]).toEqual(['1', '25']);
+        expect(document.getElementById('voiceUndoPurchase').hidden).toBe(false);
+
+        PurchaseManager.setWeights([]);
+        jest.spyOn(PurchaseManager, 'isEditingLine').mockReturnValue(true);
+        expect(VoiceBilling.undoLast('purchase')).toBe(false);
+        expect(val('billItem')).toBe('1');
+    });
+
+    test('a saved or cleared bill ends Undo', async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['wheat 10 kg 24 aur rice 5 kg 30']);
+        dialog(true);
+        await VoiceBilling.listenOnce('purchase', 'web');
+        expect(document.getElementById('voiceUndoPurchase').hidden).toBe(false);
+        PurchaseManager.clearBill();
+        expect(VoiceBilling.undo.purchase.size).toBe(0);
+        expect(document.getElementById('voiceUndoPurchase').hidden).toBe(true);
     });
 });
