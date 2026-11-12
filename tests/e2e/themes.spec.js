@@ -1,6 +1,6 @@
 /**
  * Themes (redesign 2.6, DIRECTION §4): text contrast (axe `color-contrast`, WCAG AA) on Billing,
- * Today and Outstanding, and on the app bar with the More sheet open, in every theme × mode (and in Hindi for the serif themes, whose Devanagari stays
+ * Today and Outstanding, on the open Workers row, and on the app bar with the More sheet open, in every theme × mode (and in Hindi for the serif themes, whose Devanagari stays
  * in the sans face), and the Settings › Appearance gallery: a tap previews
  * a theme app-wide without saving it, Cancel or leaving Settings restores the saved one, Apply saves it
  * (it survives a reload, applied before first paint); printing from a serif theme looks like Modern.
@@ -9,6 +9,7 @@
 const AxeBuilder = require('@axe-core/playwright').default;
 const { test, expect, login, showTab, settle } = require('./support/app');
 const { seed } = require('./support/seed');
+const { commit } = require('./support/emulator');
 
 const COMBOS = [
     ['modern', 'light'], ['modern', 'dark'], ['nordic', 'light'], ['nordic', 'dark'],
@@ -19,6 +20,12 @@ const COMBOS = [
     ['premium', 'light', 'hi'], ['premium', 'dark', 'hi'],
 ];
 const DARK_KIND = new Set(['dark', 'midnight']);
+const MONTH = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })();
+// Part-paid this month: the open row shows a warning tag and a balance line
+const THEME_WORKER = {
+    name: 'Theme Worker', startMonth: MONTH, active: true, pays: [{ from: MONTH, amount: 9000 }],
+    entries: [{ id: 'e2e-theme-entry', amount: 3000, kind: 'advance', month: MONTH, date: `${MONTH}-01`, mode: 'cash' }],
+};
 const PAGES = [['Billing', 'billing'], ['Today', 'day'], ['Outstanding', 'due']];
 
 test.skip(({ isMobile }) => !isMobile, 'phone project only');
@@ -62,6 +69,22 @@ for (const [theme, appearance, lang = 'en'] of COMBOS) {
             for (const v of result.violations) {
                 for (const n of v.nodes) found.push(`${name}: ${n.target.join(' ')} — ${(n.any[0]?.message || v.help).replace(/\s+/g, ' ')}`);
             }
+        }
+        // Workers / Salaries (#373): the open row, and each row's name above its details
+        await commit([['dev_workers', 'e2e-theme-worker', THEME_WORKER]]);
+        await showTab(page, 'workers');
+        const worker = page.locator('#workersBody .row[data-worker="e2e-theme-worker"]');
+        await worker.click();
+        await expect(worker).toHaveAttribute('aria-expanded', 'true');
+        await expect(worker.locator('[data-wp-state]')).toBeVisible();
+        const box = await worker.evaluate(r => {
+            const [title, meta] = [...r.querySelector('.row-main').children].map(c => c.getBoundingClientRect());
+            return { below: meta.top >= title.bottom - 1, fits: r.getBoundingClientRect().right <= innerWidth };
+        });
+        expect(box, 'details sit below the name, and the row fits the screen').toEqual({ below: true, fits: true });
+        const workers = await new AxeBuilder({ page }).include('#workersBody .wp-list').withRules(['color-contrast']).analyze();
+        for (const v of workers.violations) {
+            for (const n of v.nodes) found.push(`Workers: ${n.target.join(' ')} — ${(n.any[0]?.message || v.help).replace(/\s+/g, ' ')}`);
         }
         // The app bar and the More sheet (redesign 4.1)
         await page.evaluate(() => window.app.nav.toggleMenu());
