@@ -277,6 +277,7 @@ const STATIC_ASSETS = [
     '/templates/insights.html',
     '/templates/statements.html',
     '/templates/workers.html',
+    '/templates/recurring.html',
     '/vendor/firebase/10.7.1/firebase-app-compat.js',
     '/vendor/firebase/10.7.1/firebase-auth-compat.js',
     '/vendor/firebase/10.7.1/firebase-firestore-compat.js'
@@ -311,7 +312,12 @@ const LAZY_ASSETS = [
     '/js/modules/workers.js',
     '/js/utils/worker-pay.js',
     '/js/firebase/repos/workers.js',
-    '/css/workers.css'
+    '/css/workers.css',
+    '/js/modules/recurring-bills.js',
+    '/js/utils/recurring-bills.js',
+    '/js/firebase/repos/recurring-bills.js',
+    '/js/firebase/repos/entry-docs.js',
+    '/css/recurring-bills.css'
 ];
 
 /**

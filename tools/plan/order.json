@@ -185,6 +185,7 @@
         { "n": 151 },
         { "n": 154, "note": "obsolete? owner to confirm. Idea parking lot" },
         { "n": 373, "note": "Workers' monthly pay: needs rules room (V2 P5.1), Hindi wording and the labour-expense decision (OD-03 / OD-09)", "after": [72] },
+                { "n": 437, "note": "Recurring bills (electricity, water …): phase 1 owner only, like worker pay; Money link is an owner decision", "after": [373] },
         { "n": 374, "note": "Photo of weights: provider decision first (Gemini via Firebase AI Logic + App Check #89, or on-device ML Kit)" }
       ]
     }

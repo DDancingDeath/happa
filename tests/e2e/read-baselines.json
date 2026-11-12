@@ -22,6 +22,7 @@
       "health": 6,
       "admin": 12,
       "workers": 1,
+      "recurring": 1,
       "diagnostics": 9,
       "settings": 1,
       "rentals": 9,

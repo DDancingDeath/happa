@@ -371,6 +371,11 @@ const NavigationManager = {
         if (tabId === 'workers' && window.app?.workers) {
             setTimeout(() => window.app.workers.init(), 100);
         }
+
+        // Recurring bills (#437, owner): its code loads on first open, and it reads on every open
+        if (tabId === 'recurring' && window.app?.recurring) {
+            setTimeout(() => window.app.recurring.init(), 100);
+        }
     },
 
     // Owner/manager-only pages fall back to Today (Trends and Product traffic to Insights); pages switched off in Roles & access to Billing

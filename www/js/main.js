@@ -37,7 +37,7 @@ import { createSyncWatcher } from './tip/scenarios/sync.js';
 import { createWatchdog, TICK_MS as WATCHDOG_TICK_MS } from './tip/scenarios/main-thread.js';
 import { runNumberChecksOnce, numberChecksProps } from './tip/scenarios/number-checks.js';
 import { whenIdle } from './utils/background-tasks.js';
-import { payDueStale } from './utils/pay-reminder.js';
+import { payDueStale, billsDueStale } from './utils/pay-reminder.js';
 import { startAppCheck } from './services/app-check.js';
 import { APP_VERSION } from './version.js';
 import { AuditService } from './services/audit.js';
@@ -160,21 +160,27 @@ const loadDiagnostics = onDemand(() => Promise.all([import('./modules/diagnostic
 const loadAdmin = onDemand(() => import('./modules/admin.js').then(m => (admin = m.AdminManager)));
 let workers = null;
 const loadWorkers = onDemand(() => import('./modules/workers.js').then(m => (workers = m.WorkersManager)));
-let payDueCheckedFor = null;
+let recurring = null;
+const loadRecurring = onDemand(() => import('./modules/recurring-bills.js').then(m => (recurring = m.RecurringBillsManager)));
+const ownerRefreshes = new Map();
 /**
- * Today's salaries line (#373, WP-11): once per session on the owner's phone, after the first screen,
- * and only when this phone keeps it from an earlier day (Workers was opened here): one read per worker.
+ * An owner reminder kept on this phone (salaries #373 WP-11, bills #437 RB-11): once per session on the
+ * owner's phone, after the first screen, and only when this phone keeps it from an earlier day (its page
+ * was opened here): one read per document of that page.
  */
-function schedulePayDueRefresh() {
+function scheduleOwnerRefresh(name, isStale, refresh) {
     const uid = AppState.currentUser?.uid;
-    if (AppState.userRole !== 'owner' || !uid || payDueCheckedFor === uid) return;
-    payDueCheckedFor = uid;
+    if (AppState.userRole !== 'owner' || !uid || ownerRefreshes.get(name) === uid) return;
+    ownerRefreshes.set(name, uid);
     whenIdle(() => {
         if (AppState.currentUser?.uid !== uid || AppState.userRole !== 'owner' || navigator.onLine === false) return;
-        if (!backgroundReadsAllowed() || !payDueStale(localStorage, uid)) return;
-        loadWorkers().then(m => m.refreshPayDue())
-            .catch(e => console.warn('Salaries due not refreshed:', e?.code || e?.message || e));
+        if (!backgroundReadsAllowed() || !isStale(localStorage, uid)) return;
+        refresh().catch(e => console.warn(`${name} not refreshed:`, e?.code || e?.message || e));
     }, { minDelayMs: 20000 });
+}
+function scheduleOwnerReminders() {
+    scheduleOwnerRefresh('Salaries due', payDueStale, () => loadWorkers().then(m => m.refreshPayDue()));
+    scheduleOwnerRefresh('Bills due', billsDueStale, () => loadRecurring().then(m => m.refreshBillsDue()));
 }
 
 // Data changes re-render the open lazy pages (firestore-service.js emits, utils/events.js);
@@ -327,7 +333,8 @@ function refreshForLanguage(lang) {
         stock: () => StockManager.refreshForLanguage(),
         admin: () => { admin?.renderTabs(); admin?.renderContent(); },
         health: () => { if (health?.data) health.render(); },
-        workers: () => workers?.render()
+        workers: () => workers?.render(),
+        recurring: () => recurring?.render()
     }[tabId];
     if (redraw) run(tabId, redraw);
     if (tabId === 'day' && DayManager.currentSubTab === 'cash') run('day-cash', () => CashManagementManager.refreshForLanguage());
@@ -706,7 +713,7 @@ async function initializeUserData() {
                 .then(([m, confirmed]) => confirmed && m.scheduleDailyScan(Math.max(0, DAILY_SCAN_DELAY_MS - (Date.now() - shownAt))))
                 .catch(e => console.warn('Anomalies not loaded:', e?.message || e));
         }, { timeoutMs: 4000 });
-        schedulePayDueRefresh();
+        scheduleOwnerReminders();
 
         // Team directory (#87): managers read names and roles from it; once a day the owner's phone
         // rebuilds it from the profiles when they differ (late, so it never slows the first screens)
@@ -775,6 +782,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 ManualReminders.reset();
                 ask?.reset();
                 workers?.reset();
+                recurring?.reset();
                 BusinessSwitcher.reset();
                 AppState.currentUser = null;
                 document.getElementById('printerPermissionBanner')?.remove();
@@ -1362,6 +1370,12 @@ window.app = {
     workers: {
         ...Object.fromEntries(['init', 'render', 'step', 'open', 'showForm', 'cancel', 'saveWorker', 'savePay', 'saveEdit', 'saveLeft', 'rejoin', 'removeEntry']
             .map(name => [name, (...args) => loadWorkers().then(m => m[name](...args))]))
+    },
+
+    // Recurring bills (#437): owner page, recurring-bills.js is imported on first use
+    recurring: {
+        ...Object.fromEntries(['init', 'render', 'open', 'showForm', 'cancel', 'saveItem', 'saveEdit', 'saveBill', 'savePay', 'saveStop', 'removeEntry']
+            .map(name => [name, (...args) => loadRecurring().then(m => m[name](...args))]))
     },
 
     // Money (redesign §5.2): money.js is imported on first use

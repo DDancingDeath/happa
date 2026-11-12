@@ -77,10 +77,10 @@ setting is missing or invalid.
   For everyone, the owner included, each section stamp a write sets (`labour`, `checks`, `business`,
   `receipt`, `tip`, `roleAccess` + `UpdatedAt` / `UpdatedBy`) must be an int (ms) and a string of at
   most 128 characters (`settingsStampsOk`); stamps already stored are not re-checked.
-- Pages that read owner/manager-only collections (Admin, Workers / Salaries, Diagnostics, Anomalies, Insights › Seasons (Trends and Product traffic),
+- Pages that read owner/manager-only collections (Admin, Workers / Salaries, Recurring bills, Diagnostics, Anomalies, Insights › Seasons (Trends and Product traffic),
   App health) and the stock adjustment / item edit actions are not in the list: their rules are
   fixed and the setting could not open them. `TAB_ROLES` in `role-access.js` lists them (Admin and
-  Workers / Salaries: owner; the others: owner and manager); `canOpenTab()` refuses them for other roles, and
+  Workers / Salaries and Recurring bills: owner; the others: owner and manager); `canOpenTab()` refuses them for other roles, and
   `NavigationManager` shows Today with a message instead. Trends and Product traffic are views of
   Insights › Seasons with the extra permission id `rate-trends` (routes `insights-seasons`,
   `insights-trends`, `insights-traffic`; old `reports-trends`, `reports-traffic`, `rate-trends`,
@@ -412,6 +412,7 @@ rejected / no profile / unknown role.
 | `rent_*` | Rentals (`js/rentals/rent-store.js`), loaded only when Rentals opens | rentals roles only |
 | `rent_public/{token}` | tenant page, get by token | anyone with the link |
 | `workers` (#373) | Workers / Salaries (`firebase/repos/workers.js`), one query each time the page opens (one read per worker) | no (owner only) |
+| `recurringBills` (#437) | Recurring bills (`firebase/repos/recurring-bills.js`), one query each time the page opens (one read per bill item) | no (owner only) |
 
 ### Read matrix: before → after
 
@@ -442,6 +443,7 @@ except `rent_public` get.
 | `rent_*` (incl. `rent_settings`, `rent_receipts`, `rent_counters`, `rent_deposits`, `rent_expenses`) | ✓ → ✓ | ✗ without a `rentRole` | ✗ without a `rentRole` | ✓ → ✓ | ✗ → ✗ |
 | `rent_public` | G ✓, L ✗ for everyone, signed out too (unchanged) | | | | |
 | `workers` (#373, new) | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `recurringBills` (#437, new) | ✓ | ✗ | ✗ | ✗ | ✗ |
 
 Rentals were already scoped and are unchanged; the matrix tests now check them for every role
 (a shop role alone reads no `rent_*`, a rentals role alone reads no shop data).
