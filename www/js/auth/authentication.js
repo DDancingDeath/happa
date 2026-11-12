@@ -745,8 +745,8 @@ const AuthManager = {
                     item.style.display = '';
                 }
 
-                // Workers / Salaries (#373): owner only
-                if (tabId === 'workers') {
+                // Workers / Salaries (#373) and Recurring bills (#437): owner only
+                if (tabId === 'workers' || tabId === 'recurring') {
                     item.style.display = isOwner ? '' : 'none';
                 }
                 

@@ -1,0 +1,21 @@
+/* Recurring bills (#437). Loaded on demand by js/modules/recurring-bills.js, not linked from index.html. */
+.recurring-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); max-width: 900px; }
+.recurring-page h2, .recurring-page h3, .recurring-page h4 { margin: 0; }
+.rb-counts { margin: 0; font-size: var(--fs-sm); }
+.rb-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+.recurring-page .row-title, .recurring-page .row-meta { display: block; }
+/* The open bill is marked with a bar: on the soft accent fill some themes' tags and meta text lose contrast */
+.rb-list .row.selected { background: none; box-shadow: inset 3px 0 0 var(--accent); }
+.rb-list .row-trail { display: grid; justify-items: end; gap: var(--sp-1); }
+.rb-list .row-trail .row-meta, .rb-detail .row-meta { white-space: normal; }
+.rb-form, .rb-detail { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }
+.rb-form .notice { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+.rb-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.rb-table th, .rb-table td { padding: var(--sp-2); border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.rb-table th { color: var(--ink-3); font-weight: var(--w-regular); }
+.rb-table .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; text-align: right; }
+
+@media (min-width: 1024px) {
+    .rb-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .rb-form h3, .rb-form .rb-actions, .rb-form p, .rb-form .notice { grid-column: 1 / -1; }
+}

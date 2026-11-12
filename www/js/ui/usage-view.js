@@ -17,7 +17,7 @@ export const PAGE_KEYS = {
     insights: 'ui.nav.insights', statements: 'ui.nav.statements', anomalies: 'ui.nav.anomalies', health: 'ui.nav.health',
     settings: 'ui.nav.settings', diagnostics: 'ui.nav.diagnostics', admin: 'ui.nav.admin', expenses: 'ui.nav.expenses',
     'cash-management': 'ui.usage.page_cash', rentals: 'ui.usage.page_rentals', users: 'ui.usage.page_users', ask: 'ui.nav.ask',
-    workers: 'ui.nav.workers'
+    workers: 'ui.nav.workers', recurring: 'ui.nav.recurring'
 };
 
 export const RANGE_DAYS = { today: 1, week: 7, month: 30 };
