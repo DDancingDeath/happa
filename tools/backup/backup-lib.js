@@ -26,7 +26,9 @@ const BACKUP_COLLECTIONS = [
     'rent_public', 'rent_properties', 'rent_units', 'rent_tenants', 'rent_leases',
     'rent_charges', 'rent_settings', 'rent_receipts', 'rent_counters', 'rent_deposits', 'rent_expenses',
     // Worker pay (#373)
-    'workers'
+    'workers',
+    // Recurring bills (#437)
+    'recurringBills'
 ];
 
 /** Sub-collections named in firestore.rules, as `<parent collection>/<sub-collection>` (bill edit records: #121). */

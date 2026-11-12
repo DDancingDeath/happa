@@ -374,6 +374,41 @@ nothing at start; Today's salaries line (WP-11) at most once per session on the 
 
 ---
 
+## Recurring bills (`templates/recurring.html`, `modules/recurring-bills.js`, `utils/recurring-bills.js`) — #437 phase 1
+
+The owner's electricity, water, rent and other repeating payments (owner only), built like worker pay.
+Each bill item (`recurringBills/{id}`: `name`, `cadence` = months between bills 1 | 2 | 3 | 6 | 12,
+`dueDay` 1–28, `startMonth` = the month the first bill is due, `expected` = the usual amount, 0 = none,
+`active`, `endMonth` = the month the last bill is due when stopped, `note` = a note or account /
+consumer number, `entries` = bill amounts `{id, kind: 'bill', period, date, amount}` and payments
+`{id, kind: 'pay', period, date, amount, mode, note}`) has periods worked out from its cadence; each
+period has a bill amount, what was paid for it and a balance carried to the next period. Whole rupees.
+**Not linked to Money:** a payment here is not an expense and changes no M*, T*, C* or ST* figure (Money ›
+Spending, Today's figures and the cash drawer stay as they were); a bill also entered in Expenses counts
+only there. How the two fit is the owner's decision (#437 (a), as #373). Reads: one query of
+`recurringBills` each time the page opens (one read per bill item; one when there are none); nothing at
+start; Today's bills line (RB-11) at most once per session on the owner's phone. Oracle:
+`tests/oracle/recurring-bills.test.js`.
+
+| ID | On screen | Definition |
+|---|---|---|
+| RB-1 | Bill by bill › Bill of, Due; "Due 10 Jan" | **Periods:** the first month (`startMonth`), then every `cadence` months (monthly, every 2 months, every 3 months, every 6 months, yearly); a period is named by the month its bill is due, and is due on `dueDay` (1–28) of that month. A period counts from its month: periods due after the current month are not counted yet. A stopped item has no period after `endMonth`. An entry counts towards the period its `period` month falls in (the newest period starting on or before it). The schedule (cadence, first month) can be changed only before anything is recorded; after that, stop the bill and add it again. Code: `periodsUpTo`, `periodOf`, `dueDateOf`. |
+| RB-2 | Bill by bill › Bill ("(usual)" when the usual amount stands in) | The amount of the newest `bill` entry for the period (entries are appended, so a correction is a newer entry for the same period: the newest counts); none entered → the usual amount (`expected`) when set; else **no amount yet** (counts as 0 in the balance). A bill may be 0. |
+| RB-3 | Bill by bill › Paid | Σ amount of the payments for the period, whatever their date. |
+| RB-4 | Bill by bill › From before | The balance (RB-5) of the period before; 0 for the first. Above 0 = still owed from before; below 0 = a credit (paid ahead). |
+| RB-5 | "₹X still to pay" / "Credit ₹X carried to the next bill"; Bill by bill › Carried on; page card **Credit carried** | RB-4 + RB-2 − RB-3, period after period up to the current month. Above 0 = still to pay (carries to the next period); below 0 = a credit carried to the next period, which pays that bill first. Credit carried (card) = Σ −RB-5 over items whose RB-5 is below 0. Code: `billLedger`. |
+| RB-6 | The period's state: Paid / Part-paid, ₹X of ₹Y / ₹Y due / Overdue, ₹B / Amount not entered yet | Y = RB-2 + what was still owed from before (RB-4 when above 0); X = Y − RB-5 (paid for the period plus credit used). **Amount not entered yet** when RB-2 has no amount; else **Paid** when RB-5 ≤ 0; else **Overdue, ₹B** (B = RB-5) when RB-7; else **Part-paid** when X > 0; else **₹Y due**. The row's state is the current period's (the newest one due this month or earlier); the line under the cards counts the items in each state. |
+| RB-7 | Overdue | Something is still owed after the period (RB-5 > 0) and either today is after its due date, or what was carried in (RB-4 > 0) is not yet paid off (RB-3 < RB-4). |
+| RB-8 | Due now (page card) | Σ RB-5 at the end of the current month over items whose RB-5 is above 0: what is still unpaid of every bill due this month (also later this month) or earlier, stopped items included. Due now − Credit carried = Σ RB-2 − Σ RB-3 over every counted period of every item. |
+| RB-9 | Paid this month (page card) — as WP-8 | Money that went out this month: Σ amount of every payment whose `date` is in the current month, whatever period it pays. |
+| RB-10 | Next due ("Due 10 Mar"; "First due …" before the first) | The current period's due date while its state is not Paid; else the due date of the next period (none for a stopped item whose last period is paid). Code: `itemView`. |
+| RB-11 | Today › Reminders: "Bills due: N, ₹X", "Amount not entered yet: K" (owner only) | For each item, its newest period due by today + 3 days (counted up to that day's month): it counts when it owes something due by then (the whole RB-5 when its due date is within 3 days or past; else only what was carried in and not yet paid, min(RB-5, RB-4 − RB-3)) or has no amount (RB-2) and is due by then (K counts those). N = items counted, X = Σ of those amounts. Not shown when N = 0. Worked out from the loaded items when Recurring bills loads or saves (no reads) and kept on this phone for the owner with the time ("As worked out on …"), for today and the next 6 days. **Reads:** none at start for anyone. On the owner's phone, once per session, about 20 s after the first screen when the phone is idle and online, and only when this phone keeps the line from an earlier day: one query of `recurringBills` (one read per item); never when Recurring bills was not opened on this phone; a page load or save while that read is out wins. Tapping **Open Recurring bills** opens the page. Code: `billsDue`, `billsDueDays` (`utils/recurring-bills.js`), `utils/pay-reminder.js`. |
+
+A bill more than 3 times the item's last bill (the newest entered for an earlier period, else the usual
+amount) asks "Yes, it's right" once before it is saved (`unusualBill`); it never blocks.
+
+---
+
 ## Calculation layer: Money (M*) and Insights (I*) (`utils/business-metrics.js`) — redesign
 
 One pure module computes every figure of the Money, Insights and Statements
@@ -510,7 +545,7 @@ Counts about this phone, never business figures. Nothing is read from the server
 | ADM-3 | Payments, Edits, Voids, Last active | That person's audit entries in the range: payments = `RECORD_PAYMENT` + `UPDATE_PAYMENT` + `CLEAR_DUE`, edits = `EDIT_BILL` + `EDIT_SALE`, voids = `VOID_BILL`; last active = their latest bill (ADM-2) or audit entry in the range. Ranges: Today, Last 7 days (today and 6 days before), This month (from the 1st), Last month. One read per tap of the range's audit entries (`timestamp` in [from, to)), at most the newest 300 (the page says so when it hits that) |
 ## Today › Reminders (#86) — no reads, except one listener for manual reminders (REM-5)
 
-Salaries due (owner only) is WP-11, in the Workers / Salaries section.
+Salaries due (owner only) is WP-11, in the Workers / Salaries section; Bills due (owner only) is RB-11, in the Recurring bills section.
 
 | ID | Shown | Definition |
 |---|---|---|

@@ -26,7 +26,8 @@ export const PAGE_TEMPLATES = [
     'ask',
     'diagnostics',
     'admin',
-    'workers'
+    'workers',
+    'recurring'
 ];
 
 /**

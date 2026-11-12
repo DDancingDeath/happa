@@ -59,6 +59,7 @@ Each page has its own short file in `docs/pages/` (English and Hindi): what it s
 - [Rates](pages/rates.md)
 - [Rentals](pages/rentals.md)
 - [Workers / Salaries (owner)](pages/workers.md)
+- [Recurring bills (owner)](pages/recurring.md)
 - [Settings, Admin, App health](pages/settings.md)
 
 ---

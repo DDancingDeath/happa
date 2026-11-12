@@ -57,6 +57,7 @@
 - [रेट](pages/rates.hi.md)
 - [किराया](pages/rentals.hi.md)
 - [कर्मचारी / वेतन (मालिक)](pages/workers.hi.md)
+- [नियमित बिल (मालिक)](pages/recurring.hi.md)
 - [सेटिंग, एडमिन, ऐप की सेहत](pages/settings.hi.md)
 
 ---

@@ -168,6 +168,7 @@ export const canEditWorthAccounts = canReadWorthAccounts;
 export const TAB_ROLES = Object.freeze({
     admin: Object.freeze(['owner']),
     workers: Object.freeze(['owner']),
+    recurring: Object.freeze(['owner']),
     diagnostics: Object.freeze(['owner', 'manager']),
     anomalies: Object.freeze(['owner', 'manager']),
     'rate-trends': Object.freeze(['owner', 'manager']),

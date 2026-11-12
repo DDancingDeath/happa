@@ -7,7 +7,7 @@ import { DayManager } from '../modules/day.js';
 import { drillReminder, recordDrill } from '../utils/backup-verify.js';
 import { AppState } from '../utils/state.js';
 import { setLang } from '../i18n/index.js';
-import { savePayDue, payDueReminder, payDueStale } from '../utils/pay-reminder.js';
+import { savePayDue, payDueReminder, payDueStale, saveBillsDue, billsDueReminder, billsDueStale } from '../utils/pay-reminder.js';
 
 const TODAY = new Date(2026, 10, 15, 10, 0, 0);
 const daysAgo = (n) => `${String(new Date(2026, 10, 15 - n).getDate()).padStart(2, '0')}/${String(new Date(2026, 10, 15 - n).getMonth() + 1).padStart(2, '0')}/2026`;
@@ -246,5 +246,52 @@ describe('WP-11 salaries due (#373)', () => {
         expect(payDueStale(s, 'u1', new Date(2026, 10, 16, 0, 1))).toBe(true);
         expect(payDueReminder({ getItem: () => '{bad' }, 'u1', '2026-11')).toBeNull();
         expect(payDueStale({ getItem: () => '{bad' }, 'u1')).toBe(false);
+    });
+});
+describe('RB-11 bills due (#437)', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '<div id="todayReminders" hidden></div>';
+        AppState.currentUser = { uid: 'u1' };
+        AppState.settings = {};
+        AppState.retailSalesHistory = [];
+        AppState.salesHistory = [];
+        AppState.purchaseHistory = [];
+        localStorage.clear();
+    });
+    afterEach(() => { setLang('en'); AppState.userRole = null; });
+    const card = () => document.querySelector('[data-reminder="bills"]');
+
+    test('the owner sees the bills due within 3 days or overdue and opens Recurring bills; nobody else does', () => {
+        AppState.userRole = 'owner';
+        DayManager.renderReminders(TODAY);
+        expect(card()).toBeNull();
+        saveBillsDue(localStorage, { uid: 'u1', days: { '2026-11-15': { count: 2, due: 1690, nobill: 1 }, '2026-11-16': { count: 0, due: 0, nobill: 0 } }, at: TODAY.getTime() });
+        DayManager.renderReminders(TODAY);
+        expect(card().textContent).toContain('Bills due: 2, ₹1,690');
+        expect(card().textContent).toContain('Amount not entered yet: 1');
+        expect(card().querySelector('button').getAttribute('data-onclick')).toBe("nav.showTab('recurring')");
+        setLang('hi');
+        DayManager.renderReminders(TODAY);
+        expect(card().textContent).toContain('बिल देने हैं: 2, ₹1,690');
+        DayManager.renderReminders(new Date(2026, 10, 16, 10));
+        expect(card()).toBeNull();
+        for (const role of ['manager', 'staff']) {
+            AppState.userRole = role;
+            DayManager.renderReminders(TODAY);
+            expect(card()).toBeNull();
+        }
+    });
+
+    test('kept per owner and day; stale only when kept from an earlier day', () => {
+        const s = memStore();
+        expect(billsDueStale(s, 'u1', TODAY)).toBe(false);
+        saveBillsDue(s, { uid: 'u1', days: { '2026-11-15': { count: 1, due: 500, nobill: 0 } }, at: TODAY.getTime() });
+        expect(billsDueReminder(s, 'u1', '2026-11-15')).toEqual({ count: 1, due: 500, nobill: 0, at: TODAY.getTime() });
+        expect(billsDueReminder(s, 'u2', '2026-11-15')).toBeNull();
+        expect(billsDueReminder(s, 'u1', '2026-11-16')).toBeNull();
+        expect(billsDueStale(s, 'u1', TODAY)).toBe(false);
+        expect(billsDueStale(s, 'u1', new Date(2026, 10, 16, 0, 1))).toBe(true);
+        expect(payDueStale(s, 'u1', new Date(2026, 10, 16, 0, 1))).toBe(false);
+        expect(billsDueReminder({ getItem: () => '{bad' }, 'u1', '2026-11-15')).toBeNull();
     });
 });

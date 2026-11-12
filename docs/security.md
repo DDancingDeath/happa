@@ -681,6 +681,12 @@ Bills: only an owner deletes them, and only once voided (#75, OD-14: everyone el
 
 - `wpOk()`: { name (1-60), startMonth 'YYYY-MM', active, pays [1-24 steps {from 'YYYY-MM', amount int 0 … 1 crore}; the first from = startMonth], entries [≤ 3,000], updatedAt = server time }. Owner only: read, create, update, delete (prod and `dev_`). Created with no entries. An update keeps the entries, adds exactly one at the end with every earlier one unchanged (the app's arrayUnion; two phones never overwrite each other), or removes exactly one (the rest unchanged: every remaining entry was already there and none is doubled, `hasAll` + `toSet().size()`). The first and the newest pay step and the newest entry are shape-checked (the rules cannot loop; the others were checked when they were added).
 - `wpEntryOk()`: { id (1-40), month 'YYYY-MM' (the month's pay it counts towards), date 'YYYY-MM-DD', amount int 1 … 1 crore, kind 'pay' | 'advance', mode 'cash' | 'online', note? (≤ 120) }.
+- `keptEntriesOk()`: shared by worker pay and recurring bills: entries [≤ 3,000]; created with none; an update keeps them, adds exactly one at the end with every earlier one unchanged (arrayUnion), or removes exactly one (`hasAll` + `toSet().size()`); updatedAt = server time.
+
+#### Recurring bills (#437): recurringBills/{id}
+
+- `rbOk()`: { name (1-60), cadence int 1 | 2 | 3 | 6 | 12 (months between bills), dueDay int 1-28, startMonth 'YYYY-MM', expected int 0 … 1 crore (0 = no usual amount), active, endMonth? '' or 'YYYY-MM' (last bill when stopped), note? (≤ 120, a note or account / consumer number), entries, updatedAt = server time }. Owner only: read, create, update, delete (prod and `dev_`). Entries as `keptEntriesOk()`: a bill amount is an entry too, so it is append-only like a payment (a correction is a newer bill entry for the same period; the newest counts). The first and the newest entry are shape-checked (the rules cannot loop; the others were checked when they were added). The app removes only payments; the rules allow removing any one entry, exactly as stored.
+- `rbEntryOk()`: { id (1-40), kind 'bill' | 'pay', period 'YYYY-MM' (the bill it is for), date 'YYYY-MM-DD', amount int ≤ 1 crore (a bill ≥ 0, a payment ≥ 1), mode 'cash' | 'online' (payments only; a bill has none), note? (≤ 120) }.
 
 #### rate trends (#65): per-item-year rate stats + backfill status
 

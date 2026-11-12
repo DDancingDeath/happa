@@ -3575,6 +3575,11 @@ function defineReadMatrix(prefix) {
         get: (db) => db.collection(c('workers')).doc('w1').get(), getAllowed: OWNER,
         list: (db) => db.collection(c('workers')).get(), listAllowed: OWNER
     });
+    add('recurringBills (recurring bills, #437)', {
+        seed: [[`${c('recurringBills')}/b1`, { name: 'Electricity', cadence: 2, dueDay: 10, startMonth: '2026-01', expected: 0, active: true, entries: [] }]],
+        get: (db) => db.collection(c('recurringBills')).doc('b1').get(), getAllowed: OWNER,
+        list: (db) => db.collection(c('recurringBills')).get(), listAllowed: OWNER
+    });
     add('unknown collection', {
         seed: [[`${c('somethingElse')}/d1`, { a: 1 }]],
         get: (db) => db.collection(c('somethingElse')).doc('d1').get(), getAllowed: [],
@@ -5284,6 +5289,92 @@ function defineWorkerSuite(prefix) {
 }
 defineWorkerSuite('');
 defineWorkerSuite('dev_');
+
+// ---- Recurring bills (#437): owner only; bill amounts and payments appended one at a time or one removed ----
+function defineRecurringBillSuite(prefix) {
+    const bills = `${prefix}recurringBills`;
+    const t = (name, fn) => test(`[${prefix || 'prod'}] recurring bills: ${name}`, fn);
+    const item = (extra = {}) => ({ name: 'Electricity', cadence: 2, dueDay: 10, startMonth: '2026-01', expected: 0, active: true, endMonth: '', note: 'CA 1234', entries: [], updatedAt: serverTimestamp(), ...extra });
+    const pay = (extra = {}) => ({ id: 'p1', kind: 'pay', period: '2026-01', date: '2026-01-08', amount: 500, mode: 'cash', ...extra });
+    const bill = (extra = {}) => ({ id: 'b1', kind: 'bill', period: '2026-01', date: '2026-01-02', amount: 1240, ...extra });
+    const seed = (id, data) => env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(bills).doc(id).set({ ...data, updatedAt: Timestamp.now() }));
+    const doc = (uid, id = 'r1') => as(uid).collection(bills).doc(id);
+    const stamp = () => ({ updatedAt: serverTimestamp() });
+
+    t('only the owner creates, reads, updates and deletes', async () => {
+        for (const uid of ['manager1', 'staff1', 'rentManager']) await assertFails(doc(uid).set(item()));
+        await assertSucceeds(doc('legacyOwner').set(item()));
+        await assertSucceeds(doc('owner2').get());
+        await assertFails(doc('manager1').get());
+        await assertFails(as('staff1').collection(bills).get());
+        await assertFails(doc('manager1').update({ name: 'Water', ...stamp() }));
+        await assertFails(doc('manager1').update({ entries: FieldValue.arrayUnion(pay()), ...stamp() }));
+        await assertFails(doc('manager1').delete());
+        await assertSucceeds(doc('legacyOwner').delete());
+    });
+
+    t('create: the shape is checked', async () => {
+        const bad = [
+            { name: '' }, { name: 'x'.repeat(61) }, { cadence: 4 }, { cadence: 2.5 }, { cadence: '2' }, { dueDay: 0 }, { dueDay: 29 },
+            { dueDay: 1.5 }, { startMonth: '2026-13' }, { expected: -1 }, { expected: 10.5 }, { expected: 10000001 },
+            { active: 'yes' }, { endMonth: '2026' }, { note: 'x'.repeat(121) }, { entries: [pay()] }, { phone: '99' },
+            { updatedAt: Timestamp.fromMillis(Date.now() - MIN) }
+        ];
+        for (const [i, extra] of bad.entries()) await assertFails(doc('legacyOwner', `b${i}`).set(item(extra)));
+        await assertSucceeds(doc('legacyOwner', 'ok').set(item({ cadence: 12, dueDay: 28, expected: 1200 })));
+        const { note, endMonth, ...bare } = item();
+        await assertSucceeds(doc('legacyOwner', 'bare').set(bare));
+    });
+
+    t('bill amounts and payments are added with arrayUnion; their shape is checked', async () => {
+        await seed('r1', item());
+        const add = (e) => doc('legacyOwner').update({ entries: FieldValue.arrayUnion(e), ...stamp() });
+        const noMode = (({ mode, ...r }) => r)(pay());
+        for (const e of [pay({ amount: 0 }), pay({ amount: 9.5 }), pay({ amount: 10000001 }), pay({ mode: 'upi' }), noMode,
+            pay({ kind: 'refund' }), pay({ period: '2026-1' }), pay({ date: '08/01/2026' }), pay({ note: 'x'.repeat(121) }), pay({ id: '' }), pay({ by: 'x' }),
+            bill({ amount: -1 }), bill({ mode: 'cash' }), bill({ amount: 1.5 })]) {
+            await assertFails(add(e));
+        }
+        await assertSucceeds(add(bill()));
+        await assertSucceeds(add(bill({ id: 'b2', amount: 0 })));
+        await assertSucceeds(add(pay({ note: 'Paytm' })));
+        await assertSucceeds(add(pay({ id: 'p2', mode: 'online', amount: 740 })));
+        await assertFails(doc('legacyOwner').update({ entries: FieldValue.arrayUnion(pay({ id: 'p3' })) }));
+    });
+
+    t('append keeps the history; the first and the newest entries are shape-checked', async () => {
+        const [b1, p1] = [bill(), pay()];
+        await seed('r1', item({ entries: [b1, p1] }));
+        const set = (entries) => doc('legacyOwner').update({ entries, ...stamp() });
+        await assertFails(set([{ ...b1, amount: 1 }, p1, pay({ id: 'p2' })]));
+        await assertFails(set([p1, b1, pay({ id: 'p2' })]));
+        await assertFails(set([b1, p1, pay({ id: 'p2', amount: -5 })]));
+        await assertSucceeds(set([b1, p1, bill({ id: 'b2', amount: 1300 })]));
+    });
+
+    t('a removal drops exactly one entry and changes nothing else; edits keep the entries', async () => {
+        const [b1, p1, p2] = [bill(), pay(), pay({ id: 'p2', amount: 740, mode: 'online' })];
+        await seed('r1', item({ entries: [b1, p1, p2] }));
+        const set = (entries) => doc('legacyOwner').update({ entries, ...stamp() });
+        await assertFails(set([b1, { ...p2, amount: 1 }]));
+        await assertFails(set([b1, { ...p2, extra: 'x' }]));
+        await assertFails(set([b1, b1]));
+        await assertFails(set([]));
+        await assertSucceeds(doc('legacyOwner').update({ name: 'Bijli', dueDay: 15, expected: 1200, ...stamp() }));
+        await assertSucceeds(doc('legacyOwner').update({ active: false, endMonth: '2026-05', ...stamp() }));
+        await assertSucceeds(doc('legacyOwner').update({ entries: FieldValue.arrayRemove(p1), ...stamp() }));
+        await assertFails(doc('legacyOwner').update({ cadence: 5, ...stamp() }));
+    });
+
+    t('at most 3,000 entries', async () => {
+        const many = Array.from({ length: 3000 }, (_, i) => pay({ id: `p${i}` }));
+        await seed('r1', item({ entries: many }));
+        await assertFails(doc('legacyOwner').update({ entries: FieldValue.arrayUnion(pay({ id: 'over' })), ...stamp() }));
+        await assertSucceeds(doc('legacyOwner').update({ entries: FieldValue.arrayRemove(many[0]), ...stamp() }));
+    });
+}
+defineRecurringBillSuite('');
+defineRecurringBillSuite('dev_');
 
 test('[cross-env] prod approval does not grant dev access and vice versa', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {

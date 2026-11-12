@@ -1638,20 +1638,48 @@ service cloud.firestore {
         && s.get('amount', null) is int && s.amount >= 0 && s.amount <= 10000000;
     }
 
+    // Worker pay and recurring bills: created with no entries; an update keeps them, appends one with
+    // the earlier ones unchanged (arrayUnion), or removes exactly one (arrayRemove). At most 3,000.
+    function keptEntriesOk(isNew, e, n) {
+      let o = isNew ? 0 : resource.data.entries.size();
+      return n >= 0 && n <= 3000
+        && (isNew ? n == 0 : (n == o - 1 && resource.data.entries.hasAll(e) && e.toSet().size() == n)
+            || (n == o && e == resource.data.entries)
+            || (n == o + 1 && (o == 0 || e[0:o] == resource.data.entries)))
+        && request.resource.data.get('updatedAt', null) == request.time;
+    }
+
     function wpOk(isNew) {
       let d = request.resource.data;
       let p = d.get('pays', null);
       let e = d.get('entries', null);
       let n = e is list ? e.size() : -1;
-      let o = isNew ? 0 : resource.data.entries.size();
       return d.keys().hasOnly(['name', 'startMonth', 'active', 'pays', 'entries', 'updatedAt'])
         && rentStr(d, 'name', 1, 60) && rentMonth(d.get('startMonth', '')) && d.get('active', null) is bool
         && p is list && p.size() >= 1 && p.size() <= 24 && wpStepOk(p[0]) && p[0].from == d.startMonth && wpStepOk(p[p.size() - 1])
-        && n >= 0 && n <= 3000 && (n == 0 || wpEntryOk(e[n - 1]))
-        && (isNew ? n == 0 : (n == o - 1 && resource.data.entries.hasAll(e) && e.toSet().size() == n)
-            || (n == o && e == resource.data.entries)
-            || (n == o + 1 && (o == 0 || e[0:o] == resource.data.entries)))
-        && d.get('updatedAt', null) == request.time;
+        && keptEntriesOk(isNew, e, n) && (n == 0 || wpEntryOk(e[n - 1]));
+    }
+
+    // Recurring bills (#437): owner only; one doc per bill item; entries are bill amounts (kind 'bill',
+    // the newest for a period counts) and payments, append-only or one removed.
+    function rbEntryOk(e) {
+      return e is map && e.keys().hasOnly(['id', 'kind', 'period', 'date', 'amount', 'mode', 'note'])
+        && rentStr(e, 'id', 1, 40) && rentMonth(e.get('period', '')) && rentDate(e.get('date', ''))
+        && e.get('amount', null) is int && e.amount <= 10000000 && rentStr(e, 'note', 0, 120)
+        && (e.get('kind', '') == 'bill' ? e.amount >= 0 && !('mode' in e)
+            : e.get('kind', '') == 'pay' && e.amount > 0 && e.get('mode', '') in ['cash', 'online']);
+    }
+
+    function rbOk(isNew) {
+      let d = request.resource.data;
+      let e = d.get('entries', null);
+      let n = e is list ? e.size() : -1;
+      return d.keys().hasOnly(['name', 'cadence', 'dueDay', 'startMonth', 'expected', 'active', 'endMonth', 'note', 'entries', 'updatedAt'])
+        && rentStr(d, 'name', 1, 60) && d.get('cadence', 0) is int && d.cadence in [1, 2, 3, 6, 12]
+        && d.get('dueDay', 0) is int && d.dueDay >= 1 && d.dueDay <= 28 && rentMonth(d.get('startMonth', ''))
+        && d.get('expected', null) is int && d.expected >= 0 && d.expected <= 10000000 && d.get('active', null) is bool
+        && (d.get('endMonth', '') == '' || rentMonth(d.endMonth)) && rentStr(d, 'note', 0, 120)
+        && keptEntriesOk(isNew, e, n) && (n == 0 || (rbEntryOk(e[0]) && rbEntryOk(e[n - 1])));
     }
 
     // Shared business collections (prod and dev_). Create and update dispatch on the collection
@@ -2149,6 +2177,11 @@ service cloud.firestore {
       allow create: if isOwnerIn('users') && wpOk(true);
       allow update: if isOwnerIn('users') && wpOk(false);
     }
+    match /recurringBills/{docId} {
+      allow read, delete: if isOwnerIn('users');
+      allow create: if isOwnerIn('users') && rbOk(true);
+      allow update: if isOwnerIn('users') && rbOk(false);
+    }
 
     match /dev_stockCheckpoints/{docId} {
       allow read: if isApprovedIn('dev_users');
@@ -2302,6 +2335,11 @@ service cloud.firestore {
       allow read, delete: if isOwnerIn('dev_users');
       allow create: if isOwnerIn('dev_users') && wpOk(true);
       allow update: if isOwnerIn('dev_users') && wpOk(false);
+    }
+    match /dev_recurringBills/{docId} {
+      allow read, delete: if isOwnerIn('dev_users');
+      allow create: if isOwnerIn('dev_users') && rbOk(true);
+      allow update: if isOwnerIn('dev_users') && rbOk(false);
     }
   }
 }

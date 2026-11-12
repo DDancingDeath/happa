@@ -20,7 +20,7 @@ import { rentalsRole } from '../ui/business-switcher.js';
 import { formatINR } from '../utils/due-reminder.js';
 import { formatRate } from '../utils/money.js';
 import { ManualReminders } from '../ui/manual-reminders.js';
-import { payDueReminder } from '../utils/pay-reminder.js';
+import { payDueReminder, billsDueReminder } from '../utils/pay-reminder.js';
 
 // Use helper functions
 const formatCurrency = (amount) => Helpers.formatCurrency(amount);
@@ -338,6 +338,15 @@ export const DayManager = {
                     + `<div>${e(tn('ui.today.reminder_salaries_workers', pay.count))}</div>`
                     + `<div class="today-reminder-more">${e(t('ui.today.reminder_salaries_as_of', { time: formatDayTime(pay.at, { lang: getLang() }) }))}</div>`
                     + `<button type="button" class="filter-btn" data-onclick="nav.showTab('workers')">${e(t('ui.today.reminder_open_workers'))}</button></div>`);
+            }
+            // RB-11 (#437): bills due within 3 days or overdue, as Recurring bills last worked them out on this phone
+            let bills = null;
+            try { bills = billsDueReminder(localStorage, AppState.currentUser?.uid, toLocalISODate(now)); } catch (_) { bills = null; }
+            if (bills) {
+                parts.push(`<div class="today-reminder" data-reminder="bills"><div class="today-reminder-head"><strong>${e(t('ui.today.reminder_bills', { count: bills.count, amount: formatINR(bills.due) }))}</strong></div>`
+                    + (bills.nobill ? `<div>${e(t('ui.today.reminder_bills_nobill', { count: bills.nobill }))}</div>` : '')
+                    + `<div class="today-reminder-more">${e(t('ui.today.reminder_bills_as_of', { time: formatDayTime(bills.at, { lang: getLang() }) }))}</div>`
+                    + `<button type="button" class="filter-btn" data-onclick="nav.showTab('recurring')">${e(t('ui.today.reminder_open_bills'))}</button></div>`);
             }
             let drill = null;
             try { drill = drillReminder(localStorage, AppState.currentUser?.uid || '', now.getTime()); } catch (_) { drill = null; }
