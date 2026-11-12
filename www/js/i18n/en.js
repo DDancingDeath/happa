@@ -3526,5 +3526,6 @@ export default {
     'msg.rbills.recorded': "{amount} paid for {name}",
     'msg.rbills.stopped': "{name} stopped",
     'msg.rbills.remove_confirm': "Remove the payment of {amount} for {name}? The bill it paid shows as owed again.",
+    'msg.rbills.stop_drops_bills': "A bill is already entered for {month}, after {last}. Once stopped, it no longer counts. Stop anyway?",
     'msg.rbills.removed': "Removed"
 };

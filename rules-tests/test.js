@@ -5366,6 +5366,17 @@ function defineRecurringBillSuite(prefix) {
         await assertFails(doc('legacyOwner').update({ cadence: 5, ...stamp() }));
     });
 
+    t('the schedule (cadence, first month) is fixed once anything is recorded', async () => {
+        await seed('r1', item());
+        await assertSucceeds(doc('legacyOwner').update({ cadence: 1, startMonth: '2026-02', ...stamp() }));
+        await seed('r2', item({ entries: [bill()] }));
+        await assertFails(doc('legacyOwner', 'r2').update({ cadence: 1, ...stamp() }));
+        await assertFails(doc('legacyOwner', 'r2').update({ startMonth: '2026-02', ...stamp() }));
+        await assertFails(doc('legacyOwner', 'r2').set({ ...item({ entries: [bill()] }), cadence: 3 }));
+        await assertSucceeds(doc('legacyOwner', 'r2').update({ name: 'Bijli', dueDay: 5, ...stamp() }));
+        await assertSucceeds(doc('legacyOwner', 'r2').update({ entries: FieldValue.arrayUnion(pay()), ...stamp() }));
+    });
+
     t('at most 3,000 entries', async () => {
         const many = Array.from({ length: 3000 }, (_, i) => pay({ id: `p${i}` }));
         await seed('r1', item({ entries: many }));

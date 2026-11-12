@@ -92,15 +92,26 @@ const entriesOf = (item) => (Array.isArray(item?.entries) ? item.entries : [])
 
 /**
  * RB-2: the bill amount of each period: the newest 'bill' entry for it (entries are appended in
- * order, so a correction is a later entry).
+ * order, so a correction is a later entry). A bill for a month after a stopped item's last month is
+ * not one of its bills and is ignored (it would otherwise "correct" the last real bill).
  * @param {BillItem} item
  * @returns {Map<string, number>}
  */
 function billsByPeriod(item) {
     const out = new Map();
-    for (const e of entriesOf(item)) if (e.kind === 'bill') out.set(periodOf(item, e.period), Number(e.amount));
+    const end = lastMonth(item);
+    for (const e of entriesOf(item)) {
+        if (e.kind === 'bill' && !(end && e.period > end)) out.set(periodOf(item, e.period), Number(e.amount));
+    }
     return out;
 }
+
+/**
+ * The months of bill entries after `last` (a stop there would leave them out), oldest first.
+ * @param {BillItem} item
+ * @param {string} last 'YYYY-MM'
+ */
+export const billsAfter = (item, last) => [...new Set(entriesOf(item).filter(e => e.kind === 'bill' && e.period > last).map(e => e.period))].sort();
 
 /**
  * RB-2 … RB-7, period by period up to `upto` (periods whose due month is after it are not counted

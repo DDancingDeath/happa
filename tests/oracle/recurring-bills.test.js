@@ -5,7 +5,7 @@
  */
 import fc from 'fast-check';
 import {
-    periodsUpTo, billLedger, itemView, billsSummary, billsDue, billsDueDays, checkEntry, checkItem, unusualBill, entryPeriods, dueDateOf
+    periodsUpTo, billLedger, itemView, billsSummary, billsDue, billsDueDays, checkEntry, checkItem, unusualBill, entryPeriods, dueDateOf, billsAfter
 } from '../../www/js/utils/recurring-bills.js';
 
 const MONTHS = [];
@@ -29,7 +29,8 @@ function oSlot(item, month) {
     return all.length ? all[all.length - 1] : item.startMonth;
 }
 function oBill(item, p) {
-    const bills = item.entries.filter(e => e.kind === 'bill' && oSlot(item, e.period) === p);
+    // A stopped item has no bill after its last month: such a bill entry is not one of its bills
+    const bills = item.entries.filter(e => e.kind === 'bill' && (!item.endMonth || e.period <= item.endMonth) && oSlot(item, e.period) === p);
     if (bills.length) return bills[bills.length - 1].amount;
     return item.expected > 0 ? item.expected : null;
 }
@@ -250,5 +251,59 @@ describe('worked examples', () => {
         expect(checkItem({ ...f, dueDay: '31' }, '2026-03').error).toBe('msg.rbills.bad_due_day');
         expect(checkItem({ ...f, expected: '1.5' }, '2026-03').error).toBe('msg.rbills.bad_amount');
         expect(checkItem({ ...f, startMonth: '2027-04' }, '2026-03').error).toBe('msg.rbills.bad_month');
+    });
+});
+
+// Hand-computed (no oracle code): every figure below was worked out on paper from the spec's words.
+describe('hand-computed examples (RB-6, RB-7, RB-11, stop)', () => {
+    const b = (period, amount) => ({ id: `b${period}${amount}`, kind: 'bill', period, date: `${period}-02`, amount });
+    const p = (period, amount, date) => ({ id: `p${period}${amount}${date}`, kind: 'pay', period, date, amount, mode: 'cash' });
+    const pick = (r) => [r.period, r.bill, r.paid, r.opening, r.closing, r.owed, r.covered, r.overdue, r.state];
+    const water = { name: 'Water', cadence: 1, dueDay: 10, startMonth: '2026-01', expected: 0, active: true, endMonth: '',
+        entries: [b('2026-01', 400), p('2026-01', 400, '2026-01-08'), b('2026-02', 500), p('2026-02', 200, '2026-02-12'), b('2026-03', 450)] };
+
+    test('RB-6 / RB-7 state by state on 5 Apr: paid, overdue (past due), overdue (carried in), amount not entered', () => {
+        expect(billLedger(water, '2026-04', '2026-04-05').periods.map(pick)).toEqual([
+            ['2026-01', 400, 400, 0, 0, 400, 400, false, 'paid'],
+            ['2026-02', 500, 200, 0, 300, 500, 200, true, 'overdue'],
+            ['2026-03', 450, 0, 300, 750, 750, 0, true, 'overdue'],
+            ['2026-04', null, 0, 750, 750, 750, 0, true, 'nobill']
+        ]);
+    });
+
+    test('RB-6 / RB-7 before the due date: owed from before unpaid = overdue; paid off = part-paid; nothing paid, nothing before = due', () => {
+        expect(pick(billLedger(water, '2026-03', '2026-03-05').periods[2])).toEqual(['2026-03', 450, 0, 300, 750, 750, 0, true, 'overdue']);
+        const paidOff = { ...water, entries: [...water.entries, p('2026-03', 300, '2026-03-03')] };
+        expect(pick(billLedger(paidOff, '2026-03', '2026-03-05').periods[2])).toEqual(['2026-03', 450, 300, 300, 450, 750, 300, false, 'part']);
+        const fresh = { ...water, startMonth: '2026-03', entries: [b('2026-03', 450)] };
+        expect(pick(billLedger(fresh, '2026-03', '2026-03-05').periods[0])).toEqual(['2026-03', 450, 0, 0, 450, 450, 0, false, 'due']);
+        expect(pick(billLedger(fresh, '2026-03', '2026-03-10').periods[0])).toEqual(['2026-03', 450, 0, 0, 450, 450, 0, false, 'due']);
+        expect(pick(billLedger(fresh, '2026-03', '2026-03-11').periods[0])).toEqual(['2026-03', 450, 0, 0, 450, 450, 0, true, 'overdue']);
+    });
+
+    test('RB-11 on 8 Mar and 17 Mar over four bills', () => {
+        const paidOff = { ...water, entries: [...water.entries, p('2026-03', 300, '2026-03-03')] };
+        const elec = { name: 'Electricity', cadence: 2, dueDay: 15, startMonth: '2026-01', expected: 0, active: true, endMonth: '',
+            entries: [b('2026-01', 1240), p('2026-01', 1240, '2026-01-12'), b('2026-03', 1580)] };
+        const net = { name: 'Internet', cadence: 1, dueDay: 10, startMonth: '2026-03', expected: 0, active: true, endMonth: '', entries: [] };
+        const rent = { name: 'Rent', cadence: 1, dueDay: 20, startMonth: '2026-01', expected: 5000, active: true, endMonth: '', entries: [p('2026-01', 5000, '2026-01-20')] };
+        // 8 Mar (up to 11 Mar): water ₹450 (due 10 Mar); electricity due 15 Mar, nothing from before: not yet;
+        // internet due 10 Mar with no amount; rent due 20 Mar, but February's ₹5,000 is unpaid
+        expect(billsDue([paidOff, elec, net, rent], '2026-03-08')).toEqual({ count: 3, due: 450 + 5000, nobill: 1 });
+        // 17 Mar (up to 20 Mar): water 450, electricity 1,580, internet (no amount), rent Feb + Mar 10,000
+        expect(billsDue([paidOff, elec, net, rent], '2026-03-17')).toEqual({ count: 4, due: 450 + 1580 + 10000, nobill: 1 });
+    });
+
+    test('stop: a bill entered early for a month after the stop is ignored; a payment after it is credit on the last bill', () => {
+        const base = { name: 'Gas', cadence: 1, dueDay: 10, startMonth: '2026-10', expected: 0, active: false, endMonth: '2026-11',
+            entries: [b('2026-11', 1000), b('2026-12', 1500)] };
+        expect(periodsUpTo(base, '2027-01')).toEqual(['2026-10', '2026-11']);
+        expect(billLedger(base, '2027-01', '2027-01-05').periods.map(r => [r.period, r.bill, r.closing])).toEqual([['2026-10', null, 0], ['2026-11', 1000, 1000]]);
+        expect(billsAfter(base, '2026-11')).toEqual(['2026-12']);
+        expect(billsAfter(base, '2026-12')).toEqual([]);
+        const paidAfter = { ...base, entries: [...base.entries, p('2026-12', 1200, '2026-12-05')] };
+        expect(itemView(paidAfter, '2027-01-05')).toMatchObject({ balance: -200, nextDue: null, current: { period: '2026-11', bill: 1000, paid: 1200, state: 'paid' } });
+        // Not stopped, the same December bill is December's own
+        expect(billLedger({ ...base, active: true, endMonth: '' }, '2026-12', '2026-12-05').periods.map(r => [r.period, r.bill])).toEqual([['2026-10', null], ['2026-11', 1000], ['2026-12', 1500]]);
     });
 });

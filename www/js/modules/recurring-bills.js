@@ -15,7 +15,7 @@ import { formatMonth, formatDay, todayLocalISO } from '../utils/dates.js';
 import * as repo from '../firebase/repos/recurring-bills.js';
 import {
     MAX_NAME, MAX_NOTE, MAX_DUE_DAY, CADENCES, balanceParts, billsSummary, billsDueDays, checkItem, checkEntry,
-    entryPeriods, unusualBill, isMonthKey, periodOf, monthKeyOf
+    entryPeriods, unusualBill, isMonthKey, periodOf, monthKeyOf, billsAfter
 } from '../utils/recurring-bills.js';
 import { saveBillsDue } from '../utils/pay-reminder.js';
 
@@ -415,6 +415,11 @@ export async function saveStop() {
     const last = val('rbLastMonth');
     if (!it) return;
     if (!isMonthKey(last) || last < it.startMonth) return warn('msg.rbills.bad_month');
+    const later = billsAfter(it, last);
+    if (later.length && !Helpers.isBusy('rbills.stop')) {
+        const ok = await UIManager.showModal(t('msg.rbills.stop_drops_bills', { month: monthName(later[0]), last: monthName(last) }), t('ui.rbills.stop'), true);
+        if (!ok) return;
+    }
     const patch = { active: false, endMonth: last };
     await save('rbills.stop', async () => {
         await repo.updateBillItem(it.id, patch);

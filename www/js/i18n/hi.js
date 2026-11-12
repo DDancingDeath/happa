@@ -3526,5 +3526,6 @@ export default {
     'msg.rbills.recorded': "{name} के लिए {amount} दिया",
     'msg.rbills.stopped': "{name} बंद किया",
     'msg.rbills.remove_confirm': "{name} के लिए {amount} का भुगतान हटाएँ? जिस बिल में गिना था, वह फिर बकाया दिखेगा।",
+    'msg.rbills.stop_drops_bills': "{last} के बाद {month} का बिल पहले से लिखा है। बंद करने पर वह नहीं गिना जाएगा। फिर भी बंद करें?",
     'msg.rbills.removed': "हटा दिया"
 };

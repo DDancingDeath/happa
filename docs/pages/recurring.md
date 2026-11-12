@@ -13,7 +13,7 @@ consumer number. From these the app works out every bill's month and due date (R
 2 months from January, due on the 10th, is due on 10 Jan, 10 Mar, 10 May and so on. **Edit** changes the
 name, due day, usual amount and note; how often it comes and the first month can be changed only until
 something is recorded. **Stop this bill** ends it after the last month you choose; what is still to pay,
-or a credit, stays.
+or a credit, stays. A bill already entered for a later month then no longer counts (it asks first).
 
 **Bill amounts.** When a bill comes, tap **Enter bill amount** and enter the amount for its month (RB-2).
 Until then the usual amount counts, if you set one; otherwise the bill shows **Amount not entered yet**.

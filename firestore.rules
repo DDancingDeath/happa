@@ -1679,7 +1679,8 @@ service cloud.firestore {
         && d.get('dueDay', 0) is int && d.dueDay >= 1 && d.dueDay <= 28 && rentMonth(d.get('startMonth', ''))
         && d.get('expected', null) is int && d.expected >= 0 && d.expected <= 10000000 && d.get('active', null) is bool
         && (d.get('endMonth', '') == '' || rentMonth(d.endMonth)) && rentStr(d, 'note', 0, 120)
-        && keptEntriesOk(isNew, e, n) && (n == 0 || (rbEntryOk(e[0]) && rbEntryOk(e[n - 1])));
+        && keptEntriesOk(isNew, e, n) && (n == 0 || (rbEntryOk(e[0]) && rbEntryOk(e[n - 1])))
+        && (isNew || resource.data.entries.size() == 0 || (d.cadence == resource.data.cadence && d.startMonth == resource.data.startMonth));
     }
 
     // Shared business collections (prod and dev_). Create and update dispatch on the collection

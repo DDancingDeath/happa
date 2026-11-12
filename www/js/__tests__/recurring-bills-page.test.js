@@ -134,6 +134,22 @@ test('adding an item, editing it (schedule fixed once there are entries) and sto
     expect(repo.updateBillItem).toHaveBeenLastCalledWith('b1', { name: 'Jal', dueDay: 1, expected: 0, note: '' });
 });
 
+test('stopping before a month that already has a bill asks first; No writes nothing', async () => {
+    const it = { ...water(), entries: [...water().entries, { id: 'x5', kind: 'bill', period: addMonthKey(NOW, 1), date: TODAY, amount: 500 }] };
+    repo.loadBillItems.mockResolvedValue([it]);
+    const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(false);
+    await R.init();
+    R.open('b1');
+    R.showForm('stop');
+    document.getElementById('rbLastMonth').value = NOW;
+    await R.saveStop();
+    expect(modal.mock.calls[0][0]).toMatch(/A bill is already entered for .* Stop anyway\?/);
+    expect(repo.updateBillItem).not.toHaveBeenCalled();
+    modal.mockResolvedValue(true);
+    await R.saveStop();
+    expect(repo.updateBillItem).toHaveBeenCalledWith('b1', { active: false, endMonth: NOW });
+});
+
 test('only a payment can be removed, exactly as loaded', async () => {
     jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
     await R.init();
