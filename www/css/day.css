@@ -153,84 +153,6 @@
   gap: 8px;
 }
 
-/* Summary Grid */
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  font-size: 14px;
-}
-
-.summary-item {
-  display: flex;
-  flex-direction: column;
-  padding: 10px 12px;
-  border-radius: var(--radius);
-  min-width: 0;
-}
-
-.summary-item span {
-  color: var(--text-secondary);
-  font-weight: var(--w-regular);
-  font-size: 14px;
-}
-
-.summary-item strong {
-  font-weight: var(--w-strong);
-  font-size: 16px;
-  margin-top: 4px;
-}
-
-.summary-item-success {
-  background: var(--success-soft);
-}
-.summary-item-success strong {
-  color: var(--success-color);
-}
-
-.summary-item-info {
-  background: var(--info-soft);
-}
-.summary-item-info strong {
-  color: var(--info-color);
-}
-
-.summary-item-danger {
-  background: var(--danger-soft);
-}
-.summary-item-danger strong {
-  color: var(--danger-color);
-}
-
-.summary-item-warning {
-  background: var(--warning-soft);
-}
-.summary-item-warning strong {
-  color: var(--warning-dark);
-}
-
-/* Summary Total */
-.summary-total {
-  margin-top: 14px;
-  padding: 14px 16px;
-  background: var(--primary-gradient);
-  border-radius: var(--radius);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.summary-total span {
-  color: white;
-  font-weight: var(--w-strong);
-}
-
-.summary-total strong {
-  color: white;
-  font-size: 18px;
-  font-weight: var(--w-strong);
-}
-
 /* Items Grid */
 .items-grid {
   display: grid;
@@ -302,103 +224,12 @@ body.dark-mode .stat-card-purple {
   background: rgba(124, 58, 237, 0.15);
 }
 
-body.dark-mode .summary-item-success {
-  background: rgba(16, 185, 129, 0.1);
-}
-
-body.dark-mode .summary-item-info {
-  background: rgba(59, 130, 246, 0.1);
-}
-
-body.dark-mode .summary-item-danger {
-  background: rgba(239, 68, 68, 0.1);
-}
-
-body.dark-mode .summary-item-warning {
-  background: rgba(245, 158, 11, 0.1);
-}
-
 body.dark-mode .item-detail-row {
   background: var(--white);
 }
 
 body.dark-mode .item-detail-row:hover {
   background: var(--border-color);
-}
-
-/* Mobile responsiveness for summary grids */
-@media (max-width: 480px) {
-  .summary-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-  
-  .summary-item {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 10px;
-    gap: 2px;
-  }
-  
-  .summary-item span {
-    font-size: 14px;
-    line-height: 1.3;
-    display: block;
-    width: 100%;
-  }
-  
-  .summary-item strong {
-    font-size: 16px;
-    display: block;
-    width: 100%;
-  }
-}
-
-/* Labour card on Today: deducted from farmers and to pay labour */
-.today-labour-card {
-  background: var(--danger-soft);
-  border: 1px solid var(--danger-border);
-  border-radius: 12px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  color: var(--on-danger-soft);
-  cursor: pointer;
-}
-
-.today-labour-title {
-  font-size: 14px;
-  font-weight: var(--w-strong);
-  margin-bottom: 6px;
-}
-
-.today-labour-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 6px;
-  font-size: 14px;
-  margin-bottom: 4px;
-}
-
-.today-labour-row strong {
-  font-size: var(--fs-lead);
-}
-
-.today-labour-sub,
-.today-labour-hint {
-  font-size: 14px;
-  color: var(--on-danger-soft);
-  opacity: 0.85;
-}
-
-.today-labour-diff {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin-top: 4px;
-}
-
-.today-labour-hint {
-  margin-top: 4px;
 }
 
 .labour-breakdown-table {
@@ -425,221 +256,101 @@ body.dark-mode .item-detail-row:hover {
   margin: 8px 0 0;
 }
 
-body.dark-mode .today-labour-card {
-  background: #3b1d1d;
-  border-color: #7f1d1d;
-  color: #fecaca;
-}
-
-body.dark-mode .today-labour-sub,
-body.dark-mode .today-labour-hint {
-  color: #fecaca;
-}
-
-body.dark-mode .today-labour-diff {
-  color: #e5e7eb;
-}
-/* Today: bills but no cash session (#141) */
-.today-cash-prompt {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  background: var(--warning-soft);
-  border: 1px solid var(--warning-border);
-  color: var(--on-warning-soft);
-  border-radius: 12px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  font-size: 14px;
-  font-weight: var(--w-strong);
-}
-
-.today-cash-prompt[hidden] {
-  display: none;
-}
-
-.today-cash-prompt-btn {
-  min-height: 44px;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 10px;
-  background: var(--btn-success);
-  color: var(--btn-sale-ink);
-  font-size: var(--fs-body);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-}
-
-/* Today › By bill type (T18) */
-.today-channels {
-  display: grid;
-  gap: 10px;
-}
-
-.today-channel {
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 10px 12px;
-}
-
-.today-channel[hidden] {
-  display: none;
-}
-
-.today-channel-head {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: var(--fs-body);
-}
-
-.today-channel-name {
-  font-weight: var(--w-strong);
-  color: var(--text-primary);
-}
-
-.today-channel-count {
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.today-channel-total {
-  margin-left: auto;
-  font-size: 16px;
-}
-
-.today-channel-split {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 6px;
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.today-channel-split strong {
-  display: block;
-  color: var(--text-primary);
-}
-
-.today-channel-due strong {
-  color: var(--on-warning-soft);
-}
-
-.today-channel-writeoff {
-  grid-column: 1 / -1;
-}
-
-.today-channel-writeoff[hidden] {
-  display: none;
-}
-
-/* Today's bills (T19): each row opens the bill */
-.today-bill-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 48px;
-  padding: 8px 4px;
-  border: none;
-  border-bottom: 1px solid var(--border-color);
-  background: none;
-  color: var(--text-primary);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.today-bill-row:hover,
-.today-bill-row:focus-visible {
-  background: var(--light-bg);
-}
-
-.today-bill-time {
-  flex: 0 0 auto;
-  min-width: 4.5em;
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.today-bill-main {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.today-bill-party {
-  font-weight: var(--w-strong);
-  font-size: var(--fs-body);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.today-bill-kind {
-  font-size: 14px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.today-bill-total {
-  flex: 0 0 auto;
-  font-size: var(--fs-body);
-}
-
-.today-bills-more {
-  width: 100%;
-  min-height: 44px;
-  margin-top: 8px;
-  border: 1px dashed var(--border-color);
-  border-radius: 10px;
-  background: none;
-  color: var(--primary-color);
-  font-size: var(--fs-body);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-}
-
-.today-bills-more[hidden] {
-  display: none;
-}
-
-body.dark-mode .today-cash-prompt {
-  background: #3b2f12;
-  border-color: #a16207;
-  color: #fde68a;
-}
-
 /* Today › Cash holds the Cash page's own body (#96); the day page already pads it */
 #dayCashManagementContainer > .cash-body {
   padding: 0 !important;
 }
 
-/* Reminders on Today (#86) */
-.today-reminders { padding: 12px 14px; }
-.today-reminders-title { margin: 0 0 8px; font-size: 16px; }
-.today-reminder { padding: 8px 0; border-top: 1px solid var(--border-color); }
-.today-reminder:first-of-type { border-top: 0; }
-.today-reminder-head { display: flex; justify-content: space-between; gap: 8px; }
-.today-reminder ul { list-style: none; margin: 6px 0; padding: 0; }
-.today-reminder-party { display: flex; gap: 8px; justify-content: space-between; font-size: 14px; padding: 2px 0; }
-.today-reminder-party span:first-child { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.today-reminder-days, .today-reminder-more { color: var(--text-secondary); font-size: var(--fs-caption); }
+/* ---------- Today › Summary (redesign 5.1): hero, needs attention, metrics, rows ---------- */
+#dayTodayContent .section-title { margin: var(--section-gap) 0 var(--sp-2); color: var(--ink-3); font-size: var(--fs-sm); font-weight: var(--w-label); }
+#dayTodayContent .items-grid { gap: 0; }
+
+/* Hero: net (T12), in (T10) and out (T11) */
+.today-hero { padding: var(--sp-2) 0 var(--sp-1); }
+#dayTodayContent .today-hero-label { margin: 0; padding: 0; border: 0; color: var(--ink-3); font-family: inherit; font-size: var(--fs-sm); font-weight: var(--w-label); letter-spacing: normal; }
+#dayTodayContent .today-hero-label::after { content: none; }
+.today-hero .hero-num { margin-top: var(--sp-1); color: var(--ink); }
+.today-inout { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-5); margin-top: var(--sp-2); color: var(--ink-2); font-size: var(--fs-sm); }
+.today-inout > span { display: inline-flex; align-items: center; gap: 6px; }
+.today-in .i { color: var(--positive); }
+.today-out .i { color: var(--ink-3); }
+.today-inout strong, .today-labour-row strong, .today-channel-total, .today-channel-split strong, .today-bill-total {
+  color: var(--ink); font-family: var(--font-num); font-weight: var(--w-strong); font-variant-numeric: tabular-nums;
+}
+
+/* Needs attention: the cash prompt, then one row per reminder (icon tile, text, its action), then the Day report */
+.today-cash-prompt { flex-wrap: wrap; align-items: center; margin-top: var(--section-gap); }
+.today-cash-prompt .btn { margin-left: auto; }
+.today-cash-prompt[hidden], .today-reminders[hidden] { display: none; }
+.today-reminder { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); }
+.today-reminder + .today-reminder { border-top: 1px var(--rule-style) var(--line); }
+.today-reminder-body { flex: 1; min-width: 0; color: var(--ink-2); font-size: var(--fs-sm); }
+.today-reminder-body > .filter-btn { margin-top: var(--sp-2); }
+.today-reminder-head { display: flex; justify-content: space-between; gap: var(--sp-2); color: var(--ink); font-size: var(--fs-body); }
+.today-reminder-head strong { font-weight: var(--w-strong); }
+.today-reminder ul { margin: 6px 0; padding: 0; list-style: none; }
+.today-reminder-party { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--sp-2); padding: 2px 0; }
+.today-reminder-party span:first-child { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.today-reminder-party .today-reminder-days { flex-basis: 100%; }
+.today-reminder-days, .today-reminder-more { color: var(--ink-3); font-size: var(--fs-caption); }
+.day-report-card { margin-top: var(--section-gap); padding: var(--sp-4); }
+
+/* Labour (T-LAB-*): tap for each bill */
+.today-labour-card { padding: var(--sp-3) var(--sp-4); cursor: pointer; }
+.today-labour-card:hover { background: var(--surface-2); }
+.today-labour-card:focus-visible { outline: none; box-shadow: var(--focus); }
+.today-labour-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; padding: 2px 0; color: var(--ink-2); font-size: var(--fs-sm); }
+.today-labour-sub, .today-labour-diff { color: var(--ink-3); font-size: var(--fs-caption); }
+.today-labour-hint { margin-top: var(--sp-2); color: var(--accent-text); font-size: var(--fs-sm); font-weight: var(--w-label); }
+
+/* By bill type (T18) */
+.today-channel { padding: var(--sp-3) var(--sp-4); }
+.today-channel + .today-channel { border-top: 1px var(--rule-style) var(--line); }
+.today-channel[hidden], .today-channel-split > .today-channel-writeoff[hidden] { display: none; }
+.today-channel-head { display: flex; align-items: baseline; gap: var(--sp-2); }
+.today-channel-name { color: var(--ink); font-weight: var(--w-strong); }
+.today-channel-count { color: var(--ink-3); font-size: var(--fs-sm); }
+.today-channel-total { margin-left: auto; }
+.today-channel-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px var(--sp-5); margin-top: var(--sp-2); color: var(--ink-3); font-size: var(--fs-sm); }
+.today-channel-split > div { display: flex; justify-content: space-between; gap: var(--sp-2); }
+.today-channel-writeoff { grid-column: 1 / -1; }
+
+/* Today's bills (T19): each row opens the bill; the dot is the bill's mode */
+.today-bill-row {
+  display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--row-h); padding: 10px var(--sp-4);
+  border: none; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+}
+.today-bill-row + .today-bill-row { border-top: 1px var(--rule-style) var(--line); }
+.today-bill-row:hover { background: var(--surface-2); }
+.today-bill-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.today-bill-time { flex: none; min-width: 4.5em; color: var(--ink-3); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+.today-bill-main { display: flex; flex: 1; min-width: 0; flex-direction: column; }
+.today-bill-party, .today-bill-kind { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.today-bill-party { font-weight: var(--w-strong); }
+.today-bill-kind { color: var(--ink-3); font-size: var(--fs-sm); }
+.today-bill-kind::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--mode-purchase); }
+.today-bill-retail .today-bill-kind::before { background: var(--mode-sale); }
+.today-bill-wholesale .today-bill-kind::before { background: var(--mode-wholesale); }
+.today-bill-total { flex: none; }
+.today-bills-more {
+  width: 100%; min-height: 44px; border: none; border-top: 1px solid var(--line); border-radius: 0 0 var(--r-panel) var(--r-panel);
+  background: none; color: var(--accent-text); font: inherit; font-weight: var(--w-strong); cursor: pointer;
+}
+.today-bills-more[hidden] { display: none; }
+
+/* Item details (T17) */
+.today-item .row-meta { white-space: normal; }
+.today-item .row-meta strong { color: var(--ink-2); font-weight: var(--w-strong); }
+
 /* Cash open 14 h or more (C10, Q25 of #111) */
 .cash-long-open { background: var(--warning-soft); border: 1px solid var(--warning-border); color: var(--on-warning-soft); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-weight: var(--w-strong); }
 
 /* Manual reminders (#86) */
 .today-reminder-item { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 14px; padding: 4px 0; }
 .today-reminder-title { font-weight: var(--w-strong); }
-.today-reminder-days.late { color: var(--on-danger-soft); font-weight: var(--w-strong); }
+.today-reminder-days.late { color: var(--negative); font-weight: var(--w-strong); }
 .today-reminder-actions { display: flex; gap: 6px; margin-left: auto; }
-.today-reminder-actions .filter-btn, .today-reminder > .filter-btn { min-height: 44px; }
+
 .today-reminder-form { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .today-reminder-form input, .today-reminder-form select { min-height: 44px; font-size: 16px; padding: 6px 10px; }
 .today-reminder-repeat { color: var(--text-secondary); font-size: var(--fs-caption); }

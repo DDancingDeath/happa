@@ -40,6 +40,22 @@ test('every #i-* reference has a symbol', () => {
     expect(missing).toEqual([]);
 });
 
+test('every icon() call names a symbol, as a constant', () => {
+    const missing = [];
+    const dynamic = [];
+    for (const f of walk('www/js', '.js')) {
+        const src = read(f);
+        if (!/import \{[^}]*\bicon\b[^}]*\} from '[./]*(ui\/)?icons\.js'/.test(src)) continue;
+        for (const m of src.matchAll(/\bicon\(\s*([^,)]*)/g)) {
+            const name = /^'(\w+)'$/.exec(m[1].trim());
+            if (!name) dynamic.push(`${f}: icon(${m[1]})`);
+            else if (!ids.includes(`i-${name[1]}`)) missing.push(`${f}: ${name[1]}`);
+        }
+    }
+    expect(dynamic).toEqual([]);
+    expect(missing).toEqual([]);
+});
+
 test('icons are decorative and the menu, tab bar and bell use them', () => {
     const uses = [...NAV.replace(sprite, '').matchAll(/<svg class="i[^"]*"[^>]*>/g)].map((m) => m[0]);
     expect(uses.length).toBeGreaterThan(0);

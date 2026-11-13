@@ -26,6 +26,7 @@ import { auditScanCap } from '../utils/security-flags.js';
 import { formatRupees } from '../utils/money.js';
 import { numberCheckFlags } from '../utils/number-check-flags.js';
 import { safeSetItem } from '../utils/storage-full.js';
+import { icon } from '../ui/icons.js';
 
 const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const jsAttr = (v) => Helpers.escapeJsAttr(String(v ?? ''));
@@ -49,6 +50,7 @@ const NUMCHECK_KNOWN_MAX = 500;
 const NUMCHECK_FLAGS_PER_RUN = 50;
 const PAGE_SIZE = 200;
 const SEV_COLORS = { high: '#b91c1c', medium: '#92400e', low: '#4b5563' };
+const SEV_TONES = { high: 'tone-neg', medium: 'tone-warn', low: 'tone-muted' };
 const TYPE_COLORS = ['#dc2626', '#2563eb', '#d97706', '#059669', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#ea580c', '#4f46e5', '#0d9488', '#9333ea', '#be123c', '#15803d', '#1d4ed8', '#a16207'];
 
 const canSee = () => AppState.userRole === 'owner' || AppState.userRole === 'manager';
@@ -428,7 +430,7 @@ export const AnomaliesManager = {
         const bySev = SEVERITIES.map(sev => {
             const rows = queue.filter(a => a.severity === sev);
             if (!rows.length) return '';
-            return `<div class="anomaly-queue-group"><div class="anomaly-queue-head" style="color:${SEV_COLORS[sev]}">${loc(SEVERITY_LABELS[sev])} (${rows.length})</div>
+            return `<div class="anomaly-queue-group"><div class="anomaly-queue-head ${SEV_TONES[sev]}">${loc(SEVERITY_LABELS[sev])} (${rows.length})</div>
                 ${rows.slice(0, 8).map(a => this.rowHtml(a, { compact: true })).join('')}
                 ${rows.length > 8 ? `<div class="anomaly-muted">${esc(t('ui.anom.more', { n: rows.length - 8 }))}</div>` : ''}</div>`;
         }).join('');
@@ -436,11 +438,12 @@ export const AnomaliesManager = {
         card.style.display = 'block';
         card.innerHTML = `
             <div class="anomaly-card-head">
-                <h3 class="section-title" style="margin:0;">🚨 ${esc(t('ui.anom.day_report'))}</h3>
-                <span><button type="button" class="anomaly-btn" title="${esc(t('ui.anom.refresh'))}" aria-label="${esc(t('ui.anom.refresh'))}" data-onclick="anomalies.refreshNow()">🔄</button>
+                <span class="lead-icon${s.bySeverity.high ? ' neg' : ''}">${icon('flag')}</span>
+                <h3 class="anomaly-card-title">${esc(t('ui.anom.day_report'))}</h3>
+                <span class="anomaly-card-tools"><button type="button" class="btn btn-ghost btn-icon btn-sm" title="${esc(t('ui.anom.refresh'))}" aria-label="${esc(t('ui.anom.refresh'))}" data-onclick="anomalies.refreshNow()">${icon('refresh')}</button>
                 <span class="anomaly-count-badge ${s.total ? 'has' : ''}">${s.total}</span></span>
             </div>
-            <div class="anomaly-muted" style="margin:4px 0 8px;">${esc(formatDayKey(today))} · ${esc(this.cashStatusLine())}</div>
+            <div class="anomaly-muted anomaly-card-sub">${esc(formatDayKey(today))} · ${esc(this.cashStatusLine())}</div>
             <div class="anomaly-chips">${chips}</div>
             ${s.total ? `<ul class="anomaly-type-list">${types}</ul>${tops}` : `<div class="anomaly-empty">${esc(t('ui.anom.none_today'))}</div>`}
             <div class="anomaly-queue">
@@ -448,9 +451,9 @@ export const AnomaliesManager = {
                 ${queue.length ? bySev : `<div class="anomaly-empty">${esc(t('ui.anom.nothing_to_review'))}</div>`}
             </div>
             <div class="anomaly-actions">
-                <button type="button" class="btn btn-success" data-onclick="anomalies.shareDayReport()">📤 WhatsApp</button>
-                <button type="button" class="btn btn-secondary" data-onclick="anomalies.printDayReport()">🖨️ ${esc(t('ui.anom.print_image'))}</button>
-                <button type="button" class="btn btn-primary" data-onclick="anomalies.openPage()">🔎 ${esc(allLabel)}</button>
+                <button type="button" class="btn btn-secondary" data-onclick="anomalies.shareDayReport()">${icon('wa')} WhatsApp</button>
+                <button type="button" class="btn btn-secondary" data-onclick="anomalies.printDayReport()">${icon('printer')} ${esc(t('ui.anom.print_image'))}</button>
+                <button type="button" class="btn btn-tonal" data-onclick="anomalies.openPage()">${icon('search')} ${esc(allLabel)}</button>
             </div>`;
     },
 
@@ -571,7 +574,7 @@ export const AnomaliesManager = {
         return `
             <div class="anomaly-row sev-${esc(a.severity)}${compact ? ' compact' : ''}">
                 <div class="anomaly-row-main"${canOpen ? ` data-onclick="anomalies.openRef('${id}')" role="button" tabindex="0"` : ''}>
-                    <div class="anomaly-row-title"><span class="anomaly-dot" style="background:${SEV_COLORS[a.severity] || '#4b5563'}"></span>${loc(label)} ${statusBadge}</div>
+                    <div class="anomaly-row-title"><span class="anomaly-dot dot-${esc(a.severity)}"></span>${loc(label)} ${statusBadge}</div>
                     <div class="anomaly-row-why">${loc(a)}</div>
                     <div class="anomaly-row-meta">${meta}</div>
                     ${a.note ? `<div class="anomaly-row-note">📝 ${esc(a.note)}${a.reviewedByName ? ` — ${esc(a.reviewedByName)}` : ''}</div>` : ''}

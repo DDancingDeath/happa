@@ -13,6 +13,7 @@ import { UIManager } from './ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { t, tn, getLang } from '../i18n/index.js';
 import { formatDay, todayLocalISO } from '../utils/dates.js';
+import { icon } from './icons.js';
 import {
     checkReminder, groupReminders, nextDueDate, isReminderRepeat, REMINDER_REPEATS, REMINDER_LISTEN_LIMIT, REMINDER_TITLE_MAX, REMINDER_PARTY_MAX
 } from '../utils/manual-reminders.js';
@@ -165,7 +166,7 @@ export const ManualReminders = {
         const g = groupReminders(this.list, todayIso);
         const rows = [...g.due, ...g.soon];
         if (!rows.length && !manage) return '';
-        return '<div class="today-reminder" data-reminder="manual">'
+        return `<div class="today-reminder" data-reminder="manual"><span class="lead-icon">${icon('check')}</span><div class="today-reminder-body">`
             + `<div class="today-reminder-head"><strong>${esc(t('ui.reminders.title'))}</strong>`
             + (g.due.length ? ` ${esc(t('ui.reminders.due_count', { count: g.due.length }))}` : '') + '</div>'
             + (rows.length ? `<ul>${rows.map(r => this.rowHtml(r, manage)).join('')}</ul>` : `<div class="today-reminder-more">${esc(t('ui.reminders.none'))}</div>`)
@@ -173,7 +174,7 @@ export const ManualReminders = {
             + (this.list.length >= REMINDER_LISTEN_LIMIT ? `<div class="today-reminder-more">${esc(t('ui.reminders.limit', { count: REMINDER_LISTEN_LIMIT }))}</div>` : '')
             + (manage ? (this.formOpen ? this.formHtml()
                 : `<button type="button" class="filter-btn" data-onclick="day.reminderForm(true)">${esc(t('ui.reminders.add'))}</button>`) : '')
-            + '</div>';
+            + '</div></div>';
     },
 
     by() {
