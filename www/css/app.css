@@ -7031,11 +7031,6 @@ body.dark-mode .party-due-line.party-due-old {
     overflow-wrap: anywhere;
 }
 
-.aging-empty {
-    color: var(--ink-3);
-    font-size: var(--fs-sm);
-}
-
 .aging-parties > summary {
     cursor: pointer;
 }
@@ -11563,13 +11558,13 @@ body.dark-mode .notif-panel-actions {
     align-self: center;
   }
 
-  #dueList {
+  .due-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0 var(--sp-3);
   }
 
-  #dueList > :not(.due-bill) {
+  .due-list > :not(.due-bill) {
     grid-column: 1 / -1;
   }
 

@@ -203,11 +203,6 @@
     overflow-wrap: anywhere;
 }
 
-.aging-empty {
-    color: var(--ink-3);
-    font-size: var(--fs-sm);
-}
-
 .aging-parties > summary {
     cursor: pointer;
 }

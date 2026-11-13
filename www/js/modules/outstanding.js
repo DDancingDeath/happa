@@ -321,7 +321,7 @@ export class OutstandingManager {
                 ${chase.length ? `<ol class="panel">${chase.map(p => `
                     <li class="row aging-b${p.bucket}"><span class="row-main"><strong>${partyName(p)}</strong> — ${moneyHtml(p.total)} · ${withMoney(t('ui.outstanding.party_overdue', { amount: formatINR(p.overdue) }), p.overdue)}</span>
                         <span class="aging-age tag${AGE_TONE[p.bucket]} aging-b${p.bucket}">${tt('ui.outstanding.oldest', { age: daysText(p.oldestDays) })}</span></li>`).join('')}</ol>`
-                    : `<div class="aging-empty">${tt('ui.outstanding.no_one_owes')}</div>`}
+                    : `<p class="empty">${tt('ui.outstanding.no_one_owes')}</p>`}
             </div>`;
 
         const parties = sortParties(aging.parties, this.agingSort)
@@ -345,7 +345,7 @@ export class OutstandingManager {
         const sortBtn = (by, label) => `<button type="button" class="chip${this.agingSort === by ? ' active' : ''}" aria-pressed="${this.agingSort === by}" data-onclick="outstanding.setAgingSort('${by}')">${label}</button>`;
 
         el.innerHTML = `
-            <div class="aging-panel">
+            <div>
                 <section class="aging-hero" aria-labelledby="dueAgingTitle">
                     <div class="aging-head">
                         <p class="aging-title" id="dueAgingTitle">${tt(isPayable ? 'ui.outstanding.payables_by_age' : RECEIVABLE_TITLE[this.dueFilter()] || 'ui.outstanding.receivables_by_age')}</p>
