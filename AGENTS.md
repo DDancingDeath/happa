@@ -174,6 +174,10 @@ In order:
   (hex, `rgb()`, a colour name) in `www/css`, a template's `style=` / `<style>` or `www/js` fails
   `tests/ci/colour-guard.test.js` (per-file baseline `tests/colour-baseline.json`, which may only
   go down: `COLOUR_BASELINE=lower npx jest colour-guard`). Print and receipt output is exempt.
+  Spacing, radius, shadow, z-index, `!important`, `#id` / `.dark-mode` selectors, inline styles, emoji,
+  Title Case `ui.*` labels and legacy component classes are ratcheted the same way by `tests/ci/ds-guard.test.js`
+  (`tests/ds-baseline.json`, `DS_BASELINE=lower npx jest ds-guard`; docs/design-system.md §7). Every ratchet also fails
+  when a count drops until you lower its baseline in the same PR.
   Light / Dark / System and the visual theme are per device (`js/ui/theme.js` ThemeManager, keys
   `happa.theme` / `happa.appearance`); `<html>` carries `data-theme`, `data-appearance` and `data-mode`, and CSS keys on
   `[data-mode="dark"]` (`body.dark-mode` mirrors it). The pre-paint `#themeBoot` reads the same keys; it is data-only, so a new
