@@ -86,7 +86,7 @@ describe('buildReprintPayload', () => {
 describe('buildBillShareText', () => {
     test('bilingual, bill date, COPY mark, no internal figures', () => {
         const text = buildBillShareText(WHOLESALE, 'wholesale');
-        expect(text).toContain('*Wholesale Bill* (COPY)');
+        expect(text).toContain('*Wholesale bill* (COPY)');
         expect(text).toContain('Date: 15/09/2025 06:05 pm');
         expect(text).toContain('Customer: Shyam Traders');
         expect(text).toContain('  ₹40.00 × 100kg = ₹4,000');
@@ -99,7 +99,7 @@ describe('buildBillShareText', () => {
 
     test('purchase shows labour and payable; comments only when marked for print', () => {
         const text = buildBillShareText(PURCHASE, 'purchase');
-        expect(text).toContain('*Purchase Bill*');
+        expect(text).toContain('*Purchase bill*');
         expect(text).toContain('Date: 03/10/2026 02:45 pm');
         expect(text).toContain('Labour: ₹12');
         expect(text).toContain('*Payable: ₹988*');
