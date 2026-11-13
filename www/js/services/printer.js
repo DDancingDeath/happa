@@ -703,7 +703,7 @@ const PrinterService = {
             statusText.dataset.state = !available ? 'unavailable' : noPermission ? 'permission' : btOff ? 'bluetooth_off' : connected ? 'connected' : 'disconnected';
         }
         if (disconnectBtn) disconnectBtn.style.display = connected ? 'block' : 'none';
-        if (testPrintBtn) testPrintBtn.style.display = available && !btOff && (connected || saved.deviceId) ? 'block' : 'none';
+        if (testPrintBtn) testPrintBtn.style.display = available && !btOff && (connected || saved.deviceId) ? '' : 'none';
         if (scanBtn) scanBtn.style.display = available ? '' : 'none';
     },
 
