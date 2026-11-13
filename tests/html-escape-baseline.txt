@@ -332,7 +332,6 @@ www/js/modules/statements.js: totals.purchases ← totals from dayBook(this.src(
 www/js/modules/statements.js: totals.sales ← totals from dayBook(this.src(), { from, to }, { personal: perms.personalExpenses, sessions:  (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
 www/js/modules/statements.js: totals.salesCount ← totals from dayBook(this.src(), { from, to }, { personal: perms.personalExpenses, sessions:  (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
 www/js/modules/statements.js: totals.withdrawals ← totals from dayBook(this.src(), { from, to }, { personal: perms.personalExpenses, sessions:  (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
-www/js/modules/stock.js: typeColor ← typeColors[adjustType] {typeColors = { add: 'var(--success-color)', remove: 'var(--danger-color)', set: 'var(--info-c}
 www/js/modules/voice-billing.js: value
 www/js/modules/wholesale-sales.js: billTableHtml(bills, { openings: this.historyOpenings, voided: this.historyVoided, onclickFor: (sale) => `wholesaleSales.reprintSaleById('${ (sink)
 www/js/modules/wholesale-sales.js: editsRowHtml(sale, 'history.showEdits()')

@@ -26,20 +26,23 @@ export function moneyHtml(amount, opts) {
 }
 
 /**
- * Translated text that holds formatRupees(amount) for each amount (in that order), escaped, with those figures drawn
- * by moneyHtml(); the text is unchanged.
+ * Translated text that holds formatRupees(amount, opts) for each amount, escaped, with those figures drawn by moneyHtml();
+ * the text is unchanged. Several amounts are found in order, each after the previous one; a figure that isn't there, or a
+ * missing amount, stays plain text.
  * @param {*} text
- * @param {...*} amounts
+ * @param {*} amounts one amount, or an array of them
+ * @param {{decimals?: number, small?: boolean, exact?: boolean, trueMinus?: boolean}} [opts] as formatRupees
  * @returns {string}
  */
-export function moneyInText(text, ...amounts) {
+export function moneyInText(text, amounts, opts) {
     let rest = String(text ?? '');
     let out = '';
-    for (const amount of amounts) {
-        const figure = formatRupees(amount);
+    for (const amount of Array.isArray(amounts) ? amounts : [amounts]) {
+        const figure = formatRupees(amount, opts);
         const i = rest.indexOf(figure);
-        if (i < 0) continue;
-        out += `${esc(rest.slice(0, i))}${moneyHtml(amount)}`;
+        const html = moneyHtml(amount, opts);
+        if (i < 0 || html === '—') continue;
+        out += `${esc(rest.slice(0, i))}${html}`;
         rest = rest.slice(i + figure.length);
     }
     return out + esc(rest);

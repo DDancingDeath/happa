@@ -282,6 +282,24 @@ select:not([multiple]):not([size]) {
   border-bottom-right-radius: 0;
 }
 
+/* ---------- Search field: .search-field > .i (decorative, aria-hidden) + .input with its own label ---------- */
+.search-field {
+  position: relative;
+}
+
+.search-field > .i {
+  position: absolute;
+  top: 50%;
+  left: var(--sp-3);
+  color: var(--ink-3);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.search-field > .input {
+  padding-left: var(--sp-10);
+}
+
 /* ---------- Checkbox and switch ---------- */
 input[type="checkbox"],
 input[type="radio"] {

@@ -551,7 +551,7 @@ export class HistoryManager {
                     <div class="row bill-view-row">
                         <div class="row-main">
                             <div>${L(key)}</div>
-                            ${split ? `<div class="row-meta">${moneyInText(t('ui.history.paid_later_split', { cash: Helpers.formatCurrency(parts.later.cash), online: Helpers.formatCurrency(parts.later.online) }), parts.later.cash, parts.later.online)}</div>` : ''}
+                            ${split ? `<div class="row-meta">${moneyInText(t('ui.history.paid_later_split', { cash: Helpers.formatCurrency(parts.later.cash), online: Helpers.formatCurrency(parts.later.online) }), [parts.later.cash, parts.later.online])}</div>` : ''}
                         </div>
                         <span class="tag ${Helpers.escapeHtml(tone)}">${money(value)}</span>
                     </div>`;
