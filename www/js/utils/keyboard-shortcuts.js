@@ -295,6 +295,7 @@ function decorateSidebar(nav) {
         const kbd = document.createElement('kbd');
         kbd.className = 'kbd nav-kbd';
         kbd.setAttribute('aria-hidden', 'true');
+        kbd.lang = 'zxx';
         kbd.textContent = `Alt ${i + 1}`;
         link.appendChild(kbd);
     });
