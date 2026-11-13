@@ -20,6 +20,7 @@ import {
     savedDifference, differenceBand, sessionDetail, noBillLeg, lastCountedSession
 } from '../utils/calc/cash.js';
 import { outstandingDue, formatRupees, formatAmount } from '../utils/money.js';
+import { moneyHtml } from '../ui/components.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import { toFlags } from '../utils/bill-checks.js';
 import { OutstandingManager } from './outstanding.js';
@@ -36,8 +37,10 @@ const L = (key, params) => Helpers.escapeHtml(t(key, params));
 
 /** Colour of a cash difference band (calc/cash differenceBand). */
 const DIFF_COLORS = Object.freeze({ ok: '#15803d', warn: '#f59e0b', high: '#ef4444' });
-/** The same bands on the purple status card (light tints that read on it). */
-const DIFF_ON_CARD = Object.freeze({ ok: '#bbf7d0', warn: '#fde68a', high: '#fecaca' });
+/** The same bands on the status Difference figure, as tone classes. */
+const DIFF_TONE = Object.freeze({ ok: 'tone-pos', warn: 'tone-warn', high: 'tone-neg' });
+/** A status / summary figure, its ₹ muted (moneyHtml); the text is formatRupees(amount, opts). */
+const setMoney = (el, amount, opts, plus = false) => { if (el) el.innerHTML = (plus ? '+' : '') + moneyHtml(amount, opts); };
 
 /** TIP CashClose run (#217); never throws. */
 function startCashCloseRun(session, expected, counted, difference) {
@@ -556,10 +559,7 @@ export class CashManagementManager {
             if (statusActualCard) statusActualCard.style.display = 'none';
             if (statusDiffCard) statusDiffCard.style.display = 'none';
             
-            if (statusOpeningBalance) statusOpeningBalance.textContent = '₹0';
-            if (statusCashIn) statusCashIn.textContent = '₹0';
-            if (statusCashOut) statusCashOut.textContent = '₹0';
-            if (statusAvailable) statusAvailable.textContent = '₹0';
+            [statusOpeningBalance, statusCashIn, statusCashOut, statusAvailable].forEach(el => setMoney(el, 0));
             return;
         }
 
@@ -582,18 +582,17 @@ export class CashManagementManager {
             if (statusActualCard) statusActualCard.style.display = 'block';
             if (statusDiffCard) statusDiffCard.style.display = 'block';
             
-            const diffColor = DIFF_ON_CARD[diffLevel];
-
-            if (statusOpeningBalance) statusOpeningBalance.textContent = formatRupees(opening, { exact: true });
-            if (statusCashAdded) statusCashAdded.textContent = formatRupees(cashAdded, { exact: true });
-            if (statusBuy) statusBuy.textContent = formatRupees(purchases, { exact: true });
-            if (statusSale) statusSale.textContent = formatRupees(sales, { exact: true });
-            if (statusOthers) statusOthers.textContent = formatRupees(others, { exact: true });
-            if (statusExpected) statusExpected.textContent = formatRupees(expected, { exact: true });
-            if (statusActual) statusActual.textContent = formatRupees(actual, { exact: true });
+            setMoney(statusOpeningBalance, opening, { exact: true });
+            setMoney(statusCashAdded, cashAdded, { exact: true });
+            setMoney(statusBuy, purchases, { exact: true });
+            setMoney(statusSale, sales, { exact: true });
+            setMoney(statusOthers, others, { exact: true });
+            setMoney(statusExpected, expected, { exact: true });
+            setMoney(statusActual, actual, { exact: true });
             if (statusDiff) {
-                statusDiff.textContent = `${diff >= 0 ? '+' : ''}${formatRupees(diff, { decimals: 2 })}`;
-                statusDiff.style.color = diffColor;
+                setMoney(statusDiff, diff, { decimals: 2 }, diff >= 0);
+                statusDiff.classList.remove(...Object.values(DIFF_TONE));
+                statusDiff.classList.add(DIFF_TONE[diffLevel]);
             }
         } else {
             // Ongoing session - show 4 blocks
@@ -609,11 +608,11 @@ export class CashManagementManager {
             if (statusActualCard) statusActualCard.style.display = 'none';
             if (statusDiffCard) statusDiffCard.style.display = 'none';
             
-            if (statusOpeningBalance) statusOpeningBalance.textContent = formatRupees(opening, { exact: true });
-            if (statusCashAdded) statusCashAdded.textContent = formatRupees(cashAdded, { exact: true });
-            if (statusCashIn) statusCashIn.textContent = formatRupees(cashIn, { exact: true });
-            if (statusCashOut) statusCashOut.textContent = formatRupees(totalCashOut, { exact: true });
-            if (statusAvailable) statusAvailable.textContent = formatRupees(availableCash, { exact: true });
+            setMoney(statusOpeningBalance, opening, { exact: true });
+            setMoney(statusCashAdded, cashAdded, { exact: true });
+            setMoney(statusCashIn, cashIn, { exact: true });
+            setMoney(statusCashOut, totalCashOut, { exact: true });
+            setMoney(statusAvailable, availableCash, { exact: true });
         }
     }
 
@@ -639,18 +638,18 @@ export class CashManagementManager {
             totalCashIn, totalCashOut, expected
         } = signOutSummary(this.todaySession, this.todayTransactions);
         
-        if (openingBalanceEl) openingBalanceEl.textContent = formatRupees(opening, { exact: true });
-        if (cashSalesEl) cashSalesEl.textContent = formatRupees(sales, { exact: true });
-        if (cashPurchasesEl) cashPurchasesEl.textContent = formatRupees(purchases, { exact: true });
-        if (businessExpensesEl) businessExpensesEl.textContent = formatRupees(businessExpenses, { exact: true });
-        if (personalExpensesEl) personalExpensesEl.textContent = formatRupees(personalExpenses, { exact: true });
-        if (dueReceivedEl) dueReceivedEl.textContent = formatRupees(dueReceived, { exact: true });
-        if (duePaidEl) duePaidEl.textContent = formatRupees(duePaid, { exact: true });
-        if (cashDepositsEl) cashDepositsEl.textContent = formatRupees(deposits, { exact: true });
-        if (totalCashInEl) totalCashInEl.textContent = formatRupees(totalCashIn, { exact: true });
-        if (totalCashOutEl) totalCashOutEl.textContent = formatRupees(totalCashOut, { exact: true });
+        setMoney(openingBalanceEl, opening, { exact: true });
+        setMoney(cashSalesEl, sales, { exact: true });
+        setMoney(cashPurchasesEl, purchases, { exact: true });
+        setMoney(businessExpensesEl, businessExpenses, { exact: true });
+        setMoney(personalExpensesEl, personalExpenses, { exact: true });
+        setMoney(dueReceivedEl, dueReceived, { exact: true });
+        setMoney(duePaidEl, duePaid, { exact: true });
+        setMoney(cashDepositsEl, deposits, { exact: true });
+        setMoney(totalCashInEl, totalCashIn, { exact: true });
+        setMoney(totalCashOutEl, totalCashOut, { exact: true });
         
-        if (expectedCashEl) expectedCashEl.textContent = formatRupees(expected, { exact: true });
+        setMoney(expectedCashEl, expected, { exact: true });
     }
 
     /**
