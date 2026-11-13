@@ -42,7 +42,7 @@
       "cashOut": 1230, "onlineOut": 900, "totalOut": 2130,
       "dueReceived": 730, "duePaid": 400,
       "dueToReceive": 2195, "dueToPay": 1068,
-      "netLabel": "Net Inflow:", "net": 1900
+      "netLabel": "Net inflow:", "net": 1900
     },
     "drawer": {
       "cashSales": 3300, "cashPurchases": 1000, "businessExpenses": 150, "personalExpenses": 80,

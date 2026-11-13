@@ -9,42 +9,42 @@
         <div id="salesEntrySection">
             <div class="bill-col-entry">
             <div class="form-row">
-                <label style="width: 100px;" data-i18n="ui.common.customer">Customer:</label>
+                <label style="width: 100px;" data-i18n="ui.billing.customer_label">Customer</label>
                 <div style="display: flex; gap: 8px; flex: 1; align-items: center;">
                     <input type="text" id="wholesaleCustomerName" list="wholesaleCustomerOptions" placeholder="Enter customer name" style="flex: 1;"  data-i18n-placeholder="ui.common.enter_customer_name"/>
-                    <button data-perm="contacts" data-onclick="wholesaleSales.pickContact()" style="padding: 8px 12px; background: #15803d; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 40px; display: flex; align-items: center; justify-content: center;" title="Pick Contact" data-i18n-title="ui.common.pick_contact">👤</button>
+                    <button data-perm="contacts" data-onclick="wholesaleSales.pickContact()" style="padding: 8px 12px; background: #15803d; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 40px; display: flex; align-items: center; justify-content: center;" title="Pick contact" data-i18n-title="ui.common.pick_contact">👤</button>
                 </div>
                 <datalist id="wholesaleCustomerOptions"></datalist>
             </div>
 
             <div class="bill-totals" style="padding: 16px; margin-bottom: 16px;">
                 <div class="form-row">
-                    <label data-i18n="ui.common.item">Item:</label>
+                    <label data-i18n="ui.common.item_2">Item</label>
                     <select id="sellItem" data-onchange="wholesaleSales.loadItemDetails()"></select>
                 </div>
 
                 <div id="wholesaleItemStats" hidden style="background: white; padding: 12px; border-radius: 8px; margin: 12px 0;">
                     <div style="font-size: 14px; color: #333;">
-                        <strong data-i18n="ui.wholesale.available_stock">Available Stock:</strong> <span id="availableStock">-</span><span id="availableStockUnit"> kg</span><br>
-                        <span id="avgPurchaseRateRow"><strong data-i18n="ui.wholesale.avg_purchase_rate">Avg Purchase Rate:</strong> ₹<span id="avgPurchaseRate">-</span>/kg</span>
+                        <strong data-i18n="ui.wholesale.available_stock">Available stock:</strong> <span id="availableStock">-</span><span id="availableStockUnit"> kg</span><br>
+                        <span id="avgPurchaseRateRow"><strong data-i18n="ui.wholesale.avg_purchase_rate">Avg purchase rate:</strong> ₹<span id="avgPurchaseRate">-</span>/kg</span>
                         <div id="availableStockApprox" style="display: none; margin-top: 6px; font-size: 12px; color: #8a6d00;"></div>
                     </div>
                 </div>
 
                 <div class="form-row">
-                    <label data-i18n="ui.wholesale.rate_kg">Rate (₹/kg):</label>
+                    <label data-i18n="ui.wholesale.rate_kg">Rate (₹/kg)</label>
                     <input type="number" inputmode="decimal" id="sellRate" placeholder="Enter selling rate"  data-i18n-placeholder="ui.wholesale.enter_selling_rate"/>
                 </div>
 
                 <div class="form-row">
-                    <label data-i18n="ui.wholesale.quantity_kg">Quantity (kg):</label>
+                    <label data-i18n="ui.wholesale.quantity_kg">Quantity (kg)</label>
                     <input type="number" inputmode="decimal" id="sellQuantity" placeholder="Enter quantity" data-onenter="event.preventDefault(); wholesaleSales.addToWholesaleBill()"  data-i18n-placeholder="ui.wholesale.enter_quantity"/>
                 </div>
 
                 <button class="add-to-bill-btn" data-onclick="wholesaleSales.addToWholesaleBill()" data-i18n="ui.common.add_bill">Add to Bill</button>
             </div>
 
-        <h3 data-i18n="ui.common.bill_items">Bill Items</h3>
+        <h3 data-i18n="ui.common.bill_items">Bill items</h3>
         <table id="salesTable">
             <thead>
                 <tr>
@@ -62,29 +62,29 @@
             <div class="bill-col-summary">
         <div class="bill-totals">
             <div class="total-row grand-total">
-                <span data-i18n="ui.common.total_receivable">Total Receivable:</span>
+                <span data-i18n="ui.common.total_receivable">Total receivable:</span>
                 <strong>₹ <span id="salesTotalAmount">0</span></strong>
             </div>
 
             <div class="payment-row">
-                <label data-i18n="ui.common.online">Online (₹):</label>
+                <label data-i18n="ui.common.online">Online (₹)</label>
                 <input type="checkbox" id="wholesaleOnlineCheckbox" data-onchange="wholesaleSales.fillReceivableAmount('online')" />
                 <input type="number" inputmode="decimal" id="wholesaleOnlinePayment" data-oninput="wholesaleSales.updatePaymentTotal()" placeholder="0" />
             </div>
 
             <div class="payment-row">
-                <label data-i18n="ui.common.cash">Cash (₹):</label>
+                <label data-i18n="ui.common.cash">Cash (₹)</label>
                 <input type="checkbox" id="wholesaleCashCheckbox" data-onchange="wholesaleSales.fillReceivableAmount('cash')" />
                 <input type="number" inputmode="decimal" id="wholesaleCashPayment" data-oninput="wholesaleSales.updatePaymentTotal()" placeholder="0" />
             </div>
 
             <div class="payment-row payment-total">
-                <span data-i18n="ui.common.total_received">Total Received:</span>
+                <span data-i18n="ui.common.total_received">Total received:</span>
                 <strong>₹ <span id="wholesaleTotalReceived">0</span></strong>
             </div>
 
             <div class="payment-row">
-                <label data-i18n="ui.common.due">Due (₹):</label>
+                <label data-i18n="ui.common.due">Due (₹)</label>
                 <input type="checkbox" id="wholesaleDueCheckbox" data-onchange="wholesaleSales.fillReceivableAmount('due')" />
                 <input type="number" inputmode="decimal" id="wholesaleDueAmount" data-oninput="wholesaleSales.updatePaymentTotal()" placeholder="0" />
             </div>
@@ -92,13 +92,13 @@
             <div class="payment-row split-remaining-row">
                 <span data-i18n="ui.common.not_split_yet">Not split yet:</span>
                 <strong id="wholesaleSplitRemaining">₹0</strong>
-                <button type="button" class="split-rest-btn" data-onclick="wholesaleSales.putRestInDue()" data-i18n="ui.common.rest_due">Rest → Due</button>
+                <button type="button" class="split-rest-btn" data-onclick="wholesaleSales.putRestInDue()" data-i18n="ui.common.rest_due">Rest → due</button>
             </div>
         </div>
 
         <div class="bill-totals" style="margin-top: 16px;">
             <div class="payment-row">
-                <label data-i18n="ui.wholesale.expenses">Expenses (₹):</label>
+                <label data-i18n="ui.wholesale.expenses">Expenses (₹)</label>
                 <input type="number" inputmode="decimal" id="salesExpensesAmount" data-oninput="wholesaleSales.updateProfitCalculation()" placeholder="0" value="0" />
             </div>
             
@@ -114,12 +114,12 @@
         </div>
 
         <div class="form-row" style="margin-top: 16px;">
-            <label style="width: 100px;" data-i18n="ui.wholesale.comments">Comments:</label>
+            <label style="width: 100px;" data-i18n="ui.billing.notes_label">Notes</label>
             <input type="text" id="salesComments" />
         </div>
 
         <div class="form-row" style="margin-top: 16px;">
-            <label style="width: 100px;" for="wholesaleDate" data-i18n="ui.billing.bill_date">Date:</label>
+            <label style="width: 100px;" for="wholesaleDate" data-i18n="ui.billing.bill_date">Date</label>
             <input type="date" id="wholesaleDate" class="bill-date-input" />
         </div>
 
@@ -164,9 +164,9 @@
             </div>
 
             <div class="history-search-row">
-                <input type="text" id="wholesaleHistorySearch" class="history-search-input" placeholder="Search by bill number, customer, or item..."
+                <input type="text" id="wholesaleHistorySearch" class="history-search-input" placeholder="Search by bill number, customer, or item…"
                        data-oninput="wholesaleSales.searchHistory(this.value)" data-i18n-placeholder="ui.history.search_bill_number_customer"/>
-                <button type="button" data-onclick="wholesaleSales.toggleHistoryView()" id="wholesaleHistoryViewToggle" class="history-view-toggle" data-i18n="ui.history.table_view">Table View</button>
+                <button type="button" data-onclick="wholesaleSales.toggleHistoryView()" id="wholesaleHistoryViewToggle" class="history-view-toggle" data-i18n="ui.history.table_view">Table view</button>
             </div>
 
             <div id="salesHistoryList">
