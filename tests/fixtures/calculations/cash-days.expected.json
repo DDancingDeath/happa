@@ -78,7 +78,7 @@
         "cashSignOutSection": "block",
         "cashDepositSection": "block"
       },
-      "diffColor": "",
+      "diffTone": "",
       "signInAmount": "",
       "signInHint": ""
     },
@@ -250,7 +250,7 @@
           "cashSignOutSection": "none",
           "cashDepositSection": "none"
         },
-        "diffColor": "rgb(253, 230, 138)",
+        "diffTone": "tone-warn",
         "signInAmount": "",
         "signInHint": ""
       }
@@ -333,7 +333,7 @@
           "cashSignOutSection": "block",
           "cashDepositSection": "block"
         },
-        "diffColor": "",
+        "diffTone": "",
         "signInAmount": "",
         "signInHint": ""
       }
@@ -416,7 +416,7 @@
           "cashSignOutSection": "block",
           "cashDepositSection": "block"
         },
-        "diffColor": "",
+        "diffTone": "",
         "signInAmount": "",
         "signInHint": ""
       }
@@ -493,7 +493,7 @@
           "cashSignOutSection": "block",
           "cashDepositSection": "block"
         },
-        "diffColor": "",
+        "diffTone": "",
         "signInAmount": "",
         "signInHint": ""
       }
@@ -578,7 +578,7 @@
         "cashSignOutSection": "block",
         "cashDepositSection": "block"
       },
-      "diffColor": "",
+      "diffTone": "",
       "signInAmount": "",
       "signInHint": ""
     },
@@ -713,7 +713,7 @@
         "cashSignOutSection": "none",
         "cashDepositSection": "none"
       },
-      "diffColor": "rgb(253, 230, 138)",
+      "diffTone": "tone-warn",
       "signInAmount": "",
       "signInHint": ""
     },
@@ -821,7 +821,7 @@
         "cashSignOutSection": "block",
         "cashDepositSection": "block"
       },
-      "diffColor": "",
+      "diffTone": "",
       "signInAmount": "",
       "signInHint": ""
     },
@@ -913,7 +913,7 @@
         "cashSignOutSection": "none",
         "cashDepositSection": "none"
       },
-      "diffColor": "",
+      "diffTone": "",
       "signInAmount": "1250.75",
       "signInHint": "Suggested from the last count (2026-10-22): ₹1,250.75. Change it if the drawer has a different amount."
     },
@@ -996,7 +996,7 @@
         "cashSignOutSection": "none",
         "cashDepositSection": "none"
       },
-      "diffColor": "",
+      "diffTone": "",
       "signInAmount": "",
       "signInHint": ""
     },
