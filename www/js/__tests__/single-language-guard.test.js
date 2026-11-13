@@ -424,7 +424,7 @@ describe('Hindi mode: no English UI words', () => {
         }
         const text = drawn.join('\n');
         expect(englishWords(text)).toEqual([]);
-        ['रसीद', 'बिल: 101', 'ग्राहक: Ram Traders', 'नोट: Mahua', 'प्रकार', 'रकम'].forEach(s => expect(text).toContain(s));
+        ['रसीद', 'बिल: 101', 'विक्रेता: Ram Traders', 'नोट: Mahua', 'प्रकार', 'रकम'].forEach(s => expect(text).toContain(s));
     });
 
     test('WhatsApp texts of a bill being entered (purchase, retail, wholesale)', () => {

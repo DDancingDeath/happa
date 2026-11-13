@@ -1653,6 +1653,7 @@ export default {
     'ui.bill.bill_no': "बिल",
     'ui.bill.date': "तारीख",
     'ui.bill.customer': "ग्राहक",
+    'ui.bill.supplier': "विक्रेता",
     'ui.bill.note': "नोट",
     'ui.bill.items': "सामान",
     'ui.bill.total': "कुल",

@@ -8,7 +8,7 @@
                 <div id="modalMessage"><span data-i18n="ui.modals.this_is_a_message">This is a message</span></div>
             </div>
             <div class="modal-footer" id="modalFooter">
-                <button class="modal-btn modal-btn-cancel" id="modalCancel" data-onclick="ui.closeModal(false)" data-i18n="ui.modals.cancel">Cancel</button>
+                <button class="modal-btn modal-btn-cancel" id="modalCancel" data-dismiss data-onclick="ui.closeModal(false)" data-i18n="ui.modals.cancel">Cancel</button>
                 <button class="modal-btn modal-btn-confirm" id="modalConfirm" data-onclick="ui.closeModal(true)" data-i18n="ui.modals.ok">OK</button>
             </div>
         </div>
@@ -105,7 +105,7 @@
                 </div>
             </div>
             <div class="bill-details-footer item-modal-footer">
-                <button type="button" class="btn btn-ghost" data-onclick="items.closeItemModal()" data-i18n="ui.modals.cancel">Cancel</button>
+                <button type="button" class="btn btn-ghost" data-dismiss data-onclick="items.closeItemModal()" data-i18n="ui.modals.cancel">Cancel</button>
                 <button type="button" class="btn btn-primary" data-onclick="items.saveItemFromModal()" data-i18n="ui.common.save">Save</button>
             </div>
         </div>

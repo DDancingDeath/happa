@@ -1653,6 +1653,7 @@ export default {
     'ui.bill.bill_no': "Bill",
     'ui.bill.date': "Date",
     'ui.bill.customer': "Customer",
+    'ui.bill.supplier': "Supplier",
     'ui.bill.note': "Note",
     'ui.bill.items': "Items",
     'ui.bill.total': "Total",

@@ -97,3 +97,40 @@ describe('back button returns to the previous tab (F17)', () => {
         delete window.Capacitor;
     });
 });
+
+describe('Android Back closes the Item dialog in Hindi (not the page under it)', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const { setLang, t } = require('../i18n/index.js');
+    afterEach(() => { setLang('en'); jest.restoreAllMocks(); document.body.innerHTML = ''; });
+
+    test('popstate with the Item dialog open clicks its Cancel and keeps the tab', async () => {
+        const { AppState } = await import('../utils/state.js');
+        AppState.userRole = 'owner';
+        setLang('hi');
+        jest.spyOn(Element.prototype, 'getClientRects').mockReturnValue([{}]);
+        const modals = fs.readFileSync(path.join(__dirname, '..', '..', 'templates', 'modals.html'), 'utf8');
+        document.body.innerHTML = `
+            <div class="side-nav" id="sideNav"><nav class="nav-menu">
+                <a href="#" data-onclick="nav.showTab('billing', event)">Billing</a>
+                <a href="#" data-onclick="nav.showTab('stock', event)">Stock</a>
+            </nav></div>
+            <div class="overlay" id="overlay"></div>
+            <div class="tab" id="billing"></div><div class="tab" id="stock"></div>${modals}`;
+        NavigationManager.currentTab = null;
+        history.replaceState(null, '');
+        NavigationManager.showTab('billing');
+        NavigationManager.showTabFromNav('stock');
+        const overlay = document.getElementById('itemEditOverlay');
+        overlay.style.display = 'flex';
+        const cancel = overlay.querySelector('[data-onclick="items.closeItemModal()"]');
+        cancel.textContent = t('ui.modals.cancel');
+        const closed = jest.fn(() => { overlay.style.display = 'none'; });
+        cancel.addEventListener('click', closed);
+
+        NavigationManager.handlePopState({ state: { happaTab: 'billing' } });
+        expect(closed).toHaveBeenCalledTimes(1);
+        expect(document.querySelector('.tab.active')?.id).toBe('stock');
+        expect(history.state.happaTab).toBe('stock');
+    });
+});
