@@ -408,12 +408,10 @@ body.dark-mode .modal-box {
 
 .dark-mode [style*="background: #d1fae5"],
 .dark-mode [style*="background: #f0fdf4"],
-.dark-mode [style*="background: #d1e7dd"],
-.dark-mode [style*="background: #e7f5e9"] {
+.dark-mode [style*="background: #d1e7dd"] {
   background: var(--success-soft) !important;
 }
 
-.dark-mode [style*="background: #d1ecf1"],
 .dark-mode [style*="background: #cfe2ff"],
 .dark-mode [style*="background: #e3f2fd"] {
   background: var(--info-soft) !important;
@@ -467,7 +465,6 @@ body.dark-mode .modal-box {
 .dark-mode [style^="color:#15803d"],
 .dark-mode [style*=" color: #1c7430"],
 .dark-mode [style*=" color: #0f5132"],
-.dark-mode [style*=" color: #155724"],
 .dark-mode [style*=" color: #2e7d32"],
 .dark-mode [style^="color: #059669"] {
   color: var(--on-success-soft) !important;

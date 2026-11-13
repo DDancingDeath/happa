@@ -179,7 +179,6 @@ input[type="number"] {
 
 #saleSection .quick-add-btn-inline,
 #saleSection .add-to-bill-btn,
-#wholesale-sales .add-to-bill-btn,
 .items-add-btn {
   background: var(--btn-success);
   color: var(--btn-sale-ink);
@@ -452,14 +451,14 @@ input[type="number"] {
   font-variant-numeric: tabular-nums;
 }
 
-#billing .form-row.field {
+:is(#billing, .bill-page) .form-row.field {
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
   margin-bottom: var(--sp-3);
 }
 
-#billing .form-row.field > label {
+:is(#billing, .bill-page) .form-row.field > label {
   width: auto;
   margin: 0;
   color: var(--ink-2);
@@ -467,7 +466,7 @@ input[type="number"] {
   font-weight: var(--w-label);
 }
 
-#billing .form-row.field .input {
+:is(#billing, .bill-page) .form-row.field .input {
   flex: 1;
   min-width: 0;
   border-color: var(--input-border);
@@ -479,22 +478,22 @@ input[type="number"] {
   position: relative;
 }
 
-#billing .adorn > .adorn-pre + .input {
+:is(#billing, .bill-page) .adorn > .adorn-pre + .input {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }
 
-#billing .adorn > .input:has(+ .adorn-post) {
+:is(#billing, .bill-page) .adorn > .input:has(+ .adorn-post) {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
 
-#billing .bill-customer-box > .input {
+:is(#billing, .bill-page) .bill-customer-box > .input {
   width: 100%;
   padding-right: 52px;
 }
 
-#billing .bill-customer-box > .contact-pick-btn {
+:is(#billing, .bill-page) .bill-customer-box > .contact-pick-btn {
   position: absolute;
   top: 0;
   right: 0;
@@ -506,8 +505,8 @@ input[type="number"] {
   text-shadow: none;
 }
 
-#billing .bill-customer-box > .contact-pick-btn:hover {
-  color: var(--accent-text);
+:is(#billing, .bill-page) .bill-customer-box > .contact-pick-btn:hover {
+  color: var(--bill-tone-text, var(--accent-text));
 }
 
 /* Name suggestions while typing a customer / supplier (#139 phase 1) */
@@ -591,7 +590,7 @@ input[type="number"] {
   flex: 1 1 12em;
 }
 
-#billing .bill-section-title {
+:is(#billing, .bill-page) .bill-section-title {
   margin: var(--sp-5) 0 var(--sp-2);
   font-family: var(--font-display);
   font-style: var(--title-style);
@@ -632,7 +631,7 @@ input[type="number"] {
 }
 
 /* A live check message under Rate or Weight (bill-highlight.js) takes its own row below the three */
-#billing .bill-entry-grid > .bill-check-msg {
+:is(#billing, .bill-page) .bill-entry-grid > .bill-check-msg {
   grid-column: 1 / -1;
   order: 1;
 }
@@ -783,4 +782,200 @@ input[type="number"] {
 
 .draft-card-actions > .btn {
   flex: 1;
+}
+
+/* ---------- Wholesale (5.5): Billing's components in the wholesale (violet) mode ---------- */
+/* Billing's tones are --bill-tone-* with its accent as the fallback; the wholesale page sets them */
+.bill-page {
+  --bill-tone-text: var(--ink);
+  --bill-tone-soft: var(--mode-wholesale-soft);
+  --bill-tone-fill: var(--mode-wholesale);
+  --bill-tone-ink: var(--on-mode-wholesale);
+}
+
+.ws-seg {
+  margin-bottom: var(--sp-3);
+}
+
+.ws-seg > button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.ws-stock {
+  margin-bottom: var(--sp-3);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  background: var(--surface-2);
+}
+
+.ws-stock .metric-value {
+  font-size: var(--fs-lead);
+}
+
+.ws-per {
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-regular);
+}
+
+.ws-stock-note {
+  margin: 0 var(--sp-3) var(--sp-3);
+}
+
+.ws-stock-note[hidden] {
+  display: none;
+}
+
+.ws-entry-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Add to bill is tonal: Save is the screen's one primary button */
+.ws-add-btn {
+  width: 100%;
+  min-height: 48px;
+  border-color: transparent;
+  background-color: var(--bill-tone-soft);
+  color: var(--bill-tone-text);
+}
+
+.bill-line-remove {
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.bill-page .save-btn {
+  background-color: var(--bill-tone-fill);
+  color: var(--bill-tone-ink);
+}
+
+/* Expenses and the live profit (WS-PROFIT) */
+.ws-profit {
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-1) var(--sp-4);
+}
+
+.ws-profit .payment-row > span {
+  color: var(--ink-2);
+  font-weight: var(--w-regular);
+}
+
+.ws-profit .payment-row > strong {
+  color: var(--ink);
+  font-size: var(--fs-lead);
+  font-weight: var(--w-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-more {
+  margin: var(--sp-2) 0 var(--sp-4);
+  text-align: center;
+}
+
+.ws-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.ws-search > .i {
+  position: absolute;
+  top: 50%;
+  left: var(--sp-3);
+  color: var(--ink-3);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.ws-search > .input {
+  flex: 1;
+  min-width: 0;
+  padding-left: var(--sp-10);
+}
+
+.ws-search > .btn {
+  flex: none;
+}
+
+/* Wholesale › Outstanding: Mark as cleared is a tick box beside the bill's buttons */
+.ws-clear {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  padding-right: var(--sp-2);
+}
+
+.ws-clear > label {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
+  cursor: pointer;
+}
+
+.ws-clear > input {
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* A wholesale bill opened from a list (bill details sheet) */
+.bill-view {
+  padding: var(--sp-4);
+}
+
+.bill-view-title {
+  margin: var(--sp-4) 0 var(--sp-2);
+  color: var(--ink);
+  font-size: var(--fs-body);
+  font-weight: var(--w-strong);
+}
+
+.bill-view-panel {
+  margin-top: var(--sp-3);
+}
+
+.bill-view-panel > .bill-view-title {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4) 0;
+}
+
+.bill-view-note {
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-3);
+}
+
+.bill-view-note-text {
+  color: var(--ink);
+}
+
+.bill-view-items {
+  width: 100%;
+  margin-bottom: var(--sp-2);
+}
+
+.bill-view-row {
+  font-size: var(--fs-sm);
+}
+
+.bill-view-info .row-main {
+  color: var(--ink-3);
+}
+
+.bill-view-total {
+  font-size: var(--fs-body);
+  font-weight: var(--w-strong);
+}
+
+.bill-view-total > .row-amt {
+  font-size: var(--fs-lead);
 }

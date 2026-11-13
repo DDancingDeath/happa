@@ -271,12 +271,6 @@
   text-shadow: 0 0 0 var(--on-success-soft);
 }
 
-/* Wholesale › Outstanding draws these without .btn (5.5) */
-[data-record-payment]:not(.btn),
-[data-mark-cleared]:not(.btn) {
-  font-size: 14px;
-}
-
 /* With zoom allowed, iOS (only it matches this @supports) zooms into any field under 16 px when it is focused */
 @supports (-webkit-touch-callout: none) {
   body input:not([type]),

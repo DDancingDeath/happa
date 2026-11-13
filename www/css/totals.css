@@ -164,90 +164,81 @@
   animation: pulse 1.5s ease-in-out infinite;
 }
 
-/* Wholesale totals green */
-#wholesale-sales .payment-row.payment-total:not(.payment-excess) {
-  background: var(--success-soft);
-}
-
-#wholesale-sales .payment-row.payment-total:not(.payment-excess) :is(span, strong) {
-  color: var(--on-success-soft) !important;
-}
-
 /* ---------- Billing totals and payment (redesign 3.1b): colon-less labels, ₹ in the field ---------- */
-#billing .bill-col-summary > .bill-totals {
+:is(#billing, .bill-page) .bill-col-summary > .bill-totals {
   border: 1px solid var(--panel-border);
   border-radius: var(--r-panel);
   background: var(--panel-bg);
   box-shadow: var(--panel-shadow);
 }
 
-#billing .total-row span {
+:is(#billing, .bill-page) .total-row span {
   color: var(--ink-2);
   font-weight: var(--w-regular);
 }
 
-#billing .total-row strong {
+:is(#billing, .bill-page) .total-row strong {
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
 
 /* Totals (3.5): a plain panel; the payable is the big ink figure, Total paid a plain row */
-#billing .money > span:not(.cur) {
+:is(#billing, .bill-page) .money > span:not(.cur) {
   color: inherit;
   font-size: inherit;
   font-weight: inherit;
 }
 
 /* The shared .cur (surfaces.css), over the older span rules above */
-#billing .money > .cur {
+:is(#billing, .bill-page) .money > .cur {
   color: var(--ink-3);
   font-size: var(--fs-cur);
   font-weight: var(--w-regular);
 }
 
 @media print {
-  #billing .money > .cur {
+  :is(#billing, .bill-page) .money > .cur {
     color: inherit;
   }
 }
 
-#billing .grand-total,
-#billing .payment-row.payment-total {
+:is(#billing, .bill-page) .grand-total,
+:is(#billing, .bill-page) .payment-row.payment-total {
   margin: 0;
   padding: var(--sp-3) 0 !important;
   border-radius: 0;
   background: none;
 }
 
-#billing .grand-total {
+:is(#billing, .bill-page) .bill-totals > * + .grand-total {
   border-top: 1px var(--rule-style) var(--line);
 }
 
-#billing .grand-total > span {
+:is(#billing, .bill-page) .grand-total > span {
   color: var(--ink);
   font-weight: var(--w-strong);
 }
 
-#billing .payment-row.payment-total > span {
+:is(#billing, .bill-page) .payment-row.payment-total > span {
   color: var(--ink-2);
   font-weight: var(--w-regular);
 }
 
-#billing .payment-row.payment-total strong {
+:is(#billing, .bill-page) .payment-row.payment-total strong {
   color: var(--ink);
   font-size: var(--fs-lead);
   font-weight: var(--w-strong);
   font-variant-numeric: tabular-nums;
 }
 
-#billing .payment-row.payment-total.payment-excess {
+:is(#billing, .bill-page) .payment-row.payment-total.payment-excess {
   margin: 0 calc(-1 * var(--sp-3));
   padding: var(--sp-3) !important;
   border-bottom-color: transparent;
   border-radius: var(--r-control);
 }
 
-#billing .grand-total strong {
+:is(#billing, .bill-page) .grand-total strong {
   color: var(--ink) !important;
   font-family: var(--font-hero);
   font-size: var(--fs-display) !important;
@@ -256,7 +247,7 @@
   letter-spacing: var(--tracking-display);
 }
 
-#billing .labor-input-row .checkbox-label {
+:is(#billing, .bill-page) .labor-input-row .checkbox-label {
   margin: 0;
 }
 
@@ -266,11 +257,11 @@
   font-variant-numeric: tabular-nums;
 }
 
-#billing .bill-money {
+:is(#billing, .bill-page) .bill-money {
   flex: none;
 }
 
-#billing .bill-money > .input {
+:is(#billing, .bill-page) .bill-money > .input {
   width: 100px;
   min-width: 0;
   max-width: 100px;
@@ -279,7 +270,7 @@
   text-align: right;
 }
 
-#billing .bill-pay-title {
+:is(#billing, .bill-page) .bill-pay-title {
   margin-top: var(--sp-2);
   padding-top: var(--sp-3);
   border-top: 1px var(--rule-style) var(--line);
@@ -288,13 +279,13 @@
   font-weight: var(--w-label);
 }
 
-#billing .payment-row > label {
+:is(#billing, .bill-page) .payment-row > label {
   color: var(--ink);
 }
 
 /* "Fill" puts the whole bill in that row: the row's tick box, drawn as a text button. Ticked it reads
    "Filled ✓" on a solid fill; its name is the visible word plus the hidden hint (.pay-fill-hint). */
-#billing .payment-row > .pay-fill {
+:is(#billing, .bill-page) .payment-row > .pay-fill {
   position: relative;
   display: inline-flex;
   flex: none;
@@ -302,13 +293,13 @@
   min-width: 48px;
   min-height: 44px;
   margin: 0;
-  color: var(--accent-text);
+  color: var(--bill-tone-text, var(--accent-text));
   font-size: var(--fs-sm);
   font-weight: var(--w-label);
   cursor: pointer;
 }
 
-#billing .payment-row > .pay-fill > input {
+:is(#billing, .bill-page) .payment-row > .pay-fill > input {
   position: absolute;
   inset: 0;
   z-index: 1;
@@ -319,7 +310,7 @@
   cursor: pointer;
 }
 
-#billing .payment-row > .pay-fill > span {
+:is(#billing, .bill-page) .payment-row > .pay-fill > span {
   display: flex;
   flex: 1;
   align-items: center;
@@ -333,25 +324,25 @@
   white-space: nowrap;
 }
 
-#billing .payment-row > .pay-fill > .pay-fill-on,
-#billing .payment-row > .pay-fill > input:checked ~ .pay-fill-off {
+:is(#billing, .bill-page) .payment-row > .pay-fill > .pay-fill-on,
+:is(#billing, .bill-page) .payment-row > .pay-fill > input:checked ~ .pay-fill-off {
   display: none;
 }
 
-#billing .payment-row > .pay-fill > input:checked ~ .pay-fill-on {
+:is(#billing, .bill-page) .payment-row > .pay-fill > input:checked ~ .pay-fill-on {
   display: flex;
-  border-color: var(--accent-text);
-  background: var(--btn-primary-bg);
-  color: var(--btn-primary-ink);
+  border-color: var(--bill-tone-fill, var(--accent-text));
+  background: var(--bill-tone-fill, var(--btn-primary-bg));
+  color: var(--bill-tone-ink, var(--btn-primary-ink));
   font-weight: var(--w-strong);
 }
 
-#billing .payment-row > .pay-fill > .pay-fill-on::after {
+:is(#billing, .bill-page) .payment-row > .pay-fill > .pay-fill-on::after {
   content: "✓" / "";
   margin-left: 4px;
 }
 
-#billing .payment-row > .pay-fill > .pay-fill-hint {
+:is(#billing, .bill-page) .payment-row > .pay-fill > .pay-fill-hint {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -362,12 +353,12 @@
 }
 
 @media (hover: hover) {
-  #billing .payment-row > .pay-fill:hover > input:not(:checked) ~ .pay-fill-off {
+  :is(#billing, .bill-page) .payment-row > .pay-fill:hover > input:not(:checked) ~ .pay-fill-off {
     background: var(--state-hover);
   }
 }
 
-#billing .payment-row > .pay-fill > input:focus-visible ~ span {
+:is(#billing, .bill-page) .payment-row > .pay-fill > input:focus-visible ~ span {
   box-shadow: var(--focus);
 }
 
@@ -382,15 +373,15 @@
 }
 
 @media (forced-colors: active) {
-  #billing .payment-row > .pay-fill > input:checked ~ .pay-fill-on {
+  :is(#billing, .bill-page) .payment-row > .pay-fill > input:checked ~ .pay-fill-on {
     outline: 2px solid Highlight;
   }
 }
 
-#billing .split-rest-btn {
+:is(#billing, .bill-page) .split-rest-btn {
   border-color: transparent;
-  background-color: var(--accent-soft);
-  color: var(--accent-text);
+  background-color: var(--bill-tone-soft, var(--accent-soft));
+  color: var(--bill-tone-text, var(--accent-text));
 }
 
 #billing #saleSection .split-rest-btn {
@@ -398,7 +389,7 @@
   color: var(--positive);
 }
 
-#billing .form-row.field > .bill-note-print {
+:is(#billing, .bill-page) .form-row.field > .bill-note-print {
   align-self: flex-start;
   min-height: 44px;
   font-weight: var(--w-regular);
@@ -413,11 +404,11 @@
   margin-bottom: var(--sp-3);
 }
 
-#billing .bill-notes-date > .form-row.field {
+:is(#billing, .bill-page) .bill-notes-date > .form-row.field {
   margin-bottom: 0;
 }
 
-#billing .form-row.field.bill-notes {
+:is(#billing, .bill-page) .form-row.field.bill-notes {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -425,19 +416,19 @@
   row-gap: 0;
 }
 
-#billing .bill-notes > label[for] {
+:is(#billing, .bill-page) .bill-notes > label[for] {
   grid-row: 1;
   grid-column: 1;
   padding-bottom: 6px;
   align-self: end;
 }
 
-#billing .bill-notes > .input {
+:is(#billing, .bill-page) .bill-notes > .input {
   grid-row: 2;
   grid-column: 1 / -1;
 }
 
-#billing .form-row.field.bill-notes > .bill-note-print {
+:is(#billing, .bill-page) .form-row.field.bill-notes > .bill-note-print {
   grid-row: 1;
   grid-column: 2;
   align-self: end;
@@ -523,13 +514,13 @@
 
 /* Phone and tablet: the row is compact (payable, two icon buttons, Save) */
 @media (max-width: 1023.98px) {
-  #billing .bill-bar-total {
+  :is(#billing, .bill-page) .bill-bar-total {
     display: block;
     flex: 1;
     min-width: 0;
   }
 
-  #billing .bill-bar-label {
+  :is(#billing, .bill-page) .bill-bar-label {
     display: block;
     overflow: hidden;
     color: var(--ink-3);
@@ -538,7 +529,7 @@
     text-overflow: ellipsis;
   }
 
-  #billing .bill-bar-money {
+  :is(#billing, .bill-page) .bill-bar-money {
     display: block;
     overflow: hidden;
     color: var(--ink);
@@ -551,13 +542,13 @@
     text-overflow: ellipsis;
   }
 
-  #billing .bill-actions > .bill-icon-btn {
+  :is(#billing, .bill-page) .bill-actions > .bill-icon-btn {
     flex: none;
     width: 48px;
     padding: 0;
   }
 
-  #billing .bill-actions > .print-btn .bill-btn-text {
+  :is(#billing, .bill-page) .bill-actions > .print-btn .bill-btn-text {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -566,13 +557,13 @@
     white-space: nowrap;
   }
 
-  #billing .bill-actions > .save-btn {
+  :is(#billing, .bill-page) .bill-actions > .save-btn {
     flex: none;
     min-width: 96px;
     padding: 0 var(--sp-5);
   }
 
-  #billing .bill-actions > button[data-kbd]::before {
+  :is(#billing, .bill-page) .bill-actions > button[data-kbd]::before {
     content: none;
   }
 }
@@ -581,7 +572,7 @@
    move it, so a tap that ends a field's focus still lands on Save). It runs down behind the tab bar.
    A short screen (a phone on its side, the app with its keyboard open) keeps the row at the end of the bill. */
 @media (max-width: 1023.98px) and (min-height: 481px) {
-  #billing .bill-actions {
+  :is(#billing, .bill-page) .bill-actions {
     position: fixed;
     left: 0;
     right: 0;
@@ -594,24 +585,24 @@
     background: var(--surface);
   }
 
-  body.biz-rentals #billing .bill-actions {
+  body.biz-rentals :is(#billing, .bill-page) .bill-actions {
     padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   }
 
   /* The tab fades in without moving: a transform would hold the fixed bar for the animation */
-  #billing.tab.active {
+  :is(#billing, .bill-page).tab.active {
     animation-name: bill-fade-in;
   }
 
   /* Room under the last field (notes, date) to scroll clear of the bar, and for focus scrolling */
-  #billing.tab {
+  :is(#billing, .bill-page).tab {
     padding-bottom: calc(96px + 72px + env(safe-area-inset-bottom, 0px));
     scroll-padding-bottom: calc(64px + 72px + env(safe-area-inset-bottom, 0px));
   }
 
   /* Toasts and the update banner show above the bar, not on Save */
-  body:has(#billing.tab.active) .toast,
-  body:not(.biz-rentals):has(#billing.tab.active) .app-update-banner {
+  body:has(:is(#billing, .bill-page).tab.active) .toast,
+  body:not(.biz-rentals):has(:is(#billing, .bill-page).tab.active) .app-update-banner {
     bottom: calc(80px + 72px + env(safe-area-inset-bottom, 0px));
   }
 }
