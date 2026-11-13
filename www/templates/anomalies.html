@@ -1,6 +1,6 @@
 <div id="anomalies" class="tab">
     <div class="anomaly-page">
-        <h2 class="anomaly-page-title">🚨 <span data-i18n="ui.anom.page_title">Anomalies</span></h2>
+        <header class="page-head"><h2 data-i18n="ui.anom.page_title">Anomalies</h2></header>
         <div id="anomalyDenied" class="anomaly-empty" style="display: none;" data-i18n="ui.anom.denied">Only the owner or a manager can see this page.</div>
         <div id="anomalyBody">
             <div class="anomaly-filters">
@@ -43,8 +43,8 @@
             </div>
 
             <div class="sub-tabs">
-                <button type="button" id="anomalyTabList" class="sub-tab active" data-onclick="anomalies.showView('list')">📋 <span data-i18n="ui.anom.tab_list">List</span></button>
-                <button type="button" id="anomalyTabPatterns" class="sub-tab" data-onclick="anomalies.showView('patterns')">📊 <span data-i18n="ui.anom.tab_patterns">Patterns</span></button>
+                <button type="button" id="anomalyTabList" class="sub-tab active" data-onclick="anomalies.showView('list')"><span data-i18n="ui.anom.tab_list">List</span></button>
+                <button type="button" id="anomalyTabPatterns" class="sub-tab" data-onclick="anomalies.showView('patterns')"><span data-i18n="ui.anom.tab_patterns">Patterns</span></button>
             </div>
 
             <div id="anomalySummary" class="anomaly-summary"></div>

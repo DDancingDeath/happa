@@ -1,4 +1,5 @@
 <div id="billing" class="tab active">
+    <header class="page-head"><h2 data-i18n="ui.nav.billing">Billing</h2></header>
 
         <div class="filter-buttons">
             <button class="filter-btn active" id="purchaseModeBtn" data-onclick="billing.switchMode('purchase', event)" data-i18n="ui.common.purchase">Purchase</button>
@@ -38,7 +39,7 @@
 
         <h3 class="bill-section-title" data-i18n="ui.billing.new_line">New line</h3>
         <div class="panel panel-pad bill-entry">
-            <button type="button" class="voice-mic-btn" id="voiceMicPurchase" hidden data-onclick="voice.start('purchase')" data-i18n="ui.voice.mic" data-i18n-title="ui.voice.mic_title" title="Say item, weight and rate">🎤 Speak the line</button>
+            <button type="button" class="voice-mic-btn" id="voiceMicPurchase" hidden data-onclick="voice.start('purchase')" data-i18n-title="ui.voice.mic_title" title="Say item, weight and rate"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-mic"/></svg><span data-i18n="ui.voice.mic">Speak the line</span></button>
             <div class="voice-strip" hidden>
                 <p class="voice-transcript" id="voiceTranscriptPurchase" role="status" aria-live="polite"></p>
                 <button type="button" class="btn btn-tonal btn-sm voice-undo-btn" id="voiceUndoPurchase" hidden data-onclick="voice.undo('purchase')" data-i18n="ui.voice.undo" data-i18n-title="ui.voice.undo_title" title="Remove what the last voice line added or filled">Undo voice</button>
@@ -219,7 +220,7 @@
 
         <h3 class="bill-section-title" data-i18n="ui.billing.new_line">New line</h3>
         <div class="panel panel-pad bill-entry">
-            <button type="button" class="voice-mic-btn" id="voiceMicSale" hidden data-onclick="voice.start('sale')" data-i18n="ui.voice.mic" data-i18n-title="ui.voice.mic_title" title="Say item, weight and rate">🎤 Speak the line</button>
+            <button type="button" class="voice-mic-btn" id="voiceMicSale" hidden data-onclick="voice.start('sale')" data-i18n-title="ui.voice.mic_title" title="Say item, weight and rate"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-mic"/></svg><span data-i18n="ui.voice.mic">Speak the line</span></button>
             <div class="voice-strip" hidden>
                 <p class="voice-transcript" id="voiceTranscriptSale" role="status" aria-live="polite"></p>
                 <button type="button" class="btn btn-tonal btn-sm voice-undo-btn" id="voiceUndoSale" hidden data-onclick="voice.undo('sale')" data-i18n="ui.voice.undo" data-i18n-title="ui.voice.undo_title" title="Remove what the last voice line added or filled">Undo voice</button>

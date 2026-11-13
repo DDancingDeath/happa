@@ -153,6 +153,10 @@
 }
 
 .add-item-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
   width: 100%;
   background: var(--success-color);
   color: var(--white);

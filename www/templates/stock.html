@@ -1,4 +1,5 @@
 <div id="stock" class="tab">
+    <header class="page-head"><h2 data-i18n="ui.nav.stocks">Stock</h2></header>
         
         <div class="filter-buttons" style="margin-bottom: 20px;">
             <button class="filter-btn active" data-onclick="stock.filterTab('current', event)" data-i18n="ui.stock.current_stock">Current stock</button>
@@ -37,7 +38,7 @@
             <div style="margin-bottom: 20px;">
                 <input type="text" 
                        id="stockSearchInput" 
-                       placeholder="🔍 Search items…" data-i18n-placeholder="ui.stock.search_items"
+                       placeholder="Search items…" data-i18n-placeholder="ui.stock.search_items"
                        data-oninput="stock.searchStock()">
             </div>
             <div id="stockList">

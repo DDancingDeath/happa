@@ -359,7 +359,10 @@ input[type="number"] {
 }
 /* Voice billing (#81): shown only when switched on in Settings */
 .voice-mic-btn {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
   width: 100%;
   margin-bottom: 12px;
   padding: 10px;
