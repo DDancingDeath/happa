@@ -178,8 +178,7 @@ input[type="number"] {
 }
 
 #saleSection .quick-add-btn-inline,
-#saleSection .add-to-bill-btn,
-.items-add-btn {
+#saleSection .add-to-bill-btn {
   background: var(--btn-success);
   color: var(--btn-sale-ink);
 }

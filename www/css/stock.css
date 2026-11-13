@@ -1,208 +1,233 @@
-.stock-item {
-  background: var(--card-bg);
-  padding: 18px;
-  border-radius: var(--radius-lg);
-  margin-bottom: 12px;
-  box-shadow: var(--shadow);
-  border-left: 4px solid var(--success-color);
-  transition: all var(--transition);
+/* Stock page (5.6): Current stock, Not selling and Adjustment on the shared components */
+.stock-seg {
+  margin-bottom: var(--sp-4);
 }
 
-.stock-item:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateX(4px);
+.stock-seg > [hidden] {
+  display: none;
 }
 
-.stock-header {
+.stock-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  margin-bottom: var(--sp-4);
+}
+
+.stock-metrics[hidden],
+.stock-metrics > .metric[hidden] {
+  display: none;
+}
+
+.stock-metrics > .metric:nth-child(n+3) {
+  border-top: none;
+}
+
+.stock-metrics > .metric + .metric {
+  border-left: 1px solid var(--line);
+}
+
+.stock-search {
+  margin-bottom: var(--sp-4);
+}
+
+.stock-rows {
+  margin-bottom: var(--sp-4);
+}
+
+.stock-rows > .row {
+  align-items: flex-start;
+}
+
+.stock-rows .row-amt {
+  font-size: var(--fs-lead);
+  white-space: nowrap;
+}
+
+.stock-rows .row-title {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* A stock bucket with no catalogue item: its tone (tone-neg / tone-warn) marks the stripe, note and kg */
+.stock-orphan {
+  border-left: 3px solid currentColor;
+}
+
+.stock-orphan .row-title {
+  color: var(--ink);
+}
+
+.stock-orphan-note {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 10px;
-  font-weight: var(--w-strong);
-  font-size: 18px;
-  color: var(--text-primary);
-}
-
-.stock-details {
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1.8;
-}
-
-.stock-details strong {
-  color: var(--text-primary);
-}
-
-.stock-low {
-  border-left-color: var(--warning-color);
-  background: linear-gradient(90deg, var(--warning-soft), var(--card-bg));
-}
-
-.stock-out {
-  border-left-color: var(--danger-color);
-  background: linear-gradient(90deg, var(--danger-soft), var(--card-bg));
-  opacity: 0.85;
-}
-
-/* Low stock, alert levels, reverse and count (#146) */
-.stock-low-card {
-  background: var(--warning-soft);
-  border: 1px solid var(--warning-border);
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 14px;
-}
-
-.stock-low-card__title {
-  font-weight: var(--w-strong);
-  color: var(--on-warning-soft);
-  margin-bottom: 6px;
-}
-
-.stock-low-card ul {
-  margin: 0;
-  padding-left: 18px;
-  font-size: 14px;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-sm);
 }
 
 .stock-alert-link {
-  background: none;
-  border: none;
-  padding: 6px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
   min-height: 32px;
-  color: var(--on-info-soft);
+  padding: var(--sp-1) 0;
+  border: none;
+  background: none;
+  color: var(--accent-text);
   font-size: var(--fs-sm);
   cursor: pointer;
 }
 
-.stock-adj-note {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin-top: 4px;
+.stock-low-card {
+  margin-bottom: var(--sp-4);
 }
 
+.stock-low-list {
+  margin: var(--sp-1) 0 0;
+  padding-left: var(--sp-4);
+}
+
+.stock-note {
+  margin-bottom: var(--sp-2);
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+
+.stock-approx {
+  margin-bottom: var(--sp-2);
+}
+
+.stock-empty-hint {
+  margin: var(--sp-1) 0 var(--sp-4);
+}
+
+.stock-days {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.stock-days > label {
+  font-weight: var(--w-strong);
+}
+
+.stock-days > .input {
+  width: auto;
+}
+
+/* Adjustment: the form, then its history */
 .stock-count-bar {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 12px;
+  margin-bottom: var(--sp-3);
 }
 
-.stock-count-row {
+.stock-title {
+  margin: 0 0 var(--sp-3);
+  font-family: var(--font-display);
+  font-size: var(--fs-lead);
+  font-style: var(--title-style);
+}
+
+.stock-adjust-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+}
+
+.stock-adjust-form > .stock-title {
+  margin: 0;
+}
+
+.stock-now {
+  border-radius: var(--r-control);
+  background: var(--surface-2);
+}
+
+/* The .history-item hook (tests) keeps History's card rules; these undo its stripe and hover */
+.history-item.stock-adj {
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--r-panel);
+  background: var(--panel-bg);
+  box-shadow: var(--panel-shadow);
+}
+
+.history-item.stock-adj:hover {
+  box-shadow: var(--panel-shadow);
+  transform: none;
+}
+
+.stock-adj .history-header {
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-1);
+  font-size: var(--fs-body);
+}
+
+.stock-adj .history-date {
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-sm);
+}
+
+.stock-adj-type {
+  font-weight: var(--w-strong);
+  white-space: nowrap;
+}
+
+.stock-adj-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-control);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+.stock-adj-note {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border-color);
+  gap: var(--sp-1);
+  color: var(--ink-3);
 }
 
-.stock-count-row input {
+/* Stock count dialog */
+.stock-count-line {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.stock-count-line .row-title,
+.stock-count-line .row-meta {
+  display: block;
+}
+
+.stock-count-line > .input {
+  flex: none;
   width: 110px;
 }
 
-.stock-count-row__now {
-  display: block;
-  font-size: var(--fs-caption);
-  color: var(--text-secondary);
+/* Desktop: the adjustment form on the left, its history on the right */
+@media (min-width: 1024px) {
+  .stock-adjust-layout:not([hidden]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto 1fr;
+    column-gap: var(--sp-6);
+    align-items: start;
+  }
+
+  .stock-adjust-layout > .stock-adjust-form {
+    grid-column: 1;
+    grid-row: 1 / span 4;
+    margin-bottom: 0;
+  }
+
+  .stock-adjust-layout > :not(.stock-adjust-form) {
+    grid-column: 2;
+  }
 }
-
-
-/* Simpler stock list (#92): name and kg on one line, rate and value under them */
-.stock-item {
-  padding: 12px 14px;
-  margin-bottom: 8px;
-}
-
-.stock-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "name qty"
-    "rate value"
-    "alert alert";
-  column-gap: 12px;
-  row-gap: 2px;
-  align-items: baseline;
-}
-
-.stock-row__name {
-  grid-area: name;
-  font-weight: var(--w-strong);
-  font-size: var(--fs-body);
-  overflow-wrap: anywhere;
-}
-
-.stock-row__qty {
-  grid-area: qty;
-  font-size: var(--fs-lead);
-  font-weight: var(--w-strong);
-  color: var(--on-success-soft);
-  text-align: right;
-  white-space: nowrap;
-}
-
-body.dark-mode .stock-row__qty {
-  color: #4ade80;
-}
-
-.stock-row__rate,
-.stock-row__note,
-.stock-row__value {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
-.stock-row__rate,
-.stock-row__note {
-  grid-area: rate;
-}
-
-.stock-row__value,
-.stock-row--orphan .stock-row__rate {
-  grid-area: value;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.stock-row__alert {
-  grid-area: alert;
-  justify-self: start;
-}
-
-.stock-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-  gap: 8px;
-  background: var(--card-bg);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  padding: 12px 14px;
-  margin-bottom: 14px;
-}
-
-.stock-summary[hidden],
-.stock-summary__cell[hidden] {
-  display: none;
-}
-
-.stock-summary__cell {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.stock-summary__label {
-  font-size: var(--fs-caption);
-  color: var(--text-secondary);
-}
-
-.stock-summary__value {
-  font-size: 18px;
-  font-weight: var(--w-strong);
-  color: var(--text-primary);
-  white-space: nowrap;
-}
-
-/* Stock search box (was its inline style) and its focus ring, which was inline onfocus / onblur (#89) */
-#stockSearchInput { width: 100%; padding: 14px; border: 2px solid var(--border-color); border-radius: 10px; font-size: var(--fs-body); transition: all 0.2s; }
-#stockSearchInput:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }

@@ -1800,7 +1800,7 @@ export default {
     'ui.stock.add_stock': "Add stock",
     'ui.stock.remove_stock': "Remove stock",
     'ui.stock.set_stock': "Set stock",
-    'ui.stock.rate_kg_optional': "Rate (₹/kg, optional)",
+    'ui.stock.rate_kg_optional': "Rate (optional)",
     'ui.stock.e_g_rats_damaged_2': "e.g., Rats damaged 2 bags",
     'ui.stock.apply_adjustment': "Apply adjustment",
     'ui.stock.adjustment_history': "Adjustment history",
