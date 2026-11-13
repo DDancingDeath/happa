@@ -1,206 +1,180 @@
 <div id="cash-management" class="tab">
-    <div class="cash-body" style="padding: 20px;">
-        
-        <!-- Cash Status Card -->
-        <div id="cashStatusCard" style="background: linear-gradient(135deg, #5560d6 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-            <h3 style="margin: 0 0 15px 0; font-size: 18px; color: #fff;" data-i18n="ui.cash.today_s_cash_status">Today's cash status</h3>
-            <div id="statusCardsContainer" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 14px;">
-                <!-- For ongoing session: Opening Balance, Cash In, Cash Out, Available Cash -->
-                <div id="statusOpeningCard" style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px;">
-                    <div style="opacity: 0.9; margin-bottom: 4px;" data-i18n="ui.cash.opening_balance">Opening balance</div>
-                    <div style="font-size: 20px; font-weight: bold;" id="statusOpeningBalance">₹0</div>
+    <div class="cash-body">
+
+        <!-- Today's cash (C7): what is in the drawer now, then the day's figures -->
+        <section id="cashStatusCard" class="cash-status" aria-labelledby="cashStatusTitle">
+            <h3 class="cash-title" id="cashStatusTitle" data-i18n="ui.cash.today_s_cash_status">Today's cash</h3>
+            <div id="statusAvailableCard" class="cash-hero">
+                <div class="cash-hero-label" data-i18n="ui.cash.available_cash">Available cash</div>
+                <div class="hero-num" id="statusAvailable">₹0</div>
+            </div>
+            <div id="statusCardsContainer" class="panel metrics cash-metrics">
+                <!-- Open: opening, cash added (when there is some), cash in, cash out -->
+                <div id="statusOpeningCard" class="metric">
+                    <div class="metric-label" data-i18n="ui.cash.opening_balance">Opening balance</div>
+                    <div class="metric-value" id="statusOpeningBalance">₹0</div>
                 </div>
-                <div id="statusCashAddedCard" style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; display: none;">
-                    <div style="opacity: 0.9; margin-bottom: 4px;" data-i18n="ui.cash.cash_added">Cash added</div>
-                    <div style="font-size: 20px; font-weight: bold;" id="statusCashAdded">₹0</div>
+                <div id="statusCashAddedCard" class="metric cash-off">
+                    <div class="metric-label" data-i18n="ui.cash.cash_added">Cash added</div>
+                    <div class="metric-value" id="statusCashAdded">₹0</div>
                 </div>
-                <div id="statusCashInCard" style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px;">
-                    <div style="opacity: 0.9; margin-bottom: 4px;" data-i18n="ui.cash.cash_in">Cash in</div>
-                    <div style="font-size: 20px; font-weight: bold;" id="statusCashIn">₹0</div>
+                <div id="statusCashInCard" class="metric">
+                    <div class="metric-label" data-i18n="ui.cash.cash_in">Cash in</div>
+                    <div class="metric-value" id="statusCashIn">₹0</div>
                 </div>
-                <div id="statusCashOutCard" style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px;">
-                    <div style="opacity: 0.9; margin-bottom: 4px;" data-i18n="ui.cash.cash_out">Cash out</div>
-                    <div style="font-size: 20px; font-weight: bold;" id="statusCashOut">₹0</div>
+                <div id="statusCashOutCard" class="metric">
+                    <div class="metric-label" data-i18n="ui.cash.cash_out">Cash out</div>
+                    <div class="metric-value" id="statusCashOut">₹0</div>
                 </div>
-                <div id="statusAvailableCard" style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px;">
-                    <div style="opacity: 0.9; margin-bottom: 4px;" data-i18n="ui.cash.available_cash">Available cash</div>
-                    <div style="font-size: 20px; font-weight: bold;" id="statusAvailable">₹0</div>
+
+                <!-- Closed: the day's figures, the count and the difference -->
+                <div id="statusBuyCard" class="metric cash-off">
+                    <div class="metric-label"><span class="mode-dot" aria-hidden="true"></span><span data-i18n="ui.cash.purchases_buy">Purchases</span></div>
+                    <div class="metric-value" id="statusBuy">₹0</div>
                 </div>
-                
-                <!-- For signed-out session: Show all 8 cards -->
-                <div id="statusBuyCard" style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; display: none;">
-                    <div style="opacity: 0.9; margin-bottom: 4px;" data-i18n="ui.cash.purchases_buy">Purchases (buy)</div>
-                    <div style="font-size: 20px; font-weight: bold;" id="statusBuy">₹0</div>
+                <div id="statusSaleCard" class="metric cash-off">
+                    <div class="metric-label"><span class="mode-dot sale" aria-hidden="true"></span><span data-i18n="ui.common.sales">Sales</span></div>
+                    <div class="metric-value" id="statusSale">₹0</div>
                 </div>
-                <div id="statusSaleCard" style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; display: none;">
-                    <div style="opacity: 0.9; margin-bottom: 4px;" data-i18n="ui.common.sales">Sales</div>
-                    <div style="font-size: 20px; font-weight: bold;" id="statusSale">₹0</div>
+                <div id="statusOthersCard" class="metric cash-off">
+                    <div class="metric-label" data-i18n="ui.cash.expenses_others">Expenses &amp; others</div>
+                    <div class="metric-value" id="statusOthers">₹0</div>
                 </div>
-                <div id="statusOthersCard" style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; display: none;">
-                    <div style="opacity: 0.9; margin-bottom: 4px;" data-i18n="ui.cash.expenses_others">Expenses & others</div>
-                    <div style="font-size: 20px; font-weight: bold;" id="statusOthers">₹0</div>
+                <div id="statusExpectedCard" class="metric cash-off">
+                    <div class="metric-label" data-i18n="ui.cash.expected_balance">Expected balance</div>
+                    <div class="metric-value" id="statusExpected">₹0</div>
                 </div>
-                <div id="statusExpectedCard" style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; display: none;">
-                    <div style="opacity: 0.9; margin-bottom: 4px;" data-i18n="ui.cash.expected_balance">Expected balance</div>
-                    <div style="font-size: 20px; font-weight: bold;" id="statusExpected">₹0</div>
+                <div id="statusActualCard" class="metric cash-off">
+                    <div class="metric-label" data-i18n="ui.cash.actual_balance">Actual balance</div>
+                    <div class="metric-value" id="statusActual">-</div>
                 </div>
-                <div id="statusActualCard" style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; display: none;">
-                    <div style="opacity: 0.9; margin-bottom: 4px;" data-i18n="ui.cash.actual_balance">Actual balance</div>
-                    <div style="font-size: 20px; font-weight: bold;" id="statusActual">-</div>
-                </div>
-                <div id="statusDiffCard" style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; display: none;">
-                    <div style="opacity: 0.9; margin-bottom: 4px;" data-i18n="ui.cash.difference">Difference</div>
-                    <div style="font-size: 20px; font-weight: bold;" id="statusDiff">-</div>
+                <div id="statusDiffCard" class="metric cash-off">
+                    <div class="metric-label" data-i18n="ui.cash.difference">Difference</div>
+                    <div class="metric-value" id="statusDiff">-</div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Sign In/Out Section -->
-        <div id="cashSignInSection" style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-            <h3 style="margin: 0 0 15px 0; color: #333;" data-i18n="ui.cash.cash_sign_in">Open cash</h3>
-            <div class="form-row">
-                <label data-i18n="ui.cash.opening_cash_amount">Opening cash amount (₹)</label>
-                <input type="number" inputmode="decimal" min="0" id="cashSignInAmount" placeholder="0 if empty" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.cash.enter_cash_amount_you"/>
-                <div id="cashSignInSuggestion" style="display: none; font-size: 12px; color: #6c757d; margin-top: 4px;"></div>
+        <!-- Open cash -->
+        <section id="cashSignInSection" class="panel panel-pad cash-panel" aria-labelledby="cashSignInTitle">
+            <h3 class="cash-title" id="cashSignInTitle" data-i18n="ui.cash.cash_sign_in">Open cash</h3>
+            <div class="cash-form">
+                <div class="field">
+                    <label for="cashSignInAmount" data-i18n="ui.cash.opening_cash_amount">Opening cash</label>
+                    <div class="adorn">
+                        <span class="adorn-pre" aria-hidden="true">₹</span>
+                        <input type="number" class="input" inputmode="decimal" min="0" id="cashSignInAmount" placeholder="0 if empty" data-i18n-placeholder="ui.cash.enter_cash_amount_you"/>
+                    </div>
+                    <div id="cashSignInSuggestion" class="cash-hint cash-off"></div>
+                </div>
+                <div class="field">
+                    <label for="cashSignInNotes" data-i18n="ui.cash.opening_note_optional">Opening note (optional)</label>
+                    <input type="text" class="input" id="cashSignInNotes" maxlength="200" placeholder="e.g., Counted by Ramesh" data-i18n-placeholder="ui.cash.counted_ramesh"/>
+                </div>
+                <button type="button" class="btn btn-primary btn-block" data-cash-save="open" data-onclick="cashManagement.signIn()">
+                    <svg class="i" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span data-i18n="ui.cash.sign_in_today">Open cash for today</span>
+                </button>
             </div>
-            <div class="form-row">
-                <label data-i18n="ui.cash.opening_note_optional">Opening note (optional)</label>
-                <input type="text" id="cashSignInNotes" maxlength="200" placeholder="e.g., Counted by Ramesh" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.cash.counted_ramesh"/>
+        </section>
+
+        <!-- Record a cash entry: cash added, due received, due paid -->
+        <section id="cashDepositSection" class="panel panel-pad cash-panel cash-off" aria-labelledby="cashDepositTitle">
+            <h3 class="cash-title" id="cashDepositTitle" data-i18n="ui.cash.record_cash_transaction">Record cash transaction</h3>
+            <div class="cash-form">
+                <div class="field">
+                    <label for="cashTransactionType" data-i18n="ui.cash.transaction_type">Transaction type</label>
+                    <select id="cashTransactionType" class="input">
+                        <option value="deposit" data-i18n="ui.cash.cash_added">Cash added</option>
+                        <option value="received" data-i18n="ui.cash.due_received">(+) Due received</option>
+                        <option value="paid" data-i18n="ui.cash.due_paid">(-) Due paid</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label id="amountLabel" for="transactionAmount" data-i18n="ui.cash.amount_added">Amount added</label>
+                    <div class="adorn">
+                        <span class="adorn-pre" aria-hidden="true">₹</span>
+                        <input type="number" class="input" inputmode="decimal" id="transactionAmount" placeholder="Enter amount" data-i18n-placeholder="ui.cash.enter_amount"/>
+                    </div>
+                </div>
+
+                <div class="field cash-off" id="customerNameRow">
+                    <label for="partyName" data-i18n="ui.cash.customer_supplier_name">Customer / supplier name</label>
+                    <input type="text" class="input" id="partyName" list="customerOptionsForDue" placeholder="Enter customer name" data-i18n-placeholder="ui.common.enter_customer_name"/>
+                    <datalist id="customerOptionsForDue"></datalist>
+                </div>
+
+                <div class="field cash-off" id="dueBillRow">
+                    <label for="dueBillSelect" data-i18n="ui.cash.bill">Bill</label>
+                    <select id="dueBillSelect" class="input"></select>
+                    <div id="dueBillHint" class="cash-hint"></div>
+                </div>
+
+                <div class="field">
+                    <label id="notesLabel" for="transactionNotes" data-i18n="ui.cash.reason_optional">Reason (optional)</label>
+                    <input type="text" class="input" id="transactionNotes" placeholder="e.g., Cash low, Bill reference, etc." data-i18n-placeholder="ui.cash.cash_low_bill_reference"/>
+                </div>
+
+                <button type="button" class="btn btn-tonal btn-block" data-cash-save="entry" data-onclick="cashManagement.recordTransaction()">
+                    <svg class="i" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span data-i18n="ui.cash.record_transaction">Record transaction</span>
+                </button>
             </div>
-            <button class="save-btn" data-cash-save="open" data-onclick="cashManagement.signIn()" style="width: 100%; padding: 14px; margin-top: 10px; font-size: 16px; font-weight: 600;" data-i18n="ui.cash.sign_in_today">
-                ✓ Open cash for today
-            </button>
-        </div>
+        </section>
 
-        <!-- Cash Transactions (Record Transaction) -->
-        <div id="cashDepositSection" style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: none;">
-            <h3 style="margin: 0 0 15px 0; color: #333;" data-i18n="ui.cash.record_cash_transaction">Record cash transaction</h3>
-            
-            <div class="form-row">
-                <label data-i18n="ui.cash.transaction_type">Transaction type</label>
-                <select id="cashTransactionType" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;">
-                    <option value="deposit" data-i18n="ui.cash.cash_added">Cash added</option>
-                    <option value="received" data-i18n="ui.cash.due_received">(+) Due received</option>
-                    <option value="paid" data-i18n="ui.cash.due_paid">(-) Due paid</option>
-                </select>
-            </div>
-
-            <div class="form-row">
-                <label id="amountLabel"><span data-i18n="ui.expenses.amount">Amount (₹)</span></label>
-                <input type="number" inputmode="decimal" id="transactionAmount" placeholder="Enter amount" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.cash.enter_amount"/>
-            </div>
-
-            <div class="form-row" id="customerNameRow">
-                <label data-i18n="ui.cash.customer_supplier_name">Customer / supplier name</label>
-                <input type="text" id="partyName" list="customerOptionsForDue" placeholder="Enter customer name" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.common.enter_customer_name"/>
-                <datalist id="customerOptionsForDue"></datalist>
-            </div>
-
-            <div class="form-row" id="dueBillRow" style="display: none;">
-                <label data-i18n="ui.cash.bill">Bill</label>
-                <select id="dueBillSelect" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"></select>
-                <div id="dueBillHint" style="font-size: 12px; color: #6c757d; margin-top: 4px;"></div>
-            </div>
-
-            <div class="form-row">
-                <label id="notesLabel"><span data-i18n="ui.cash_management.reason_notes_optional">Reason / notes (optional)</span></label>
-                <input type="text" id="transactionNotes" placeholder="e.g., cash low, bill reference, etc." style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.cash.cash_low_bill_reference"/>
-            </div>
-
-            <button class="save-btn" data-cash-save="entry" data-onclick="cashManagement.recordTransaction()" style="width: 100%; padding: 14px; margin-top: 10px; font-size: 16px; font-weight: 600;" data-i18n="ui.cash.record_transaction">
-                ✓ Record transaction
-            </button>
-        </div>
-
-        <div id="cashSignOutSection" style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: none;">
-            <h3 style="margin: 0 0 15px 0; color: #333;" data-i18n="ui.cash.cash_sign_out">Close cash</h3>
+        <!-- Close cash: the day's sums (C1–C7), the count and its check (C8) -->
+        <section id="cashSignOutSection" class="panel panel-pad cash-panel cash-off" aria-labelledby="cashSignOutTitle">
+            <h3 class="cash-title" id="cashSignOutTitle" data-i18n="ui.cash.cash_sign_out">Close cash</h3>
             <div id="cashLongOpen" class="cash-long-open" role="status" hidden></div>
-            
-            <!-- Transaction Summary -->
-            <div style="margin-bottom: 15px;">
-                <h4 style="margin: 0 0 10px 0; font-size: 15px; color: #495057;" data-i18n="ui.cash.today_s_transactions">Today's transactions</h4>
-                <div style="display: grid; gap: 8px; font-size: 14px;">
-                    
-                    <!-- Cash In Group -->
-                    <div style="background: #d1fae5; padding: 10px; border-radius: 6px; margin-bottom: 4px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                            <span data-i18n="ui.cash.opening_balance_2">Opening balance:</span>
-                            <strong style="color: #6366f1;" id="openingBalanceTotal">₹0</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                            <span data-i18n="ui.cash.cash_added_2">Cash added:</span>
-                            <strong style="color: #10b981;" id="cashDepositsTotal">₹0</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                            <span data-i18n="ui.cash.cash_sales">Cash sales:</span>
-                            <strong style="color: #15803d;" id="cashSalesTotal">₹0</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span data-i18n="ui.common.due_received">Due received:</span>
-                            <strong style="color: #3b82f6;" id="dueReceivedTotal">₹0</strong>
-                        </div>
-                        <div style="border-top: 2px solid #059669; margin-top: 8px; padding-top: 8px; display: flex; justify-content: space-between; font-weight: 600;">
-                            <span data-i18n="ui.cash.total_cash_in">Opening + added + cash in:</span>
-                            <strong style="color: #059669;" id="totalCashIn">₹0</strong>
-                        </div>
-                    </div>
-                    
-                    <!-- Cash Out Group -->
-                    <div style="background: #fee2e2; padding: 10px; border-radius: 6px; margin-bottom: 4px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                            <span data-i18n="ui.cash.cash_purchases">Cash purchases:</span>
-                            <strong style="color: #ef4444;" id="cashPurchasesTotal">₹0</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                            <span data-i18n="ui.common.due_paid">Due paid:</span>
-                            <strong style="color: #b91c1c;" id="duePaidTotal">₹0</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                            <span data-i18n="ui.cash.business_expenses">Business expenses:</span>
-                            <strong style="color: #f97316;" id="cashBusinessExpensesTotal">₹0</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span data-i18n="ui.cash.personal_expenses">Personal expenses:</span>
-                            <strong style="color: #f59e0b;" id="cashPersonalExpensesTotal">₹0</strong>
-                        </div>
-                        <div style="border-top: 2px solid #b91c1c; margin-top: 8px; padding-top: 8px; display: flex; justify-content: space-between; font-weight: 600;">
-                            <span data-i18n="ui.cash.total_cash_out">Total cash out:</span>
-                            <strong style="color: #b91c1c;" id="totalCashOut">₹0</strong>
-                        </div>
-                    </div>
-                    
-                    <!-- Expected Cash -->
-                    <div style="background: linear-gradient(135deg, #5560d6 0%, #764ba2 100%); padding: 12px; border-radius: 8px; margin-top: 4px;">
-                        <div style="display: flex; justify-content: space-between; font-size: 16px;">
-                            <span style="color: white; font-weight: 600;" data-i18n="ui.cash.expected_cash">Expected cash:</span>
-                            <strong style="color: white;" id="expectedCashAmount">₹0</strong>
-                        </div>
-                    </div>
+
+            <h4 class="cash-sub-title" data-i18n="ui.cash.today_s_transactions">Today's transactions</h4>
+            <div class="cash-sum">
+                <div class="cash-sum-group">
+                    <div class="cash-sum-row"><span data-i18n="ui.cash.opening_balance">Opening balance</span><strong id="openingBalanceTotal">₹0</strong></div>
+                    <div class="cash-sum-row"><span data-i18n="ui.cash.cash_added">Cash added</span><strong id="cashDepositsTotal">₹0</strong></div>
+                    <div class="cash-sum-row"><span data-i18n="ui.cash.sales_label">Cash sales</span><strong id="cashSalesTotal">₹0</strong></div>
+                    <div class="cash-sum-row"><span data-i18n="ui.cash.due_received_label">Due received</span><strong id="dueReceivedTotal">₹0</strong></div>
+                    <div class="cash-sum-row cash-sum-total"><span class="cash-sum-in"><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-arrIn"/></svg><span data-i18n="ui.cash.total_in_label">Opening + added + cash in</span></span><strong id="totalCashIn">₹0</strong></div>
+                </div>
+                <div class="cash-sum-group">
+                    <div class="cash-sum-row"><span data-i18n="ui.cash.purchases_label">Cash purchases</span><strong id="cashPurchasesTotal">₹0</strong></div>
+                    <div class="cash-sum-row"><span data-i18n="ui.cash.due_paid_label">Due paid</span><strong id="duePaidTotal">₹0</strong></div>
+                    <div class="cash-sum-row"><span data-i18n="ui.cash.business_label">Business expenses</span><strong id="cashBusinessExpensesTotal">₹0</strong></div>
+                    <div class="cash-sum-row"><span data-i18n="ui.cash.personal_label">Personal expenses</span><strong id="cashPersonalExpensesTotal">₹0</strong></div>
+                    <div class="cash-sum-row cash-sum-total"><span class="cash-sum-out"><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-arrOut"/></svg><span data-i18n="ui.cash.total_out_label">Total cash out</span></span><strong id="totalCashOut">₹0</strong></div>
+                </div>
+                <div class="cash-sum-expected">
+                    <span data-i18n="ui.cash.expected_cash">Expected cash</span>
+                    <strong class="display-num" id="expectedCashAmount">₹0</strong>
                 </div>
             </div>
 
-            <div class="form-row" style="display: flex; align-items: center; gap: 10px;">
-                <label style="white-space: nowrap; margin: 0;" data-i18n="ui.cash.cash_in_hand">Cash in hand (₹)</label>
-                <input type="number" inputmode="decimal" id="cashSignOutAmount" min="0" placeholder="0 if empty" style="flex: 1; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.cash.enter_actual_cash_0"/>
-            </div>
-            
-            <div id="cashDifferenceAlert" style="display: none; padding: 12px; border-radius: 8px; margin: 10px 0; font-weight: 600;"></div>
+            <div class="cash-form">
+                <div class="field">
+                    <label for="cashSignOutAmount" data-i18n="ui.cash.cash_in_hand">Cash in hand</label>
+                    <div class="adorn">
+                        <span class="adorn-pre" aria-hidden="true">₹</span>
+                        <input type="number" class="input" inputmode="decimal" id="cashSignOutAmount" min="0" placeholder="0 if empty" data-i18n-placeholder="ui.cash.enter_actual_cash_0"/>
+                    </div>
+                </div>
 
-            <div class="form-row">
-                <label data-i18n="ui.cash.closing_note_optional">Closing note (optional)</label>
-                <input type="text" id="cashSignOutNotes" maxlength="200" placeholder="e.g., Took ₹2,000 home" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.cash.took_2_000_home"/>
-            </div>
-            
-            <button class="save-btn" data-cash-save="close" data-onclick="cashManagement.signOut()" style="width: 100%; padding: 14px; margin-top: 10px; font-size: 16px; font-weight: 600;" data-i18n="ui.cash.sign_out_close_day">
-                ✓ Close cash & end day
-            </button>
-        </div>
+                <div id="cashDifferenceAlert" class="cash-diff-alert"></div>
 
-        <!-- Today's Cash History -->
-        <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-            <h3 style="margin: 0 0 15px 0; color: #333;" data-i18n="ui.cash.cash_management_history">Cash management history</h3>
-            <div id="cashHistoryList" style="max-height: 400px; overflow-y: auto;"></div>
-        </div>
+                <div class="field">
+                    <label for="cashSignOutNotes" data-i18n="ui.cash.closing_note_optional">Closing note (optional)</label>
+                    <input type="text" class="input" id="cashSignOutNotes" maxlength="200" placeholder="e.g., Took ₹2,000 home" data-i18n-placeholder="ui.cash.took_2_000_home"/>
+                </div>
+
+                <button type="button" class="btn btn-primary btn-block" data-cash-save="close" data-onclick="cashManagement.signOut()">
+                    <svg class="i" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span data-i18n="ui.cash.sign_out_close_day">Close cash and end day</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Cash history -->
+        <section class="panel panel-pad cash-panel" aria-labelledby="cashHistoryTitle">
+            <h3 class="cash-title" id="cashHistoryTitle" data-i18n="ui.cash.cash_management_history">Cash history</h3>
+            <div id="cashHistoryList" class="cash-history-list"></div>
+        </section>
 
     </div>
 </div>

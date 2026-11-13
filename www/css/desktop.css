@@ -317,6 +317,11 @@
     margin-top: 0;
   }
 
+  /* Today › Cash (5.2a): forms keep a readable width */
+  .cash-body {
+    max-width: 760px;
+  }
+
   /* ---------- Generic: wider grids and tables ---------- */
   .stats-grid-2:has(> :nth-child(3)) {
     grid-template-columns: repeat(4, minmax(0, 1fr));

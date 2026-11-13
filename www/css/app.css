@@ -3647,16 +3647,9 @@ html[data-updating] .updating-mark {
   background: var(--btn-primary);
 }
 
-.save-sale-btn,
-.save-btn[data-cash-save="open"],
-.save-btn[data-cash-save="entry"] {
+.save-sale-btn {
   background: var(--btn-success);
   color: var(--btn-sale-ink);
-}
-
-.save-btn[data-cash-save="close"] {
-  background: var(--btn-danger);
-  color: var(--btn-danger-ink);
 }
 
 /* -------------------- PRINT BUTTON -------------------- */
@@ -9694,10 +9687,44 @@ body.dark-mode .item-detail-row:hover {
   margin: 8px 0 0;
 }
 
-/* Today › Cash holds the Cash page's own body (#96); the day page already pads it */
-#dayCashManagementContainer > .cash-body {
-  padding: 0 !important;
+/* ---------- Today › Cash (redesign 5.2a): today's cash, then open / record / close, then the history ---------- */
+/* The Cash page's one body (#96), on the Cash page or inside Today › Cash; the tab pads it */
+.cash-body { display: flex; flex-direction: column; gap: var(--sp-4); }
+.cash-off { display: none; }
+.cash-body .cash-title { margin: 0 0 var(--sp-3); padding: 0; border: 0; color: var(--ink); font-size: var(--fs-body); font-weight: var(--w-strong); }
+.cash-body .cash-status .cash-title { margin-bottom: var(--sp-1); color: var(--ink-3); font-size: var(--fs-sm); font-weight: var(--w-label); }
+
+/* Available cash (C7) as the hero, the day's figures as metrics */
+.cash-hero { padding-bottom: var(--sp-3); }
+.cash-hero-label { color: var(--ink-3); font-size: var(--fs-sm); }
+.cash-hero .hero-num { margin-top: var(--sp-1); color: var(--ink); }
+/* Each figure draws its own top and left hairline (the panel clips the outer ones), so the grid holds whichever figures show */
+.cash-metrics { overflow: hidden; }
+.panel.metrics.cash-metrics > .metric { position: relative; border: 0; }
+.cash-metrics > .metric::before {
+  content: ''; position: absolute; top: -1px; right: 0; bottom: 0; left: -1px; pointer-events: none;
+  border-top: 1px solid var(--line); border-left: 1px solid var(--line);
 }
+
+/* Close cash: in, out and the expected drawer (C1–C7) */
+.cash-body .cash-sub-title { margin: 0 0 var(--sp-1); color: var(--ink-3); font-size: var(--fs-sm); font-weight: var(--w-label); }
+.cash-sum { margin-bottom: var(--sp-4); }
+.cash-sum-group + .cash-sum-group { margin-top: var(--sp-3); }
+.cash-sum-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-1) 0; color: var(--ink-2); font-size: var(--fs-sm); }
+.cash-sum-row strong, .cash-sum-expected strong { color: var(--ink); font-family: var(--font-num); font-weight: var(--w-strong); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cash-sum-total { margin-top: var(--sp-1); padding-top: var(--sp-2); border-top: 1px var(--rule-style) var(--line); color: var(--ink); font-weight: var(--w-label); }
+.cash-sum-in, .cash-sum-out { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.cash-sum-in .i { color: var(--positive); }
+.cash-sum-out .i { color: var(--ink-3); }
+.cash-sum-expected { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--line-strong); color: var(--ink); font-weight: var(--w-label); }
+
+/* Fields: label above, ₹ as a prefix; the script shows a row with display: block, so the spacing doesn't rely on flex */
+.cash-form { display: flex; flex-direction: column; gap: var(--sp-4); }
+.cash-form .field { display: block; }
+.cash-form .field > * + * { margin-top: var(--sp-2); }
+.cash-hint { color: var(--ink-3); font-size: var(--fs-caption); }
+.cash-diff-alert { display: none; padding: var(--sp-3); border-radius: var(--radius); font-weight: var(--w-strong); }
+.cash-history-list { max-height: 400px; overflow-y: auto; }
 
 /* ---------- Today › Summary (redesign 5.1): hero, needs attention, metrics, rows ---------- */
 #dayTodayContent .section-title { margin: var(--section-gap) 0 var(--sp-2); color: var(--ink-3); font-size: var(--fs-sm); font-weight: var(--w-label); }
@@ -9782,7 +9809,7 @@ body.dark-mode .item-detail-row:hover {
 .today-item .row-meta .row-amt { color: var(--ink); }
 
 /* Cash open 14 h or more (C10, Q25 of #111) */
-.cash-long-open { background: var(--warning-soft); border: 1px solid var(--warning-border); color: var(--on-warning-soft); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-weight: var(--w-strong); }
+.cash-long-open { background: var(--warning-soft); border: 1px solid var(--warning-border); color: var(--on-warning-soft); border-radius: var(--radius); padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3); font-weight: var(--w-strong); }
 
 /* Manual reminders (#86) */
 .today-reminder-item { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 14px; padding: 4px 0; }
@@ -11565,6 +11592,11 @@ div.ins-wide,
   #dayTodayContent .today-side .section-title,
   #dayTodayContent .today-main > .section-title:first-child {
     margin-top: 0;
+  }
+
+  /* Today › Cash (5.2a): forms keep a readable width */
+  .cash-body {
+    max-width: 760px;
   }
 
   /* ---------- Generic: wider grids and tables ---------- */
