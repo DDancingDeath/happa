@@ -198,8 +198,10 @@ describe('role-based restrictions', () => {
             <a data-onclick="nav.showTab('money')"></a><a data-onclick="nav.showTab('admin')"></a>
             <a data-onclick="nav.showTab('diagnostics')"></a><a data-onclick="nav.showTab('statements')"></a>
           </nav>
-          <button data-requires-owner id="del"></button><button data-requires-manager id="exp"></button>`;
+          <button data-requires-owner id="del"></button><button data-requires-manager id="exp"></button>
+          <span id="currentUserRole"></span>`;
     });
+    const roleLabel = () => document.getElementById('currentUserRole').textContent;
     const shown = (sel) => document.querySelector(sel).style.display;
 
     test('staff: money/admin/diagnostics/statements hidden, owner/manager buttons disabled', () => {
@@ -219,11 +221,26 @@ describe('role-based restrictions', () => {
         expect(document.getElementById('exp').disabled).toBe(false);
     });
 
-        test('owner: everything visible and enabled', () => {
+    test('owner: everything visible and enabled', () => {
         AppState.userRole = 'owner';
         AuthManager.applyRoleBasedRestrictions();
         expect([...document.querySelectorAll('.nav-menu a')].every(a => !a.hidden)).toBe(true);
         expect(document.getElementById('del').disabled).toBe(false);
+    });
+
+    test('the sidebar names the shop role, else the Rentals role, else nothing', () => {
+        try {
+            for (const [userRole, rentRole, label] of [['owner', undefined, 'Owner'], ['manager', undefined, 'Manager'], ['staff', undefined, 'Member'],
+                ['none', 'manager', 'Manager'], ['none', 'member', 'Member'], ['none', undefined, '']]) {
+                AppState.userRole = userRole;
+                AppState.rentRole = rentRole;
+                AuthManager.applyRoleBasedRestrictions();
+                expect(roleLabel()).toBe(label);
+            }
+            expect(document.getElementById('currentUserRole').hasAttribute('data-i18n')).toBe(false);
+        } finally {
+            delete AppState.rentRole;
+        }
     });
 
     test('Roles & access (#84): the owner\'s choices per role drive pages and sections', () => {

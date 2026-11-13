@@ -6,6 +6,7 @@ import { Helpers } from '../utils/helpers.js';
 import { t } from '../i18n/index.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 import { canOpenPage, hiddenPermissionClasses } from '../utils/role-access.js';
+import { shopRoleOf, rentRoleOf } from '../utils/settings-sections.js';
 import { userProfile, createProfileIfMissing } from '../firebase/repos/users.js';
 import { afterLoginFailure, isStaleBackoff, loginWaitMs, waitParts } from '../utils/login-backoff.js';
 import { safeSetItem } from '../utils/storage-full.js';
@@ -700,9 +701,15 @@ const AuthManager = {
         if (userNameDisplay) userNameDisplay.textContent = AppState.userName || 'User';
         const roleDisplay = document.getElementById('currentUserRole');
         if (roleDisplay) {
-            const roleKey = isOwner ? 'ui.role.owner' : (isOwnerOrManager ? 'ui.role.manager' : 'ui.role.member');
-            roleDisplay.setAttribute('data-i18n', roleKey);
-            roleDisplay.textContent = t(roleKey);
+            // The shop role, else the Rentals role (a Rentals-only user); none: no label and no separator
+            const role = shopRoleOf(AppState.userRole) || rentRoleOf(AppState.userRole, AppState.rentRole);
+            if (role) {
+                roleDisplay.setAttribute('data-i18n', `ui.role.${role}`);
+                roleDisplay.textContent = t(`ui.role.${role}`);
+            } else {
+                roleDisplay.removeAttribute('data-i18n');
+                roleDisplay.textContent = '';
+            }
         }
         
         // Hide/show tabs based on role
