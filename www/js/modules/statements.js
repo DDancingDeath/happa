@@ -18,6 +18,8 @@ import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom } from '../ut
 import { openExternal } from '../utils/open-external.js';
 import { moneySummary } from '../utils/business-metrics.js';
 import { MoneyManager } from './money.js';
+import { moneyHtml } from '../ui/components.js';
+import { icon } from '../ui/icons.js';
 import {
     dayBook, partyLedger, partyChoices, itemLedger, exportLines, accountantLines, ACCOUNTANT_COLUMNS, csvLanguage, readCsvEnglish, writeCsvEnglish, plainLabel, isoMinute
 } from '../utils/statements.js';
@@ -28,7 +30,6 @@ import { Exporter } from '../services/exporter.js';
 import { stampedCsv, stampLine, exportFilename } from '../utils/export-stamp.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
-const money = (v) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? '—' : formatRupees(Number(v)));
 const KINDS = ['day', 'month', 'party', 'item', 'csv', 'accountant'];
 /** Statements only the owner opens: their whole point is the file (#103). */
 const OWNER_KINDS = ['csv', 'accountant'];
@@ -131,7 +132,7 @@ export const StatementsManager = {
     },
 
     duesCaveat(sessions) {
-        return sessions.complete === false ? `<div class="ins-caveat">⚠ ${esc(t('ui.money.caveat_dues'))}</div>` : '';
+        return sessions.complete === false ? `<div class="notice warn ins-caveat">${icon('triangle', 'i-sm')}<span class="sr-only">⚠ </span><span class="grow">${esc(t('ui.money.caveat_dues'))}</span></div>` : '';
     },
 
     /** Section permissions (Roles & access): lines a role may not see are left out of the screen and every export. */
@@ -171,8 +172,8 @@ export const StatementsManager = {
         } else if (this.kind === 'party') {
             const parties = partyChoices(this.src(), this.partyKind);
             if (!this.partyKey || !parties.some(p => p.key === this.partyKey)) this.partyKey = parties[0]?.key || null;
-            html = `<div class="ins-tabs ins-subtabs"><button type="button" class="ins-tab${this.partyKind === 'customer' ? ' active' : ''}" data-onclick="statements.set('partyKind', 'customer')">${esc(t('ui.insights.customers'))}</button>`
-                + `<button type="button" class="ins-tab${this.partyKind === 'supplier' ? ' active' : ''}" data-onclick="statements.set('partyKind', 'supplier')">${esc(t('ui.insights.suppliers'))}</button></div>`
+            html = `<div class="ins-subtabs seg"><button type="button" aria-pressed="${this.partyKind === 'customer'}" data-onclick="statements.set('partyKind', 'customer')">${esc(t('ui.insights.customers'))}</button>`
+                + `<button type="button" aria-pressed="${this.partyKind === 'supplier'}" data-onclick="statements.set('partyKind', 'supplier')">${esc(t('ui.insights.suppliers'))}</button></div>`
                 + `<label>${esc(t('ui.insights.party'))} <select class="form-control" data-onchange="statements.set('partyKey', this.value)">${parties.map(p => `<option value="${esc(p.key)}"${p.key === this.partyKey ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>`;
         } else if (this.kind === 'item') {
             const items = (AppState.items || []).slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
@@ -217,7 +218,7 @@ export const StatementsManager = {
 
     notLoaded(label, from) {
         return {
-            title: label, html: `<div class="ins-empty"><p>${esc(t('ui.money.older_not_loaded', { period: label }))}</p><button type="button" class="btn btn-primary" data-onclick="statements.loadOlder(${Number.isFinite(from) ? from : 'null'})">${esc(t('ui.money.load_older'))}</button></div>`,
+            title: label, html: `<div class="empty"><p>${esc(t('ui.money.older_not_loaded', { period: label }))}</p><button type="button" class="btn btn-primary" data-onclick="statements.loadOlder(${Number.isFinite(from) ? from : 'null'})">${esc(t('ui.money.load_older'))}</button></div>`,
             share: '', csvHeader: [], csvRows: []
         };
     },
@@ -252,17 +253,17 @@ export const StatementsManager = {
         const { rows, totals } = dayBook(this.src(), { from, to }, { personal: perms.personalExpenses, sessions: sessions.list });
         const isToday = this.day === todayLocalISO();
         const timeOf = (r) => (r.t ? formatDayTime(r.t, { lang }).split(', ').pop() : '');
-        const body = rows.map(r => `<tr><td>${esc(timeOf(r))}</td><td>${esc(this.kindLabel(r.kind))}</td><td>${esc([r.billNo, r.party, r.note].filter(Boolean).join(' · '))}</td><td class="num">${money(r.amount)}</td><td class="num">${r.due ? money(r.due) : ''}</td></tr>`).join('');
+        const body = rows.map(r => `<tr><td>${esc(timeOf(r))}</td><td>${esc(this.kindLabel(r.kind))}</td><td>${esc([r.billNo, r.party, r.note].filter(Boolean).join(' · '))}</td><td class="num">${moneyHtml(r.amount)}</td><td class="num">${r.due ? moneyHtml(r.due) : ''}</td></tr>`).join('');
         const tot = [
             ['ui.statements.t_sales', totals.sales, totals.salesCount], ['ui.statements.t_purchases', totals.purchases, totals.purchaseCount],
             ['ui.statements.t_expenses', totals.expenses], ['ui.statements.t_withdrawals', totals.withdrawals],
             ['ui.statements.t_due_received', totals.dueReceived], ['ui.statements.t_due_paid', totals.duePaid]
         ];
-        const html = (isToday ? `<p class="ins-hint"><button type="button" class="ins-link" data-onclick="nav.showTab('day')">${esc(t('ui.statements.today_link'))} ›</button></p>` : '')
+        const html = (isToday ? `<p class="ins-hint"><button type="button" class="btn btn-ghost btn-sm" data-onclick="nav.showTab('day')">${esc(t('ui.statements.today_link'))} ›</button></p>` : '')
             + `<h3 class="st-title">${esc(title)}</h3>`
             + this.duesCaveat(sessions)
-            + `<div class="ins-scroll"><table class="ins-table"><thead><tr><th>${esc(t('ui.statements.time'))}</th><th>${esc(t('ui.statements.what'))}</th><th>${esc(t('ui.statements.details'))}</th><th class="num">${esc(t('ui.money.amount'))}</th><th class="num">${esc(t('ui.statements.due'))}</th></tr></thead><tbody>${body || `<tr><td colspan="5">${esc(t('ui.statements.nothing'))}</td></tr>`}</tbody></table></div>`
-            + (isToday ? '' : `<div class="st-totals">${tot.map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.statements.t_sales' ? 'M1' : k === 'ui.statements.t_purchases' ? 'M16' : 'M4'}">${money(v)}</span></div>`).join('')}</div>`);
+            + `<div class="ins-scroll"><table class="table"><thead><tr><th>${esc(t('ui.statements.time'))}</th><th>${esc(t('ui.statements.what'))}</th><th>${esc(t('ui.statements.details'))}</th><th class="num">${esc(t('ui.money.amount'))}</th><th class="num">${esc(t('ui.statements.due'))}</th></tr></thead><tbody>${body || `<tr><td colspan="5">${esc(t('ui.statements.nothing'))}</td></tr>`}</tbody></table></div>`
+            + (isToday ? '' : `<div class="st-totals">${tot.map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.statements.t_sales' ? 'M1' : k === 'ui.statements.t_purchases' ? 'M16' : 'M4'}">${Number.isFinite(Number(v)) ? esc(formatRupees(Number(v))) : '—'}</span></div>`).join('')}</div>`);
         let share = [title, ...tot.map(([k, v]) => `${t(k)}: ${formatRupees(v)}`)].join('\n');
         // Today's totals have one home (Today); today's day book lists the bills only.
         if (isToday) share = [title, ...rows.map(r => [timeOf(r), this.kindLabel(r.kind), r.billNo, r.party, r.note, formatRupees(r.amount)].filter(Boolean).join(' · '))].join('\n');
@@ -294,26 +295,26 @@ export const StatementsManager = {
         ].filter(([, , , perm]) => !perm || perms[perm]);
         const caveats = perms.profit ? m.caveats : m.caveats.filter(c => c.key === 'dues');
         const html = `<h3 class="st-title">${esc(title)}</h3>`
-            + lines.map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="${perm}"` : ''}><span>${esc(t(k))}</span><span${id ? ` data-metric-export="${id}"` : ''}>${money(v)}</span></div>`).join('')
-            + caveats.map(c => `<div class="ins-caveat"${c.key === 'dues' ? '' : ' data-perm="profit"'}>⚠ ${esc(t(`ui.money.caveat_${c.key}`, { qty: c.qty, amount: formatAmount(c.estimate ?? c.amount ?? c.gap ?? 0) }))}</div>`).join('');
+            + lines.map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="${perm}"` : ''}><span>${esc(t(k))}</span><span${id ? ` data-metric-export="${id}"` : ''}>${moneyHtml(v)}</span></div>`).join('')
+            + caveats.map(c => `<div class="notice warn ins-caveat"${c.key === 'dues' ? '' : ' data-perm="profit"'}>${icon('triangle', 'i-sm')}<span class="sr-only">⚠ </span><span class="grow">${esc(t(`ui.money.caveat_${c.key}`, { qty: c.qty, amount: formatAmount(c.estimate ?? c.amount ?? c.gap ?? 0) }))}</span></div>`).join('');
         const share = [title, ...lines.map(([k, v]) => `${plainLabel(t(k))}: ${v === null ? '—' : formatRupees(v)}`)].join('\n');
         return { title, html, share, csvHeader: [t('ui.statements.what', null, cl), t('ui.money.amount', null, cl)], csvRows: lines.map(([k, v]) => [plainLabel(t(k, null, cl)), v === null ? '' : v]) };
     },
 
     renderParty() {
         const lang = getLang();
-        if (!this.partyKey) return { title: t('ui.statements.party'), html: `<p class="ins-empty-text">${esc(t('ui.insights.no_parties'))}</p>`, share: '', csvHeader: [], csvRows: [] };
+        if (!this.partyKey) return { title: t('ui.statements.party'), html: `<p class="empty">${esc(t('ui.insights.no_parties'))}</p>`, share: '', csvHeader: [], csvRows: [] };
         const l = partyLedger(this.src(), this.partyKey, this.partyKind);
         const title = `${t('ui.statements.party')} · ${l.name}`;
         const matches = Math.abs(l.closing - l.due) <= 1;
         const word = (v) => t(this.partyKind === 'supplier' ? 'ui.statements.to_pay' : 'ui.statements.to_receive', { amount: formatRupees(Math.abs(v)) });
-        const body = l.rows.map(r => `<tr><td>${esc(formatDay(r.t, { lang }))}</td><td>${esc([this.kindLabel(r.kind), r.billNo].filter(Boolean).join(' · '))}</td><td class="num">${r.debit ? money(r.debit) : ''}</td><td class="num">${r.credit ? money(r.credit) : ''}</td><td class="num">${money(r.balance)}</td></tr>`).join('');
-        const loadedNote = isFullHistoryLoaded() ? '' : `<p class="ins-hint">${esc(t('ui.statements.loaded_only'))} <button type="button" class="ins-link" data-onclick="statements.loadOlder(null)">${esc(t('ui.money.load_older'))}</button></p>`;
+        const body = l.rows.map(r => `<tr><td>${esc(formatDay(r.t, { lang }))}</td><td>${esc([this.kindLabel(r.kind), r.billNo].filter(Boolean).join(' · '))}</td><td class="num">${r.debit ? moneyHtml(r.debit) : ''}</td><td class="num">${r.credit ? moneyHtml(r.credit) : ''}</td><td class="num">${moneyHtml(r.balance)}</td></tr>`).join('');
+        const loadedNote = isFullHistoryLoaded() ? '' : `<p class="ins-hint">${esc(t('ui.statements.loaded_only'))} <button type="button" class="btn btn-ghost btn-sm" data-onclick="statements.loadOlder(null)">${esc(t('ui.money.load_older'))}</button></p>`;
         const html = `<h3 class="st-title">${esc(title)}</h3>`
-            + `<div class="ins-hero st-balance"><div class="ins-hero-label">${esc(t('ui.statements.balance'))}</div><div class="ins-hero-value" data-metric-export="O4">${esc(word(l.closing))}</div>`
-            + `<div class="ins-compare">${matches ? `✓ ${esc(t('ui.statements.matches_outstanding'))}` : `⚠ ${esc(t('ui.statements.differs_outstanding', { amount: formatRupees(l.due) }))}`}</div></div>`
+            + `<div class="ins-hero st-balance"><div class="ins-hero-label">${esc(t('ui.statements.balance'))}</div><div class="ins-hero-value display-num" data-metric-export="O4">${esc(word(l.closing))}</div>`
+            + `<div class="notice ${matches ? 'pos' : 'warn'} st-match">${matches ? `${icon('check', 'i-sm')}<span class="grow"><span class="sr-only">✓ </span>${esc(t('ui.statements.matches_outstanding'))}</span>` : `${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>${esc(t('ui.statements.differs_outstanding', { amount: formatRupees(l.due) }))}</span>`}</div></div>`
             + loadedNote
-            + `<div class="ins-scroll"><table class="ins-table"><thead><tr><th>${esc(t('ui.statements.date'))}</th><th>${esc(t('ui.statements.what'))}</th><th class="num">${esc(t(this.partyKind === 'supplier' ? 'ui.statements.bought_col' : 'ui.statements.sold_col'))}</th><th class="num">${esc(t('ui.statements.paid_col'))}</th><th class="num">${esc(t('ui.statements.balance'))}</th></tr></thead><tbody>${body || `<tr><td colspan="5">${esc(t('ui.statements.nothing'))}</td></tr>`}</tbody></table></div>`;
+            + `<div class="ins-scroll"><table class="table"><thead><tr><th>${esc(t('ui.statements.date'))}</th><th>${esc(t('ui.statements.what'))}</th><th class="num">${esc(t(this.partyKind === 'supplier' ? 'ui.statements.bought_col' : 'ui.statements.sold_col'))}</th><th class="num">${esc(t('ui.statements.paid_col'))}</th><th class="num">${esc(t('ui.statements.balance'))}</th></tr></thead><tbody>${body || `<tr><td colspan="5">${esc(t('ui.statements.nothing'))}</td></tr>`}</tbody></table></div>`;
         const share = [title, word(l.closing), ...l.rows.slice(-10).map(r => `${formatDay(r.t, { lang })} ${this.kindLabel(r.kind)} ${r.billNo} ${r.debit ? `+${formatRupees(r.debit)}` : `−${formatRupees(r.credit)}`} = ${formatRupees(r.balance)}`)].join('\n');
         const cl = this.csvLang();
         const tc = (k) => t(k, null, cl);
@@ -325,7 +326,7 @@ export const StatementsManager = {
     renderItem() {
         const lang = getLang();
         const item = (AppState.items || []).find(i => i.id === this.itemKey);
-        if (!item) return { title: t('ui.statements.item'), html: `<p class="ins-empty-text">${esc(t('ui.statements.nothing'))}</p>`, share: '', csvHeader: [], csvRows: [] };
+        if (!item) return { title: t('ui.statements.item'), html: `<p class="empty">${esc(t('ui.statements.nothing'))}</p>`, share: '', csvHeader: [], csvRows: [] };
         const name = lang === 'hi' ? item.hindiName || item.name : item.name;
         const title = `${t('ui.statements.item')} · ${name}`;
         if (!isFullHistoryLoaded()) {
@@ -342,14 +343,14 @@ export const StatementsManager = {
         const rateOf = (r) => (r.kind === 'purchase' && !perms.purchaseRates ? '' : r.rate);
         const body = l.rows.map(r => {
             const below = r.belowCost && perms.profit;
-            return `<tr${below || r.beforeBought ? ' class="st-flag"' : ''}><td>${esc(r.t ? formatDay(r.t, { lang }) : '')}</td><td>${esc([this.kindLabel(r.kind), r.billNo, r.party].filter(Boolean).join(' · '))}${below ? ` ⚠ <span data-perm="profit">${esc(t('ui.statements.below_cost'))}</span>` : ''}${r.beforeBought ? ` ⚠ ${esc(t('ui.statements.before_bought'))}` : ''}</td><td class="num">${r.qty > 0 ? '+' : ''}${formatKg(r.qty)}</td><td class="num">${formatKg(r.balanceQty)}</td>${showCost ? `<td class="num" data-perm="purchaseRates">${formatAmount(r.avgCost, { decimals: 2 })}</td>` : ''}</tr>`;
+            return `<tr${below || r.beforeBought ? ' class="st-flag"' : ''}><td>${esc(r.t ? formatDay(r.t, { lang }) : '')}</td><td>${esc([this.kindLabel(r.kind), r.billNo, r.party].filter(Boolean).join(' · '))}${below ? ` <span class="tone-warn" data-perm="profit">${icon('triangle', 'i-sm')}<span class="sr-only">⚠ </span>${esc(t('ui.statements.below_cost'))}</span>` : ''}${r.beforeBought ? ` <span class="tone-warn">${icon('triangle', 'i-sm')}<span class="sr-only">⚠ </span>${esc(t('ui.statements.before_bought'))}</span>` : ''}</td><td class="num">${r.qty > 0 ? '+' : ''}${formatKg(r.qty)}</td><td class="num">${formatKg(r.balanceQty)}</td>${showCost ? `<td class="num" data-perm="purchaseRates">${formatAmount(r.avgCost, { decimals: 2 })}</td>` : ''}</tr>`;
         }).join('');
         const closing = perms.stockValue && perms.purchaseRates
             ? t('ui.statements.kg_at', { kg: formatKg(l.closing.qty), rate: formatAmount(l.closing.rate, { decimals: 2 }), value: formatRupees(l.closing.value) })
             : t('ui.statements.kg_left', { kg: formatKg(l.closing.qty) });
         const html = `<h3 class="st-title">${esc(title)}</h3>`
             + `<div class="ins-row ins-total"><span>${esc(t('ui.statements.closing_stock'))}</span><span data-metric-export="S4"${perms.stockValue ? ' data-perm="stockValue"' : ''}>${esc(closing)}</span></div>`
-            + `<div class="ins-scroll"><table class="ins-table"><thead><tr><th>${esc(t('ui.statements.date'))}</th><th>${esc(t('ui.statements.what'))}</th><th class="num">${esc(t('ui.insights.kg'))}</th><th class="num">${esc(t('ui.statements.stock_kg'))}</th>${showCost ? `<th class="num" data-perm="purchaseRates">${esc(t('ui.statements.avg_cost'))}</th>` : ''}</tr></thead><tbody>${body || `<tr><td colspan="5">${esc(t('ui.statements.nothing'))}</td></tr>`}</tbody></table></div>`;
+            + `<div class="ins-scroll"><table class="table"><thead><tr><th>${esc(t('ui.statements.date'))}</th><th>${esc(t('ui.statements.what'))}</th><th class="num">${esc(t('ui.insights.kg'))}</th><th class="num">${esc(t('ui.statements.stock_kg'))}</th>${showCost ? `<th class="num" data-perm="purchaseRates">${esc(t('ui.statements.avg_cost'))}</th>` : ''}</tr></thead><tbody>${body || `<tr><td colspan="5">${esc(t('ui.statements.nothing'))}</td></tr>`}</tbody></table></div>`;
         const share = [title, closing].join('\n');
         const csvHeader = [tc('ui.statements.date'), tc('ui.statements.what'), tc('ui.statements.bill_no'), tc('ui.insights.party'), tc('ui.insights.kg'), tc('ui.statements.rate'), tc('ui.statements.stock_kg'), ...(showCost ? [tc('ui.statements.avg_cost')] : [])];
         const csvRows = l.rows.map(r => [r.t ? toLocalISODate(new Date(r.t)) : '', this.kindLabel(r.kind, cl), r.billNo, r.party, r.qty, rateOf(r), r.balanceQty, ...(showCost ? [r.avgCost] : [])]);

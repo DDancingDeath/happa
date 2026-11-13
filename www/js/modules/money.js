@@ -41,6 +41,8 @@ import { dataSignature } from '../utils/render-memo.js';
 import { openExternal } from '../utils/open-external.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 import { PrinterService } from '../services/printer.js';
+import { moneyHtml } from '../ui/components.js';
+import { icon } from '../ui/icons.js';
 import {
     compareBarHtml, writeBar, compareTableHtml, compareTarget, choosePreset, chooseCompare, applyDates, applySaved,
     saveCurrentRange, removeCurrentRange, periodText, presetSelectValue, summaryLines, summaryText, summaryCanvas, toggleCompareBar
@@ -48,6 +50,8 @@ import {
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
 const money = (v) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : formatRupees(v, { trueMinus: true }));
+/** Money's on-screen minus is the true minus (−₹500). */
+const TM = { trueMinus: true };
 const SECTIONS = ['profit', 'cash', 'spending', 'worth'];
 const SESSION_TTL_MS = 10 * 60 * 1000;
 const ACCOUNTS_KEY = 'financeCustomAccounts';
@@ -79,7 +83,7 @@ export function takeawayParams(params) {
 export function takeawayHtml(list) {
     return (list || []).map(x => {
         const text = esc(t(x.key, takeawayParams(x.params)));
-        const link = x.link && routeAvailable(x.link) ? ` <button type="button" class="ins-link" data-go="${esc(x.link)}">${esc(t('ui.money.open'))} ›</button>` : '';
+        const link = x.link && routeAvailable(x.link) ? ` <button type="button" class="btn btn-ghost btn-sm" data-go="${esc(x.link)}">${esc(t('ui.money.open'))} ›</button>` : '';
         return `<p>${text}${link}</p>`;
     }).join('');
 }
@@ -134,7 +138,7 @@ export function barsSvg(values, { faint = null, labels = [], height = 120, onTap
     }
     const ticks = labels.map((l, i) => (l && l.tick ? `<text x="${((i + 0.5) * w).toFixed(2)}%" y="${height - 2}" class="ins-tick">${esc(l.tick)}</text>` : '')).join('');
     // Only the last-year line is stretched; bars and labels use % / px so the text keeps its shape.
-    return `<svg class="ins-svg" width="100%" height="${height}" role="img" style="height:${height}px">`
+    return `<svg class="ins-svg" width="100%" height="${height}" role="img" style="--h:${height}px">`
         + `<line class="ins-axis" x1="0" x2="100%" y1="${zero}" y2="${zero}"/>${bars}${line}${ticks}</svg>`;
 }
 
@@ -498,7 +502,7 @@ export const MoneyManager = {
         this.showBody(false);
         this.renderCompare(null, null, {});
         this.lastSummary = null;
-        this.html('moneyNotLoaded', `<div class="ins-empty"><p>${esc(t('ui.money.older_not_loaded', { period: this.periodLabel(r) }))}</p>`
+        this.html('moneyNotLoaded', `<div class="empty"><p>${esc(t('ui.money.older_not_loaded', { period: this.periodLabel(r) }))}</p>`
             + `<button type="button" class="btn btn-primary" data-onclick="money.loadOlder()">${esc(t('ui.money.load_older'))}</button></div>`);
         this.html('moneyChecks', '');
     },
@@ -562,7 +566,7 @@ export const MoneyManager = {
         const list = (m.caveats || []).filter(c => c.ids.some(id => ids.includes(id)));
         return list.map(c => {
             const params = { qty: c.qty, amount: formatAmount(c.estimate ?? c.amount ?? c.gap ?? 0) };
-            return `<div class="ins-caveat">⚠ ${esc(t(`ui.money.caveat_${c.key}`, params))}</div>`;
+            return `<div class="notice warn ins-caveat">${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>${esc(t(`ui.money.caveat_${c.key}`, params))}</span></div>`;
         }).join('');
     },
 
@@ -572,7 +576,7 @@ export const MoneyManager = {
         const estimate = m.caveats.some(c => c.key === 'uncosted');
         this.text('moneyProfitLabel', t(estimate ? 'ui.money.profit_estimate' : 'ui.money.profit'));
         this.text('moneyProfitEqLabel', t(estimate ? 'ui.money.profit_eq_estimate' : 'ui.money.profit_eq'));
-        this.text('moneyProfitValue', money(m.M6.total));
+        this.html('moneyProfitValue', moneyHtml(m.M6.total, TM));
         this.html('moneyProfitCompare', compareHtml([vsItem(m.M6.total, prev?.M6, labels.prev), vsItem(m.M6.total, ly?.M6, labels.ly), vsB(m.M6.total, b?.M6, labels)]));
         const onProfit = this.section === 'profit';
         const driverRows = onProfit ? this.itemDriver(m, r) : null;
@@ -587,16 +591,16 @@ export const MoneyManager = {
             noSales
         })));
         this.html('moneyProfitCaveats', this.caveatsHtml(m, ['M2', 'M6']));
-        this.text('moneySales', money(m.M1.total));
+        this.html('moneySales', moneyHtml(m.M1.total, TM));
         const splitLink = routeAvailable('insights-items')
-            ? ` <button type="button" class="ins-link" data-go="insights-items" data-metric-ref="I2">${esc(t('ui.money.split_link'))} ›</button>` : '';
+            ? ` <button type="button" class="btn btn-ghost btn-sm" data-go="insights-items" data-metric-ref="I2">${esc(t('ui.money.split_link'))} ›</button>` : '';
         this.html('moneySalesSplit', `<span data-metric-ref="M1">${esc(tn('ui.money.bills', m.M1.count))}</span>${splitLink}`);
-        this.text('moneyCogs', money(m.M2));
-        this.text('moneyGross', m.M3.total === null ? '—' : `${money(m.M3.total)}${m.M3.per100 !== null ? ` · ${t('ui.money.per100', { value: roundTo(m.M3.per100, 1) })}` : ''}`);
-        this.text('moneyBusinessTerm', money(m.M4.total));
-        this.text('moneyBadDebts', money(m.M5));
-        this.text('moneyProfitTerm', money(m.M6.total));
-        this.text('moneyPurchases', `${money(m.M16.total)} · ${tn('ui.money.bills', m.M16.count)}`);
+        this.html('moneyCogs', moneyHtml(m.M2, TM));
+        this.html('moneyGross', m.M3.total === null ? '—' : `${moneyHtml(m.M3.total, TM)}${m.M3.per100 !== null ? esc(` · ${t('ui.money.per100', { value: roundTo(m.M3.per100, 1) })}`) : ''}`);
+        this.html('moneyBusinessTerm', moneyHtml(m.M4.total, TM));
+        this.html('moneyBadDebts', moneyHtml(m.M5, TM));
+        this.html('moneyProfitTerm', moneyHtml(m.M6.total, TM));
+        this.html('moneyPurchases', `${moneyHtml(m.M16.total, TM)}${esc(` · ${tn('ui.money.bills', m.M16.count)}`)}`);
         this.renderStockMovement(m);
         if (onProfit) this.renderProfitChart(m, r, now);
     },
@@ -615,14 +619,14 @@ export const MoneyManager = {
 
     renderStockMovement(m) {
         const s = m.M17;
-        if (!s) { this.html('moneyStockMovement', `<p class="ins-hint">${esc(t('ui.money.caveat_history'))}</p>`); return; }
-        const row = (k, v, card) => `<div class="ins-row ins-tap" data-breakdown="${card}" role="button" tabindex="0"><span>${esc(t(k))}</span><span>${money(v)}</span></div>`;
+        if (!s) { this.html('moneyStockMovement', `<p class="empty">${esc(t('ui.money.caveat_history'))}</p>`); return; }
+        const row = (k, v, card) => `<div class="row ins-row ins-tap" data-breakdown="${card}" role="button" tabindex="0"><span class="row-main">${esc(t(k))}</span><span class="row-amt">${esc(money(v))}</span></div>`;
         this.html('moneyStockMovement', row('ui.money.opening_stock', s.opening, 'stockOpening')
             + row('ui.money.plus_bought', s.purchases, 'stockPurchases')
             + row('ui.money.cogs_minus', s.cogs, 'cogs')
             + row('ui.money.corrections', s.adjustments, 'stockAdjustments')
             + row('ui.money.closing_stock', s.closing, 'stockClosing')
-            + (Math.abs(s.gap) > 1 ? `<div class="ins-caveat ins-tap" data-breakdown="stockCheck" role="button" tabindex="0">⚠ ${esc(t('ui.money.caveat_gap', { amount: formatAmount(s.gap) }))}</div>` : `<div class="ins-ok">✓ ${esc(t('ui.money.check_ok'))}</div>`));
+            + (Math.abs(s.gap) > 1 ? `<div class="notice warn ins-caveat ins-stock-note ins-tap" data-breakdown="stockCheck" role="button" tabindex="0">${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>${esc(t('ui.money.caveat_gap', { amount: formatAmount(s.gap) }))}</span></div>` : `<div class="notice pos ins-stock-note">${icon('check', 'i-sm')}<span class="grow"><span class="sr-only">✓ </span>${esc(t('ui.money.check_ok'))}</span></div>`));
     },
 
     /** M11: 13 months of profit, last year as a faint line. */
@@ -648,17 +652,17 @@ export const MoneyManager = {
         const stale = [...keys, ...keys.map(lyKey), ...cmpKeys].some(k => this.snapshots[k]?.stale);
         const canBuild = this.writesSnapshots();
         this.html('moneyBuildHistory', (missing || stale) && canBuild
-            ? `<p class="ins-hint">${esc(t(stale ? 'ui.money.stale_hint' : 'ui.money.build_hint'))}</p><button type="button" class="btn btn-secondary" ${this.building ? 'disabled' : ''} data-onclick="money.buildHistory()">${esc(t(this.building ? 'ui.money.building' : 'ui.money.build_history'))}</button>`
+            ? `<p class="ins-hint">${esc(t(stale ? 'ui.money.stale_hint' : 'ui.money.build_hint'))}</p><button type="button" class="btn btn-sm" ${this.building ? 'disabled' : ''} data-onclick="money.buildHistory()">${esc(t(this.building ? 'ui.money.building' : 'ui.money.build_history'))}</button>`
             : '');
     },
 
     renderCash({ m, prev, ly, b, labels, r }) {
-        this.text('moneyNetCash', money(m.M14));
+        this.html('moneyNetCash', moneyHtml(m.M14, TM));
         this.html('moneyCashCompare', compareHtml([vsItem(m.M14, prev?.M14, labels.prev), vsItem(m.M14, ly?.M14, labels.ly), vsB(m.M14, b?.M14, labels)]));
         this.html('moneyCashTakeaway', takeawayHtml(cashTakeaways({ net: m.M14, out: m.M13 })));
         this.html('moneyCashCaveats', this.caveatsHtml(m, ['M12', 'M14']));
-        this.text('moneyIn', money(m.M12.total));
-        this.text('moneyOut', money(m.M13.total));
+        this.html('moneyIn', moneyHtml(m.M12.total, TM));
+        this.html('moneyOut', moneyHtml(m.M13.total, TM));
         this.html('moneyInSplit', `<span data-metric-ref="M12">${esc(t('ui.money.cash_online', { cash: formatRupees(m.M12.cash), online: formatRupees(m.M12.online) }))}</span>`);
         this.html('moneyOutSplit', `<span data-metric-ref="M13">${esc(t('ui.money.cash_online', { cash: formatRupees(m.M13.cash), online: formatRupees(m.M13.online) }))}</span>`);
         // Day by day (net money in, M14 per day), only for a month.
@@ -671,7 +675,7 @@ export const MoneyManager = {
     },
 
     renderSpending({ m, prev, ly, b, labels, r }) {
-        this.text('moneyBusiness', money(m.M4.total));
+        this.html('moneyBusiness', moneyHtml(m.M4.total, TM));
         const vsLy = change(m.M4.total, ly?.M4 ?? null);
         this.html('moneySpendCompare', compareHtml([vsItem(m.M4.total, prev?.M4, labels.prev), vsItem(m.M4.total, ly?.M4, labels.ly), vsB(m.M4.total, b?.M4, labels)]));
         const cats = m.M4.byCategory || [];
@@ -685,11 +689,11 @@ export const MoneyManager = {
         this.html('moneySpendCaveats', this.caveatsHtml(m, ['M4']));
         const max = Math.max(1, ...cats.map(c => c.total));
         this.html('moneyCategories', cats.length
-            ? cats.map(c => `<div class="ins-barrow ins-tap" data-breakdown="business" role="button" tabindex="0"><span class="ins-barname">${esc(catName(c.category))}</span><span class="ins-bartrack"><span class="ins-barfill" style="width:${sharePct(c.total, max)}%"></span></span><span class="ins-barval">${money(c.total)}</span></div>`).join('')
-            : `<p class="ins-empty-text">${esc(t('ui.money.no_expenses'))}</p>`);
-        this.text('moneyPersonal', money(m.M8.total));
-        this.text('moneyWithdrawn', money(m.M9));
-        this.text('moneyKept', money(m.M10));
+            ? cats.map(c => `<div class="ins-barrow ins-tap" data-breakdown="business" role="button" tabindex="0"><span class="ins-barname">${esc(catName(c.category))}</span><span class="ins-bartrack"><span class="ins-barfill" style="--w:${sharePct(c.total, max)}%"></span></span><span class="ins-barval">${moneyHtml(c.total, TM)}</span></div>`).join('')
+            : `<p class="empty">${esc(t('ui.money.no_expenses'))}</p>`);
+        this.html('moneyPersonal', moneyHtml(m.M8.total, TM));
+        this.html('moneyWithdrawn', moneyHtml(m.M9, TM));
+        this.html('moneyKept', moneyHtml(m.M10, TM));
         this.renderWithdrawals(m);
         this.renderLabour(r);
     },
@@ -704,14 +708,14 @@ export const MoneyManager = {
         const { deducted } = labourSummary(bills, settings);
         const { laborRate: rate, labourPackageKg: packageKg } = normalizeLabourSettings(settings);
         const toPay = { ...labourToPayByDay(bills, settings, b => { const t = billTime(b); return t === null ? null : toLocalISODate(new Date(t)); }), packageKg, rate };
-        this.text('moneyLabour', money(deducted.amount));
+        this.html('moneyLabour', moneyHtml(deducted.amount, TM));
         this.text('moneyLabourBills', tn('ui.today.labour_deducted_bills', deducted.bills));
         const paid = labourPaidIn(AppState.expensesHistory || [], r.from, r.to);
         const paidGap = labourPaidGap(paid.amount, deducted.amount);
-        this.text('moneyLabourPaid', money(paid.amount));
+        this.html('moneyLabourPaid', moneyHtml(paid.amount, TM));
         this.text('moneyLabourPaidCount', tn('ui.today.labour_paid_count', paid.count));
         this.text('moneyLabourPaidDiff', t({ same: 'ui.today.labour_paid_same', more: 'ui.today.labour_paid_more', less: 'ui.today.labour_paid_less' }[paidGap.kind], { amount: formatRupees(paidGap.amount) }));
-        this.text('moneyLabourToPay', money(toPay.amount));
+        this.html('moneyLabourToPay', moneyHtml(toPay.amount, TM));
         this.text('moneyLabourCalc', labourCalcText(toPay, 'ui.money.labour_to_pay_calc'));
         const gap = periodLabourGap(toPay.amount, deducted.amount);
         const key = { same: 'ui.today.labour_same', more: 'ui.today.labour_more', less: 'ui.today.labour_less' }[gap.kind];
@@ -723,8 +727,8 @@ export const MoneyManager = {
         const rows = (m.detail?.withdrawn || []).slice().sort((a, b) => (b.t || 0) - (a.t || 0));
         const lang = getLang();
         this.html('moneyWithdrawalList', rows.length
-            ? rows.map(w => `<div class="ins-row"><span>${esc(w.party || '—')}${w.note ? ` · ${esc(w.note)}` : ''}<br><small>${esc(formatDay(w.t, { lang }))}</small>${SyncStatus.chipHtml(w.id)}</span><span>${money(w.amount)}</span></div>`).join('')
-            : `<p class="ins-empty-text">${esc(t('ui.money.no_withdrawals'))}</p>`);
+            ? rows.map(w => `<div class="row"><span class="row-main"><span class="row-title">${esc(w.party || '—')}${w.note ? ` · ${esc(w.note)}` : ''}</span><span class="row-meta">${esc(formatDay(w.t, { lang }))}${SyncStatus.chipHtml(w.id)}</span></span><span class="row-amt">${moneyHtml(w.amount, TM)}</span></div>`).join('')
+            : `<p class="empty">${esc(t('ui.money.no_withdrawals'))}</p>`);
         const people = [...new Set((AppState.withdrawalsHistory || []).map(w => w.person).filter(Boolean))];
         this.html('moneyWdPeople', people.map(p => `<option value="${esc(p)}">`).join(''));
     },
@@ -909,7 +913,7 @@ export const MoneyManager = {
         const accounts = seeAccounts ? this.accountsTotal() : 0;
         const worth = netWorth({ stock, receivable: dues.receivable.total, payable: dues.payable.total, accounts, drawer: drawer.amount }, cfg);
         const seeStock = this.can('stockValue');
-        this.text('moneyWorthValue', seeStock ? money(worth) : '—');
+        this.html('moneyWorthValue', seeStock ? moneyHtml(worth, TM) : '—');
         const lyMonth = monthStart(now, -12);
         const lyClose = figuresFromSnapshot(this.snapshots[monthKeyOf(lyMonth.getTime())])?.closing;
         const sinceLabel = formatMonth(lyMonth, { lang: getLang() });
@@ -919,33 +923,33 @@ export const MoneyManager = {
         this.html('moneyWorthTakeaway', seeStock ? takeawayHtml(worthTakeaways({ worth, change: null, receivable: dues.receivable.total, sinceLabel, accountsKnown: accounts !== null || !cfg.netWorthTerms.includes('accounts') })) : '');
         const drawerWhy = drawerKnown ? '' : t(`ui.money.drawer_${drawer.state}`, { days: DRAWER_MAX_AGE_DAYS });
         this.html('moneyWorthCaveats', seeStock && worth !== null && cfg.netWorthTerms.includes('drawer') && !drawerKnown
-            ? `<div class="ins-caveat">⚠ ${esc(t('ui.money.worth_no_drawer', { why: drawerWhy }))}</div>` : '');
-        const go = (link) => `<button type="button" class="ins-link" data-go="${esc(link)}">${esc(t(`ui.money.home_${link.replace(/-/g, '_')}`))} ›</button>`;
-        const term = (label, value, link, ref) => `<div class="ins-row"><span>${esc(t(label))}</span><span><span${ref ? ` data-metric-ref="${ref}"` : ''}>${money(value)}</span> ${go(link)}</span></div>`;
+            ? `<div class="notice warn ins-caveat">${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>${esc(t('ui.money.worth_no_drawer', { why: drawerWhy }))}</span></div>` : '');
+        const go = (link) => `<button type="button" class="btn btn-ghost btn-sm" data-go="${esc(link)}">${esc(t(`ui.money.home_${link.replace(/-/g, '_')}`))} ›</button>`;
+        const term = (label, value, link, ref) => `<div class="row ins-row"><span class="row-main">${esc(t(label))}</span><span class="row-trail"><span class="row-amt"${ref ? ` data-metric-ref="${ref}"` : ''}>${moneyHtml(value, TM)}</span> ${go(link)}</span></div>`;
         // C9 not known (loading, not loaded, no count in 30 days): "—" and why, never ₹0 (#92)
-        const drawerRow = `<div class="ins-row" data-drawer="${esc(drawer.state)}"><span>${esc(t(drawerKnown ? 'ui.money.drawer_last' : 'ui.money.drawer_cash'))}`
-            + `${drawerKnown ? '' : `<br><small>${esc(drawerWhy)}</small>`}</span>`
-            + `<span><span data-metric-ref="C9">${drawerKnown ? money(drawer.amount) : '—'}</span> ${go('cash-management')}</span></div>`;
+        const drawerRow = `<div class="row ins-row" data-drawer="${esc(drawer.state)}"><span class="row-main"><span class="row-title">${esc(t(drawerKnown ? 'ui.money.drawer_last' : 'ui.money.drawer_cash'))}</span>`
+            + `${drawerKnown ? '' : `<span class="row-meta">${esc(drawerWhy)}</span>`}</span>`
+            + `<span class="row-trail"><span class="row-amt" data-metric-ref="C9">${drawerKnown ? moneyHtml(drawer.amount, TM) : '—'}</span> ${go('cash-management')}</span></div>`;
         const accountsNote = !seeAccounts && this.cfg().netWorthTerms.includes('accounts')
-            ? `<div class="ins-row"><span>${esc(t('ui.money.other_accounts'))}</span><span>${esc(t('ui.money.accounts_owner_manager'))}</span></div>` : '';
+            ? `<div class="row ins-row"><span class="row-main">${esc(t('ui.money.other_accounts'))}</span><span class="row-meta">${esc(t('ui.money.accounts_owner_manager'))}</span></div>` : '';
         this.html('moneyWorthTerms',
             (seeStock && cfg.netWorthTerms.includes('stock') ? term('ui.money.stock_value', stock, 'stock', 'S4') : '')
             + (cfg.netWorthTerms.includes('receivable') ? term('ui.money.to_receive', dues.receivable.total, 'due', 'O4') : '')
             + (cfg.netWorthTerms.includes('drawer') ? drawerRow : '')
-            + (cfg.netWorthTerms.includes('accounts') ? `<div class="ins-row"><span>${esc(t('ui.money.other_accounts'))}</span><span data-input>${money(accounts)}</span></div>` : accountsNote)
+            + (cfg.netWorthTerms.includes('accounts') ? `<div class="row ins-row"><span class="row-main">${esc(t('ui.money.other_accounts'))}</span><span class="row-amt" data-input>${moneyHtml(accounts, TM)}</span></div>` : accountsNote)
             + term('ui.money.to_pay', -dues.payable.total, 'due', 'O3')
-            + (seeStock ? `<div class="ins-row ins-total"><span>${esc(t('ui.money.net_worth'))}</span><span data-metric-ref="M15">${money(worth)}</span></div>` : ''));
+            + (seeStock ? `<div class="row ins-row ins-total"><span class="row-main">${esc(t('ui.money.net_worth'))}</span><span class="row-amt" data-metric-ref="M15">${moneyHtml(worth, TM)}</span></div>` : ''));
         const list = this.accounts();
         const state = this.sharedAccounts.state;
         const edit = this.canEditAccounts();
-        const icon = (a) => (a.type === 'liability' ? '🤝' : '🏦');
+        const accIcon = (a) => (a.type === 'liability' ? icon('coins', 'i-sm') : icon('building', 'i-sm'));
         this.html('moneyAccounts', !seeAccounts
-            ? `<p class="ins-empty-text">${esc(t('ui.money.accounts_owner_manager'))}</p>`
+            ? `<p class="empty">${esc(t('ui.money.accounts_owner_manager'))}</p>`
             : !list
-                ? `<p class="ins-empty-text">${esc(t(state === 'error' ? 'ui.money.accounts_not_loaded' : 'ui.money.accounts_loading'))}</p>`
+                ? `<p class="empty">${esc(t(state === 'error' ? 'ui.money.accounts_not_loaded' : 'ui.money.accounts_loading'))}</p>`
                 : list.length
-                    ? list.map(a => `<div class="ins-row"><span>${icon(a)} ${esc(a.name)}</span><span>${a.type === 'liability' ? '−' : ''}${money(a.balance)}${edit ? ` <button type="button" class="ins-link" data-onclick="money.removeAccount('${Helpers.escapeJsAttr(a.id)}')" aria-label="${esc(t('ui.money.acc_remove'))}">✕</button>` : ''}</span></div>`).join('')
-                    : `<p class="ins-empty-text">${esc(t('ui.money.no_accounts'))}</p>`);
+                    ? list.map(a => `<div class="row"><span class="lead-icon">${accIcon(a)}</span><span class="row-main">${esc(a.name)}</span><span class="row-trail"><span class="row-amt">${a.type === 'liability' ? '−' : ''}${moneyHtml(a.balance, TM)}</span>${edit ? ` <button type="button" class="btn btn-ghost btn-sm btn-icon" data-onclick="money.removeAccount('${Helpers.escapeJsAttr(a.id)}')" aria-label="${esc(t('ui.money.acc_remove'))}">${icon('x', 'i-sm')}</button>` : ''}</span></div>`).join('')
+                    : `<p class="empty">${esc(t('ui.money.no_accounts'))}</p>`);
         const form = document.getElementById('moneyAccForm');
         if (form) form.hidden = !edit || state !== 'ready';
         const phone = AppState.userRole === 'owner' && state === 'ready' && list && !list.length
@@ -964,7 +968,7 @@ export const MoneyManager = {
         const okItems = addsUp(items, 'sales', m.M1.total);
         const okStock = !m.M17 || Math.abs(m.M17.gap) <= 100;
         const ok = okItems && okStock;
-        this.html('moneyChecks', `<button type="button" class="ins-checkline ${ok ? 'ok' : 'warn'}" data-go="diagnostics">${ok ? '✓' : '⚠'} ${esc(t(ok ? 'ui.money.checks_ok' : 'ui.money.checks_warn'))}</button>`);
+        this.html('moneyChecks', `<button type="button" class="notice ins-checkline ${ok ? 'pos ok' : 'warn'}" data-go="diagnostics">${ok ? icon('check', 'i-sm') : icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">${ok ? '✓' : '⚠'} </span>${esc(t(ok ? 'ui.money.checks_ok' : 'ui.money.checks_warn'))}</span></button>`);
     },
 
     // ---- month snapshots
