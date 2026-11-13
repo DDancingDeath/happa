@@ -135,6 +135,10 @@ describe('hard-coded colours (design tokens only)', () => {
         if (raised.length) {
             throw new Error(['New hard-coded colours: use a design token (var(--…)) from www/css/variables.css.', ...raised].join('\n'));
         }
+        const lowered = Object.entries(base).filter(([f, n]) => (current[f] || 0) < n).map(([f, n]) => `  ${f}: ${n} -> ${current[f] || 0}`);
+        if (lowered.length && process.env.COLOUR_BASELINE !== 'lower') {
+            throw new Error(['Fewer hard-coded colours: lock it in with COLOUR_BASELINE=lower npx jest colour-guard', ...lowered].join('\n'));
+        }
     });
 
     test('the baseline is no higher than the PR base', () => {

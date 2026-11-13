@@ -104,6 +104,10 @@ describe('font sizes and weights come from the type tokens', () => {
         if (raised.length) {
             throw new Error(['Raw font sizes / weights: use --fs-* / --w-* tokens from www/css/variables.css.', ...raised].join('\n'));
         }
+        const lowered = Object.entries(base).filter(([f, n]) => (current[f] || 0) < n).map(([f, n]) => `  ${f}: ${n} -> ${current[f] || 0}`);
+        if (lowered.length && process.env.TYPE_BASELINE !== 'lower') {
+            throw new Error(['Fewer raw font sizes / weights: lock it in with TYPE_BASELINE=lower npx jest type-guard', ...lowered].join('\n'));
+        }
     });
 
     test('the baseline is no higher than the PR base', () => {
