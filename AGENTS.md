@@ -257,7 +257,7 @@ In order:
   sign-in by `main.js`); its `screenshots` live in `www/screenshots/` (JPEG, not
   precached; retake them from the E2E seed data when the screens change, #151).
 - **Desktop layout (≥ 1024 px)**: `www/css/desktop.css` holds every desktop
-  rule inside `@media (min-width: 1024px)` (plus a `1440px` tier). The phone
+  rule inside `@media (min-width: 1024px)` (the sidebar is a 64 px icon rail at 1024–1279; the shell is in `docs/design-system.md` §3). The phone
   layout must not change unless an issue says so — put desktop-only CSS
   there, not in the per-page sheets. Keyboard shortcuts (desktop only) live
   in `js/utils/keyboard-shortcuts.js` (`resolveShortcut()` is pure and

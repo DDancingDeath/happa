@@ -272,7 +272,7 @@ describe('Firestore paths (fake Firestore)', () => {
     describe('NotificationsManager', () => {
         beforeEach(() => {
             document.body.innerHTML = `
-                <button id="notifBell" style="display:none"><span id="notifBadge" hidden></span></button>
+                <button id="notifBell" hidden><span id="notifBadge" hidden></span></button>
                 <div id="notifBackdrop" hidden></div>
                 <div id="notifPanel" hidden><div id="notifList"></div><button id="notifMore" hidden></button></div>`;
             UIManager.showToast.mockClear();
@@ -286,10 +286,10 @@ describe('Firestore paths (fake Firestore)', () => {
             NotificationsManager.start('owner1');
             await fake.settle();
             expect(fake.listenerCount()).toBe(1);
-            expect(document.getElementById('notifBell').style.display).toBe('');
+            expect(document.getElementById('notifBell').hidden).toBe(false);
             NotificationsManager.stop();
             expect(fake.listenerCount()).toBe(0);
-            expect(document.getElementById('notifBell').style.display).toBe('none');
+            expect(document.getElementById('notifBell').hidden).toBe(true);
         });
 
         test('new notification → 5 s toast + badge, still unread; opening the inbox marks it read', async () => {

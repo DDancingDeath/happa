@@ -276,6 +276,7 @@
   --section-gap: 24px;
   --row-h: 56px;
   --appbar-h: 52px;
+  --phone-col-max: 480px;
   --tab-top: calc(var(--appbar-h) + env(safe-area-inset-top, 0px) + var(--sp-3));
   --control-h: 44px;
   --control-h-sm: 32px;
@@ -367,7 +368,6 @@ body.dark-mode input::placeholder {
 }
 
 body.dark-mode .top-bar,
-body.dark-mode .side-nav,
 body.dark-mode .modal-box {
   background: var(--card-bg);
 }
@@ -378,19 +378,6 @@ body.dark-mode .top-bar {
 
 body.dark-mode .modal-box {
   color: var(--text-primary);
-}
-
-body.dark-mode .nav-menu a {
-  color: var(--text-primary);
-}
-
-body.dark-mode .nav-menu a:hover {
-  background: var(--border-color);
-}
-
-body.dark-mode .nav-menu a.active {
-  background: var(--primary-soft);
-  color: var(--primary-light);
 }
 
 /* Inline colours written by page scripts stay readable in dark mode */
@@ -2582,7 +2569,7 @@ body {
     gap: var(--sp-2);
     box-sizing: border-box;
     height: calc(var(--appbar-h) + env(safe-area-inset-top, 0px));
-    padding: env(safe-area-inset-top, 0px) max(var(--sp-1), calc(50% - 236px)) 0 max(var(--gutter), calc(50% - 224px));
+    padding: env(safe-area-inset-top, 0px) max(var(--sp-1), calc(50% - var(--phone-col-max) / 2 + var(--sp-1))) 0 max(var(--gutter), calc(50% - var(--phone-col-max) / 2 + var(--gutter)));
     background: var(--bg);
     color: var(--ink);
   }
@@ -2644,7 +2631,8 @@ body {
   .app-bar .notif-badge {
     top: 4px;
     right: 2px;
-    box-shadow: 0 0 0 2px var(--bg);
+    box-shadow: none;
+    outline: 2px solid var(--bg);
   }
 
   .app-bar .sync-pill {
@@ -2698,28 +2686,24 @@ body {
 }
 
 .nav-header {
-  background: var(--primary-gradient);
-  color: white;
-  padding: 18px 20px;
+  color: var(--ink);
+  padding: var(--sp-4) var(--sp-5);
   flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: var(--shadow-md);
 }
 
 .nav-header h2 {
-  font-size: 24px;
+  font-size: var(--fs-lead);
   font-weight: var(--w-strong);
   margin: 0;
-  letter-spacing: -0.5px;
 }
 
 .close-btn {
-  background: rgba(255,255,255,0.2);
+  background: none;
   border: none;
-  color: white;
-  font-size: 24px;
+  color: var(--ink-2);
   width: 40px;
   height: 40px;
   border-radius: var(--radius-full);
@@ -2727,21 +2711,18 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition);
-  backdrop-filter: blur(4px);
 }
 
 .close-btn:hover {
-  background: rgba(255,255,255,0.3);
-  transform: rotate(90deg);
+  background: var(--state-hover);
 }
 
 .close-btn:active {
-  transform: scale(0.95) rotate(90deg);
+  transform: scale(0.96);
 }
 
 .nav-menu {
-  padding: 6px 0;
+  padding: var(--sp-1) 0;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -2759,35 +2740,42 @@ body {
   align-items: center;
   min-height: 44px;
   box-sizing: border-box;
-  padding: 8px 24px;
-  color: var(--text-primary);
+  padding: var(--sp-2) var(--sp-6);
+  color: var(--ink);
   text-decoration: none;
   transition: all var(--transition);
   font-size: var(--fs-body);
   font-weight: var(--w-regular);
-  margin: 1px 8px;
-  border-radius: var(--radius);
+  margin: 0 var(--sp-2);
+  border-radius: var(--r-control);
 }
 
-.nav-menu a:hover {
-  background: var(--light-bg);
-  color: var(--primary-color);
-}
-
+.nav-menu a:hover,
 .nav-menu a:active {
-  background: var(--light-bg);
+  background: var(--state-hover);
+  color: var(--ink);
 }
 
 .nav-menu a.active {
-  background: var(--primary-soft);
-  color: var(--primary-color);
+  background: var(--accent-soft);
+  color: var(--accent-text);
   font-weight: var(--w-strong);
 }
 
 .nav-user {
-  margin-top: 6px;
+  margin-top: var(--sp-1);
   font-size: var(--fs-sm);
-  color: var(--on-accent-strong);
+  color: var(--ink-3);
+}
+
+.nav-role:not(:empty)::before {
+  content: ' · ';
+}
+
+/* The business mark and the Alt+N hints are desktop only (desktop.css) */
+.nav-mark,
+.nav-kbd {
+  display: none;
 }
 
 .nav-group-title {
@@ -2798,34 +2786,44 @@ body {
   display: inline-flex;
   justify-content: center;
   flex: none;
-  margin-right: 14px;
+  margin-right: var(--sp-3);
   width: 28px;
 }
 
-/* Business switcher (#149): the menu shows only the current business's pages */
+/* Business switcher (#149): a segmented control in the More sheet and the desktop sidebar; the menu shows only the current business's pages */
 .biz-switch {
   display: flex;
-  gap: 6px;
-  margin-top: 10px;
+  margin-top: var(--sp-3);
+  padding: var(--sp-1);
+  border-radius: var(--r-control);
+  background: var(--seg-track);
 }
 .biz-switch[hidden] { display: none; }
 .biz-switch button {
-  background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.5);
-  color: white;
-  font-size: var(--fs-sm);
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: 40px;
+  padding: var(--sp-1) var(--sp-3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: var(--fs-body);
   font-weight: var(--w-strong);
-  padding: 5px 12px;
-  border-radius: var(--radius-full);
   cursor: pointer;
 }
 .biz-switch button.active {
-  background: var(--card-bg);
-  color: var(--on-primary-soft);
+  background: var(--seg-on);
+  color: var(--ink);
+  box-shadow: var(--e1);
 }
+.nav-menu a[hidden],
 .nav-menu a[data-biz="rentals"] { display: none; }
 body.biz-rentals .nav-menu a[data-biz="rentals"] { display: flex; }
-body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }
+body.biz-rentals .nav-menu a:not([data-biz]) { display: none; }
 /* Below the desktop width the menu is a bottom sheet (redesign 4.1): the business switch and the pages
    not on the tab bar, as a grid in groups. Closed, it is hidden from focus and screen readers. */
 @media (max-width: 1023.98px) {
@@ -2873,9 +2871,6 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }
     align-items: center;
     column-gap: var(--sp-2);
     padding: var(--sp-1) var(--sp-2) var(--sp-3) var(--gutter);
-    background: none;
-    color: var(--ink);
-    box-shadow: none;
   }
 
   .nav-who {
@@ -2898,9 +2893,6 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }
     grid-row: 1 / span 2;
     width: 44px;
     height: 44px;
-    background: none;
-    color: var(--ink-2);
-    backdrop-filter: none;
   }
 
   /* Not "all": an inherited visibility change would be animated too, and the sheet's controls could not take focus as it opens */
@@ -2909,42 +2901,9 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }
     transition: background-color var(--transition-fast), color var(--transition-fast);
   }
 
-  .close-btn:hover {
-    background: var(--state-hover);
-    transform: none;
-  }
-
-  .close-btn:active {
-    transform: scale(0.96);
-  }
-
   .biz-switch {
     grid-column: 1 / -1;
-    gap: 0;
     margin: var(--sp-3) var(--sp-2) 0 0;
-    padding: 3px;
-    border-radius: var(--r-control);
-    background: var(--seg-track);
-  }
-
-  .biz-switch button {
-    flex: 1 1 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--sp-2);
-    min-height: 40px;
-    border: 0;
-    border-radius: var(--r-sm);
-    background: transparent;
-    color: var(--ink-2);
-    font-size: var(--fs-body);
-  }
-
-  .biz-switch button.active {
-    background: var(--seg-on);
-    color: var(--ink);
-    box-shadow: var(--e1);
   }
 
   .nav-menu {
@@ -2977,10 +2936,10 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }
   .nav-menu a {
     flex-direction: column;
     justify-content: flex-start;
-    gap: 6px;
+    gap: var(--sp-1);
     min-height: 88px;
     margin: 0;
-    padding: var(--sp-1) 2px var(--sp-2);
+    padding: var(--sp-1) 0 var(--sp-2);
     font-size: var(--fs-caption);
     line-height: 1.25;
     text-align: center;
@@ -3024,7 +2983,7 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }
     display: grid;
   }
 
-  .nav-group:not(:has(a:not([data-bar]):not([style*="none"]))) .nav-group-title {
+  .nav-group:not(:has(a:not([data-bar]):not([hidden]))) .nav-group-title {
     display: none;
   }
 }
@@ -3055,9 +3014,8 @@ body {
   bottom: 0;
   z-index: 950;
   display: flex;
-  background: var(--card-bg);
-  border-top: 1px solid var(--border-color);
-  box-shadow: 0 -1px 8px rgba(15, 23, 42, 0.06);
+  background: var(--bar-bg);
+  border-top: 1px solid var(--bar-border);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -3069,8 +3027,8 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 4px 2px;
+  gap: 0;
+  padding: var(--sp-1) 0;
   border: none;
   background: none;
   color: var(--text-secondary);
@@ -3083,8 +3041,8 @@ body {
 
 .bottom-nav-icon {
   display: inline-flex;
-  padding: 3px 16px;
-  border-radius: var(--radius-full);
+  padding: var(--sp-1) var(--sp-4);
+  border-radius: var(--r-full);
   transition: background var(--transition);
 }
 
@@ -3119,12 +3077,15 @@ body.typing .bottom-nav {
   left: 50%;
   transform: translate(-50%, 0);
   z-index: 960;
-  padding: 8px 16px;
-  border-radius: var(--radius-full);
-  background: var(--card-bg);
-  color: var(--text-primary);
-  box-shadow: var(--shadow-md);
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--e2);
+  font-size: var(--fs-sm);
   font-weight: var(--w-strong);
   pointer-events: none;
 }
@@ -3351,10 +3312,10 @@ body.typing .bottom-nav {
   transform: translateX(-50%);
   z-index: 1001;
   max-width: calc(100% - 140px);
-  padding: 4px 12px;
-  border-radius: var(--radius-full);
-  background: #374151;
-  color: #fff;
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-full);
+  background: var(--toast-bg);
+  color: var(--toast-ink);
   font-size: var(--fs-caption);
   font-weight: var(--w-strong);
   line-height: 18px;
@@ -3375,7 +3336,8 @@ body.typing .bottom-nav {
 }
 
 .sync-pill[data-state="synced"] {
-  background: #047857;
+  background: linear-gradient(var(--positive-soft), var(--positive-soft)), var(--card-bg);
+  color: var(--positive);
 }
 
 .sync-pill[data-state="updating"] {
@@ -10878,17 +10840,19 @@ body.dark-mode .app-sheet-fallback {
   right: -6px;
   min-width: 20px;
   height: 20px;
-  padding: 0 5px;
-  border-radius: 10px;
-  background: var(--btn-danger);
-  color: #fff;
+  padding: 0 var(--sp-1);
+  border-radius: var(--r-full);
+  background: var(--btn-danger-bg);
+  color: var(--btn-danger-ink);
   font-size: var(--fs-caption);
   font-weight: var(--w-strong);
   line-height: 20px;
   text-align: center;
-  box-shadow: 0 0 0 2px #fff;
+  outline: 2px solid var(--bg);
 }
 
+.app-bar .notif-bell[hidden],
+.notif-bell[hidden],
 .notif-badge[hidden] {
   display: none;
 }
@@ -10950,6 +10914,12 @@ body.dark-mode .app-sheet-fallback {
 .notif-panel-actions {
   padding: 0 16px 8px;
   border-bottom: 1px solid var(--border-color);
+}
+
+.notif-mark-all {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
 }
 
 .notif-mark-all,
@@ -11285,125 +11255,333 @@ div.ins-wide,
 
 @media (min-width: 1024px) {
   :root {
-    --desktop-nav-width: 232px;
+    --desktop-nav-width: 248px;
+    --desktop-header-h: 60px;
     --desktop-content-max: 1360px;
+    --desktop-tab-end: calc(var(--sp-10) + var(--sp-2));
+    --desktop-gutter: max(var(--sp-8), calc((100vw - var(--desktop-nav-width) - var(--desktop-content-max)) / 2));
+    /* Desktop density (DIRECTION §5): 36 px controls, 44 px rows */
+    --control-h: 36px;
+    --row-h: 44px;
   }
 
-  /* ---------- App shell: permanent sidebar, no hamburger/overlay ---------- */
+  /* ---------- App shell (redesign 4.2): page header, permanent sidebar, no menu button or overlay ---------- */
   .hamburger,
   .side-nav .close-btn,
-  .overlay,
-  .app-bar-title {
+  .overlay {
     display: none !important;
   }
 
-  /* The phone app bar is not drawn; its bell and sync pill keep their desktop places */
+  /* Page header: the open page's title (the phone app bar's #appBarTitle), the sync pill and the bell */
   .app-bar {
-    display: contents;
-  }
-
-  .side-nav {
-    left: 0;
-    width: var(--desktop-nav-width);
-    max-width: none;
-    box-shadow: none;
-    border-right: 1px solid var(--border-color);
-    transition: none;
-    z-index: 900;
-  }
-
-  .nav-header {
-    position: sticky;
+    position: fixed;
     top: 0;
-    z-index: 1;
-    padding: 20px 18px;
+    left: var(--desktop-nav-width);
+    right: 0;
+    z-index: 950;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    box-sizing: border-box;
+    height: var(--desktop-header-h);
+    padding: 0 var(--desktop-gutter);
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--ink);
   }
 
-  .nav-header h2 {
+  .app-bar-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-family: var(--font-display);
     font-size: var(--fs-title);
+    font-weight: var(--w-strong);
+    letter-spacing: var(--tracking-display);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  /* Notifications bell sits in the sidebar header; inbox opens beside it */
-  .notif-bell {
-    top: 22px;
-    left: calc(var(--desktop-nav-width) - 54px);
-    right: auto;
-    width: 40px;
-    height: 40px;
-    border-color: transparent;
-    background: rgba(255, 255, 255, 0.18);
-    color: var(--on-accent-strong);
+  .app-bar .sync-pill {
+    position: static;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 40%;
+    transform: none;
     box-shadow: none;
+    z-index: auto;
+  }
+
+  .app-bar .notif-bell {
+    position: relative;
+    top: auto;
+    right: auto;
+    left: auto;
+    z-index: auto;
+    flex: none;
+    width: var(--control-h);
+    height: var(--control-h);
+    border: 0;
+    border-radius: var(--r-full);
+    background: transparent;
+    color: var(--ink-2);
+    box-shadow: none;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+  }
+
+  .app-bar .notif-bell:hover {
+    background: var(--state-hover);
+    color: var(--ink);
+  }
+
+  .app-bar .notif-badge {
+    top: -2px;
+    right: -4px;
   }
 
   .notif-backdrop {
     background: transparent;
   }
 
-  /* Sync pill: centred over the content, not the sidebar */
-  .sync-pill {
-    top: 14px;
-    left: calc(var(--desktop-nav-width) + (100% - var(--desktop-nav-width)) / 2);
-    max-width: 50%;
-  }
-
   .notif-panel {
-    left: calc(var(--desktop-nav-width) + 12px);
-    right: auto;
-    top: 12px;
+    left: auto;
+    right: var(--sp-4);
+    top: calc(var(--desktop-header-h) + var(--sp-2));
     bottom: auto;
     width: 420px;
-    max-height: calc(100vh - 24px);
-    border-radius: 14px;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+    max-height: calc(100vh - var(--desktop-header-h) - var(--sp-6));
+    border-radius: var(--r-panel);
+    box-shadow: var(--e3);
+  }
+
+  /* Sidebar: neutral surface, the business at the top, the same groups as the phone's More sheet */
+  .side-nav {
+    left: 0;
+    width: var(--desktop-nav-width);
+    max-width: none;
+    box-shadow: none;
+    border-right: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--ink);
+    transition: none;
+    z-index: 900;
+  }
+
+  .nav-header {
+    display: block;
+    padding: var(--sp-4) var(--sp-3) var(--sp-2);
+  }
+
+  .nav-who {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: var(--sp-3);
+  }
+
+  .nav-mark {
+    grid-row: 1 / span 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--control-h);
+    height: var(--control-h);
+    border-radius: var(--r-sm);
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+
+  .nav-mark-rentals,
+  body.biz-rentals .nav-mark-shop {
+    display: none;
+  }
+
+  body.biz-rentals .nav-mark-rentals {
+    display: inline-block;
+  }
+
+  .nav-header h2 {
+    grid-column: 2;
+    font-size: var(--fs-body);
+    letter-spacing: normal;
+    line-height: 1.3;
+  }
+
+  .nav-user {
+    grid-column: 2;
+    margin-top: 0;
+    font-size: var(--fs-caption);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .biz-switch {
+    grid-column: 1 / -1;
+  }
+
+  .biz-switch button {
+    min-height: var(--control-h-sm);
+    font-size: var(--fs-sm);
   }
 
   .nav-menu {
-    padding: 8px 0;
+    padding: var(--sp-1) var(--sp-2);
   }
 
-  .nav-menu a {
-    min-height: 40px;
-    padding: 10px 18px;
-    font-size: 14px;
-    margin: 1px 8px;
+  .nav-group-title {
+    display: block;
+    margin: var(--sp-4) var(--sp-3) var(--sp-1);
+    font-family: var(--font-display);
+    font-size: var(--fs-sm);
+    font-style: var(--title-style);
+    font-weight: var(--w-label);
+    color: var(--ink-3);
+  }
+
+  .nav-group:first-child .nav-group-title {
+    margin-top: var(--sp-2);
+  }
+
+  /* A group shows only with a page the role may open, in the business that is open */
+  body:not(.biz-rentals) .nav-group[data-biz="rentals"],
+  body.biz-rentals .nav-group:not([data-biz]),
+  .nav-group:not(:has(a:not([hidden]))) {
+    display: none;
+  }
+
+  .nav-menu a,
+  .desktop-shortcuts-link {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    width: 100%;
+    min-height: var(--control-h);
+    margin: 1px 0;
+    padding: 0 var(--sp-3);
+    border: 0;
+    border-radius: var(--r-sm);
+    background: none;
+    color: var(--ink-2);
+    font: inherit;
+    font-size: var(--fs-body);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
   }
 
   .nav-icon {
-    margin-right: 10px;
+    width: auto;
+    margin: 0;
+    color: var(--ink-3);
   }
 
-  .desktop-shortcuts-link {
-    display: block;
-    margin: 8px 16px 20px;
-    padding: 8px 10px;
-    border: 1px dashed var(--border-color);
-    border-radius: var(--radius);
-    background: transparent;
-    color: var(--text-secondary);
-    font-size: var(--fs-caption);
-    text-align: left;
-    cursor: pointer;
-    width: calc(100% - 32px);
-  }
-
+  .nav-menu a:hover,
   .desktop-shortcuts-link:hover {
-    color: var(--primary-color);
-    border-color: var(--primary-color);
+    background: var(--state-hover);
+    color: var(--ink);
+  }
+
+  .nav-menu a.active {
+    background: var(--surface);
+    color: var(--ink);
+    font-weight: var(--w-strong);
+    box-shadow: var(--e1);
+  }
+
+  .nav-menu a.active .nav-icon {
+    color: var(--accent-text);
+  }
+
+  .nav-menu a:focus-visible,
+  .desktop-shortcuts-link:focus-visible {
+    outline: none;
+    box-shadow: var(--focus);
+  }
+
+  /* Alt+N on the open page's link (and on hover or focus), as in the mock */
+  .nav-kbd {
+    margin-left: auto;
+    font-weight: var(--w-regular);
+  }
+
+  .nav-menu a:is(.active, :hover, :focus-visible) .nav-kbd,
+  .desktop-shortcuts-link .nav-kbd {
+    display: inline-block;
+  }
+
+  .nav-menu.nav-menu-footer {
+    padding: var(--sp-2);
+    border-top: 1px solid var(--line);
   }
 
   .tab {
-    margin-left: var(--desktop-nav-width);
+    margin: var(--desktop-header-h) 0 0 var(--desktop-nav-width);
     max-width: none;
-    padding: 24px max(32px, calc((100vw - var(--desktop-nav-width) - var(--desktop-content-max)) / 2)) 48px;
-    /* Dynamic viewport height where supported (tabs.css keeps 100vh for phones). */
-    min-height: 100dvh;
-    height: 100dvh;
+    padding: var(--sp-6) var(--desktop-gutter) var(--desktop-tab-end);
+    /* The page scrolls under the header; dynamic viewport height where supported (tabs.css keeps 100vh for phones). */
+    min-height: 0;
+    height: calc(100vh - var(--desktop-header-h));
+    height: calc(100dvh - var(--desktop-header-h));
+  }
+
+  /* A page's head (<header class="page-head"><h2>Title</h2>[<div class="page-head-actions">…</div>]</header>; surfaces.css hides it
+     below 1024 px). The header bar shows the title, so the h2 stays for screen readers and the row holds the page's mode and actions. */
+  .page-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-3);
+    margin: 0 0 var(--sp-5);
+  }
+
+  /* Title only: nothing to draw, and no box (inside a grid such as .ins-head it takes no cell) */
+  .page-head:not(:has(> :not(h2))) {
+    display: contents;
+  }
+
+  .tab .page-head > h2 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .page-head-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-2);
+    margin-left: auto;
   }
 
   /* rentals.css (loaded later) caps the phone width; desktop pages are full width */
   .tab.rentals-tab {
     max-width: none;
+  }
+
+  /* ---------- Billing: mode and the drafts toolbar share one row under the page header (4.2) ---------- */
+  .tab > .filter-buttons:has(+ .bill-toolbar) {
+    float: left;
+    width: min(360px, 40%);
+    margin: 0 var(--sp-4) var(--sp-4) 0;
+  }
+
+  .tab > .bill-toolbar {
+    overflow: hidden;
+    min-height: var(--control-h);
+    margin-bottom: var(--sp-4);
+    padding-top: var(--sp-1);
+  }
+
+  .tab > .bill-toolbar ~ * {
+    clear: both;
   }
 
   /* ---------- Billing: entry left, sticky bill summary right ---------- */
@@ -11646,7 +11824,7 @@ div.ins-wide,
   .kbd-help-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--scrim);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -11654,65 +11832,43 @@ div.ins-wide,
   }
 
   .kbd-help {
-    background: var(--card-bg);
-    color: var(--text-primary);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xl);
+    background: var(--panel-bg);
+    color: var(--ink);
+    border-radius: var(--r-sheet);
+    box-shadow: var(--e3);
     width: min(560px, 92vw);
     max-height: 85vh;
     overflow-y: auto;
-    padding: 20px 24px;
+    padding: var(--sp-5) var(--sp-6);
   }
 
   .kbd-help h3 {
-    margin: 0 0 12px;
-    font-size: 18px;
+    margin: 0 0 var(--sp-3);
+    font-family: var(--font-display);
+    font-size: var(--fs-lead);
   }
 
   .kbd-help table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 14px;
+    font-size: var(--fs-sm);
   }
 
   .kbd-help td {
-    padding: 5px 4px;
-    border-bottom: 1px solid var(--border-color);
+    padding: var(--sp-1);
+    border-bottom: 1px solid var(--line);
     vertical-align: top;
   }
 
   .kbd-help td:first-child {
     white-space: nowrap;
     width: 1%;
-    padding-right: 16px;
-  }
-
-  .kbd-help kbd {
-    display: inline-block;
-    padding: 1px 6px;
-    border: 1px solid var(--border-color);
-    border-bottom-width: 2px;
-    border-radius: 4px;
-    background: var(--light-bg);
-    font-family: inherit;
-    font-size: var(--fs-caption);
-  }
-
-  .kbd-help .kbd-hi {
-    color: var(--text-secondary);
-    margin-left: 6px;
+    padding-right: var(--sp-4);
   }
 
   .kbd-help-close {
-    margin-top: 14px;
     float: right;
-    padding: 8px 18px;
-    border: none;
-    border-radius: var(--radius);
-    background: var(--primary-gradient);
-    color: white;
-    font-weight: var(--w-strong);
-    cursor: pointer;
+    margin-top: var(--sp-3);
   }
 
   /* Anomalies page (#187): filters in one row, patterns in two columns, row actions inline */
@@ -11858,7 +12014,7 @@ div.ins-wide,
      tab's 48px bottom padding, so no field shows under it) and focus scrolls a field clear of it. */
   .bill-col-summary > :is(.bill-actions, div[style*="display: flex"]):last-child {
     position: sticky;
-    bottom: -48px;
+    bottom: calc(-1 * var(--desktop-tab-end));
     z-index: 2;
     margin-top: auto !important;
     padding: var(--sp-3) 0;
@@ -11875,9 +12031,75 @@ div.ins-wide,
   }
 }
 
-@media (min-width: 1440px) {
+/* 1024–1279: the sidebar is a 64 px icon rail; names stay for screen readers and show as tooltips (keyboard-shortcuts.js) */
+@media (min-width: 1024px) and (max-width: 1279.98px) {
   :root {
-    --desktop-nav-width: 256px;
+    --desktop-nav-width: 64px;
+  }
+
+  .nav-header {
+    padding: var(--sp-3) var(--sp-2) var(--sp-1);
+  }
+
+  .nav-who {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+
+  .nav-mark {
+    grid-row: auto;
+  }
+
+  .nav-who:has(.biz-switch:not([hidden])) .nav-mark {
+    display: none;
+  }
+
+  .nav-header h2,
+  .nav-user,
+  .nav-group-title,
+  .nav-menu a > span:not(.nav-icon),
+  .desktop-shortcuts-link > span:not(.nav-icon),
+  .biz-switch button > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .biz-switch {
+    flex-direction: column;
+    gap: 2px;
+    margin-top: var(--sp-2);
+    justify-self: stretch;
+  }
+
+  .biz-switch button {
+    padding: 0;
+  }
+
+  .nav-menu a,
+  .desktop-shortcuts-link {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .side-nav .nav-kbd,
+  .side-nav .nav-menu a:is(.active, :hover, :focus-visible) .nav-kbd {
+    display: none;
+  }
+
+  .nav-group + .nav-group {
+    margin-top: var(--sp-2);
+    padding-top: var(--sp-1);
+    border-top: 1px solid var(--line);
+  }
+
+  body.biz-rentals .nav-group[data-biz] {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
   }
 }
 
@@ -11907,16 +12129,15 @@ div.ins-wide,
 }
 /* ---------- Money, Insights, Statements (redesign): two columns, wider period bar ---------- */
 @media (min-width: 1024px) {
-  .ins-title { margin-left: 0; }
-
+  /* The page title is in the header bar: the tabs, then the period; Compare & share shows open */
   .ins-head {
     display: grid;
-    grid-template-columns: auto 1fr minmax(320px, 420px);
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
     align-items: center;
-    gap: 16px;
+    gap: var(--sp-2) var(--sp-4);
   }
 
-  .ins-head .ins-title { margin-bottom: 0; }
+  .ins-head > .ins-abbar { grid-column: 1 / -1; }
   .ins-head .ins-period { margin-top: 0; }
   .ins-cmp-toggle { display: none; }
   .ins-head:not(.ins-cmp-open) .ins-cmp-more { display: block; }
@@ -11924,13 +12145,12 @@ div.ins-wide,
   .ins-section:not([hidden]) {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 16px;
+    gap: 0 var(--sp-4);
     align-items: start;
   }
 
   .ins-section > .ins-hero { grid-column: 1 / -1; }
   .ins-section > .ins-wide { grid-column: 1 / -1; }
-  .ins-hero-value { font-size: 40px; }
 }
 
 /* Phone bottom bar and its settings (#142): the sidebar is permanent here */

@@ -13,7 +13,7 @@
     gap: var(--sp-2);
     box-sizing: border-box;
     height: calc(var(--appbar-h) + env(safe-area-inset-top, 0px));
-    padding: env(safe-area-inset-top, 0px) max(var(--sp-1), calc(50% - 236px)) 0 max(var(--gutter), calc(50% - 224px));
+    padding: env(safe-area-inset-top, 0px) max(var(--sp-1), calc(50% - var(--phone-col-max) / 2 + var(--sp-1))) 0 max(var(--gutter), calc(50% - var(--phone-col-max) / 2 + var(--gutter)));
     background: var(--bg);
     color: var(--ink);
   }
@@ -75,7 +75,8 @@
   .app-bar .notif-badge {
     top: 4px;
     right: 2px;
-    box-shadow: 0 0 0 2px var(--bg);
+    box-shadow: none;
+    outline: 2px solid var(--bg);
   }
 
   .app-bar .sync-pill {

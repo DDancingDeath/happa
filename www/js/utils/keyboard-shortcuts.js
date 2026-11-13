@@ -3,7 +3,8 @@
 // resolveShortcut() is pure (key event + context -> action) so it can be unit-tested;
 // installKeyboardShortcuts() wires it to the DOM.
 
-import { t } from '../i18n/index.js';
+import { t, LANG_CHANGE_EVENT } from '../i18n/index.js';
+import { icon } from '../ui/icons.js';
 import { pickLang } from '../i18n/localize.js';
 
 export const DESKTOP_QUERY = '(min-width: 1024px)';
@@ -205,7 +206,7 @@ function openHelp() {
     if (document.getElementById(HELP_ID)) return;
     const esc = (/** @type {*} */ s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const row = (/** @type {string} */ keys, /** @type {string} */ label) => `<tr><td>${keys}</td><td>${esc(label)}</td></tr>`;
-    const tabRows = TAB_SHORTCUTS.map((tab, i) => row(`<kbd>Alt</kbd> + <kbd>${i + 1}</kbd>`, pickLang(tab))).join('');
+    const tabRows = TAB_SHORTCUTS.map((tab, i) => row(`<kbd class="kbd">Alt</kbd> + <kbd class="kbd">${i + 1}</kbd>`, pickLang(tab))).join('');
     const overlay = document.createElement('div');
     overlay.id = HELP_ID;
     overlay.className = 'kbd-help-overlay';
@@ -214,13 +215,13 @@ function openHelp() {
             <h3 id="kbdHelpTitle">${esc(t('ui.kbd.title'))}</h3>
             <table><tbody>
                 ${tabRows}
-                ${row('<kbd>Ctrl</kbd> + <kbd>S</kbd>', t('ui.kbd.save_bill'))}
-                ${row('<kbd>Ctrl</kbd> + <kbd>P</kbd>', t('ui.kbd.save_print_bill'))}
-                ${row('<kbd>/</kbd>', t('ui.kbd.search_page'))}
-                ${row('<kbd>Esc</kbd>', t('ui.kbd.close_dialog'))}
-                ${row('<kbd>?</kbd>', t('ui.kbd.toggle_help'))}
+                ${row('<kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">S</kbd>', t('ui.kbd.save_bill'))}
+                ${row('<kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">P</kbd>', t('ui.kbd.save_print_bill'))}
+                ${row('<kbd class="kbd">/</kbd>', t('ui.kbd.search_page'))}
+                ${row('<kbd class="kbd">Esc</kbd>', t('ui.kbd.close_dialog'))}
+                ${row('<kbd class="kbd">?</kbd>', t('ui.kbd.toggle_help'))}
             </tbody></table>
-            <button type="button" class="kbd-help-close">${esc(t('ui.kbd.close'))}</button>
+            <button type="button" class="btn btn-primary kbd-help-close">${esc(t('ui.kbd.close'))}</button>
         </div>`;
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay || /** @type {Element} */ (e.target).classList.contains('kbd-help-close')) closeHelp();
@@ -279,16 +280,47 @@ function perform(action, ctx) {
     }
 }
 
+const RAIL_QUERY = '(min-width: 1024px) and (max-width: 1279.98px)';
+
+/**
+ * Alt+N hint on the sidebar link of each shortcut page, and in the icon rail the link's name as its tooltip.
+ * @param {Element} nav
+ */
+function decorateSidebar(nav) {
+    const rail = window.matchMedia(RAIL_QUERY).matches;
+    TAB_SHORTCUTS.forEach((tab, i) => {
+        const link = nav.querySelector(`.nav-menu a[data-onclick*="showTab('${tab.tabId}'"]`);
+        if (!link || link.querySelector('.nav-kbd')) return;
+        link.setAttribute('aria-keyshortcuts', `Alt+${i + 1}`);
+        const kbd = document.createElement('kbd');
+        kbd.className = 'kbd nav-kbd';
+        kbd.setAttribute('aria-hidden', 'true');
+        kbd.lang = 'zxx';
+        kbd.textContent = `Alt ${i + 1}`;
+        link.appendChild(kbd);
+    });
+    nav.querySelectorAll('.nav-menu a, .desktop-shortcuts-link').forEach((/** @type {Element} */ link) => {
+        const label = link.querySelector('[data-i18n]')?.textContent.trim();
+        const keys = link.getAttribute('aria-keyshortcuts');
+        if (rail && label) link.setAttribute('title', keys ? `${label} (${keys})` : label);
+        else link.removeAttribute('title');
+    });
+}
+
 function addSidebarLink() {
     const nav = document.getElementById('sideNav');
-    if (!nav || nav.querySelector('.desktop-shortcuts-link')) return !!nav;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'desktop-shortcuts-link';
-    btn.setAttribute('data-i18n', 'ui.kbd.sidebar_link');
-    btn.textContent = t('ui.kbd.sidebar_link');
-    btn.addEventListener('click', openHelp);
-    nav.appendChild(btn);
+    if (!nav) return false;
+    if (!nav.querySelector('.desktop-shortcuts-link')) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'desktop-shortcuts-link';
+        btn.setAttribute('aria-keyshortcuts', '?');
+        btn.innerHTML = `<span class="nav-icon">${icon('keyboard')}</span><span data-i18n="ui.kbd.sidebar_link"></span><kbd class="kbd nav-kbd" aria-hidden="true">?</kbd>`;
+        /** @type {HTMLElement} */ (btn.querySelector('[data-i18n]')).textContent = t('ui.kbd.sidebar_link');
+        btn.addEventListener('click', openHelp);
+        (nav.querySelector('.nav-menu-footer') || nav).appendChild(btn);
+    }
+    decorateSidebar(nav);
     return true;
 }
 
@@ -303,6 +335,10 @@ export function installKeyboardShortcuts() {
         const action = resolveShortcut(e, ctx);
         if (action && perform(action, ctx)) e.preventDefault();
     });
+
+    const redecorate = () => { const nav = document.getElementById('sideNav'); if (nav) decorateSidebar(nav); };
+    window.matchMedia(RAIL_QUERY).addEventListener?.('change', redecorate);
+    window.addEventListener(LANG_CHANGE_EVENT, redecorate);
 
     if (!addSidebarLink()) {
         const obs = new MutationObserver(() => { if (addSidebarLink()) obs.disconnect(); });

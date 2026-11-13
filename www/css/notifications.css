@@ -32,17 +32,19 @@
   right: -6px;
   min-width: 20px;
   height: 20px;
-  padding: 0 5px;
-  border-radius: 10px;
-  background: var(--btn-danger);
-  color: #fff;
+  padding: 0 var(--sp-1);
+  border-radius: var(--r-full);
+  background: var(--btn-danger-bg);
+  color: var(--btn-danger-ink);
   font-size: var(--fs-caption);
   font-weight: var(--w-strong);
   line-height: 20px;
   text-align: center;
-  box-shadow: 0 0 0 2px #fff;
+  outline: 2px solid var(--bg);
 }
 
+.app-bar .notif-bell[hidden],
+.notif-bell[hidden],
 .notif-badge[hidden] {
   display: none;
 }
@@ -104,6 +106,12 @@
 .notif-panel-actions {
   padding: 0 16px 8px;
   border-bottom: 1px solid var(--border-color);
+}
+
+.notif-mark-all {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
 }
 
 .notif-mark-all,

@@ -198,14 +198,16 @@ describe('role-based restrictions', () => {
             <a data-onclick="nav.showTab('money')"></a><a data-onclick="nav.showTab('admin')"></a>
             <a data-onclick="nav.showTab('diagnostics')"></a><a data-onclick="nav.showTab('statements')"></a>
           </nav>
-          <button data-requires-owner id="del"></button><button data-requires-manager id="exp"></button>`;
+          <button data-requires-owner id="del"></button><button data-requires-manager id="exp"></button>
+          <span id="currentUserRole"></span>`;
     });
+    const roleLabel = () => document.getElementById('currentUserRole').textContent;
     const shown = (sel) => document.querySelector(sel).style.display;
 
     test('staff: money/admin/diagnostics/statements hidden, owner/manager buttons disabled', () => {
         AppState.userRole = 'staff';
         AuthManager.applyRoleBasedRestrictions();
-        expect([...document.querySelectorAll('.nav-menu a')].map(a => a.style.display)).toEqual(['none', 'none', 'none', 'none']);
+        expect([...document.querySelectorAll('.nav-menu a')].map(a => (a.hidden ? 'none' : ''))).toEqual(['none', 'none', 'none', 'none']);
         expect(document.getElementById('del').disabled).toBe(true);
         expect(document.getElementById('exp').disabled).toBe(true);
     });
@@ -214,17 +216,31 @@ describe('role-based restrictions', () => {
     test('manager: money/statements/diagnostics visible, admin hidden, export allowed', () => {
         AppState.userRole = 'manager';
         AuthManager.applyRoleBasedRestrictions();
-        expect([...document.querySelectorAll('.nav-menu a')].map(a => a.style.display)).toEqual(['', 'none', '', '']);
+        expect([...document.querySelectorAll('.nav-menu a')].map(a => (a.hidden ? 'none' : ''))).toEqual(['', 'none', '', '']);
         expect(document.getElementById('del').disabled).toBe(true);
         expect(document.getElementById('exp').disabled).toBe(false);
     });
 
-    // Shown links drop the inline display so the menu's flex layout (icon + label) applies to them too.
     test('owner: everything visible and enabled', () => {
         AppState.userRole = 'owner';
         AuthManager.applyRoleBasedRestrictions();
-        expect([...document.querySelectorAll('.nav-menu a')].every(a => a.style.display === '')).toBe(true);
+        expect([...document.querySelectorAll('.nav-menu a')].every(a => !a.hidden)).toBe(true);
         expect(document.getElementById('del').disabled).toBe(false);
+    });
+
+    test('the sidebar names the shop role, else the Rentals role, else nothing', () => {
+        try {
+            for (const [userRole, rentRole, label] of [['owner', undefined, 'Owner'], ['manager', undefined, 'Manager'], ['staff', undefined, 'Member'],
+                ['none', 'manager', 'Manager'], ['none', 'member', 'Member'], ['none', undefined, '']]) {
+                AppState.userRole = userRole;
+                AppState.rentRole = rentRole;
+                AuthManager.applyRoleBasedRestrictions();
+                expect(roleLabel()).toBe(label);
+            }
+            expect(document.getElementById('currentUserRole').hasAttribute('data-i18n')).toBe(false);
+        } finally {
+            delete AppState.rentRole;
+        }
     });
 
     test('Roles & access (#84): the owner\'s choices per role drive pages and sections', () => {
@@ -232,11 +248,11 @@ describe('role-based restrictions', () => {
         try {
             AppState.userRole = 'staff';
             AuthManager.applyRoleBasedRestrictions();
-            expect([...document.querySelectorAll('.nav-menu a')].map(a => a.style.display)).toEqual(['none', 'none', 'none', '']);
+            expect([...document.querySelectorAll('.nav-menu a')].map(a => (a.hidden ? 'none' : ''))).toEqual(['none', 'none', 'none', '']);
             expect(document.body.classList.contains('no-perm-profit')).toBe(true);
             AppState.userRole = 'manager';
             AuthManager.applyRoleBasedRestrictions();
-            expect([...document.querySelectorAll('.nav-menu a')].map(a => a.style.display)).toEqual(['none', 'none', '', '']);
+            expect([...document.querySelectorAll('.nav-menu a')].map(a => (a.hidden ? 'none' : ''))).toEqual(['none', 'none', '', '']);
             expect(document.body.classList.contains('no-perm-profit')).toBe(false);
         } finally {
             delete AppState.settings.roleAccess;

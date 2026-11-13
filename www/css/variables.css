@@ -274,6 +274,7 @@
   --section-gap: 24px;
   --row-h: 56px;
   --appbar-h: 52px;
+  --phone-col-max: 480px;
   --tab-top: calc(var(--appbar-h) + env(safe-area-inset-top, 0px) + var(--sp-3));
   --control-h: 44px;
   --control-h-sm: 32px;
@@ -365,7 +366,6 @@ body.dark-mode input::placeholder {
 }
 
 body.dark-mode .top-bar,
-body.dark-mode .side-nav,
 body.dark-mode .modal-box {
   background: var(--card-bg);
 }
@@ -376,19 +376,6 @@ body.dark-mode .top-bar {
 
 body.dark-mode .modal-box {
   color: var(--text-primary);
-}
-
-body.dark-mode .nav-menu a {
-  color: var(--text-primary);
-}
-
-body.dark-mode .nav-menu a:hover {
-  background: var(--border-color);
-}
-
-body.dark-mode .nav-menu a.active {
-  background: var(--primary-soft);
-  color: var(--primary-light);
 }
 
 /* Inline colours written by page scripts stay readable in dark mode */
