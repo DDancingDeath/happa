@@ -222,7 +222,7 @@ export class OutstandingManager {
             const billDate = billDateOf(transaction);
             const ageDays = billDate ? ageInDays(billDate, today) : null;
             const bucket = bucketIndex(ageDays);
-            const ageBadge = `<span class="aging-age tag${AGE_TONE[bucket]} aging-b${bucket}">${tt(...ageKey(ageDays))}</span>`;
+            const ageBadge = `<span class="aging-age tag${Helpers.escapeHtml(AGE_TONE[bucket])} aging-b${Number(bucket)}">${tt(...ageKey(ageDays))}</span>`;
             
             const billNumber = transaction.billNumber || transaction.id?.toString().substring(0, 8) || 'N/A';
             const id = Helpers.escapeJsAttr(transaction.id);
@@ -304,7 +304,7 @@ export class OutstandingManager {
                 <span class="aging-bucket-count">${esc(billsText(b.count))}</span>
             </button>`).join('');
         // Meter: each age group's share of the total, as flex weights (no arithmetic here)
-        const meter = aging.buckets.map((b, i) => (b.total > 0 ? `<span class="aging-b${i}" style="--w: ${Number(b.total)}"></span>` : '')).join('');
+        const meter = aging.buckets.map((b, i) => (b.total > 0 ? `<span class="aging-b${Number(i)}" style="--w: ${Number(b.total)}"></span>` : '')).join('');
 
         // Receive payment works on one list's bills; a party with retail and wholesale dues pays on either list.
         const kinds = new Map();
@@ -320,7 +320,7 @@ export class OutstandingManager {
                 <h3 class="aging-subtitle">${tt('ui.outstanding.who_to_chase')}</h3>
                 ${chase.length ? `<ol class="panel">${chase.map(p => `
                     <li class="row aging-b${p.bucket}"><span class="row-main"><strong>${partyName(p)}</strong> — ${moneyHtml(p.total)} · ${withMoney(t('ui.outstanding.party_overdue', { amount: formatINR(p.overdue) }), p.overdue)}</span>
-                        <span class="aging-age tag${AGE_TONE[p.bucket]} aging-b${p.bucket}">${tt('ui.outstanding.oldest', { age: daysText(p.oldestDays) })}</span></li>`).join('')}</ol>`
+                        <span class="aging-age tag${esc(AGE_TONE[p.bucket])} aging-b${p.bucket}">${tt('ui.outstanding.oldest', { age: daysText(p.oldestDays) })}</span></li>`).join('')}</ol>`
                     : `<p class="empty">${tt('ui.outstanding.no_one_owes')}</p>`}
             </div>`;
 
@@ -331,7 +331,7 @@ export class OutstandingManager {
                 <span class="lead-icon aging-avatar" data-initials="${esc(initials(p.name))}" aria-hidden="true">${p.name ? '' : icon('user')}</span>
                 <div class="aging-party-main">
                     <div class="aging-party-name">${partyName(p)}${p.longOverdue ? ` <span class="aging-badge tag neg">${tt('ui.outstanding.long_overdue')}</span>` : ''}</div>
-                    <div class="aging-party-meta">${esc(billsText(p.bills.length))} · <span class="aging-oldest${AGE_TEXT_TONE[p.bucket]}">${tt('ui.outstanding.oldest', { age: daysText(p.oldestDays) })}</span>${p.overdue > 0 ? ` · ${withMoney(t('ui.outstanding.party_overdue', { amount: formatINR(p.overdue) }), p.overdue)}` : ''}</div>
+                    <div class="aging-party-meta">${esc(billsText(p.bills.length))} · <span class="aging-oldest${esc(AGE_TEXT_TONE[p.bucket])}">${tt('ui.outstanding.oldest', { age: daysText(p.oldestDays) })}</span>${p.overdue > 0 ? ` · ${withMoney(t('ui.outstanding.party_overdue', { amount: formatINR(p.overdue) }), p.overdue)}` : ''}</div>
                 </div>
                 <strong class="aging-party-total row-amt">${moneyHtml(p.total)}</strong>
                 <div class="aging-party-actions">

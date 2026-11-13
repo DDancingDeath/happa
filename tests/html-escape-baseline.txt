@@ -232,14 +232,9 @@ www/js/modules/money.js: tag ← onTap
 www/js/modules/money.js: v (markup via barsSvg)
 www/js/modules/money.js: value (sink)
 www/js/modules/notifications.js: d.icon ← d = describeNotification(n)
-www/js/modules/outstanding.js: AGE_TEXT_TONE[p.bucket] ← AGE_TEXT_TONE = ['', ' tone-warn', ' tone-warn', ' tone-neg']
-www/js/modules/outstanding.js: AGE_TONE[bucket] ← AGE_TONE = ['', ' warn', ' warn', ' neg']
-www/js/modules/outstanding.js: AGE_TONE[p.bucket] ← AGE_TONE = ['', ' warn', ' warn', ' neg']
 www/js/modules/outstanding.js: Helpers.formatDate(transaction.date)
-www/js/modules/outstanding.js: bucket ← bucketIndex(ageDays)
 www/js/modules/outstanding.js: by
 www/js/modules/outstanding.js: chaseFirst(aging.parties) (markup via map(p => ` <li class="row aging-b${p.bucket}"><span class="row-main"><strong>${partyName(p)}</strong> — ${moneyHtml(p.total)} · ${withMoney(t('u) .bucket)
-www/js/modules/outstanding.js: i
 www/js/modules/outstanding.js: i
 www/js/modules/outstanding.js: i
 www/js/modules/outstanding.js: label
