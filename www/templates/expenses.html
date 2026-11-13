@@ -1,8 +1,8 @@
 <div id="expenses" class="tab">
 
         <div class="filter-buttons" style="margin-bottom: 20px;">
-            <button class="filter-btn active" data-onclick="expenses.filterExpenseTab('business', event)" data-i18n="ui.expenses.business_expenses">Business Expenses</button>
-            <button class="filter-btn" data-perm="personalExpenses" data-onclick="expenses.filterExpenseTab('personal', event)" data-i18n="ui.expenses.personal_expenses">Personal Expenses</button>
+            <button class="filter-btn active" data-onclick="expenses.filterExpenseTab('business', event)" data-i18n="ui.expenses.business_expenses">Business expenses</button>
+            <button class="filter-btn" data-perm="personalExpenses" data-onclick="expenses.filterExpenseTab('personal', event)" data-i18n="ui.expenses.personal_expenses">Personal expenses</button>
         </div>
 
         <!-- Business Expenses Section -->
@@ -10,7 +10,7 @@
             <div class="expense-templates" id="businessExpenseTemplates" hidden></div>
 
             <div class="form-row">
-                <label data-i18n="ui.expenses.expense_type">Expense Type:</label>
+                <label data-i18n="ui.expenses.expense_type">Expense type</label>
                 <input type="text" id="businessExpenseType" list="businessExpenseTypeOptions" placeholder="Enter expense type" data-i18n-placeholder="ui.expenses.enter_expense_type" />
                 <datalist id="businessExpenseTypeOptions">
                     <option value="Labor">
@@ -24,17 +24,17 @@
             </div>
 
             <div class="form-row">
-                <label data-i18n="ui.expenses.amount">Amount (₹):</label>
+                <label data-i18n="ui.expenses.amount">Amount (₹)</label>
                 <input type="number" inputmode="decimal" id="businessExpenseAmount" placeholder="Enter amount" data-i18n-placeholder="ui.cash.enter_amount" />
             </div>
 
             <div class="form-row">
-                <label for="businessExpenseDate" data-i18n="ui.expenses.date">Date:</label>
+                <label for="businessExpenseDate" data-i18n="ui.expenses.date">Date</label>
                 <input type="date" id="businessExpenseDate" />
             </div>
 
             <div class="form-row">
-                <label for="businessExpenseMode" data-i18n="ui.expenses.paid_by">Paid by:</label>
+                <label for="businessExpenseMode" data-i18n="ui.expenses.paid_by">Paid by</label>
                 <select id="businessExpenseMode">
                     <option value="cash" data-i18n="ui.expenses.mode_cash">Cash</option>
                     <option value="online" data-i18n="ui.expenses.mode_online">Online</option>
@@ -42,22 +42,22 @@
             </div>
 
             <div class="form-row">
-                <label data-i18n="ui.expenses.person_name_optional">Person Name (Optional):</label>
+                <label data-i18n="ui.expenses.person_name_optional">Person name (optional)</label>
                 <input type="text" id="businessExpensePerson" list="businessExpensePersonOptions" placeholder="Enter name" data-i18n-placeholder="ui.expenses.enter_name" />
                 <datalist id="businessExpensePersonOptions"></datalist>
             </div>
 
             <div class="form-row">
-                <label data-i18n="ui.expenses.remarks_optional">Remarks (Optional):</label>
+                <label data-i18n="ui.expenses.remarks_optional">Remarks (optional)</label>
                 <input type="text" id="businessExpenseRemarks" placeholder="Enter remarks" data-i18n-placeholder="ui.expenses.enter_remarks" />
             </div>
 
             <div style="display: flex; gap: 12px; margin-top: 16px;">
-                <button class="save-btn" data-expense-save data-onclick="expenses.saveBusinessExpense()" data-i18n="ui.expenses.save_expense">Save Expense</button>
-                <button class="print-btn" data-expense-save data-onclick="expenses.saveAndPrintBusiness()" data-i18n="ui.expenses.print_expense">Print Expense</button>
+                <button class="save-btn" data-expense-save data-onclick="expenses.saveBusinessExpense()" data-i18n="ui.expenses.save_expense">Save expense</button>
+                <button class="print-btn" data-expense-save data-onclick="expenses.saveAndPrintBusiness()" data-i18n="ui.expenses.print_expense">Print expense</button>
             </div>
 
-            <h3 data-i18n="ui.expenses.business_expense_history">Business Expense History</h3>
+            <h3 data-i18n="ui.expenses.business_expense_history">Business expense history</h3>
             <div class="expense-totals" id="businessExpenseTotals" aria-live="polite"></div>
             <div class="expense-search">
                 <input type="search" id="businessExpenseSearch" placeholder="Search expenses" data-i18n-placeholder="ui.expenses.search_placeholder" aria-label="Search expenses" data-i18n-aria-label="ui.expenses.search_placeholder" data-oninput="expenses.onSearch('business')" />
@@ -74,7 +74,7 @@
             <div class="expense-templates" id="personalExpenseTemplates" hidden></div>
 
             <div class="form-row">
-                <label data-i18n="ui.expenses.expense_type">Expense Type:</label>
+                <label data-i18n="ui.expenses.expense_type">Expense type</label>
                 <input type="text" id="personalExpenseType" list="personalExpenseTypeOptions" placeholder="Enter expense type" data-i18n-placeholder="ui.expenses.enter_expense_type" />
                 <datalist id="personalExpenseTypeOptions">
                     <option value="Newspaper">
@@ -87,17 +87,17 @@
             </div>
 
             <div class="form-row">
-                <label data-i18n="ui.expenses.amount">Amount (₹):</label>
+                <label data-i18n="ui.expenses.amount">Amount (₹)</label>
                 <input type="number" inputmode="decimal" id="personalExpenseAmount" placeholder="Enter amount" data-i18n-placeholder="ui.cash.enter_amount" />
             </div>
 
             <div class="form-row">
-                <label for="personalExpenseDate" data-i18n="ui.expenses.date">Date:</label>
+                <label for="personalExpenseDate" data-i18n="ui.expenses.date">Date</label>
                 <input type="date" id="personalExpenseDate" />
             </div>
 
             <div class="form-row">
-                <label for="personalExpenseMode" data-i18n="ui.expenses.paid_by">Paid by:</label>
+                <label for="personalExpenseMode" data-i18n="ui.expenses.paid_by">Paid by</label>
                 <select id="personalExpenseMode">
                     <option value="cash" data-i18n="ui.expenses.mode_cash">Cash</option>
                     <option value="online" data-i18n="ui.expenses.mode_online">Online</option>
@@ -105,22 +105,22 @@
             </div>
 
             <div class="form-row">
-                <label data-i18n="ui.expenses.person_name_optional">Person Name (Optional):</label>
+                <label data-i18n="ui.expenses.person_name_optional">Person name (optional)</label>
                 <input type="text" id="personalExpensePerson" list="personalExpensePersonOptions" placeholder="Enter name" data-i18n-placeholder="ui.expenses.enter_name" />
                 <datalist id="personalExpensePersonOptions"></datalist>
             </div>
 
             <div class="form-row">
-                <label data-i18n="ui.expenses.remarks_optional">Remarks (Optional):</label>
+                <label data-i18n="ui.expenses.remarks_optional">Remarks (optional)</label>
                 <input type="text" id="personalExpenseRemarks" placeholder="Enter remarks" data-i18n-placeholder="ui.expenses.enter_remarks" />
             </div>
 
             <div style="display: flex; gap: 12px; margin-top: 16px;">
-                <button class="save-btn" data-expense-save data-onclick="expenses.savePersonalExpense()" data-i18n="ui.expenses.save_expense">Save Expense</button>
-                <button class="print-btn" data-expense-save data-onclick="expenses.saveAndPrintPersonal()" data-i18n="ui.expenses.print_expense">Print Expense</button>
+                <button class="save-btn" data-expense-save data-onclick="expenses.savePersonalExpense()" data-i18n="ui.expenses.save_expense">Save expense</button>
+                <button class="print-btn" data-expense-save data-onclick="expenses.saveAndPrintPersonal()" data-i18n="ui.expenses.print_expense">Print expense</button>
             </div>
 
-            <h3 data-i18n="ui.expenses.personal_expense_history">Personal Expense History</h3>
+            <h3 data-i18n="ui.expenses.personal_expense_history">Personal expense history</h3>
             <div class="expense-totals" id="personalExpenseTotals" aria-live="polite"></div>
             <div class="expense-search">
                 <input type="search" id="personalExpenseSearch" placeholder="Search expenses" data-i18n-placeholder="ui.expenses.search_placeholder" aria-label="Search expenses" data-i18n-aria-label="ui.expenses.search_placeholder" data-oninput="expenses.onSearch('personal')" />

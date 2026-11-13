@@ -150,7 +150,7 @@ test('WhatsApp on the bill form shares a draft marked "not saved" and saves noth
     await page.evaluate(() => { window.__opened = []; window.open = (url) => { window.__opened.push(url); return null; }; });
     await clickAfterTyping(page, '[data-onclick="billing.shareSaleWhatsApp()"]');
     const [url] = await page.evaluate(() => window.__opened);
-    expect(decodeURIComponent(url)).toContain('*Sale Bill* (DRAFT, not saved)');
+    expect(decodeURIComponent(url)).toContain('*Sale bill* (DRAFT, not saved)');
     expect((await listDocs('dev_retailSales')).find(d => d.customerName === customer)).toBeUndefined();
     expect(problems.pageErrors).toEqual([]);
 });

@@ -20,7 +20,7 @@
       "todayOnlinePaid": "₹2,750",
       "todayTotalIn": "₹26,303",
       "todayTotalOut": "₹17,757",
-      "todayCashFlowLabel": "Net Inflow:",
+      "todayCashFlowLabel": "Net inflow:",
       "todayNetCashFlow": "₹8,546",
       "todayTotalCashFlow": "+₹8,546",
       "todayDueReceived": "₹4,320",
@@ -29,8 +29,8 @@
       "todayDueToPay": "₹4,408"
     },
     "netColor": "",
-    "purchaseItems": "\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Wheat</div>\n                        <div class=\"row-meta\">Purchases: <strong>2x</strong> · Qty: <strong>612.65 kg</strong> · Total: <strong class=\"row-amt\">₹14,960</strong> · Avg Rate: <strong>₹24.42/kg</strong></div>\n                    </div>\n                </div>\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Rice</div>\n                        <div class=\"row-meta\">Purchases: <strong>2x</strong> · Qty: <strong>150.35 kg</strong> · Total: <strong class=\"row-amt\">₹5,002</strong> · Avg Rate: <strong>₹33.27/kg</strong></div>\n                    </div>\n                </div>\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Maize</div>\n                        <div class=\"row-meta\">Purchases: <strong>1x</strong> · Qty: <strong>10 kg</strong> · Total: <strong class=\"row-amt\">₹300</strong> · Avg Rate: <strong>₹30.00/kg</strong></div>\n                    </div>\n                </div>\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Sacks</div>\n                        <div class=\"row-meta\">Purchases: <strong>1x</strong> · Qty: <strong>4 kg</strong> · Total: <strong class=\"row-amt\">₹6</strong> · Avg Rate: <strong>₹1.50/kg</strong></div>\n                    </div>\n                </div>",
-    "saleItems": "\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Wheat</div>\n                        <div class=\"row-meta\">Sales: <strong>1x</strong> · Qty: <strong>800 kg</strong> · Total: <strong class=\"row-amt\">₹25,000</strong> · Avg Rate: <strong>₹31.25/kg</strong></div>\n                    </div>\n                </div>\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Rice</div>\n                        <div class=\"row-meta\">Sales: <strong>2x</strong> · Qty: <strong>52.9 kg</strong> · Total: <strong class=\"row-amt\">₹1,933</strong> · Avg Rate: <strong>₹36.53/kg</strong></div>\n                    </div>\n                </div>\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Sugar</div>\n                        <div class=\"row-meta\">Sales: <strong>1x</strong> · Qty: <strong>2.5 kg</strong> · Total: <strong class=\"row-amt\">₹100</strong> · Avg Rate: <strong>₹40.00/kg</strong></div>\n                    </div>\n                </div>\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Bag</div>\n                        <div class=\"row-meta\">Sales: <strong>1x</strong> · Qty: <strong>0 kg</strong> · Total: <strong class=\"row-amt\">₹10</strong> · Avg Rate: <strong>₹0.00/kg</strong></div>\n                    </div>\n                </div>",
+    "purchaseItems": "\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Wheat</div>\n                        <div class=\"row-meta\">Purchases: <strong>2x</strong> · Qty: <strong>612.65 kg</strong> · Total: <strong class=\"row-amt\">₹14,960</strong> · Avg rate: <strong>₹24.42/kg</strong></div>\n                    </div>\n                </div>\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Rice</div>\n                        <div class=\"row-meta\">Purchases: <strong>2x</strong> · Qty: <strong>150.35 kg</strong> · Total: <strong class=\"row-amt\">₹5,002</strong> · Avg rate: <strong>₹33.27/kg</strong></div>\n                    </div>\n                </div>\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Maize</div>\n                        <div class=\"row-meta\">Purchases: <strong>1x</strong> · Qty: <strong>10 kg</strong> · Total: <strong class=\"row-amt\">₹300</strong> · Avg rate: <strong>₹30.00/kg</strong></div>\n                    </div>\n                </div>\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Sacks</div>\n                        <div class=\"row-meta\">Purchases: <strong>1x</strong> · Qty: <strong>4 kg</strong> · Total: <strong class=\"row-amt\">₹6</strong> · Avg rate: <strong>₹1.50/kg</strong></div>\n                    </div>\n                </div>",
+    "saleItems": "\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Wheat</div>\n                        <div class=\"row-meta\">Sales: <strong>1x</strong> · Qty: <strong>800 kg</strong> · Total: <strong class=\"row-amt\">₹25,000</strong> · Avg rate: <strong>₹31.25/kg</strong></div>\n                    </div>\n                </div>\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Rice</div>\n                        <div class=\"row-meta\">Sales: <strong>2x</strong> · Qty: <strong>52.9 kg</strong> · Total: <strong class=\"row-amt\">₹1,933</strong> · Avg rate: <strong>₹36.53/kg</strong></div>\n                    </div>\n                </div>\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Sugar</div>\n                        <div class=\"row-meta\">Sales: <strong>1x</strong> · Qty: <strong>2.5 kg</strong> · Total: <strong class=\"row-amt\">₹100</strong> · Avg rate: <strong>₹40.00/kg</strong></div>\n                    </div>\n                </div>\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Bag</div>\n                        <div class=\"row-meta\">Sales: <strong>1x</strong> · Qty: <strong>0 kg</strong> · Total: <strong class=\"row-amt\">₹10</strong> · Avg rate: <strong>₹0.00/kg</strong></div>\n                    </div>\n                </div>",
     "dayReport": {
       "sales": 27032.890000000003,
       "saleCount": 4,
@@ -75,7 +75,7 @@
       "todayOnlinePaid": "₹0",
       "todayTotalIn": "₹30",
       "todayTotalOut": "₹861",
-      "todayCashFlowLabel": "Net Outflow:",
+      "todayCashFlowLabel": "Net outflow:",
       "todayNetCashFlow": "₹831",
       "todayTotalCashFlow": "-₹831",
       "todayDueReceived": "₹0",
@@ -84,8 +84,8 @@
       "todayDueToPay": "₹0"
     },
     "netColor": "",
-    "purchaseItems": "\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Wheat</div>\n                        <div class=\"row-meta\">Purchases: <strong>1x</strong> · Qty: <strong>35 kg</strong> · Total: <strong class=\"row-amt\">₹866</strong> · Avg Rate: <strong>₹24.74/kg</strong></div>\n                    </div>\n                </div>",
-    "saleItems": "\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Wheat</div>\n                        <div class=\"row-meta\">Sales: <strong>1x</strong> · Qty: <strong>1 kg</strong> · Total: <strong class=\"row-amt\">₹30</strong> · Avg Rate: <strong>₹30.00/kg</strong></div>\n                    </div>\n                </div>",
+    "purchaseItems": "\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Wheat</div>\n                        <div class=\"row-meta\">Purchases: <strong>1x</strong> · Qty: <strong>35 kg</strong> · Total: <strong class=\"row-amt\">₹866</strong> · Avg rate: <strong>₹24.74/kg</strong></div>\n                    </div>\n                </div>",
+    "saleItems": "\n                <div class=\"row today-item\">\n                    <div class=\"row-main\">\n                        <div class=\"row-title\">Wheat</div>\n                        <div class=\"row-meta\">Sales: <strong>1x</strong> · Qty: <strong>1 kg</strong> · Total: <strong class=\"row-amt\">₹30</strong> · Avg rate: <strong>₹30.00/kg</strong></div>\n                    </div>\n                </div>",
     "dayReport": {
       "sales": 30,
       "saleCount": 1,
@@ -130,7 +130,7 @@
       "todayOnlinePaid": "₹0",
       "todayTotalIn": "₹0",
       "todayTotalOut": "₹0",
-      "todayCashFlowLabel": "Net Outflow:",
+      "todayCashFlowLabel": "Net outflow:",
       "todayNetCashFlow": "₹0",
       "todayTotalCashFlow": "+₹0",
       "todayDueReceived": "₹0",

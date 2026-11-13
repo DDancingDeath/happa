@@ -23,7 +23,7 @@ const sale = (extra) => ({
     customerName: 'Trader', items: [{ name: 'Maize', qty: 200, rate: 25, total: 5000 }], total: 5000, ...extra
 });
 const lines = () => {
-    const h4 = [...document.querySelectorAll('#billDetailsContent h4')].find(h => h.textContent === 'Payment Details');
+    const h4 = [...document.querySelectorAll('#billDetailsContent h4')].find(h => h.textContent === 'Payment details');
     return [...h4.parentElement.children].slice(1).map(d => d.textContent.replace(/\s+/g, ' ').trim());
 };
 
