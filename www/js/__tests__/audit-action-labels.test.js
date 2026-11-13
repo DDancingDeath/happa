@@ -47,5 +47,5 @@ test('audit labels follow the app language', () => {
     expect(auditActionLabel('RENT_MOVE_OUT')).toBe(hi['ui.diag.a_rent_move_out']);
     expect(auditActionLabel('RENT_MOVE_OUT')).not.toMatch(/[A-Za-z]/);
     setLang('en');
-    expect(auditActionLabel('RENT_MOVE_OUT')).toBe('Tenant Moved Out');
+    expect(auditActionLabel('RENT_MOVE_OUT')).toBe('Tenant moved out');
 });

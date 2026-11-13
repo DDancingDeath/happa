@@ -31,7 +31,7 @@
             <label for="customerName" data-i18n="ui.billing.supplier_label">Supplier</label>
             <div class="bill-customer-box">
                 <input type="text" class="input" id="customerName" autocomplete="off" placeholder="Name (optional)" data-i18n-placeholder="ui.billing.enter_customer_name_optional"/>
-                <button type="button" class="contact-pick-btn" data-perm="contacts" data-onclick="billing.pickContact()" title="Pick Contact" aria-label="Pick Contact" data-i18n-title="ui.common.pick_contact" data-i18n-aria-label="ui.common.pick_contact"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-contact"/></svg></button>
+                <button type="button" class="contact-pick-btn" data-perm="contacts" data-onclick="billing.pickContact()" title="Pick contact" aria-label="Pick contact" data-i18n-title="ui.common.pick_contact" data-i18n-aria-label="ui.common.pick_contact"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-contact"/></svg></button>
             </div>
             <datalist id="customerOptions"></datalist>
         </div>
@@ -161,14 +161,14 @@
             <div class="payment-row split-remaining-row">
                 <span data-i18n="ui.billing.not_split_label">Not split yet</span>
                 <strong id="purchaseSplitRemaining">₹0</strong>
-                <button type="button" class="split-rest-btn" data-onclick="billing.putRestInDue('purchase')" data-i18n="ui.common.rest_due">Rest → Due</button>
+                <button type="button" class="split-rest-btn" data-onclick="billing.putRestInDue('purchase')" data-i18n="ui.common.rest_due">Rest → due</button>
             </div>
         </div>
 
         <div class="bill-notes-date">
         <div class="form-row field bill-notes">
             <label for="billComments" data-i18n="ui.billing.notes_label">Notes</label>
-            <input type="text" class="input" id="billComments" placeholder="GPay name, number etc. (Optional)" data-i18n-placeholder="ui.billing.gpay_name_number_etc"/>
+            <input type="text" class="input" id="billComments" placeholder="GPay name, number etc. (optional)" data-i18n-placeholder="ui.billing.gpay_name_number_etc"/>
             <label class="checkbox-label bill-note-print">
                 <input type="checkbox" id="billPrintComments" />
                 <span data-i18n="ui.billing.print_in_bill">Print in bill</span>
@@ -212,7 +212,7 @@
             <label for="saleCustomerName" data-i18n="ui.billing.customer_label">Customer</label>
             <div class="bill-customer-box">
                 <input type="text" class="input" id="saleCustomerName" autocomplete="off" placeholder="Name (optional)" data-i18n-placeholder="ui.billing.enter_customer_name_optional"/>
-                <button type="button" class="contact-pick-btn" data-perm="contacts" data-onclick="billing.pickSaleContact()" title="Pick Contact" aria-label="Pick Contact" data-i18n-title="ui.common.pick_contact" data-i18n-aria-label="ui.common.pick_contact"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-contact"/></svg></button>
+                <button type="button" class="contact-pick-btn" data-perm="contacts" data-onclick="billing.pickSaleContact()" title="Pick contact" aria-label="Pick contact" data-i18n-title="ui.common.pick_contact" data-i18n-aria-label="ui.common.pick_contact"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-contact"/></svg></button>
             </div>
             <datalist id="saleCustomerOptions"></datalist>
         </div>
@@ -329,14 +329,14 @@
             <div class="payment-row split-remaining-row">
                 <span data-i18n="ui.billing.not_split_label">Not split yet</span>
                 <strong id="saleSplitRemaining">₹0</strong>
-                <button type="button" class="split-rest-btn" data-onclick="billing.putRestInDue('sale')" data-i18n="ui.common.rest_due">Rest → Due</button>
+                <button type="button" class="split-rest-btn" data-onclick="billing.putRestInDue('sale')" data-i18n="ui.common.rest_due">Rest → due</button>
             </div>
         </div>
 
         <div class="bill-notes-date">
         <div class="form-row field bill-notes">
             <label for="saleComments" data-i18n="ui.billing.notes_label">Notes</label>
-            <input type="text" class="input" id="saleComments" placeholder="GPay name, number etc. (Optional)" data-i18n-placeholder="ui.billing.gpay_name_number_etc"/>
+            <input type="text" class="input" id="saleComments" placeholder="GPay name, number etc. (optional)" data-i18n-placeholder="ui.billing.gpay_name_number_etc"/>
             <label class="checkbox-label bill-note-print">
                 <input type="checkbox" id="salePrintComments" />
                 <span data-i18n="ui.billing.print_in_bill">Print in bill</span>
