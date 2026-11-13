@@ -6,7 +6,6 @@ import { NavigationManager } from './ui/navigation.js';
 import { BottomNav } from './ui/bottom-nav.js';
 import { VoiceMic } from './ui/voice-mic.js';
 import { CrashReports } from './services/crash-reports.js';
-import { watchHeadingEmoji } from './ui/heading-emoji.js';
 import { BusinessSwitcher } from './ui/business-switcher.js';
 import { SyncStatus } from './ui/sync-status.js';
 import { startClockCheck } from './ui/clock-banner.js';
@@ -65,7 +64,7 @@ const langReady = loadCatalogue(getLang()).catch(e => console.error('Language ca
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261108dq-shell';
+const BUILD_ID = '20261108dr-titles';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -376,7 +375,6 @@ window.addEventListener('unhandledrejection', function(event) {
 function setupEventListeners() {
     // Close the side menu on overlay tap / Esc / swipe-left
     NavigationManager.initMenuDismiss();
-    watchHeadingEmoji(document.body);
     
     // Modal buttons: wired once, by their onclick in templates/modals.html. A second
     // listener here closed the next dialog too when one opened straight after (#63).

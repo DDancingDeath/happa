@@ -1,6 +1,5 @@
 /* Rentals (#170). Loaded on demand by js/rentals/rentals.js, not linked from index.html. */
 .rentals-tab { max-width: 900px; }
-.rent-title { margin: 0 0 12px; font-size: 22px; }
 .rent-subnav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .rent-notice { background: var(--warning-soft); color: var(--on-warning-soft); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
 .rent-month-title { margin: 4px 0 10px; font-size: 18px; }
@@ -63,7 +62,6 @@ body.dark-mode .rent-row, body.dark-mode .rent-dialog-box { background: #1a202c;
 
 /* Simple / Advanced, This month (#157 UX redesign) */
 .rent-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
-.rent-head .rent-title { margin: 0; }
 .rent-seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--seg-bg); border-radius: var(--radius-full); }
 .rent-seg-btn { border: 0; background: transparent; color: var(--text-secondary); border-radius: var(--radius-full); padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
 .rent-seg-btn.active { background: var(--card-bg); color: var(--text-primary); box-shadow: var(--shadow-sm); }

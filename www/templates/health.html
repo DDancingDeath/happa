@@ -1,11 +1,11 @@
 <div id="health" class="tab">
     <div class="health-page">
-        <h2 class="health-title">🩺 <span data-i18n="ui.health.title">App health</span></h2>
+        <header class="page-head"><h2 data-i18n="ui.health.title">App health</h2></header>
         <p class="health-muted" data-i18n="ui.health.intro">Live checks from every phone: saving bills, recording payments, closing cash and opening the app.</p>
         <div id="healthDenied" class="health-empty" style="display: none;" data-i18n="ui.health.denied">Only the owner or a manager can see this page.</div>
         <div id="healthBody">
             <div class="health-actions">
-                <button type="button" class="btn btn-secondary" data-onclick="health.refresh()" data-i18n="ui.health.refresh">↻ Refresh</button>
+                <button type="button" class="btn btn-secondary" data-onclick="health.refresh()" data-i18n="ui.health.refresh">Refresh</button>
                 <span id="healthStatus" class="health-muted"></span>
             </div>
             <section class="modern-card health-card">

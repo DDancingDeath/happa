@@ -112,3 +112,16 @@ test('the app bar shows the open page\'s menu name, and follows the language (re
     expect(pageTitleKey('unknown')).toBe('ui.app.name');
     resetLangForTests();
 });
+
+test('every page template has one page head: a translated h2 without emoji (V1)', () => {
+    const dir = path.resolve(__dirname, '../../templates');
+    const pages = fs.readdirSync(dir).filter(f => /<div id="[\w-]+" class="tab\b/.test(fs.readFileSync(path.join(dir, f), 'utf8')));
+    expect(pages.length).toBeGreaterThanOrEqual(21);
+    for (const f of pages) {
+        const html = fs.readFileSync(path.join(dir, f), 'utf8');
+        const heads = [...html.matchAll(/<header class="page-head"><h2 data-i18n="(ui\.[\w.]+)">([^<]+)<\/h2>/g)];
+        expect([f, heads.length]).toEqual([f, 1]);
+        expect(heads[0][2]).not.toMatch(/\p{Extended_Pictographic}/u);
+        expect(html).not.toMatch(/class="(?:ins-title|health-title|rent-title|anomaly-page-title)"/);
+    }
+});

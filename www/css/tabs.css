@@ -62,11 +62,3 @@
 .sub-tab {
   flex: 1;
 }
-
-
-
-/* Emoji inside gradient-text headings keep their own colours (ui/heading-emoji.js) */
-.heading-emoji {
-  -webkit-text-fill-color: initial;
-  background: none;
-}

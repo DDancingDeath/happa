@@ -1,7 +1,6 @@
 /* ==================== APP HEALTH / TEST IN PRODUCTION (#217) ==================== */
 
 .health-page { padding: 16px; }
-.health-title { margin: 0 0 6px; font-size: var(--fs-title); }
 .health-muted { color: var(--text-secondary); font-size: var(--fs-sm); }
 .health-empty { color: var(--text-secondary); padding: 10px; text-align: center; font-size: 14px; }
 .health-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
