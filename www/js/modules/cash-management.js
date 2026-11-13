@@ -19,8 +19,9 @@ import {
     drawerDay, expectedCash, drawerStatus, signOutSummary, countCheck, closeCheck, openingCheck,
     savedDifference, differenceBand, sessionDetail, noBillLeg, lastCountedSession
 } from '../utils/calc/cash.js';
-import { outstandingDue, formatRupees, formatAmount } from '../utils/money.js';
+import { outstandingDue, formatAmount } from '../utils/money.js';
 import { moneyHtml } from '../ui/components.js';
+import { icon } from '../ui/icons.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import { toFlags } from '../utils/bill-checks.js';
 import { OutstandingManager } from './outstanding.js';
@@ -35,12 +36,15 @@ import { cashCloseProps } from '../tip/scenarios/cash-close.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 
-/** Colour of a cash difference band (calc/cash differenceBand). */
-const DIFF_COLORS = Object.freeze({ ok: '#15803d', warn: '#f59e0b', high: '#ef4444' });
-/** The same bands on the status Difference figure, as tone classes. */
-const DIFF_TONE = Object.freeze({ ok: 'tone-pos', warn: 'tone-warn', high: 'tone-neg' });
+/** Tone of a cash difference band (calc/cash differenceBand). */
+const diffTone = (level) => (level === 'high' ? 'tone-neg' : level === 'warn' ? 'tone-warn' : 'tone-pos');
 /** A status / summary figure, its ₹ muted (moneyHtml); the text is formatRupees(amount, opts). */
 const setMoney = (el, amount, opts, plus = false) => { if (el) el.innerHTML = (plus ? '+' : '') + moneyHtml(amount, opts); };
+/** A figure in markup whose text is exactly formatRupees(amount, opts), a missing amount included (₹0). */
+const fig = (amount, opts) => {
+    const n = Number(amount);
+    return moneyHtml(Number.isFinite(n) ? n : 0, opts);
+};
 
 /** TIP CashClose run (#217); never throws. */
 function startCashCloseRun(session, expected, counted, difference) {
@@ -591,8 +595,8 @@ export class CashManagementManager {
             setMoney(statusActual, actual, { exact: true });
             if (statusDiff) {
                 setMoney(statusDiff, diff, { decimals: 2 }, diff >= 0);
-                statusDiff.classList.remove(...Object.values(DIFF_TONE));
-                statusDiff.classList.add(DIFF_TONE[diffLevel]);
+                statusDiff.classList.remove('tone-pos', 'tone-warn', 'tone-neg');
+                statusDiff.classList.add(diffTone(diffLevel));
             }
         } else {
             // Ongoing session - show 4 blocks
@@ -724,29 +728,20 @@ export class CashManagementManager {
         
         const alertDiv = document.getElementById('cashDifferenceAlert');
         if (alertDiv && actualAmount !== null) {
-            if (check.kind === 'match') {
-                alertDiv.style.display = 'block';
-                alertDiv.style.background = '#d1f4e0';
-                alertDiv.style.color = '#0f5132';
-                alertDiv.textContent = t('ui.cash.cash_matches');
-            } else if (check.kind === 'extra') {
-                alertDiv.style.display = 'block';
-                alertDiv.style.background = '#fff3cd';
-                alertDiv.style.color = '#997404';
-                alertDiv.textContent = t('ui.cash.extra_verify', { amount: formatAmount(check.amount, { decimals: 2 }) });
-            } else {
-                alertDiv.style.display = 'block';
-                alertDiv.style.background = '#f8d7da';
-                alertDiv.style.color = '#842029';
-                alertDiv.textContent = t('ui.cash.short_verify', { amount: formatAmount(check.amount, { decimals: 2 }) });
-            }
+            const { kind } = check;
+            const main = kind === 'match'
+                ? t('ui.cash.cash_matches')
+                : t(kind === 'extra' ? 'ui.cash.extra_verify' : 'ui.cash.short_verify', { amount: formatAmount(check.amount, { decimals: 2 }) });
+            const lines = [`<div class="cash-check-line">${kind === 'match' ? icon('check', 'i-sm') : icon('alert', 'i-sm')}<span>${Helpers.escapeHtml(main)}</span></div>`];
             // Q19 bands (#37): name a big difference or an impossible (negative) expected drawer
-            const band = check.bands;
-            alertDiv.style.whiteSpace = 'pre-line';
-            if (band.length) alertDiv.textContent += band.map(i => `\n⚠ ${pickLang(i)}`).join('');
+            check.bands.forEach(i => lines.push(`<div class="cash-check-line">${icon('triangle', 'i-sm')}<span>${Helpers.escapeHtml(pickLang(i))}</span></div>`));
             // Owner/manager: today's anomaly summary before closing the day (#187)
             const anomalyLine = window.app?.anomalies?.cashCloseLine?.();
-            if (anomalyLine) alertDiv.textContent += `\n🚨 ${anomalyLine}`;
+            if (anomalyLine) lines.push(`<div class="cash-check-line">${icon('flag', 'i-sm')}<span>${Helpers.escapeHtml(anomalyLine)}</span></div>`);
+            alertDiv.classList.remove('pos', 'warn', 'neg');
+            alertDiv.classList.add('notice', kind === 'match' ? 'pos' : kind === 'extra' ? 'warn' : 'neg');
+            alertDiv.innerHTML = lines.join('');
+            alertDiv.style.display = 'block';
         } else if (alertDiv) {
             alertDiv.style.display = 'none';
         }
@@ -1120,7 +1115,7 @@ export class CashManagementManager {
             this.renderSessionList(container, [...this.cachedSessions]);
         } catch (error) {
             console.error('Error rendering history:', error);
-            container.innerHTML = `<p style="text-align: center; color: #ef4444; padding: 20px;">${L('ui.cash.failed_load_history')}</p>`;
+            container.innerHTML = `<p class="notice neg">${L('ui.cash.failed_load_history')}</p>`;
         }
     }
 
@@ -1139,11 +1134,11 @@ export class CashManagementManager {
         }
         sessions.sort((a, b) => String(b.date).localeCompare(String(a.date)));
         const loadOlder = pastDays && this.hasOlderSessions
-            ? `<button type="button" id="cashLoadOlder" data-onclick="cashManagement.loadOlder()" style="display: block; margin: 12px auto 4px; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 8px 16px; border-radius: 6px; font-weight: 600;">${L('ui.cash.load_older')}</button>`
+            ? `<button type="button" id="cashLoadOlder" class="btn btn-sm cash-load-older" data-onclick="cashManagement.loadOlder()">${L('ui.cash.load_older')}</button>`
             : '';
 
         if (sessions.length === 0) {
-            container.innerHTML = `<p style="text-align: center; color: #6c757d; padding: 20px;">${L('ui.cash.no_history')}</p>${loadOlder}`;
+            container.innerHTML = `<p class="empty">${L('ui.cash.no_history')}</p>${loadOlder}`;
             return;
         }
 
@@ -1154,17 +1149,17 @@ export class CashManagementManager {
             month: 'short'
         });
         const review = notCounted.length > 0 ? `
-            <div style="background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; color: #9a3412;">
-                <strong>${Helpers.escapeHtml(tn('ui.cash.days_not_counted', notCounted.length))}</strong>
-                <div style="margin-top: 4px;">${L('ui.cash.tap_day_to_count')} ${notCounted.map(s => `<a href="#" data-onclick="cashManagement.showDetails('${Helpers.escapeJsAttr(s.date)}'); return false;" style="color: #9a3412; font-weight: 600;">${Helpers.escapeHtml(dayLabel(s))}</a>`).join(', ')}</div>
+            <div class="notice warn cash-history-notice">${icon('triangle', 'i-sm')}
+                <div class="grow"><strong>${Helpers.escapeHtml(tn('ui.cash.days_not_counted', notCounted.length))}</strong>
+                <div>${L('ui.cash.tap_day_to_count')} ${notCounted.map(s => `<a href="#" data-onclick="cashManagement.showDetails('${Helpers.escapeJsAttr(s.date)}'); return false;">${Helpers.escapeHtml(dayLabel(s))}</a>`).join(', ')}</div></div>
             </div>` : '';
         const dupDays = AppState.userRole === 'owner'
             ? [...new Set([...(this.duplicateDays || []), ...duplicateSessionDays(sessions)])].sort().reverse()
             : [];
         const duplicates = dupDays.length > 0 ? `
-            <div style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; color: #991b1b;">
-                <strong>${Helpers.escapeHtml(tn('ui.cash.duplicate_days', dupDays.length))}</strong>
-                <div style="margin-top: 4px;">${dupDays.map(d => Helpers.escapeHtml(dayLabel({ date: d }))).join(', ')}</div>
+            <div class="notice neg cash-history-notice">${icon('alert', 'i-sm')}
+                <div class="grow"><strong>${Helpers.escapeHtml(tn('ui.cash.duplicate_days', dupDays.length))}</strong>
+                <div>${dupDays.map(d => Helpers.escapeHtml(dayLabel({ date: d }))).join(', ')}</div></div>
             </div>` : '';
 
         container.innerHTML = review + duplicates + sessions.map(session => {
@@ -1172,39 +1167,40 @@ export class CashManagementManager {
             const uncounted = isNotCounted(session);
 
             const status = !session.signedOut
-                ? `<span style="color: #15803d; font-weight: 600;">● ${L('ui.cash.active')}</span>`
-                : (uncounted ? `<span style="color: #c2410c; font-weight: 600;">⚠ ${L('ui.cash.not_counted')}</span>` : `<span style="color: #6c757d;">✓ ${L('ui.cash.closed')}</span>`);
+                ? `<span class="tag pos">${L('ui.cash.active')}</span>`
+                : (uncounted ? `<span class="tag warn">${L('ui.cash.not_counted')}</span>` : `<span class="cash-day-closed">${icon('check', 'i-sm')}${L('ui.cash.closed')}</span>`);
 
             const diff = Number(session.difference) || 0;
             const { abs: absDiff, level } = differenceBand(diff);
-            const diffColor = DIFF_COLORS[level];
-            const diffText = absDiff < 1 ? L('ui.cash.matched') : (diff > 0 ? `+${formatRupees(diff, { decimals: 2 })}` : formatRupees(-absDiff, { decimals: 2 }));
+            const diffText = absDiff < 1 ? L('ui.cash.matched') : (diff > 0 ? `+${fig(diff, { decimals: 2 })}` : fig(-absDiff, { decimals: 2 }));
             const cashAdded = session.transactions?.cashDeposits || 0;
             const closedRows = uncounted ? `
-                            <div>${L('ui.cash.closing')} <strong style="color: #c2410c;">${L('ui.cash.not_counted')}</strong></div>
-                            <div>${L('ui.cash.expected')} <strong>${formatRupees(session.expectedBalance || 0, { exact: true })}</strong></div>
+                            <div>${L('ui.cash.closing')} <strong class="tone-warn">${L('ui.cash.not_counted')}</strong></div>
+                            <div>${L('ui.cash.expected')} <strong>${fig(session.expectedBalance || 0, { exact: true })}</strong></div>
                             ` : `
-                            <div>${L('ui.cash.closing')} <strong>${formatRupees(session.closingBalance, { exact: true })}</strong></div>
-                            ${cashAdded > 0 ? `<div>${L('ui.cash.added')} <strong style="color: #10b981;">+${formatRupees(cashAdded, { exact: true })}</strong></div>` : ''}
-                            <div>${L('ui.cash.expected')} <strong>${formatRupees(session.expectedBalance || 0, { exact: true })}</strong></div>
-                            <div>${L('ui.cash.diff')} <strong style="color: ${diffColor};">${diffText}</strong></div>
+                            <div>${L('ui.cash.closing')} <strong>${fig(session.closingBalance, { exact: true })}</strong></div>
+                            ${cashAdded > 0 ? `<div>${L('ui.cash.added')} <strong class="tone-pos">+${fig(cashAdded, { exact: true })}</strong></div>` : ''}
+                            <div>${L('ui.cash.expected')} <strong>${fig(session.expectedBalance || 0, { exact: true })}</strong></div>
+                            <div>${L('ui.cash.diff')} <strong class="${diffTone(level)}">${diffText}</strong></div>
                             `;
 
             return `
-                <div class="cash-day-row" data-onclick="cashManagement.showDetails('${Helpers.escapeJsAttr(session.date)}')" style="border-bottom: 1px solid #e5e7eb; padding: 12px 0; cursor: pointer;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <strong style="font-size: 15px;">${date}</strong>
-                        <span>${SyncStatus.chipHtml(session.id)} ${status}</span>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #6c757d;">
-                        <div>${L('ui.cash.opening')} <strong>${formatRupees(session.openingBalance, { exact: true })}</strong></div>
-                        ${session.signedOut ? closedRows : `<div>${L('ui.cash.in_progress')}</div>`}
-                    </div>
-                    ${session.duePayments && session.duePayments.length > 0 ? `
-                        <div style="margin-top: 8px; font-size: 13px; color: #6c757d;">
-                            ${Helpers.escapeHtml(tn('ui.cash.due_payments_recorded', session.duePayments.length))}
+                <div class="row cash-day" data-onclick="cashManagement.showDetails('${Helpers.escapeJsAttr(session.date)}')">
+                    <div class="row-main">
+                        <div class="cash-day-head">
+                            <strong class="row-title">${date}</strong>
+                            <span class="cash-day-status">${SyncStatus.chipHtml(session.id)} ${status}</span>
                         </div>
-                    ` : ''}
+                        <div class="cash-day-figs">
+                            <div>${L('ui.cash.opening')} <strong>${fig(session.openingBalance, { exact: true })}</strong></div>
+                            ${session.signedOut ? closedRows : `<div>${L('ui.cash.in_progress')}</div>`}
+                        </div>
+                        ${session.duePayments && session.duePayments.length > 0 ? `
+                            <div class="row-meta cash-day-meta">
+                                ${Helpers.escapeHtml(tn('ui.cash.due_payments_recorded', session.duePayments.length))}
+                            </div>
+                        ` : ''}
+                    </div>
                 </div>
             `;
         }).join('') + loadOlder;
@@ -1238,188 +1234,117 @@ export class CashManagementManager {
         const diff = session.difference || 0;
         const absDiff = differenceBand(diff).abs;
         const uncounted = isNotCounted(session);
-        const diffText = uncounted ? L('ui.cash.not_counted') : (absDiff < 1 ? L('ui.cash.matched') : `${diff >= 0 ? '+' : ''}${formatRupees(diff, { decimals: 2 })}`);
+        const diffText = uncounted ? L('ui.cash.not_counted') : (absDiff < 1 ? L('ui.cash.matched') : `${diff >= 0 ? '+' : ''}${fig(diff, { decimals: 2 })}`);
 
         // An open session has no saved snapshot yet: use today's live totals.
         const isLiveToday = !session.signedOut && this.todaySession && this.todaySession.date === session.date;
         const txns = (isLiveToday ? this.todayTransactions : session.transactions) || {};
         const { totals, totalCashIn, cashIn, totalCashOut, countedLevel } = sessionDetail(session, txns, uncounted);
         
-        const cardDiffColor = DIFF_COLORS[countedLevel];
-        const diffBgColor = session.signedOut ? `rgba(${parseInt(cardDiffColor.slice(1, 3), 16)}, ${parseInt(cardDiffColor.slice(3, 5), 16)}, ${parseInt(cardDiffColor.slice(5, 7), 16)}, 0.1)` : 'rgba(148, 163, 184, 0.1)';
-        const diffTextColor = session.signedOut && !uncounted ? cardDiffColor : '#64748b';
+        const diffClass = session.signedOut && !uncounted ? diffTone(countedLevel) : 'tone-muted';
+        const metric = (label) => `<div class="metric"><div class="metric-label">${L(label)}</div>`;
+        const sumRow = (label, amount) => `
+                        <div class="cash-sum-row">
+                            <span>${L(label)}</span>
+                            <strong>${fig(amount, { exact: true })}</strong>
+                        </div>`;
+        const sumTotal = (label, amount) => `
+                        <div class="cash-sum-row cash-sum-total">
+                            <span>${L(label)}</span>
+                            <strong>${fig(amount, { exact: true })}</strong>
+                        </div>`;
         
         let modalContent = `
-            <div style="padding: 0;">
+            <div class="cash-detail">
                 ${uncounted ? `
-                <div style="background: #fff7ed; border: 1px solid #fdba74; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; color: #9a3412;">
+                <div class="notice warn cash-late">
+                    <div class="grow">
                     <strong>${L('ui.cash.closed_without_count')}</strong>
-                    <div style="margin: 6px 0;">${L('ui.cash.record_if_known')}</div>
-                    <div style="display: flex; gap: 6px;">
-                        <input type="number" inputmode="decimal" min="0" id="lateCountAmount" placeholder="${L('ui.cash.cash_counted')}" style="flex: 1; padding: 8px; border: 1px solid #fdba74; border-radius: 6px;" />
-                        <button type="button" data-onclick="cashManagement.recordLateCount('${Helpers.escapeJsAttr(session.id)}')" data-cash-save="count" style="background: #ea580c; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: 600;">${L('ui.cash.save_count')}</button>
+                    <div>${L('ui.cash.record_if_known')}</div>
+                    <div class="cash-late-form">
+                        <input type="number" inputmode="decimal" min="0" id="lateCountAmount" class="input" placeholder="${L('ui.cash.cash_counted')}" />
+                        <button type="button" class="btn btn-primary" data-onclick="cashManagement.recordLateCount('${Helpers.escapeJsAttr(session.id)}')" data-cash-save="count">${L('ui.cash.save_count')}</button>
+                    </div>
                     </div>
                 </div>` : ''}
-                <!-- Summary Card -->
                 ${session.signedOut ? `
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;">
-                    <!-- Expenses & Others -->
-                    <div style="background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;">
-                        <div style="font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;">${L('ui.cash.expenses_others')}</div>
-                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">${formatRupees(totalCashOut, { exact: true })}</div>
-                    </div>
-                    
-                    <!-- Expected Balance -->
-                    <div style="background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;">
-                        <div style="font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;">${L('ui.cash.expected_balance')}</div>
-                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">${formatRupees(session.expectedBalance || 0, { exact: true })}</div>
-                    </div>
-                    
-                    <!-- Actual Balance -->
-                    <div style="background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;">
-                        <div style="font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;">${L('ui.cash.actual_balance')}</div>
-                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">${uncounted ? L('ui.cash.not_counted') : `${formatRupees(session.closingBalance, { exact: true })}`}</div>
-                    </div>
-                    
-                    <!-- Difference -->
-                    <div style="background: ${diffBgColor}; padding: 10px; border-radius: 8px;">
-                        <div style="font-size: 12px; color: ${diffTextColor}; margin-bottom: 4px; font-weight: 600;">${L('ui.cash.difference')}</div>
-                        <div style="font-size: 20px; font-weight: 700; color: ${diffTextColor};">${diffText}</div>
-                    </div>
+                <div class="panel metrics cash-metrics">
+                    ${metric('ui.cash.expenses_others')}<div class="metric-value">${fig(totalCashOut, { exact: true })}</div></div>
+                    ${metric('ui.cash.expected_balance')}<div class="metric-value">${fig(session.expectedBalance || 0, { exact: true })}</div></div>
+                    ${metric('ui.cash.actual_balance')}<div class="metric-value">${uncounted ? L('ui.cash.not_counted') : fig(session.closingBalance, { exact: true })}</div></div>
+                    ${metric('ui.cash.difference')}<div class="metric-value ${diffClass}">${diffText}</div></div>
                 </div>
                 ` : `
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;">
-                    <!-- Opening Balance -->
-                    <div style="background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;">
-                        <div style="font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;">${L('ui.cash.opening_balance')}</div>
-                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">${formatRupees(session.openingBalance || 0, { exact: true })}</div>
-                    </div>
-                    
-                    <!-- Cash In -->
-                    <div style="background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;">
-                        <div style="font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;">${L('ui.cash.cash_in')}</div>
-                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">${formatRupees(cashIn, { exact: true })}</div>
-                    </div>
-                    
-                    <!-- Cash Out -->
-                    <div style="background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;">
-                        <div style="font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;">${L('ui.cash.cash_out')}</div>
-                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">${formatRupees(totalCashOut, { exact: true })}</div>
-                    </div>
-                    
-                    <!-- Expected Cash -->
-                    <div style="background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;">
-                        <div style="font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;">${L('ui.cash.expected_cash_title')}</div>
-                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">${formatRupees(isLiveToday ? totals.expected : (session.expectedBalance || 0), { exact: true })}</div>
-                    </div>
+                <div class="panel metrics cash-metrics">
+                    ${metric('ui.cash.opening_balance')}<div class="metric-value">${fig(session.openingBalance || 0, { exact: true })}</div></div>
+                    ${metric('ui.cash.cash_in')}<div class="metric-value">${fig(cashIn, { exact: true })}</div></div>
+                    ${metric('ui.cash.cash_out')}<div class="metric-value">${fig(totalCashOut, { exact: true })}</div></div>
+                    ${metric('ui.cash.expected_cash_title')}<div class="metric-value">${fig(isLiveToday ? totals.expected : (session.expectedBalance || 0), { exact: true })}</div></div>
                 </div>
                 `}
                 
-                <!-- Cash In Group -->
-                <div style="background: #d1fae5; padding: 10px; border-radius: 8px; margin-bottom: 8px;">
-                    <h3 style="margin: 0 0 6px 0; font-size: 13px; color: #166534;">${L('ui.cash.into_drawer')}</h3>
-                    <div style="display: grid; gap: 6px; font-size: 13px;">
-                        <div style="display: flex; justify-content: space-between;">
-                            <span>${L('ui.cash.opening_balance_2')}</span>
-                            <strong style="color: #6366f1;">${formatRupees(session.openingBalance, { exact: true })}</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span>${L('ui.cash.cash_added_2')}</span>
-                            <strong style="color: #10b981;">${formatRupees(txns.cashDeposits || 0, { exact: true })}</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span>${L('ui.cash.cash_sales')}</span>
-                            <strong style="color: #15803d;">${formatRupees(txns.cashSales || 0, { exact: true })}</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span>${L('ui.common.due_received')}</span>
-                            <strong style="color: #3b82f6;">${formatRupees(txns.dueReceived || 0, { exact: true })}</strong>
-                        </div>
-                        <div style="border-top: 2px solid #059669; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;">
-                            <span>${L('ui.cash.total_cash_in')}</span>
-                            <strong style="color: #059669;">${formatRupees(totalCashIn, { exact: true })}</strong>
-                        </div>
-                    </div>
-                </div>
+                <section class="cash-detail-group">
+                    <h3 class="cash-detail-title cash-sum-in">${icon('arrIn', 'i-sm')}${L('ui.cash.into_drawer')}</h3>
+                    ${sumRow('ui.cash.opening_balance_2', session.openingBalance)}
+                    ${sumRow('ui.cash.cash_added_2', txns.cashDeposits || 0)}
+                    ${sumRow('ui.cash.cash_sales', txns.cashSales || 0)}
+                    ${sumRow('ui.common.due_received', txns.dueReceived || 0)}
+                    ${sumTotal('ui.cash.total_cash_in', totalCashIn)}
+                </section>
                 
-                <!-- Cash Out Group -->
-                <div style="background: #fee2e2; padding: 10px; border-radius: 8px; margin-bottom: 8px;">
-                    <h3 style="margin: 0 0 6px 0; font-size: 13px; color: #991b1b;">${L('ui.cash.cash_out')}</h3>
-                    <div style="display: grid; gap: 6px; font-size: 13px;">
-                        <div style="display: flex; justify-content: space-between;">
-                            <span>${L('ui.cash.cash_purchases')}</span>
-                            <strong style="color: #ef4444;">${formatRupees(txns.cashPurchases || 0, { exact: true })}</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span>${L('ui.common.due_paid')}</span>
-                            <strong style="color: #b91c1c;">${formatRupees(txns.duePaid || 0, { exact: true })}</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span>${L('ui.cash.business_expenses')}</span>
-                            <strong style="color: #f97316;">${formatRupees(txns.businessExpenses || 0, { exact: true })}</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span>${L('ui.cash.personal_expenses')}</span>
-                            <strong style="color: #f59e0b;">${formatRupees(txns.personalExpenses || 0, { exact: true })}</strong>
-                        </div>
-                        <div style="border-top: 2px solid #b91c1c; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;">
-                            <span>${L('ui.cash.total_cash_out')}</span>
-                            <strong style="color: #b91c1c;">${formatRupees(totalCashOut, { exact: true })}</strong>
-                        </div>
-                    </div>
-                </div>
+                <section class="cash-detail-group">
+                    <h3 class="cash-detail-title cash-sum-out">${icon('arrOut', 'i-sm')}${L('ui.cash.cash_out')}</h3>
+                    ${sumRow('ui.cash.cash_purchases', txns.cashPurchases || 0)}
+                    ${sumRow('ui.common.due_paid', txns.duePaid || 0)}
+                    ${sumRow('ui.cash.business_expenses', txns.businessExpenses || 0)}
+                    ${sumRow('ui.cash.personal_expenses', txns.personalExpenses || 0)}
+                    ${sumTotal('ui.cash.total_cash_out', totalCashOut)}
+                </section>
 
                 ${session.cashDeposits && session.cashDeposits.length > 0 ? `
-                    <div style="background: #f0fdf4; padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #86efac;">
-                        <h3 style="margin: 0 0 8px 0; font-size: 13px; color: #166534;">💵 ${L('ui.cash.cash_deposits', { count: session.cashDeposits.length })}</h3>
-                        <div style="display: grid; gap: 6px;">
-                            ${session.cashDeposits.map(d => `
-                                <div style="background: white; padding: 8px; border-radius: 6px; border-left: 3px solid #10b981;">
-                                    <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-                                        <strong style="color: #333; font-size: 12px;">${Helpers.escapeHtml(d.reason || t('ui.cash.cash_added'))}</strong>
-                                        <strong style="color: #10b981; font-size: 13px;">${formatRupees(d.amount, { exact: true })}</strong>
-                                    </div>
-                                    <div style="color: #6c757d; font-size: 10px;">
-                                        ${L('ui.cash.added_by', { name: d.addedBy })}
-                                    </div>
+                    <section class="cash-detail-group">
+                        <h3 class="cash-detail-title">${icon('banknote', 'i-sm')}${L('ui.cash.cash_deposits', { count: session.cashDeposits.length })}</h3>
+                        ${session.cashDeposits.map(d => `
+                            <div class="cash-entry">
+                                <div class="cash-entry-head">
+                                    <strong>${Helpers.escapeHtml(d.reason || t('ui.cash.cash_added'))}</strong>
+                                    <strong class="cash-entry-amt tone-pos">${fig(d.amount, { exact: true })}</strong>
                                 </div>
-                            `).join('')}
-                        </div>
-                    </div>
+                                <div class="cash-entry-meta">
+                                    ${L('ui.cash.added_by', { name: d.addedBy })}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </section>
                 ` : ''}
 
                 ${session.duePayments && session.duePayments.length > 0 ? `
-                    <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 12px;">
-                        <h3 style="margin: 0 0 8px 0; font-size: 13px; color: #495057;">💰 ${L('ui.cash.due_payments', { count: session.duePayments.length })}</h3>
-                        <div style="display: grid; gap: 6px;">
-                            ${session.duePayments.map(p => {
-                                const isReceived = p.type !== 'paid';
-                                const borderColor = isReceived ? '#3b82f6' : '#ef4444';
-                                const amountColor = isReceived ? '#3b82f6' : '#ef4444';
-                                const typeLabel = L(isReceived ? 'ui.cash.received_from' : 'ui.cash.paid_to');
-                                return `
-                                    <div style="background: white; padding: 8px; border-radius: 6px; border-left: 3px solid ${borderColor};">
-                                        <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-                                            <strong style="color: #333; font-size: 12px;">${typeLabel} ${Helpers.escapeHtml(p.customer)}</strong>
-                                            <strong style="color: ${amountColor}; font-size: 13px;">${isReceived ? '+' : '-'}${formatRupees(dueLegAmount(p), { exact: true })}</strong>
-                                        </div>
-                                        <div style="color: #6c757d; font-size: 10px;">
-                                            ${Helpers.escapeHtml(p.method)} • ${Helpers.escapeHtml(p.notes || t('ui.cash.no_notes'))}
-                                        </div>
+                    <section class="cash-detail-group">
+                        <h3 class="cash-detail-title">${icon('coins', 'i-sm')}${L('ui.cash.due_payments', { count: session.duePayments.length })}</h3>
+                        ${session.duePayments.map(p => {
+                            const isReceived = p.type !== 'paid';
+                            const typeLabel = L(isReceived ? 'ui.cash.received_from' : 'ui.cash.paid_to');
+                            return `
+                                <div class="cash-entry">
+                                    <div class="cash-entry-head">
+                                        <strong>${typeLabel} ${Helpers.escapeHtml(p.customer)}</strong>
+                                        <strong class="cash-entry-amt ${isReceived ? 'tone-pos' : 'tone-neg'}">${isReceived ? '+' : '-'}${fig(dueLegAmount(p), { exact: true })}</strong>
                                     </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
+                                    <div class="cash-entry-meta">
+                                        ${Helpers.escapeHtml(p.method)} • ${Helpers.escapeHtml(p.notes || t('ui.cash.no_notes'))}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </section>
                 ` : ''}
 
                 ${session.openingNotes || session.closingNotes ? `
-                <!-- Notes -->
-                <div style="background: #fffbeb; padding: 12px; border-radius: 8px; border-left: 3px solid #f59e0b;">
-                    <h4 style="margin: 0 0 8px 0; font-size: 13px; color: #92400e;">📝 ${L('ui.cash.notes_title')}</h4>
-                    ${session.openingNotes ? `<div style="font-size: 12px; color: #78350f; margin-bottom: 6px;"><strong>${L('ui.cash.sign_in_label')}</strong> ${Helpers.escapeHtml(session.openingNotes)}</div>` : ''}
-                    ${session.closingNotes ? `<div style="font-size: 12px; color: #78350f;"><strong>${L('ui.cash.sign_out_label')}</strong> ${Helpers.escapeHtml(session.closingNotes)}</div>` : ''}
-                </div>
+                <section class="cash-detail-group">
+                    <h4 class="cash-detail-title">${icon('file', 'i-sm')}${L('ui.cash.notes_title')}</h4>
+                    ${session.openingNotes ? `<div class="cash-note"><strong>${L('ui.cash.sign_in_label')}</strong> ${Helpers.escapeHtml(session.openingNotes)}</div>` : ''}
+                    ${session.closingNotes ? `<div class="cash-note"><strong>${L('ui.cash.sign_out_label')}</strong> ${Helpers.escapeHtml(session.closingNotes)}</div>` : ''}
+                </section>
                 ` : ''}
             </div>
         `;

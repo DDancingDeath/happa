@@ -409,6 +409,34 @@ body.dark-mode .item-detail-row:hover {
 .ask-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .ask-kind { min-height: 44px; }
 
-/* Cash › history: a day row lights up under the pointer (was an inline mouseover, #89) */
-.cash-day-row { transition: background 0.2s; }
-.cash-day-row:hover { background: var(--surface-muted); }
+/* Cash › history (5.2b): each day is a row, its figures two columns; it lights up under the pointer (#89) */
+.cash-history-list .row.cash-day { align-items: flex-start; padding: var(--sp-3) 0; cursor: pointer; transition: background var(--transition-fast); }
+.cash-history-list .row.cash-day + .row.cash-day::before { left: 0; }
+.cash-history-list .row.cash-day:hover { background: var(--surface-2); }
+.cash-day-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.cash-day-status { display: inline-flex; flex: none; align-items: center; gap: var(--sp-2); }
+.cash-day-closed { display: inline-flex; align-items: center; gap: var(--sp-1); color: var(--ink-3); font-size: var(--fs-sm); }
+.cash-day-figs { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); color: var(--ink-3); font-size: var(--fs-sm); }
+.cash-day-figs strong { font-weight: var(--w-strong); }
+.cash-day-figs strong:not([class]) { color: var(--ink); }
+.cash-day-meta { margin-top: var(--sp-2); }
+.cash-history-notice { margin-bottom: var(--sp-3); }
+.cash-history-notice a { color: inherit; font-weight: var(--w-strong); }
+.cash-load-older { display: flex; margin: var(--sp-3) auto var(--sp-1); }
+
+/* The count check under Close cash: one line per message, each with its icon */
+.cash-check-line { display: flex; align-items: center; gap: var(--sp-2); }
+.cash-check-line + .cash-check-line { margin-top: var(--sp-1); }
+.cash-check-line .i { flex: none; }
+
+/* Cash › a day's details (dialog): figures, in and out, entries, notes */
+.cash-detail { display: flex; flex-direction: column; gap: var(--sp-3); }
+.cash-late-form { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); }
+.cash-late-form .input { flex: 1; min-width: 0; }
+.cash-detail-title { display: flex; align-items: center; gap: var(--sp-1); margin: 0 0 var(--sp-1); color: var(--ink-3); font-size: var(--fs-sm); font-weight: var(--w-label); }
+.cash-entry { padding: var(--sp-2) 0; border-top: 1px var(--rule-style) var(--line); }
+.cash-entry-head { display: flex; justify-content: space-between; gap: var(--sp-3); color: var(--ink); font-size: var(--fs-sm); }
+.cash-entry-amt { font-family: var(--font-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cash-entry-meta, .cash-note { color: var(--ink-3); font-size: var(--fs-caption); }
+.cash-note + .cash-note { margin-top: var(--sp-1); }
+.cash-note strong { color: var(--ink-2); }
