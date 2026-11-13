@@ -178,6 +178,25 @@ a.row:active {
   font-size: var(--fs-display);
 }
 
+/* Money figure: the ₹ sign smaller and muted beside the digits (<span class="cur">₹</span>) */
+.money {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cur {
+  margin-right: 1px;
+  color: var(--ink-3);
+  font-size: var(--fs-cur);
+  font-weight: var(--w-regular);
+}
+
+@media print {
+  .cur {
+    color: inherit;
+  }
+}
+
 .meter {
   display: flex;
   gap: 2px;

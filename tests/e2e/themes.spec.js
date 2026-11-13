@@ -1,5 +1,5 @@
 /**
- * Themes (redesign 2.6, DIRECTION §4): text contrast (axe `color-contrast`, WCAG AA) on Billing,
+ * Themes (redesign 2.6, DIRECTION §4): text contrast (axe `color-contrast`, WCAG AA) on Billing (with a line and a ticked "Fill"),
  * Today and Outstanding, on the open Workers row, and on the app bar with the More sheet open, in every theme × mode (and in Hindi for the serif themes, whose Devanagari stays
  * in the sans face), and the Settings › Appearance gallery: a tap previews
  * a theme app-wide without saving it, Cancel or leaving Settings restores the saved one, Apply saves it
@@ -27,6 +27,42 @@ const THEME_WORKER = {
     entries: [{ id: 'e2e-theme-entry', amount: 3000, kind: 'advance', month: MONTH, date: `${MONTH}-01`, mode: 'cash' }],
 };
 const PAGES = [['Billing', 'billing'], ['Today', 'day'], ['Outstanding', 'due']];
+
+/** Billing with a line in the row list and the whole bill put in Cash with its "Fill" (3.5), so axe sees both. */
+async function billWithFill(page) {
+    const rice = await page.$eval('#billItem', (sel) => [...sel.options].find(o => /Rice|चावल/.test(o.textContent))?.value);
+    await page.selectOption('#billItem', rice);
+    await page.fill('#billRate', '30');
+    await page.fill('#newWeight', '10');
+    await page.press('#newWeight', 'Enter');
+    await page.evaluate(() => window.app.billing.addToBill());
+    await expect(page.locator('#billTable tbody tr.bill-line')).toHaveCount(1);
+    await expect(page.locator('#cashCheckbox')).toHaveAccessibleName(/^(Fill|पूरा) \(\S/);
+    await page.locator('#purchaseSection .pay-fill', { has: page.locator('#cashCheckbox') }).click();
+    await expect(page.locator('#cashCheckbox')).toBeChecked();
+    await expect(page.locator('#cashCheckbox')).toHaveAccessibleName(/^(Filled|भरा) \(\S/);
+    await expect(page.locator('#cashPayment')).toHaveValue(await page.locator('#amountPayable').textContent());
+    // Ticked, it reads "Filled" on a solid fill at least 3:1 against the panel (unticked Fill has no fill)
+    const cash = page.locator('#purchaseSection .pay-fill', { has: page.locator('#cashCheckbox') });
+    await expect(cash.locator('.pay-fill-on')).toBeVisible();
+    await expect(cash.locator('.pay-fill-off')).toBeHidden();
+    const ratio = await cash.evaluate((label) => {
+        const rgba = (c) => (c.match(/[\d.]+/g) || []).map(Number);
+        const over = ([r, g, b, a = 1], [R, G, B]) => [r * a + R * (1 - a), g * a + G * (1 - a), b * a + B * (1 - a)];
+        const page = rgba(getComputedStyle(document.body).backgroundColor);
+        const panel = over(rgba(getComputedStyle(label.closest('.bill-totals')).backgroundColor), page);
+        const onCs = getComputedStyle(label.querySelector('.pay-fill-on'));
+        const lum = (rgb) => {
+            const [r, g, b] = rgb.map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+            return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        };
+        const contrast = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+        // The fill or its 2px ring, whichever stands out more
+        return Math.max(contrast(over(rgba(onCs.backgroundColor), panel), panel), contrast(over(rgba(onCs.borderTopColor), panel), panel));
+    });
+    expect(ratio, 'a ticked Fill stands out from the panel').toBeGreaterThanOrEqual(3);
+    await page.evaluate(() => document.activeElement?.blur?.());
+}
 
 test.skip(({ isMobile }) => !isMobile, 'phone project only');
 test.beforeEach(async () => { await seed(); });
@@ -65,6 +101,7 @@ for (const [theme, appearance, lang = 'en'] of COMBOS) {
         for (const [name, route] of PAGES) {
             await showTab(page, route);
             expect(await settle(page), `${name} finished loading`).toBe(true);
+            if (route === 'billing') await billWithFill(page);
             const result = await new AxeBuilder({ page }).withRules(['color-contrast']).analyze();
             for (const v of result.violations) {
                 for (const n of v.nodes) found.push(`${name}: ${n.target.join(' ')} — ${(n.any[0]?.message || v.help).replace(/\s+/g, ' ')}`);

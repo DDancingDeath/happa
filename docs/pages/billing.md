@@ -17,8 +17,8 @@ While a bill is being typed:
 - **Labour** (BF-LAB) = labour rate × heavy packets (above 30 kg by default),
   unless typed by hand. **Payable** (BF-PAYABLE) = bill total − labour.
 - **Cash / Online / Due** (BF-SPLIT): must add up to the payable (purchase) or
-  total (sale) within ₹1, or the bill is not saved. A tick fills the whole
-  amount; "Rest → Due" puts what is left in Due.
+  total (sale) within ₹1, or the bill is not saved. "Fill" puts the whole
+  amount in that row; "Rest → Due" puts what is left in Due.
 - **Wholesale profit** (WS-PROFIT) = total − cost (kg × the item's current
   average cost) − expenses. Shown as "—" when an item's cost is not known (never
   bought, no opening stock).

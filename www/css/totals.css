@@ -164,23 +164,11 @@
   animation: pulse 1.5s ease-in-out infinite;
 }
 
-/* Purchase totals in the brand colour, sale totals green */
-#purchaseSection .grand-total,
-#purchaseSection .payment-row.payment-total:not(.payment-excess) {
-  background: var(--primary-soft);
-}
-
-#purchaseSection .grand-total :is(span, strong),
-#purchaseSection .payment-row.payment-total:not(.payment-excess) :is(span, strong) {
-  color: var(--on-primary-soft) !important;
-}
-
-#saleSection .payment-row.payment-total:not(.payment-excess),
+/* Wholesale totals green */
 #wholesale-sales .payment-row.payment-total:not(.payment-excess) {
   background: var(--success-soft);
 }
 
-#saleSection .payment-row.payment-total:not(.payment-excess) :is(span, strong),
 #wholesale-sales .payment-row.payment-total:not(.payment-excess) :is(span, strong) {
   color: var(--on-success-soft) !important;
 }
@@ -203,11 +191,64 @@
   font-variant-numeric: tabular-nums;
 }
 
-#billing .grand-total span {
+/* Totals (3.5): a plain panel; the payable is the big ink figure, Total paid a plain row */
+#billing .money > span:not(.cur) {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/* The shared .cur (surfaces.css), over the older span rules above */
+#billing .money > .cur {
+  color: var(--ink-3);
+  font-size: var(--fs-cur);
+  font-weight: var(--w-regular);
+}
+
+@media print {
+  #billing .money > .cur {
+    color: inherit;
+  }
+}
+
+#billing .grand-total,
+#billing .payment-row.payment-total {
+  margin: 0;
+  padding: var(--sp-3) 0 !important;
+  border-radius: 0;
+  background: none;
+}
+
+#billing .grand-total {
+  border-top: 1px var(--rule-style) var(--line);
+}
+
+#billing .grand-total > span {
+  color: var(--ink);
   font-weight: var(--w-strong);
 }
 
+#billing .payment-row.payment-total > span {
+  color: var(--ink-2);
+  font-weight: var(--w-regular);
+}
+
+#billing .payment-row.payment-total strong {
+  color: var(--ink);
+  font-size: var(--fs-lead);
+  font-weight: var(--w-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+#billing .payment-row.payment-total.payment-excess {
+  margin: 0 calc(-1 * var(--sp-3));
+  padding: var(--sp-3) !important;
+  border-bottom-color: transparent;
+  border-radius: var(--r-control);
+}
+
 #billing .grand-total strong {
+  color: var(--ink) !important;
   font-family: var(--font-hero);
   font-size: var(--fs-display) !important;
   font-weight: var(--w-display);
@@ -251,6 +292,101 @@
   color: var(--ink);
 }
 
+/* "Fill" puts the whole bill in that row: the row's tick box, drawn as a text button. Ticked it reads
+   "Filled ✓" on a solid fill; its name is the visible word plus the hidden hint (.pay-fill-hint). */
+#billing .payment-row > .pay-fill {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: stretch;
+  min-width: 48px;
+  min-height: 44px;
+  margin: 0;
+  color: var(--accent-text);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
+  cursor: pointer;
+}
+
+#billing .payment-row > .pay-fill > input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+#billing .payment-row > .pay-fill > span {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--sp-2);
+  border: 2px solid transparent;
+  border-radius: var(--r-control);
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  white-space: nowrap;
+}
+
+#billing .payment-row > .pay-fill > .pay-fill-on,
+#billing .payment-row > .pay-fill > input:checked ~ .pay-fill-off {
+  display: none;
+}
+
+#billing .payment-row > .pay-fill > input:checked ~ .pay-fill-on {
+  display: flex;
+  border-color: var(--accent-text);
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-ink);
+  font-weight: var(--w-strong);
+}
+
+#billing .payment-row > .pay-fill > .pay-fill-on::after {
+  content: "✓" / "";
+  margin-left: 4px;
+}
+
+#billing .payment-row > .pay-fill > .pay-fill-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (hover: hover) {
+  #billing .payment-row > .pay-fill:hover > input:not(:checked) ~ .pay-fill-off {
+    background: var(--state-hover);
+  }
+}
+
+#billing .payment-row > .pay-fill > input:focus-visible ~ span {
+  box-shadow: var(--focus);
+}
+
+#billing #saleSection .payment-row > .pay-fill {
+  color: var(--positive);
+}
+
+#billing #saleSection .payment-row > .pay-fill > input:checked ~ .pay-fill-on {
+  border-color: var(--positive);
+  background: var(--btn-sale-bg);
+  color: var(--btn-sale-ink);
+}
+
+@media (forced-colors: active) {
+  #billing .payment-row > .pay-fill > input:checked ~ .pay-fill-on {
+    outline: 2px solid Highlight;
+  }
+}
+
 #billing .split-rest-btn {
   border-color: transparent;
   background-color: var(--accent-soft);
@@ -266,6 +402,50 @@
   align-self: flex-start;
   min-height: 44px;
   font-weight: var(--w-regular);
+}
+
+/* Notes | Date side by side (3.5); "Print in bill" on the Notes label's line */
+.bill-notes-date {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  column-gap: var(--sp-3);
+  align-items: end;
+  margin-bottom: var(--sp-3);
+}
+
+#billing .bill-notes-date > .form-row.field {
+  margin-bottom: 0;
+}
+
+#billing .form-row.field.bill-notes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--sp-2);
+  row-gap: 0;
+}
+
+#billing .bill-notes > label[for] {
+  grid-row: 1;
+  grid-column: 1;
+  padding-bottom: 6px;
+  align-self: end;
+}
+
+#billing .bill-notes > .input {
+  grid-row: 2;
+  grid-column: 1 / -1;
+}
+
+#billing .form-row.field.bill-notes > .bill-note-print {
+  grid-row: 1;
+  grid-column: 2;
+  align-self: end;
+  gap: 6px;
+  min-height: 36px;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
 }
 
 .bill-debug-preview {

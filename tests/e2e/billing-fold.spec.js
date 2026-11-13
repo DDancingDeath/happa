@@ -1,23 +1,26 @@
 /**
  * Billing fits the screen (#104): on a laptop (1366×768, 1280×720) the bill total and
- * Save / Print are on screen without scrolling the page; on a small phone (360×640),
+ * Save / Print are on screen without scrolling the page; at 1280×800 Notes and Date are too, uncovered (3.5);
+ * on a small phone (360×640),
  * scrolled to the bottom, they show whole, not under the bottom bar. Both bill modes,
  * with a line on the bill so the totals column has its real height. The page scrolls
  * inside the open tab (`.tab.active`), not the window. On the phone Save / Print sit in the
  * action bar above the bottom bar, with the payable beside them, and the last field still
  * scrolls clear of it.
  */
-const { test, expect, login, showTab } = require('./support/app');
+const { test, expect, login, showTab, settle } = require('./support/app');
 
 const SIZES = [
     { name: 'laptop 1366×768', width: 1366, height: 768, fold: true },
     { name: 'laptop 1280×720', width: 1280, height: 720, fold: true },
+    // 1280×800: Notes and Date fit between the totals and Save / Print too, none of them covered (3.5)
+    { name: 'laptop 1280×800', width: 1280, height: 800, fold: true, fields: true },
     { name: 'phone 360×640', width: 360, height: 640, fold: false }
 ];
 
 const MODES = {
-    purchase: { btn: '#purchaseModeBtn', item: '#billItem', rate: '#billRate', weight: '#newWeight', section: '#purchaseSection', totals: ['#billTotal', '#amountPayable'], actions: ['#saveBillBtn', '#printBillBtn'], last: '#billDate', bar: ['#barPayable', '#amountPayable'] },
-    sale: { btn: '#saleModeBtn', item: '#saleItem', rate: '#saleRate', weight: '#saleWeight', section: '#saleSection', totals: ['#saleTotal'], actions: ['#saveSaleBtn', '#printSaleBtn'], last: '#saleDate', bar: ['#barReceivable', '#amountReceivable'] }
+    purchase: { btn: '#purchaseModeBtn', item: '#billItem', rate: '#billRate', weight: '#newWeight', section: '#purchaseSection', totals: ['#billTotal', '#amountPayable'], actions: ['#saveBillBtn', '#printBillBtn'], fields: ['#billComments', '#billDate'], last: '#billDate', bar: ['#barPayable', '#amountPayable'] },
+    sale: { btn: '#saleModeBtn', item: '#saleItem', rate: '#saleRate', weight: '#saleWeight', section: '#saleSection', totals: ['#saleTotal'], actions: ['#saveSaleBtn', '#printSaleBtn'], fields: ['#saleComments', '#saleDate'], last: '#saleDate', bar: ['#barReceivable', '#amountReceivable'] }
 };
 
 /** Where an element is on screen, and whether it is the topmost thing at its centre. */
@@ -100,11 +103,17 @@ for (const size of SIZES) {
         await page.setViewportSize({ width: size.width, height: size.height });
         await login(page, 'owner');
         await showTab(page, 'billing');
+        if (size.fields) {
+            // A bill an earlier test left unsaved offers Restore above the form; this size measures the form alone
+            await settle(page);
+            if (await page.locator('#autoSaveBanner').isVisible()) await page.click('#autoSaveBanner .autosave-discard');
+            await expect(page.locator('#autoSaveBanner')).toBeHidden();
+        }
         for (const mode of Object.keys(MODES)) {
             await addLine(page, mode);
             await scrollTab(page, size.fold ? 'top' : 'end');
             const m = MODES[mode];
-            for (const sel of size.fold ? [...m.totals, ...m.actions] : m.actions) {
+            for (const sel of size.fold ? [...m.totals, ...m.actions, ...(size.fields ? m.fields : [])] : m.actions) {
                 const p = await place(page, sel);
                 const where = `${mode} ${sel} at ${size.name}: ${JSON.stringify(p)}`;
                 if (size.fold) expect(p.scrolled, `page not scrolled (${where})`).toBe(0);
