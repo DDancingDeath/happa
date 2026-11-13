@@ -353,11 +353,11 @@ input[type="checkbox"].switch:focus-visible,
   box-shadow: var(--focus);
 }
 
-/* Mode dot: purchase / sale segments show the mode colour */
+/* Mode dot: purchase / sale segments show the mode colour (Billing's on both segments) */
 .filter-buttons .filter-btn.active.filter-purchase::before,
 .filter-buttons .filter-btn.active.filter-sale::before,
-#purchaseModeBtn.active::before,
-#saleModeBtn.active::before {
+#purchaseModeBtn::before,
+#saleModeBtn::before {
   content: '';
   flex: none;
   width: 8px;
@@ -367,7 +367,7 @@ input[type="checkbox"].switch:focus-visible,
 }
 
 .filter-buttons .filter-btn.active.filter-sale::before,
-#saleModeBtn.active::before {
+#saleModeBtn::before {
   background: var(--mode-sale);
 }
 

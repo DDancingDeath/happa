@@ -1,5 +1,5 @@
 /**
- * Themes (redesign 2.6, DIRECTION §4): text contrast (axe `color-contrast`, WCAG AA) on Billing,
+ * Themes (redesign 2.6, DIRECTION §4): text contrast (axe `color-contrast`, WCAG AA) on Billing (with a line and a ticked "Fill"),
  * Today and Outstanding, on the open Workers row, and on the app bar with the More sheet open, in every theme × mode (and in Hindi for the serif themes, whose Devanagari stays
  * in the sans face), and the Settings › Appearance gallery: a tap previews
  * a theme app-wide without saving it, Cancel or leaving Settings restores the saved one, Apply saves it
@@ -27,6 +27,21 @@ const THEME_WORKER = {
     entries: [{ id: 'e2e-theme-entry', amount: 3000, kind: 'advance', month: MONTH, date: `${MONTH}-01`, mode: 'cash' }],
 };
 const PAGES = [['Billing', 'billing'], ['Today', 'day'], ['Outstanding', 'due']];
+
+/** Billing with a line in the row list and the whole bill put in Cash with its "Fill" (3.5), so axe sees both. */
+async function billWithFill(page) {
+    const rice = await page.$eval('#billItem', (sel) => [...sel.options].find(o => /Rice|चावल/.test(o.textContent))?.value);
+    await page.selectOption('#billItem', rice);
+    await page.fill('#billRate', '30');
+    await page.fill('#newWeight', '10');
+    await page.press('#newWeight', 'Enter');
+    await page.evaluate(() => window.app.billing.addToBill());
+    await expect(page.locator('#billTable tbody tr.bill-line')).toHaveCount(1);
+    await page.locator('#purchaseSection .pay-fill', { has: page.locator('#cashCheckbox') }).click();
+    await expect(page.locator('#cashCheckbox')).toBeChecked();
+    await expect(page.locator('#cashPayment')).toHaveValue(await page.locator('#amountPayable').textContent());
+    await page.evaluate(() => document.activeElement?.blur?.());
+}
 
 test.skip(({ isMobile }) => !isMobile, 'phone project only');
 test.beforeEach(async () => { await seed(); });
@@ -65,6 +80,7 @@ for (const [theme, appearance, lang = 'en'] of COMBOS) {
         for (const [name, route] of PAGES) {
             await showTab(page, route);
             expect(await settle(page), `${name} finished loading`).toBe(true);
+            if (route === 'billing') await billWithFill(page);
             const result = await new AxeBuilder({ page }).withRules(['color-contrast']).analyze();
             for (const v of result.violations) {
                 for (const n of v.nodes) found.push(`${name}: ${n.target.join(' ')} — ${(n.any[0]?.message || v.help).replace(/\s+/g, ' ')}`);

@@ -485,12 +485,33 @@
     font-size: var(--fs-title) !important;
   }
 
+  #billing .bill-col-summary :is(.grand-total, .payment-row.payment-total) {
+    padding: 6px 0 !important;
+  }
+
+  #billing .bill-col-summary .bill-notes-date {
+    margin-bottom: 0;
+  }
+
+  #billing .bill-col-summary > .bill-totals {
+    margin-bottom: 0;
+  }
+
+  #billing .bill-col-summary .payment-row > .pay-fill,
+  #billing .bill-col-summary .form-row.field.bill-notes > .bill-note-print {
+    min-height: 30px;
+  }
+
+  #billing .bill-col-summary > .bill-actions:last-child {
+    padding: var(--sp-2) 0;
+  }
+
   #billing .bill-pay-title {
     margin-top: 4px;
     padding-top: 6px;
   }
 
-  .bill-col-summary > .form-row,
+  .bill-col-summary > :is(.form-row, .bill-notes-date),
   .bill-col-summary > :is(.bill-actions, div[style*="display: flex"]) {
     margin-top: 10px !important;
   }
@@ -524,13 +545,20 @@
     z-index: 2;
   }
 
+  /* The Save / Print row is the column's footer: it reaches the bottom of the screen (over the
+     tab's 48px bottom padding, so no field shows under it) and focus scrolls a field clear of it. */
   .bill-col-summary > :is(.bill-actions, div[style*="display: flex"]):last-child {
     position: sticky;
-    bottom: 0;
+    bottom: -48px;
     z-index: 2;
     margin-top: auto !important;
-    padding: 8px 0;
+    padding: var(--sp-3) 0;
+    border-top: 1px solid var(--line);
     background: var(--light-bg);
+  }
+
+  #billing.tab {
+    scroll-padding-bottom: 96px;
   }
 
   body.dark-mode .bill-col-summary > :is(.bill-actions, div[style*="display: flex"]):last-child {

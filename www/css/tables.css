@@ -102,6 +102,142 @@
   transform: scale(0.95);
 }
 
+/* Billing's remove is a quiet × (3.5) */
+#billing :is(.remove-bill-item, .remove-sale-item) {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--ink-2);
+  font-size: var(--fs-title);
+  font-weight: var(--w-regular);
+  line-height: 1;
+}
+
+#billing :is(.remove-bill-item, .remove-sale-item):hover {
+  background: var(--state-hover);
+  box-shadow: none;
+  color: var(--negative);
+}
+
+#billing :is(.remove-bill-item, .remove-sale-item):focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+/* Phone and tablet: the bill lines are a row list in a panel (3.5). Item over "kg × rate",
+   the amount and × on the right. Same cells as the desktop table. */
+@media (max-width: 1023.98px) {
+  #billTable, #saleTable {
+    display: block;
+    margin-top: 0;
+    overflow: hidden;
+    border: 1px solid var(--panel-border);
+    border-radius: var(--r-panel);
+    background: var(--panel-bg);
+    box-shadow: var(--panel-shadow);
+  }
+
+  #billTable thead, #saleTable thead {
+    display: none;
+  }
+
+  #billTable tbody, #saleTable tbody {
+    display: block;
+  }
+
+  #billTable tbody tr, #saleTable tbody tr {
+    display: block;
+    border-bottom: none;
+    background: none;
+  }
+
+  #billTable tbody tr + tr, #saleTable tbody tr + tr {
+    border-top: 1px var(--rule-style) var(--line);
+  }
+
+  #billTable tbody tr.bill-line, #saleTable tbody tr.bill-line {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+    column-gap: var(--sp-1);
+    align-items: center;
+    min-height: var(--row-h);
+    padding: 10px var(--sp-2) 10px var(--sp-4);
+  }
+
+  #billTable tbody tr.bill-line > td, #saleTable tbody tr.bill-line > td {
+    display: block;
+    max-width: none;
+    padding: 0;
+    text-align: left;
+  }
+
+  #billTable tbody tr.bill-line > td:nth-child(1), #saleTable tbody tr.bill-line > td:nth-child(1) {
+    grid-column: 1 / 4;
+    grid-row: 1;
+    overflow: hidden;
+    color: var(--ink);
+    font-size: var(--fs-body);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  #billTable tbody tr.bill-line > :is(td:nth-child(2), td:nth-child(3)),
+  #saleTable tbody tr.bill-line > :is(td:nth-child(2), td:nth-child(3)) {
+    grid-row: 2;
+    color: var(--ink-3);
+    font-size: var(--fs-sm);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  #billTable tbody tr.bill-line > td:nth-child(3), #saleTable tbody tr.bill-line > td:nth-child(3) {
+    grid-column: 1;
+  }
+
+  #billTable tbody tr.bill-line > td:nth-child(2), #saleTable tbody tr.bill-line > td:nth-child(2) {
+    grid-column: 2;
+  }
+
+  #billTable tbody tr.bill-line > td:nth-child(2)::before, #saleTable tbody tr.bill-line > td:nth-child(2)::before {
+    display: inline;
+    content: "× ";
+  }
+
+  #billTable tbody tr.bill-line > td:nth-child(4), #saleTable tbody tr.bill-line > td:nth-child(4) {
+    grid-column: 4;
+    grid-row: 1 / 3;
+    padding-left: var(--sp-3);
+    color: var(--ink);
+    font-family: var(--font-num);
+    font-size: var(--fs-body);
+    font-weight: var(--w-strong);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  #billTable tbody tr.bill-line > td:nth-child(5), #saleTable tbody tr.bill-line > td:nth-child(5) {
+    grid-column: 5;
+    grid-row: 1 / 3;
+  }
+
+  #billTable tbody tr.bill-line:hover, #saleTable tbody tr.bill-line:hover {
+    background: var(--state-hover);
+  }
+
+  #billTable td.bill-empty, #saleTable td.bill-empty {
+    display: block;
+    max-width: none;
+  }
+
+  #billing :is(.remove-bill-item, .remove-sale-item) {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 /* Horizontal-scroll tables: fade on the right while columns are hidden (ui/scroll-cue.js) */
 .scroll-cue {
   position: relative;

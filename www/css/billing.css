@@ -601,7 +601,26 @@ input[type="number"] {
 }
 
 .bill-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--sp-3);
   margin-bottom: var(--sp-4);
+}
+
+/* One column, except the line preview (packets, kg) with Add to bill beside it */
+.bill-entry > * {
+  grid-column: 1 / -1;
+}
+
+#billing .bill-entry > .bill-summary {
+  grid-column: 1;
+}
+
+#billing .bill-entry > .add-to-bill-btn {
+  grid-column: 2;
+  width: auto;
+  min-height: 48px;
 }
 
 /* Rate | Weight | Add on one line */

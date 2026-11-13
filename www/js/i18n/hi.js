@@ -539,6 +539,8 @@ export default {
     'ui.billing.notes_label': "नोट",
     'ui.billing.date_label': "तारीख",
     'ui.billing.fill_all': "पूरा बिल यहाँ डालें",
+    'ui.billing.fill': "पूरा",
+    'ui.billing.on_this_bill': "बिल के आइटम",
     'ui.cash.active': "चालू",
     'ui.cash.actual_balance': "असल नकद",
     'ui.cash.added': "जोड़ा:",
