@@ -1,96 +1,107 @@
 <div id="stock" class="tab">
     <header class="page-head"><h2 data-i18n="ui.nav.stocks">Stock</h2></header>
-        
-        <div class="filter-buttons" style="margin-bottom: 20px;">
-            <button class="filter-btn active" data-onclick="stock.filterTab('current', event)" data-i18n="ui.stock.current_stock">Current stock</button>
-            <button class="filter-btn" data-onclick="stock.filterTab('adjustment', event)" data-i18n="ui.stock.stock_adjustment">Stock adjustment</button>
-            <button class="filter-btn" id="deadStockTabBtn" style="display: none;" data-onclick="stock.filterTab('dead', event)" data-i18n="ui.deadstock.tab">Not selling</button>
+
+        <div class="seg stock-seg" role="group">
+            <button type="button" aria-pressed="true" data-onclick="stock.filterTab('current', event)" data-i18n="ui.stock.current_stock">Current stock</button>
+            <button type="button" aria-pressed="false" data-onclick="stock.filterTab('adjustment', event)" data-i18n="ui.stock.stock_adjustment">Stock adjustment</button>
+            <button type="button" aria-pressed="false" id="deadStockTabBtn" hidden data-onclick="stock.filterTab('dead', event)" data-i18n="ui.deadstock.tab">Not selling</button>
         </div>
 
-        <div id="deadStockSection" style="display: none;">
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
-                <label for="deadStockDays" style="font-weight: 600;" data-i18n="ui.deadstock.no_sale_in">No sale in</label>
-                <select id="deadStockDays" data-onchange="stock.setDeadStockDays(this.value)">
+        <div id="deadStockSection" hidden>
+            <div class="stock-days">
+                <label for="deadStockDays" data-i18n="ui.deadstock.no_sale_in">No sale in</label>
+                <select id="deadStockDays" class="input" data-onchange="stock.setDeadStockDays(this.value)">
                     <option value="30" data-i18n="ui.deadstock.opt_30">30 days</option>
                     <option value="60" data-i18n="ui.deadstock.opt_60">60 days</option>
                     <option value="90" data-i18n="ui.deadstock.opt_90">90 days</option>
                 </select>
             </div>
-            <div id="deadStockSummary" style="font-size: 13px; color: #555; margin-bottom: 8px;"></div>
+            <div id="deadStockSummary" class="stock-note"></div>
             <div id="deadStockList"></div>
         </div>
 
         <div id="currentStockSection">
-            <div id="stockSummary" class="stock-summary" hidden>
-                <div class="stock-summary__cell">
-                    <span class="stock-summary__label" data-i18n="ui.stock.summary_items">Items in stock</span>
-                    <strong id="stockSummaryItems" class="stock-summary__value">0</strong>
+            <div id="stockSummary" class="panel metrics stock-metrics" hidden>
+                <div class="metric">
+                    <div class="metric-label" data-i18n="ui.stock.summary_items">Items in stock</div>
+                    <div id="stockSummaryItems" class="metric-value">0</div>
                 </div>
-                <div class="stock-summary__cell" id="stockSummaryKgCell">
-                    <span class="stock-summary__label" data-i18n="ui.stock.summary_kg">Total weight</span>
-                    <strong id="stockSummaryKg" class="stock-summary__value">0 kg</strong>
+                <div class="metric" id="stockSummaryKgCell">
+                    <div class="metric-label" data-i18n="ui.stock.summary_kg">Total weight</div>
+                    <div id="stockSummaryKg" class="metric-value">0 kg</div>
                 </div>
-                <div class="stock-summary__cell" id="stockSummaryValueCell" data-perm="stockValue">
-                    <span class="stock-summary__label" data-i18n="ui.stock.summary_value">Stock value</span>
-                    <strong id="stockSummaryValue" class="stock-summary__value" data-metric="S4">₹0</strong>
+                <div class="metric" id="stockSummaryValueCell" data-perm="stockValue">
+                    <div class="metric-label" data-i18n="ui.stock.summary_value">Stock value</div>
+                    <div id="stockSummaryValue" class="metric-value" data-metric="S4">₹0</div>
                 </div>
             </div>
-            <div style="margin-bottom: 20px;">
-                <input type="text" 
-                       id="stockSearchInput" 
+            <div class="search-field stock-search">
+                <svg class="i" aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
+                <input type="text" class="input"
+                       id="stockSearchInput"
                        placeholder="Search items…" data-i18n-placeholder="ui.stock.search_items"
+                       aria-label="Search items…" data-i18n-aria-label="ui.stock.search_items"
                        data-oninput="stock.searchStock()">
             </div>
             <div id="stockList">
-                <p style="text-align: center; color: #666; margin-top: 40px;" data-i18n="ui.stock.no_stock_data_available">No stock data available</p>
+                <p class="empty" data-i18n="ui.stock.no_stock_data_available">No stock data available</p>
             </div>
         </div>
 
-        <div id="stockAdjustmentSection" style="display: none;">
+        <div id="stockAdjustmentSection" class="stock-adjust-layout" hidden>
             <div class="stock-count-bar">
-                <button type="button" class="quick-add-btn-inline" data-stock-adjust data-onclick="stock.openStockCount()" data-i18n="ui.stock.count_btn">Count stock</button>
+                <button type="button" class="btn btn-tonal" data-stock-adjust data-onclick="stock.openStockCount()" data-i18n="ui.stock.count_btn">Count stock</button>
             </div>
-            <div class="settings-card">
-                <h3 data-i18n="ui.stock.manual_stock_adjustment">Manual stock adjustment</h3>
-                
-                <div class="form-row">
-                    <label data-i18n="ui.stock.select_item">Select item</label>
-                    <select id="adjustItem" data-onchange="stock.loadAdjustItemStock()">
+            <div class="panel panel-pad stock-adjust-form">
+                <h3 class="stock-title" data-i18n="ui.stock.manual_stock_adjustment">Manual stock adjustment</h3>
+
+                <div class="field">
+                    <label for="adjustItem" data-i18n="ui.stock.select_item">Select item</label>
+                    <select id="adjustItem" class="input" data-onchange="stock.loadAdjustItemStock()">
                         <option value="" data-i18n="ui.wholesale.select_item">Select item</option>
                     </select>
                 </div>
-                
-                <div style="background: #e3f2fd; padding: 12px; border-radius: 8px; margin: 12px 0;">
-                    <div style="font-size: 14px; color: #333;">
-                        <strong data-i18n="ui.stock.current_stock_2">Current stock:</strong> <span id="currentStockDisplay">-</span> kg
+
+                <div class="metrics stock-now">
+                    <div class="metric">
+                        <div class="metric-label" data-i18n="ui.stock.current_stock">Current stock</div>
+                        <div class="metric-value"><span id="currentStockDisplay">-</span> kg</div>
                     </div>
-                    <div id="avgRateDisplay" data-perm="profit" style="font-size: 13px; color: #666; margin-top: 4px; display: none;">
-                        <strong data-i18n="ui.today.avg_rate_label">Avg rate:</strong> <span id="avgRateValue">-</span>
+                    <div id="avgRateDisplay" class="metric" data-perm="profit" hidden>
+                        <div class="metric-label" data-i18n="ui.wholesale.avg_purchase_rate">Avg purchase rate</div>
+                        <div class="metric-value" id="avgRateValue">-</div>
                     </div>
                 </div>
-                
-                <div class="form-row">
-                    <label data-i18n="ui.stock.adjustment_type">Adjustment type</label>
-                    <select id="adjustType" data-onchange="stock.updateAdjustmentPlaceholder()">
+
+                <div class="field">
+                    <label for="adjustType" data-i18n="ui.stock.adjustment_type">Adjustment type</label>
+                    <select id="adjustType" class="input" data-onchange="stock.updateAdjustmentPlaceholder()">
                         <option value="add" data-i18n="ui.stock.add_stock">Add stock</option>
                         <option value="remove" data-i18n="ui.stock.remove_stock">Remove stock</option>
                         <option value="set" data-i18n="ui.stock.set_stock">Set stock</option>
                     </select>
                 </div>
-                
-                <div class="form-row">
-                    <label data-i18n="ui.wholesale.quantity_kg">Quantity (kg)</label>
-                    <input type="number" inputmode="decimal" id="adjustQuantity" placeholder="Enter quantity" data-i18n-placeholder="ui.wholesale.enter_quantity" />
+
+                <div class="field">
+                    <label for="adjustQuantity" data-i18n="ui.wholesale.quantity">Quantity</label>
+                    <div class="adorn">
+                        <input type="number" inputmode="decimal" id="adjustQuantity" class="input" placeholder="Enter quantity" data-i18n-placeholder="ui.wholesale.enter_quantity" />
+                        <span class="adorn-post">kg</span>
+                    </div>
                 </div>
-                
-                <div class="form-row">
-                    <label data-i18n="ui.stock.rate_kg_optional">Rate (₹/kg, optional)</label>
-                    <input type="number" inputmode="decimal" id="adjustRate" placeholder="0" value="0" />
+
+                <div class="field">
+                    <label for="adjustRate" data-i18n="ui.stock.rate_kg_optional">Rate (optional)</label>
+                    <div class="adorn">
+                        <span class="adorn-pre">₹</span>
+                        <input type="number" inputmode="decimal" id="adjustRate" class="input" placeholder="0" value="0" />
+                        <span class="adorn-post">/kg</span>
+                    </div>
                 </div>
-                
-                <div class="form-row">
-                    <label data-i18n="ui.stock.reason">Reason</label>
-                    <select id="adjustReasonCode">
+
+                <div class="field">
+                    <label for="adjustReasonCode" data-i18n="ui.stock.reason">Reason</label>
+                    <select id="adjustReasonCode" class="input">
                         <option value="" data-i18n="ui.stock.select_reason">Select reason</option>
                         <option value="opening" data-i18n="ui.stock.reason_opening">Opening stock</option>
                         <option value="count" data-i18n="ui.stock.reason_count">Physical count</option>
@@ -99,18 +110,18 @@
                         <option value="other" data-i18n="ui.stock.reason_other">Other</option>
                     </select>
                 </div>
-                
-                <div class="form-row">
-                    <label data-i18n="ui.stock.note_required_other">Note (required for Other)</label>
-                    <input type="text" id="adjustReason" placeholder="e.g., Rats damaged 2 bags" data-i18n-placeholder="ui.stock.e_g_rats_damaged_2" />
+
+                <div class="field">
+                    <label for="adjustReason" data-i18n="ui.stock.note_required_other">Note (required for Other)</label>
+                    <input type="text" id="adjustReason" class="input" placeholder="e.g., Rats damaged 2 bags" data-i18n-placeholder="ui.stock.e_g_rats_damaged_2" />
                 </div>
-                
-                <button class="add-to-bill-btn" data-stock-adjust data-onclick="stock.applyAdjustment()" data-i18n="ui.stock.apply_adjustment">Apply adjustment</button>
+
+                <button type="button" class="btn btn-primary btn-block" data-stock-adjust data-onclick="stock.applyAdjustment()" data-i18n="ui.stock.apply_adjustment">Apply adjustment</button>
             </div>
-            
-            <h3 data-i18n="ui.stock.adjustment_history">Adjustment history</h3>
+
+            <h3 class="stock-title" data-i18n="ui.stock.adjustment_history">Adjustment history</h3>
             <div id="adjustmentHistory">
-                <p style="text-align: center; color: #666; margin-top: 20px;" data-i18n="ui.stock.no_adjustments_yet">No adjustments yet</p>
+                <p class="empty" data-i18n="ui.stock.no_adjustments_yet">No adjustments yet</p>
             </div>
         </div>
     </div>

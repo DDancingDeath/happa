@@ -1,74 +1,91 @@
-.item-card {
-  background: var(--card-bg);
-  padding: 18px;
-  border-radius: var(--radius-lg);
-  margin-bottom: 14px;
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border-color);
-  transition: all var(--transition);
-}
-
-.item-card:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
-}
-
-.item-header {
+/* Rates page (5.6): actions, search and options, the rates table */
+.rates-actions {
   display: flex;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
 }
 
-.item-name-input {
+.rates-actions > .btn {
   flex: 1;
-  font-size: 16px;
-  font-weight: var(--w-strong);
-  padding: 13px 15px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  transition: all var(--transition);
-  background: var(--card-bg);
-  color: var(--text-primary);
-}
-
-.item-name-input:focus {
-  border-color: var(--primary-color);
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.delete-item-btn {
-  background: var(--btn-danger);
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: var(--radius);
-  font-size: 14px;
-  font-weight: var(--w-strong);
-  cursor: pointer;
+  min-width: 0;
   white-space: nowrap;
-  transition: all var(--transition);
-  box-shadow: var(--shadow-sm);
 }
 
-.delete-item-btn:hover {
-  box-shadow: var(--shadow);
+.rates-tools {
+  margin-bottom: var(--sp-4);
 }
 
-.delete-item-btn:active {
-  transform: scale(0.95);
-}
-
-.item-row {
+.rates-option {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+.rates-head {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.rates-table .rates-name {
+  font-weight: var(--w-strong);
+}
+
+.rates-table .rates-figs {
+  font-variant-numeric: tabular-nums;
+}
+
+.rates-table tr.is-clickable {
+  cursor: pointer;
+}
+
+/* Import preview, rate checks and change history (dialogs) */
+.rates-dlg {
+  text-align: left;
+}
+
+.rates-dlg-line {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.rates-dlg-list {
+  margin: var(--sp-1) 0 var(--sp-2) var(--sp-4);
+  font-size: var(--fs-sm);
+}
+
+.rates-dlg-note {
+  margin-top: var(--sp-2);
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+
+.rate-history-row {
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-sm);
+}
+
+/* An item's rates as editable boxes (the item dialog) */
+.rates-card-head {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+  margin-bottom: var(--sp-3);
+}
+
+.rates-card .field + .field {
+  margin-top: var(--sp-3);
 }
 
 .rates-container {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
   flex-wrap: wrap;
   align-items: center;
 }
@@ -76,9 +93,9 @@
 .rate-group {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 8px;
-  border-radius: var(--radius);
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-control);
   border: 2px solid;
   transition: all var(--transition);
 }
@@ -98,18 +115,18 @@
   background: var(--sale-light);
 }
 
-.rates-container .rate-input {
-  width: 60px !important;
-  padding: 6px !important;
-  font-size: 16px;
+.rates-container .rate-group > .rate-input {
+  width: 60px;
+  padding: var(--sp-1);
+  font-size: var(--fs-body);
   font-weight: var(--w-strong);
-  border: none !important;
-  background: transparent !important;
+  border: none;
+  background: transparent;
   border-radius: 0;
   text-align: center;
   margin: 0;
   -moz-appearance: textfield;
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
 .rates-container .rate-input::-webkit-outer-spin-button,
@@ -123,13 +140,13 @@
 }
 
 .rates-container .delete-rate {
-  background: var(--btn-danger);
-  color: var(--white);
+  background: var(--btn-danger-bg);
+  color: var(--btn-danger-ink);
   border: none;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
-  font-size: 16px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-body);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -139,8 +156,7 @@
   margin: 0;
   padding: 0;
   flex-shrink: 0;
-  transition: all 0.2s;
-  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.3);
+  transition: all var(--dur-1);
 }
 
 .rates-container .delete-rate:hover {
@@ -161,66 +177,18 @@
   background: var(--success-color);
   color: var(--white);
   border: none;
-  padding: 16px;
-  border-radius: 12px;
-  font-size: 18px;
+  padding: var(--sp-4);
+  border-radius: var(--r-panel);
+  font-size: var(--fs-lead);
   font-weight: var(--w-strong);
   cursor: pointer;
-  margin-top: 16px;
+  margin-top: var(--sp-4);
   box-shadow: var(--shadow);
-  transition: transform 0.2s;
+  transition: transform var(--dur-1);
 }
 
 .add-item-btn:active {
   transform: scale(0.98);
-}
-
-/* Items page on a phone: action buttons and the rates table fit the width (F28) */
-@media (max-width: 1023.98px) {
-  #itemsActionButtons {
-    flex-wrap: wrap;
-  }
-
-  #itemsActionButtons .quick-add-btn-inline {
-    min-width: 0;
-    padding: 12px 8px !important;
-    white-space: nowrap;
-  }
-
-  #itemsViewTable th,
-  #itemsViewTable td {
-    padding: 12px 8px !important;
-  }
-
-  #itemsViewTable th {
-    font-size: var(--fs-caption) !important;
-    letter-spacing: 0 !important;
-  }
-}
-
-/* Archived item (#123) */
-.item-archived-chip {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: var(--surface-muted);
-  color: var(--text-secondary);
-  font-size: var(--fs-caption);
-  font-weight: var(--w-label);
-}
-
-/* Items search box: focus ring (was inline onfocus/onblur, #89) */
-#itemsSearchInput { width: 100%; padding: 14px; border: 2px solid var(--border-color); border-radius: 10px; font-size: var(--fs-body); transition: all 0.2s; }
-#itemsSearchInput:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-
-.items-archived-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  font-size: 14px;
-  color: var(--text-secondary);
 }
 
 /* Item name suggested from the other language (#134), until the user takes it */
@@ -228,4 +196,3 @@
   color: var(--text-muted);
   font-style: italic;
 }
-

@@ -64,7 +64,7 @@ const langReady = loadCatalogue(getLang()).catch(e => console.error('Language ca
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261108dx-expenses';
+const BUILD_ID = '20261108dy-rates';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -616,7 +616,7 @@ async function initializeUserData() {
                     if (document.getElementById('outstandingSearchInput')?.value.trim()) OutstandingManager.searchOutstanding();
                 },
                 stock: () => {
-                    const shown = (id) => document.getElementById(id)?.style.display !== 'none';
+                    const shown = (id) => document.getElementById(id)?.hidden !== true;
                     if (shown('stockAdjustmentSection')) return StockManager.renderAdjustmentHistory();
                     if (shown('deadStockSection')) return StockManager.renderDeadStock();
                     return Promise.resolve(StockManager.renderStock()).then(() => {

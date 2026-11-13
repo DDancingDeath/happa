@@ -28,7 +28,18 @@ describe('moneyInText', () => {
         expect(d.querySelector('.money').textContent).toBe('₹1,500');
     });
 
+    test('takes formatRupees options, so a rate keeps its paise inside the figure', () => {
+        const d = document.createElement('div');
+        d.innerHTML = moneyInText('Rate: ₹32.00/kg', 32, { decimals: 2 });
+        expect(d.textContent).toBe('Rate: ₹32.00/kg');
+        expect(d.querySelector('.money').textContent).toBe('₹32.00');
+    });
+
     test('text without the figure is only escaped', () => {
         expect(moneyInText('Due: ₹9', 1500)).toBe('Due: ₹9');
+    });
+
+    test('a missing amount leaves the text as it is ("₹0.00" stays, never "—")', () => {
+        expect(moneyInText('Rate: ₹0.00/kg', undefined, { decimals: 2 })).toBe('Rate: ₹0.00/kg');
     });
 });

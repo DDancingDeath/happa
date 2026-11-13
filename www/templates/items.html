@@ -1,31 +1,35 @@
 <div id="items" class="tab">
     <header class="page-head"><h2 data-i18n="ui.nav.rates">Rates</h2></header>
-        <div id="itemsActionButtons" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px;">
-            <button class="quick-add-btn-inline" data-onclick="items.exportExcel()" style="flex: 1; padding: 12px 20px; font-size: 15px; font-weight: 600;" data-i18n="ui.items.export">Export</button>
-            <button class="quick-add-btn-inline" data-onclick="items.pickImportFile()" style="flex: 1; padding: 12px 20px; font-size: 15px; font-weight: 600;" data-i18n="ui.items.import">Import</button>
-            <button class="quick-add-btn-inline items-add-btn" data-onclick="items.openAddModal()" style="flex: 1; padding: 12px 20px; font-size: 15px; font-weight: 600;" data-i18n="ui.items.add_item">Add item</button>
+        <div id="itemsActionButtons" class="rates-actions">
+            <button type="button" class="btn" data-onclick="items.exportExcel()" data-i18n="ui.items.export">Export</button>
+            <button type="button" class="btn" data-onclick="items.pickImportFile()" data-i18n="ui.items.import">Import</button>
+            <button type="button" class="btn btn-primary" data-onclick="items.openAddModal()" data-i18n="ui.items.add_item">Add item</button>
         </div>
-        
-        <input type="file" id="importItemsFile" accept=".xlsx,.xls,.csv" style="display: none;" data-onchange="items.importExcel(event)" />
-        
-        <div style="margin-bottom: 20px;">
-            <input type="text" 
-                   id="itemsSearchInput" 
-                   placeholder="Search items by name…" data-i18n-placeholder="ui.items.search_items_by_name"
-                   data-oninput="items.search(this.value)">
-            <label class="items-archived-toggle"><input type="checkbox" id="itemsShowArchived" data-onchange="items.toggleArchived(this.checked)"> <span data-i18n="ui.items.show_archived">Show archived</span></label>
-            <label class="items-archived-toggle"><input type="checkbox" id="itemsSortAz" data-onchange="items.setSortAz(this.checked)"> <span data-i18n="ui.items.sort_az">A–Z order</span></label>
+
+        <input type="file" id="importItemsFile" accept=".xlsx,.xls,.csv" hidden data-onchange="items.importExcel(event)" />
+
+        <div class="rates-tools">
+            <div class="search-field">
+                <svg class="i" aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
+                <input type="text" class="input"
+                       id="itemsSearchInput"
+                       placeholder="Search items by name…" data-i18n-placeholder="ui.items.search_items_by_name"
+                       aria-label="Search items by name…" data-i18n-aria-label="ui.items.search_items_by_name"
+                       data-oninput="items.search(this.value)">
+            </div>
+            <label class="rates-option"><input type="checkbox" id="itemsShowArchived" data-onchange="items.toggleArchived(this.checked)"> <span data-i18n="ui.items.show_archived">Show archived</span></label>
+            <label class="rates-option"><input type="checkbox" id="itemsSortAz" data-onchange="items.setSortAz(this.checked)"> <span data-i18n="ui.items.sort_az">A–Z order</span></label>
         </div>
-        
+
         <div class="scroll-cue">
-        <div id="itemsTableScroll" class="scroll-cue-inner" style="border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #e5e7eb;">
-            <table id="itemsViewTable" style="width: 100%; border-collapse: collapse; background: white;">
+        <div id="itemsTableScroll" class="scroll-cue-inner panel">
+            <table id="itemsViewTable" class="table rates-table">
                 <thead>
-                    <tr style="background: linear-gradient(135deg, #5560d6 0%, #764ba2 100%); border-bottom: 2px solid #5a67d8;">
-                        <th style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid rgba(255,255,255,0.2);" data-i18n="ui.items.item_name">Item name</th>
-                        <th style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid rgba(255,255,255,0.2);" data-perm="purchaseRates" data-i18n="ui.items.purchase_rates">Purchase rates</th>
-                        <th style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid rgba(255,255,255,0.2);" data-i18n="ui.items.retail_rates">Retail rates</th>
-                        <th class="wholesale-column" style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="ui.items.wholesale_rates">Wholesale rates</th>
+                    <tr>
+                        <th scope="col" data-i18n="ui.items.item_name">Item name</th>
+                        <th scope="col" data-perm="purchaseRates"><span class="rates-head"><span class="mode-dot" aria-hidden="true"></span><span data-i18n="ui.items.purchase_rates">Purchase rates</span></span></th>
+                        <th scope="col"><span class="rates-head"><span class="mode-dot sale" aria-hidden="true"></span><span data-i18n="ui.items.retail_rates">Retail rates</span></span></th>
+                        <th scope="col" class="wholesale-column"><span class="rates-head"><span class="mode-dot wholesale" aria-hidden="true"></span><span data-i18n="ui.items.wholesale_rates">Wholesale rates</span></span></th>
                     </tr>
                 </thead>
                 <tbody id="itemsViewTableBody">

@@ -98,7 +98,8 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   save sets `aria-busy` (the `runExclusive` lock). Old: `.save-btn`, `.print-btn`, `.draft-btn`,
   `.add-to-bill-btn`, `.quick-add-btn-inline`, `.split-rest-btn`.
 - **Fields** `.field > label + .input`, label above, `₹` / `kg` in `.adorn`; native `<select>`
-  styled as an input; checkbox and switch; `.kbd` hints (desktop).
+  styled as an input; checkbox and switch; `.kbd` hints (desktop). **Search** `.search-field > .i + .input`: the
+  sprite search icon inside the field (decorative, `aria-hidden`), the input keeps its own `aria-label`.
 - **Segmented control** `.seg` (old `.filter-buttons > .filter-btn`), with a mode dot for
   purchase / sale. **Tabs** `.tabs` (old `.sub-tabs > .sub-tab`). **Chips** `.chip`, **tags** `.tag`
   (`.pos/.neg/.warn/.info`).
@@ -135,7 +136,14 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   and its tones read `--bill-tone-text / -soft / -fill / -ink`, which `.bill-page` sets to the wholesale mode (violet fills and
   soft, ink text). Sales | History | Outstanding is a `.seg`; stock and average rate are `.metrics`; Outstanding bills are
   Outstanding's `.due-bill` panels; a bill opened from a list is panels of `.row`s and a `.table`.
-  `moneyInText(text, amount)` (`components.js`) draws the figure inside a translated sentence with `moneyHtml`.
+  `moneyInText(text, amount, opts)` (`components.js`) draws the figure inside a translated sentence with `moneyHtml`
+  (`opts` as `formatRupees`, e.g. `{ decimals: 2 }` for a rate; a missing amount leaves the text as it is).
+- **Rates and Stock (5.6)**: Rates is a `.table` in a panel (purchase / retail / wholesale headers carry their `.mode-dot`,
+  rates in ink), Export / Import / Add item as buttons (Add item primary), a `.search-field`, archived items a `.tag`.
+  Stock: Current | Adjustment | Not selling is a `.seg`; the summary is `.metrics`; items and dead stock are `.row`s
+  in a panel (`.stock-item` stays as the hook; an unmatched bucket takes a tone stripe); the low-stock list is a
+  `.notice`; the adjustment form is a panel of `.field`s with kg and ₹ … /kg as `.adorn`, current stock and average
+  rate as `.metrics`; adjustments are panels (`.history-item` hook). Sections switch with `hidden`.
 - **Expenses (5.4b)**: Business | Personal is a `.seg`; each form is a `.panel` of `.field`s (₹ as an `.adorn`) with a primary
   Save and a tonal Print; a section's list is a `.panel` of `.row`s (amount in `.row-trail`, voided rows `.is-voided` with a
   `.tag`), "Show voided" is a `.switch` and the quick-fill templates are `.chip`s. Expense details: the amount as a

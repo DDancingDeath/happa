@@ -1,6 +1,6 @@
 {
   "_readme": "Hard-coded colour ratchet (tests/ci/colour-guard.test.js). Counts may only go down: COLOUR_BASELINE=lower npx jest colour-guard. Use a design token (var(--…), www/css/variables.css) for a new colour.",
-  "total": 329,
+  "total": 256,
   "files": {
     "www/css/anomalies.css": 3,
     "www/css/app-updates.css": 11,
@@ -12,32 +12,26 @@
     "www/css/desktop.css": 1,
     "www/css/finance.css": 4,
     "www/css/health.css": 1,
-    "www/css/items.css": 3,
     "www/css/notifications.css": 9,
     "www/css/overlay.css": 2,
     "www/css/rate-trends.css": 2,
     "www/css/rentals.css": 4,
     "www/css/reports.css": 5,
     "www/css/settings.css": 4,
-    "www/css/stock.css": 2,
     "www/js/main.js": 4,
     "www/js/modules/admin.js": 18,
     "www/js/modules/anomalies.js": 27,
     "www/js/modules/diagnostics.js": 26,
     "www/js/modules/history.js": 47,
-    "www/js/modules/items.js": 31,
     "www/js/modules/rate-trends.js": 16,
     "www/js/modules/settings.js": 4,
-    "www/js/modules/stock.js": 18,
     "www/js/services/exporter.js": 5,
     "www/js/ui/period-compare.js": 2,
     "www/js/utils/quota-guard.js": 5,
     "www/templates/admin.html": 17,
     "www/templates/diagnostics.html": 11,
     "www/templates/history.html": 1,
-    "www/templates/items.html": 13,
     "www/templates/rate-trends.html": 5,
-    "www/templates/settings.html": 1,
-    "www/templates/stock.html": 6
+    "www/templates/settings.html": 1
   }
 }

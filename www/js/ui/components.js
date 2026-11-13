@@ -26,15 +26,17 @@ export function moneyHtml(amount, opts) {
 }
 
 /**
- * Translated text that holds formatRupees(amount), escaped, with that figure drawn by moneyHtml(); the text is unchanged.
+ * Translated text that holds formatRupees(amount, opts), escaped, with that figure drawn by moneyHtml(); the text is unchanged.
  * @param {*} text
  * @param {*} amount
+ * @param {{decimals?: number, small?: boolean, exact?: boolean, trueMinus?: boolean}} [opts] as formatRupees
  * @returns {string}
  */
-export function moneyInText(text, amount) {
+export function moneyInText(text, amount, opts) {
     const s = String(text ?? '');
-    const figure = formatRupees(amount);
+    const figure = formatRupees(amount, opts);
     const i = s.indexOf(figure);
-    if (i < 0) return esc(s);
-    return `${esc(s.slice(0, i))}${moneyHtml(amount)}${esc(s.slice(i + figure.length))}`;
+    const html = moneyHtml(amount, opts);
+    if (i < 0 || html === '—') return esc(s);
+    return `${esc(s.slice(0, i))}${html}${esc(s.slice(i + figure.length))}`;
 }

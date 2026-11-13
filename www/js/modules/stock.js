@@ -28,6 +28,8 @@ const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { pickLang } from '../i18n/localize.js';
 import { can } from '../utils/role-access.js';
 import { awaitingServer } from '../utils/data-freshness.js';
+import { icon } from '../ui/icons.js';
+import { moneyHtml, moneyInText } from '../ui/components.js';
 
 const stockKg = (q) => formatKg(q);
 
@@ -39,7 +41,23 @@ const DEAD_STOCK_DAYS_KEY = 'aadhat.deadStockDays';
  */
 const stockNotFinal = () => AppState.stockReady === false || awaitingServer();
 
-const stockUpdatingHtml = () => `<p class="stock-updating" style="text-align: center; color: var(--text-secondary); margin-top: 40px;">${Helpers.escapeHtml(t('ui.stock.updating'))}</p>`;
+/** A money figure (moneyHtml); its text is exactly formatRupees(amount, opts), also for a missing amount. */
+const figHtml = (amount, opts) => {
+    const html = moneyHtml(amount, opts);
+    return html === '—' ? Helpers.escapeHtml(formatRupees(amount, opts)) : html;
+};
+
+/** Translated text holding a figure (moneyInText). */
+const txMoney = (key, params, amount, opts) => moneyInText(t(key, params), amount, opts);
+
+/** The adjustment form's average rate: shown only with a rate (style.display stays the switch others read). */
+const showAvgRate = (el, on) => {
+    if (!el) return;
+    el.hidden = !on;
+    el.style.display = on ? 'block' : 'none';
+};
+
+const stockUpdatingHtml = () => `<p class="stock-updating empty">${Helpers.escapeHtml(t('ui.stock.updating'))}</p>`;
 
 /**
  * Banner for approximate stock (member device, stale checkpoint; #129).
@@ -49,7 +67,7 @@ const stockUpdatingHtml = () => `<p class="stock-updating" style="text-align: ce
 export function stockApproxNoteHtml(approx) {
     const note = approxStockNote(approx);
     if (!note) return '';
-    return `<p class="stock-approx" style="background: #fff8e1; color: #8a6d00; border-radius: 6px; padding: 8px 10px; font-size: 13px; margin: 0 0 8px;">${Helpers.escapeHtml(t('ui.stock.approx_note', { note: pickLang(note) }))}</p>`;
+    return `<p class="stock-approx notice warn">${Helpers.escapeHtml(t('ui.stock.approx_note', { note: pickLang(note) }))}</p>`;
 }
 
 /**
@@ -130,26 +148,32 @@ export class StockManager {
         if (approxNote) container.insertAdjacentHTML('beforeend', approxNote);
         container.insertAdjacentHTML('beforeend', this.lowStockHtml(stock, isStaff));
         const canSetAlerts = this.canManageStock();
+        const list = document.createElement('div');
+        list.className = 'panel stock-rows';
+        container.appendChild(list);
         
         stockWithDetails.forEach(item => {
             const displayName = (AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name;
             const div = document.createElement("div");
-            div.className = "stock-item";
+            div.className = "stock-item row";
+            const rateLine = txMoney('ui.stock.rate_per_kg', { rate: formatAmount(item.rate, { decimals: 2 }) }, item.rate, { decimals: 2 });
 
             if (item.isOrphan) {
                 // Orphan rows: highlight in red so the user can spot the
                 // discrepancy. Always shown to all users (including staff)
                 // because they signal a data integrity issue.
-                const qtyColor = item.quantity < 0 ? 'var(--danger-color)' : '#f0ad4e';
+                div.classList.add('stock-orphan', item.quantity < 0 ? 'tone-neg' : 'tone-warn');
                 div.innerHTML = `
-                    <div class="stock-row stock-row--orphan" style="border-left: 3px solid ${qtyColor}; padding-left: 8px;">
-                        <div class="stock-row__name">${Helpers.escapeHtml(displayName)}</div>
-                        <div class="stock-row__note" style="color: ${qtyColor};">⚠ ${tx('ui.stock.unmatched')}</div>
-                        <div class="stock-row__qty" style="color: ${qtyColor};">${stockKg(item.quantity)} kg</div>
-                        <div class="stock-row__rate" data-perm="profit">${tx('ui.stock.rate_per_kg', { rate: formatAmount(item.rate, { decimals: 2 }) })}</div>
-                    </div>
+                        <div class="row-main">
+                            <div class="row-title">${Helpers.escapeHtml(displayName)}</div>
+                            <div class="stock-orphan-note">${icon('triangle', 'i-sm')} ${tx('ui.stock.unmatched')}</div>
+                        </div>
+                        <div class="row-trail">
+                            <div class="row-amt">${stockKg(item.quantity)} kg</div>
+                            <div class="row-meta" data-perm="profit">${rateLine}</div>
+                        </div>
                 `;
-                container.appendChild(div);
+                list.appendChild(div);
                 return;
             }
 
@@ -157,29 +181,31 @@ export class StockManager {
             // Rate is always shown, value is hidden when showing "Available"
             const showLimitedQty = isStaff && item.quantity > 100;
             const quantityDisplay = showLimitedQty ? tx('ui.stock.available') : `${stockKg(item.quantity)} kg`;
-            const valueDisplay = showLimitedQty ? '' : `<div class="stock-row__value" data-perm="stockValue">≈ ${formatRupees(itemValue(item))}</div>`;
+            const valueDisplay = showLimitedQty ? '' : `<div class="row-meta" data-perm="stockValue">≈ ${figHtml(itemValue(item))}</div>`;
             
             const catalogueItem = AppState.items.find(i => i.id === item.itemId);
             const level = lowStockLevel(catalogueItem);
             const alertLine = canSetAlerts && catalogueItem ? `
-                        <button type="button" class="stock-alert-link stock-row__alert" data-onclick="stock.editLowStock('${Helpers.escapeJsAttr(catalogueItem.id)}')">
-                            ${level > 0 ? tx('ui.stock.alert_below', { level: stockKg(level) }) : tx('ui.stock.alert_off')} ✎
+                        <button type="button" class="stock-alert-link" data-onclick="stock.editLowStock('${Helpers.escapeJsAttr(catalogueItem.id)}')">
+                            ${icon('bell', 'i-sm')}${level > 0 ? tx('ui.stock.alert_below', { level: stockKg(level) }) : tx('ui.stock.alert_off')}
                         </button>` : '';
             div.innerHTML = `
-                <div class="stock-row">
-                    <div class="stock-row__name">${Helpers.escapeHtml(displayName)}</div>
-                    <div class="stock-row__rate" data-perm="profit">${tx('ui.stock.rate_per_kg', { rate: formatAmount(item.rate, { decimals: 2 }) })}</div>${alertLine}
-                    <div class="stock-row__qty">${quantityDisplay}</div>
+                <div class="row-main">
+                    <div class="row-title">${Helpers.escapeHtml(displayName)}</div>
+                    <div class="row-meta" data-perm="profit">${rateLine}</div>${alertLine}
+                </div>
+                <div class="row-trail">
+                    <div class="row-amt">${quantityDisplay}</div>
                     ${valueDisplay}
                 </div>
             `;
             
-            container.appendChild(div);
+            list.appendChild(div);
             });
         } catch (error) {
             console.error('Error loading stock:', error);
             this.renderSummary(null);
-            container.innerHTML = `<p style="text-align: center; color: var(--danger-color); margin-top: 40px;">${tx('ui.stock.load_failed')}</p>`;
+            container.innerHTML = `<p class="empty tone-neg">${tx('ui.stock.load_failed')}</p>`;
         }
     }
 
@@ -198,7 +224,8 @@ export class StockManager {
         const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
         set('stockSummaryItems', formatAmount(summary.items));
         set('stockSummaryKg', `${stockKg(summary.kg)} kg`);
-        set('stockSummaryValue', `≈ ${formatRupees(value)}`);
+        const valueEl = document.getElementById('stockSummaryValue');
+        if (valueEl) valueEl.innerHTML = `≈ ${figHtml(value)}`;
         const kgCell = document.getElementById('stockSummaryKgCell');
         if (kgCell) kgCell.hidden = isStaff;
         const valueCell = document.getElementById('stockSummaryValueCell');
@@ -223,7 +250,7 @@ export class StockManager {
         if (!rows.length) return '';
         const lines = rows.map(r => `<li><strong>${Helpers.escapeHtml(r.name)}</strong> ${isStaff && r.quantity > 100 ? tx('ui.stock.available')
             : tx('ui.stock.low_row', { qty: stockKg(r.quantity), level: stockKg(r.level) })}</li>`).join('');
-        return `<div class="stock-low-card" role="status"><div class="stock-low-card__title">⚠ ${tx('ui.stock.low_title', { n: rows.length })}</div><ul>${lines}</ul></div>`;
+        return `<div class="stock-low-card notice warn" role="status">${icon('triangle')}<div class="grow"><b>${tx('ui.stock.low_title', { n: rows.length })}</b><ul class="stock-low-list">${lines}</ul></div></div>`;
     }
 
     /**
@@ -236,9 +263,9 @@ export class StockManager {
         if (!item || !this.canManageStock()) return;
         const name = (AppState.settings?.showHindi && item.hindiName) ? item.hindiName : item.name;
         const own = typeof item.lowStockKg === 'number' ? item.lowStockKg : '';
-        const html = `<div class="reason-dialog">
-            <label class="reason-dialog__label" for="lowStockInput">${tx('ui.stock.set_alert_label', { def: DEFAULT_LOW_STOCK_KG })}</label>
-            <input type="number" inputmode="decimal" min="0" id="lowStockInput" class="reason-dialog__input" value="${Helpers.escapeHtml(own)}">
+        const html = `<div class="field">
+            <label for="lowStockInput">${tx('ui.stock.set_alert_label', { def: DEFAULT_LOW_STOCK_KG })}</label>
+            <input type="number" inputmode="decimal" min="0" id="lowStockInput" class="input" value="${Helpers.escapeHtml(own)}">
         </div>`;
         const ok = await UIManager.showModalWithHtml(html, t('ui.stock.set_alert_title', { item: name }), true);
         if (!ok) return;
@@ -338,12 +365,12 @@ export class StockManager {
         }
         const show = (i) => (AppState.settings?.showHindi && i.hindiName) ? i.hindiName : i.name;
         const items = [...AppState.items].filter(i => i && i.id && !i.archived).sort((a, b) => String(show(a)).localeCompare(String(show(b))));
-        const rows = items.map(i => `<div class="stock-count-row">
-                <label for="count_${Helpers.escapeHtml(i.id)}">${Helpers.escapeHtml(show(i))}
-                    <span class="stock-count-row__now">${tx('ui.stock.count_now', { qty: stockKg(AppState.stock[i.id]?.quantity) })}</span></label>
-                <input type="number" inputmode="decimal" min="0" id="count_${Helpers.escapeHtml(i.id)}" data-count-item="${Helpers.escapeHtml(i.id)}" placeholder="${tx('ui.stock.counted_kg')}">
+        const rows = items.map(i => `<div class="row stock-count-line">
+                <label class="row-main" for="count_${Helpers.escapeHtml(i.id)}"><span class="row-title">${Helpers.escapeHtml(show(i))}</span>
+                    <span class="row-meta">${tx('ui.stock.count_now', { qty: stockKg(AppState.stock[i.id]?.quantity) })}</span></label>
+                <input type="number" inputmode="decimal" min="0" id="count_${Helpers.escapeHtml(i.id)}" class="input" data-count-item="${Helpers.escapeHtml(i.id)}" placeholder="${tx('ui.stock.counted_kg')}">
             </div>`).join('');
-        const html = `<div class="stock-count"><p class="reason-dialog__explain">${tx('ui.stock.count_explain')}</p>${rows}</div>`;
+        const html = `<div class="stock-count"><p class="stock-note">${tx('ui.stock.count_explain')}</p>${rows}</div>`;
         const ok = await UIManager.showModalWithHtml(html, t('ui.stock.count_title'), true);
         if (!ok) return;
         const counted = [...document.querySelectorAll('[data-count-item]')].map(input => ({
@@ -389,10 +416,10 @@ export class StockManager {
     static emptyStockHtml() {
         const e = (v) => Helpers.escapeHtml(v);
         const canAdjust = AppState.userRole !== 'staff';
-        return `<div class="stock-empty" style="text-align: center; color: #555; margin-top: 32px; padding: 0 12px;">
-            <p style="font-weight: 600; font-size: 16px; margin: 0 0 6px;">${e(t('ui.stock.empty_title'))}</p>
-            <p style="font-size: 13px; color: #666; margin: 0 0 14px;">${e(t(canAdjust ? 'ui.stock.empty_hint' : 'ui.stock.empty_hint_member'))}</p>
-            ${canAdjust ? `<button type="button" class="add-to-bill-btn" style="max-width: 280px;" data-onclick="stock.startOpeningStock()">${e(t('ui.stock.set_opening_stock'))}</button>` : ''}
+        return `<div class="stock-empty empty">
+            <b>${e(t('ui.stock.empty_title'))}</b>
+            <p class="stock-empty-hint">${e(t(canAdjust ? 'ui.stock.empty_hint' : 'ui.stock.empty_hint_member'))}</p>
+            ${canAdjust ? `<button type="button" class="btn btn-primary" data-onclick="stock.startOpeningStock()">${e(t('ui.stock.set_opening_stock'))}</button>` : ''}
         </div>`;
     }
 
@@ -446,8 +473,7 @@ export class StockManager {
         if (visibleCount === 0 && searchTerm !== '') {
             if (!noResultsMsg) {
                 noResultsMsg = document.createElement('p');
-                noResultsMsg.className = 'no-results-message';
-                noResultsMsg.style.cssText = 'text-align: center; color: var(--text-secondary); margin-top: 40px;';
+                noResultsMsg.className = 'no-results-message empty';
                 noResultsMsg.textContent = t('ui.stock.no_items_found');
                 container.appendChild(noResultsMsg);
             }
@@ -479,18 +505,11 @@ export class StockManager {
             dead: document.getElementById("deadStockSection")
         };
 
-        Object.values(sections).forEach(s => s && (s.style.display = 'none'));
-        if (sections[section]) sections[section].style.display = 'block';
+        Object.values(sections).forEach(s => s && (s.hidden = true));
+        if (sections[section]) sections[section].hidden = false;
 
-        document.querySelectorAll('#stock .filter-btn').forEach(btn => btn.classList.remove('active'));
-        if (event?.target) {
-            event.target.classList.add('active');
-        } else {
-            // If no event (programmatic call), set the active button based on section
-            const btnIndex = { current: 0, adjustment: 1, dead: 2 }[section] ?? 0;
-            const buttons = document.querySelectorAll('#stock .filter-btn');
-            if (buttons[btnIndex]) buttons[btnIndex].classList.add('active');
-        }
+        const btnIndex = { current: 0, adjustment: 1, dead: 2 }[section] ?? 0;
+        document.querySelectorAll('#stock .stock-seg > button').forEach((btn, i) => btn.setAttribute('aria-pressed', String(i === btnIndex)));
 
         if (section === 'current') {
             this.renderStock();
@@ -535,7 +554,7 @@ export class StockManager {
     /** Language switched: redraw the JS-written parts of the Stock page from memory (no reads). */
     static refreshForLanguage() {
         const dead = document.getElementById('deadStockSection');
-        if (dead && dead.style.display !== 'none') this.renderDeadStock();
+        if (dead && !dead.hidden) this.renderDeadStock();
         if (document.querySelector('#stockList .stock-item')) this.renderStock();
         this.updateAdjustmentPlaceholder();
         this.renderAdjustmentHistory();
@@ -584,40 +603,38 @@ export class StockManager {
                     ? t('ui.deadstock.window_note', { date: formatWindowDate(windowStart), days: windowDays })
                     : t('ui.deadstock.all_bills');
                 summary.innerHTML = rows.length
-                    ? `${e(t('ui.deadstock.summary', { n: rows.length, value: formatAmount(totalValue) }))}<br>${e(windowNote)}`
+                    ? `${txMoney('ui.deadstock.summary', { n: rows.length, value: formatAmount(totalValue) }, totalValue)}<br>${e(windowNote)}`
                     : e(windowNote);
             }
 
             if (rows.length === 0) {
-                container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 30px;">${e(t('ui.deadstock.all_sold', { days: minDays }))}</p>`;
+                container.innerHTML = `<p class="empty">${e(t('ui.deadstock.all_sold', { days: minDays }))}</p>`;
                 return;
             }
 
-            container.innerHTML = rows.map(r => {
+            container.innerHTML = `<div class="panel stock-rows">${rows.map(r => {
                 const displayName = (AppState.settings.showHindi && r.hindiName) ? r.hindiName : r.name;
                 const sale = daysSinceLabel(r.daysSinceSale, r.saleBeyondWindow, windowDays);
                 const purchase = daysSinceLabel(r.daysSincePurchase, r.purchaseBeyondWindow, windowDays);
                 return `
-                <div class="stock-item dead-stock-item">
-                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-                        <div>
-                            <div style="font-weight: 600; font-size: 15px;">${e(displayName || r.name || '-')}</div>
-                            <div style="color: #b45309; font-size: 13px; margin-top: 4px;">${e(t('ui.deadstock.last_sale'))}: ${e(sale)}${r.uncertain ? ' *' : ''}</div>
-                            <div style="color: #666; font-size: 12px; margin-top: 2px;">${e(t('ui.deadstock.last_purchase'))}: ${e(purchase)}</div>
+                <div class="stock-item dead-stock-item row">
+                        <div class="row-main">
+                            <div class="row-title">${e(displayName || r.name || '-')}</div>
+                            <div class="row-meta tone-warn">${e(t('ui.deadstock.last_sale'))}: ${e(sale)}${r.uncertain ? ' *' : ''}</div>
+                            <div class="row-meta">${e(t('ui.deadstock.last_purchase'))}: ${e(purchase)}</div>
                         </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 18px; font-weight: 700; color: #b02a37;">${e(stockKg(r.quantity))} kg</div>
-                            <div style="color: #666; font-size: 12px; margin-top: 4px;">≈ ${e(formatRupees(r.value))}</div>
-                            <div style="color: #666; font-size: 12px;">${e(t('ui.deadstock.avg_rate', { rate: formatRate(r.rate) }))}</div>
+                        <div class="row-trail">
+                            <div class="row-amt tone-neg">${e(stockKg(r.quantity))} kg</div>
+                            <div class="row-meta">≈ ${figHtml(r.value)}</div>
+                            <div class="row-meta">${txMoney('ui.deadstock.avg_rate', { rate: formatRate(r.rate) }, r.rate, { decimals: 2 })}</div>
                         </div>
-                    </div>
                 </div>`;
-            }).join('') + (rows.some(r => r.uncertain)
-                ? `<p style="font-size: 12px; color: #666; margin-top: 8px;">* ${e(t('ui.deadstock.uncertain_note', { windowDays, days: minDays }))}</p>`
+            }).join('')}</div>` + (rows.some(r => r.uncertain)
+                ? `<p class="stock-note">* ${e(t('ui.deadstock.uncertain_note', { windowDays, days: minDays }))}</p>`
                 : '');
         } catch (error) {
             console.error('Error loading dead stock:', error);
-            container.innerHTML = `<p style="text-align: center; color: #b02a37; margin-top: 30px;">${Helpers.escapeHtml(t('ui.deadstock.failed_load'))}</p>`;
+            container.innerHTML = `<p class="empty tone-neg">${Helpers.escapeHtml(t('ui.deadstock.failed_load'))}</p>`;
         }
     }
 
@@ -627,12 +644,12 @@ export class StockManager {
      */
     static hideAdjustmentTabForStaff() {
         const deadBtn = document.getElementById('deadStockTabBtn');
-        if (deadBtn) deadBtn.style.display = this.canSeeDeadStock() ? '' : 'none';
+        if (deadBtn) deadBtn.hidden = !this.canSeeDeadStock();
         if (AppState.userRole === 'staff') {
             // Hide the Stock Adjustment button
-            const filterButtons = document.querySelectorAll('#stock .filter-btn');
+            const filterButtons = document.querySelectorAll('#stock .stock-seg > button');
             if (filterButtons.length > 1) {
-                filterButtons[1].style.display = 'none';
+                filterButtons[1].hidden = true;
             }
         }
     }
@@ -665,14 +682,14 @@ export class StockManager {
 
         if (!itemId) {
             display.textContent = "";
-            if (avgRateDisplay) avgRateDisplay.style.display = "none";
+            showAvgRate(avgRateDisplay, false);
             return;
         }
 
         const item = AppState.items.find(i => i.id === itemId);
         if (!item) {
             display.textContent = "0.00";
-            if (avgRateDisplay) avgRateDisplay.style.display = "none";
+            showAvgRate(avgRateDisplay, false);
             return;
         }
 
@@ -684,10 +701,10 @@ export class StockManager {
         // Average rate (S2)
         if (avgRateDisplay && avgRateValue) {
             if (avgRate !== null) {
-                avgRateValue.textContent = `${formatRate(avgRate)}/kg`;
-                avgRateDisplay.style.display = "block";
+                avgRateValue.innerHTML = `${figHtml(avgRate, { decimals: 2 })}/kg`;
+                showAvgRate(avgRateDisplay, true);
             } else {
-                avgRateDisplay.style.display = "none";
+                showAvgRate(avgRateDisplay, false);
             }
         }
     }
@@ -842,11 +859,11 @@ export class StockManager {
      */
     static reverseControlHtml(adj, adjustments, canReverse) {
         if (adjustments.some(a => a?.reversesId && String(a.reversesId) === String(adj.id))) {
-            return `<span class="voided-chip">${tx('ui.stock.reversed_chip')}</span>`;
+            return `<span class="tag">${tx('ui.stock.reversed_chip')}</span>`;
         }
         if (!canReverse || !canReverseAdjustment(adj, adjustments)) return '';
         if (!AppState.items.some(i => i.id === adj.itemId || i.name === adj.itemName)) return '';
-        return `<button type="button" class="filter-btn" data-stock-adjust data-onclick="stock.reverseAdjustment('${Helpers.escapeJsAttr(adj.id)}')">${tx('ui.stock.reverse_btn')}</button>`;
+        return `<button type="button" class="btn btn-ghost btn-sm" data-stock-adjust data-onclick="stock.reverseAdjustment('${Helpers.escapeJsAttr(adj.id)}')">${tx('ui.stock.reverse_btn')}</button>`;
     }
 
     static async renderAdjustmentHistory() {
@@ -872,7 +889,7 @@ export class StockManager {
 
             if (adjustments.length === 0) {
                 const message = isFullHistoryLoaded() ? t('ui.stock.no_adjustments_yet') : t('ui.stock.no_adjustments_since', { date: formatWindowDate(historyLoadedFrom()) });
-                container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 20px;">${Helpers.escapeHtml(message)}</p>`;
+                container.innerHTML = `<p class="empty">${Helpers.escapeHtml(message)}</p>`;
                 return;
             }
 
@@ -881,16 +898,14 @@ export class StockManager {
             
             adjustments.forEach(adj => {
                 const div = document.createElement("div");
-                div.className = "history-item";
+                div.className = "history-item stock-adj";
                 
                 const typeLabels = { add: t('ui.stock.adj_added'), remove: t('ui.stock.adj_removed'), set: t('ui.stock.adj_set_to') };
-                const typeColors = { add: 'var(--success-color)', remove: 'var(--danger-color)', set: 'var(--info-color)' };
                 
                 // Handle legacy data that might not have adjustType or quantity
                 const adjustType = adj.adjustType || 'set';
                 const quantity = adj.quantity !== undefined ? adj.quantity : 'Unknown';
                 const typeLabel = typeLabels[adjustType] || t('ui.stock.adj_adjusted');
-                const typeColor = typeColors[adjustType] || '#6c757d';
                 
                 // Find item to show in correct language
                 const item = AppState.items.find(i => i.id === adj.itemId || i.name === adj.itemName);
@@ -902,19 +917,19 @@ export class StockManager {
                 div.innerHTML = `
                     <div class="history-header">
                         <strong>${Helpers.escapeHtml(displayName)}</strong>
-                        <span style="color: ${typeColor}; font-weight: 600;">
+                        <span class="stock-adj-type ${adjustType === 'add' ? 'tone-pos' : adjustType === 'remove' ? 'tone-neg' : adjustType === 'set' ? 'tone-info' : 'tone-muted'}">
                             ${Helpers.escapeHtml(typeLabel)} ${quantity !== 'Unknown' ? `${formatKg(quantity)} kg` : ''}
                         </span>
                     </div>
                     <div class="history-date">${Helpers.escapeHtml(adj.date || t('ui.stock.unknown_date'))}${adj.createdByName ? ` • ${tx('ui.stock.by', { name: adj.createdByName })}` : ''}</div>
-                    <div style="margin: 8px 0; padding: 8px; background: #f8f9fa; border-radius: 4px;">
-                        ${displayRate > 0 ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">${tx('ui.stock.rate_per_kg', { rate: formatAmount(displayRate, { decimals: 2 }) })}${valueImpact ? ` • ${tx('ui.stock.value', { amount: formatAmount(valueShown) })}` : ''}</div>` : ''}
-                        <div style="font-size: 13px; color: #666;">
+                    <div class="stock-adj-body">
+                        ${displayRate > 0 ? `<div>${txMoney('ui.stock.rate_per_kg', { rate: formatAmount(displayRate, { decimals: 2 }) }, displayRate, { decimals: 2 })}${valueImpact ? ` • ${txMoney('ui.stock.value', { amount: formatAmount(valueShown) }, valueShown)}` : ''}</div>` : ''}
+                        <div>
                             ${formatKg(adj.previousStock)} kg → ${formatKg(adj.newStock)} kg
                             ${Number(adj.rawQuantity) > Number(adj.quantity) ? ` ${tx('ui.stock.capped', { qty: formatKg(adj.rawQuantity) })}` : ''}
                         </div>
-                        ${adj.reason ? `<div style="font-size: 13px; color: #666; margin-top: 4px;"><em>${Helpers.escapeHtml(adjustReasonText(adj))}</em></div>` : `<div style="font-size: 13px; color: #666; margin-top: 4px;"><em>${tx('ui.stock.no_reason')}</em></div>`}
-                        ${adj.reversesId ? `<div class="stock-adj-note">↩ ${tx('ui.stock.reverses_note')}</div>` : ''}
+                        ${adj.reason ? `<div><em>${Helpers.escapeHtml(adjustReasonText(adj))}</em></div>` : `<div><em>${tx('ui.stock.no_reason')}</em></div>`}
+                        ${adj.reversesId ? `<div class="stock-adj-note">${icon('refresh', 'i-sm')} ${tx('ui.stock.reverses_note')}</div>` : ''}
                     </div>
                     ${this.reverseControlHtml(adj, adjustments, canReverse)}
                 `;
@@ -923,7 +938,7 @@ export class StockManager {
             });
         } catch (error) {
             console.error('Error loading adjustment history:', error);
-            container.innerHTML = `<p style="text-align: center; color: var(--danger-color); margin-top: 20px;">${tx('ui.stock.history_failed')}</p>`;
+            container.innerHTML = `<p class="empty tone-neg">${tx('ui.stock.history_failed')}</p>`;
         }
     }
 }
