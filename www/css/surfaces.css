@@ -211,6 +211,11 @@ a.row:active {
   height: 100%;
 }
 
+/* ---------- Page header (V1): the page title on desktop; below 1024 px the app bar is the title ---------- */
+.page-head {
+  display: none;
+}
+
 /* ---------- Notice ---------- */
 .notice {
   display: flex;

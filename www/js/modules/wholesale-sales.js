@@ -898,11 +898,11 @@ export class WholesaleSalesManager {
             .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
         
         const partyNote = party ? `
-            <div class="party-filter-note">
-                <span>${L('ui.outstanding.showing_only')} <strong>${Helpers.escapeHtml(party.name)}</strong></span>
-                <button type="button" class="aging-btn" data-onclick="wholesaleSales.clearOutstandingParty()">${L('ui.outstanding.show_all')}</button>
-                ${OutstandingManager.canReceiveFromParty() ? `<button type="button" class="aging-btn" data-party-pay data-onclick="wholesaleSales.receiveFromParty('${Helpers.escapeJsAttr(party.name)}')">${L('ui.outstanding.party_pay_receive')}</button>` : ''}
-                            ${this.canCompleteAllDue() ? `<button type="button" class="aging-btn" data-complete-all data-onclick="wholesaleSales.completeAllDue('${Helpers.escapeJsAttr(party.name)}')">${L('ui.wholesale.complete_all_due')}</button>` : ''}
+            <div class="party-filter-note notice info">
+                <span class="grow">${L('ui.outstanding.showing_only')} <strong>${Helpers.escapeHtml(party.name)}</strong></span>
+                <button type="button" class="btn btn-sm" data-onclick="wholesaleSales.clearOutstandingParty()">${L('ui.outstanding.show_all')}</button>
+                ${OutstandingManager.canReceiveFromParty() ? `<button type="button" class="btn btn-sm" data-party-pay data-onclick="wholesaleSales.receiveFromParty('${Helpers.escapeJsAttr(party.name)}')">${L('ui.outstanding.party_pay_receive')}</button>` : ''}
+                            ${this.canCompleteAllDue() ? `<button type="button" class="btn btn-sm" data-complete-all data-onclick="wholesaleSales.completeAllDue('${Helpers.escapeJsAttr(party.name)}')">${L('ui.wholesale.complete_all_due')}</button>` : ''}
             </div>` : '';
 
         if (outstandingSales.length === 0) {

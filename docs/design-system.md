@@ -107,11 +107,19 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   `.row-amt`, `.lead-icon`). **Metrics** `.metrics > .metric`, `.hero-num`, `.display-num`, `.meter`.
 - **Money figure** `.money` with the sign in `<span class="cur">₹</span>` (smaller, `--fs-cur`, and muted
   `ink-3`; plain in print): `<strong class="money"><span class="cur">₹</span><span id="…">0</span></strong>`.
-  Billing's totals and action bar use it; the digits keep their own id.
+  Billing's totals and action bar use it; the digits keep their own id. Scripts write it with `moneyHtml(amount, opts)` from
+  `www/js/ui/components.js`: its text is exactly `formatRupees(amount, opts)` (the minus outside `.cur`, a missing amount "—").
 - **Billing (3.5)**: the totals are a plain panel (the payable is the big ink figure, Total paid a plain row);
   each payment row's "Fill" (`.pay-fill`) is its tick box (`#cashCheckbox` …) drawn as a text button, so ticking
   still puts the whole bill there; ticked it reads "Filled ✓" on the primary (sale: sale) fill, its name is the visible word plus a hidden hint; the bill lines are a row list in a panel below 1024 px (the same `#billTable`
   cells; desktop keeps the table); Notes and Date sit side by side.
+- **Outstanding (5.3)**: the owed total is the hero figure, with a `.meter` and its legend (the age groups,
+  still buttons that filter). Age colours: up to 30 days `--ink-3`, 31–60 `--warning-dot`, 61–90
+  `--on-caution-soft`, 90+ `--negative`; dues themselves stay in ink, and ages are `.tag` (`.warn` after 30
+  days, `.neg` after 90). Party rows are `.row`s in a panel with an initials avatar drawn from
+  `data-initials` (CSS, so the row's text is unchanged); bills are panels.
+- **Page header** `<header class="page-head"><h2>` at the top of a page template: the title on desktop, hidden below
+  1024 px where the app bar is the title (Outstanding first; 4.2 styles it).
 - **Feedback** `.notice` (`.pos/.neg/.warn/.info`), `.empty`, `.skel`, `.toast` (near-black; light in the
   Dark theme), `.dialog` / `.sheet` / `.scrim` (old `.modal-overlay > .modal-box`), `.spinner` (blocking
   saves only).

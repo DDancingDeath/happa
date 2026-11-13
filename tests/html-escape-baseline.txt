@@ -232,17 +232,21 @@ www/js/modules/money.js: tag ← onTap
 www/js/modules/money.js: v (markup via barsSvg)
 www/js/modules/money.js: value (sink)
 www/js/modules/notifications.js: d.icon ← d = describeNotification(n)
+www/js/modules/outstanding.js: AGE_TEXT_TONE[p.bucket] ← AGE_TEXT_TONE = ['', ' tone-warn', ' tone-warn', ' tone-neg']
+www/js/modules/outstanding.js: AGE_TONE[bucket] ← AGE_TONE = ['', ' warn', ' warn', ' neg']
+www/js/modules/outstanding.js: AGE_TONE[p.bucket] ← AGE_TONE = ['', ' warn', ' warn', ' neg']
 www/js/modules/outstanding.js: Helpers.formatDate(transaction.date)
-www/js/modules/outstanding.js: bucketIndex(ageDays)
+www/js/modules/outstanding.js: bucket ← bucketIndex(ageDays)
 www/js/modules/outstanding.js: by
-www/js/modules/outstanding.js: chaseFirst(aging.parties) (markup via map(p => ` <li class="aging-b${p.bucket}"><strong>${partyName(p)}</strong> — ${esc(formatINR(p.total))} · ${tt('ui.outstanding.party_overdue', {) .bucket)
+www/js/modules/outstanding.js: chaseFirst(aging.parties) (markup via map(p => ` <li class="row aging-b${p.bucket}"><span class="row-main"><strong>${partyName(p)}</strong> — ${moneyHtml(p.total)} · ${withMoney(t('u) .bucket)
+www/js/modules/outstanding.js: i
 www/js/modules/outstanding.js: i
 www/js/modules/outstanding.js: i
 www/js/modules/outstanding.js: label
 www/js/modules/outstanding.js: p.bucket
 www/js/modules/outstanding.js: p.bucket
 www/js/modules/outstanding.js: p.bucket
-www/js/modules/outstanding.js: sortParties(aging.parties, this.agingSort) (markup via map(p => ` <div class="aging-party aging-b${p.bucket}"> <div class="aging-party-main"> <div class="aging-party-name">${partyName(p)}${p.longOver) .bucket)
+www/js/modules/outstanding.js: sortParties(aging.parties, this.agingSort) (markup via map(p => ` <div class="aging-party row aging-b${p.bucket}"> <span class="lead-icon aging-avatar" data-initials="${esc(initials(p.name))}" aria-h) .bucket)
 www/js/modules/purchase.js: i
 www/js/modules/purchase.js: index
 www/js/modules/purchase.js: index
