@@ -3225,14 +3225,6 @@ body.typing .bottom-nav {
   flex: 1;
 }
 
-
-
-/* Emoji inside gradient-text headings keep their own colours (ui/heading-emoji.js) */
-.heading-emoji {
-  -webkit-text-fill-color: initial;
-  background: none;
-}
-
 /* ---- css/loading.css ---- */
 .loading-overlay {
   position: fixed;
@@ -4099,6 +4091,10 @@ html[data-updating] .updating-mark {
 }
 
 .add-item-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
   width: 100%;
   background: var(--success-color);
   color: var(--white);
@@ -4534,7 +4530,10 @@ input[type="number"] {
 }
 /* Voice billing (#81): shown only when switched on in Settings */
 .voice-mic-btn {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
   width: 100%;
   margin-bottom: 12px;
   padding: 10px;
@@ -9815,7 +9814,6 @@ body.dark-mode .item-detail-row:hover {
 /* ==================== ANOMALIES (#187, #40) ==================== */
 
 .anomaly-page { padding: 16px; }
-.anomaly-page-title { margin: 0 0 12px; font-size: var(--fs-title); }
 .anomaly-muted { color: var(--text-secondary); font-size: 14px; }
 .anomaly-empty { color: var(--text-secondary); padding: 12px; text-align: center; font-size: 14px; }
 
@@ -10650,7 +10648,6 @@ tr.finance-tappable td:first-child::after {
 /* ==================== APP HEALTH / TEST IN PRODUCTION (#217) ==================== */
 
 .health-page { padding: 16px; }
-.health-title { margin: 0 0 6px; font-size: var(--fs-title); }
 .health-muted { color: var(--text-secondary); font-size: var(--fs-sm); }
 .health-empty { color: var(--text-secondary); padding: 10px; text-align: center; font-size: 14px; }
 .health-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0; }

@@ -267,7 +267,7 @@ describe('Bluetooth off or missing', () => {
         expect(window.bluetoothSerial.enable).toHaveBeenCalledTimes(1);
         expect(window.bluetoothSerial.list).toHaveBeenCalledTimes(1);
         expect(document.getElementById('printerStatusText').dataset.state).toBe('disconnected');
-        expect(document.getElementById('testPrintBtn').style.display).toBe('block');
+        expect(document.getElementById('testPrintBtn').style.display).toBe('');
 
         mockPlugin({ enabled: false, enableOk: false });
         await SettingsManager.scanBluetoothDevices();

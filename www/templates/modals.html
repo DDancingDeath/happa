@@ -36,7 +36,7 @@
         <div class="bill-details-container">
             <div class="bill-details-header">
                 <h2 data-i18n="ui.modals.saved_drafts">Saved drafts</h2>
-                <button class="bill-details-close" data-onclick="billing.closeDrafts()">✕</button>
+                <button type="button" class="bill-details-close" data-onclick="billing.closeDrafts()" aria-label="Close" data-i18n-aria-label="ui.common.close"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-x"/></svg></button>
             </div>
             <div class="bill-details-content" id="draftsContent" style="max-height: 60vh; overflow-y: auto;">
                 <!-- Drafts will be inserted here -->

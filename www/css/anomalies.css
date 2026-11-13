@@ -1,7 +1,6 @@
 /* ==================== ANOMALIES (#187, #40) ==================== */
 
 .anomaly-page { padding: 16px; }
-.anomaly-page-title { margin: 0 0 12px; font-size: var(--fs-title); }
 .anomaly-muted { color: var(--text-secondary); font-size: 14px; }
 .anomaly-empty { color: var(--text-secondary); padding: 12px; text-align: center; font-size: 14px; }
 
