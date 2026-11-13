@@ -19,10 +19,12 @@ import { SyncStatus } from '../ui/sync-status.js';
 import { t } from '../i18n/index.js';
 import { saveFailedText, EXPENSE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { refusedForClock } from '../utils/clock-skew.js';
+import { moneyHtml, moneyInText } from '../ui/components.js';
+import { icon } from '../ui/icons.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { can, canVoidExpenseWith } from '../utils/role-access.js';
-import { expenseMode, formatAmount, isActiveExpense, isPersonalExpense, formatRupees } from '../utils/money.js';
+import { expenseMode, formatAmount, isActiveExpense, isPersonalExpense } from '../utils/money.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import { DEFAULT_EXPENSE_MODE, expenseDateFields, expenseDayRange, validateExpenseEntry } from '../utils/expense-entry.js';
 import { toLocalISODate } from '../utils/dates.js';
@@ -32,6 +34,9 @@ import { expenseTemplates, expenseTotals, expenseTypes, filterExpenses, isExpens
 
 /** Expense save / print buttons, disabled while one is being saved (#95). */
 const EXPENSE_BUTTONS = '[data-expense-save]';
+
+/** Business / Personal buttons of the page. */
+const EXPENSE_TABS = '#expenses .exp-seg > button';
 
 /** An input of a section's form: formField('business', 'Amount') → #businessExpenseAmount. */
 const formField = (category, name) => document.getElementById(`${category}Expense${name}`);
@@ -269,20 +274,12 @@ export class ExpensesManager {
             return;
         }
         if (this.replacing?.category !== view) this.cancelExpenseEdit();
-        const buttons = document.querySelectorAll('#expenses .filter-btn');
-        buttons.forEach(btn => btn.classList.remove('active'));
-        if (evt) evt.target.classList.add('active');
-        
-        const businessSection = document.getElementById('businessExpenseSection');
-        const personalSection = document.getElementById('personalExpenseSection');
-        
-        if (view === 'business') {
-            businessSection.style.display = 'block';
-            personalSection.style.display = 'none';
-        } else {
-            businessSection.style.display = 'none';
-            personalSection.style.display = 'block';
-        }
+        const tabs = [...document.querySelectorAll(EXPENSE_TABS)];
+        const on = evt?.target?.closest?.('button') || tabs[view === 'business' ? 0 : 1];
+        tabs.forEach(btn => btn.setAttribute('aria-pressed', String(btn === on)));
+
+        document.getElementById('businessExpenseSection').hidden = view !== 'business';
+        document.getElementById('personalExpenseSection').hidden = view === 'business';
     }
 
     /**
@@ -442,11 +439,11 @@ export class ExpensesManager {
         const box = formField(category, 'Totals');
         if (box) {
             const month = totals.partialMonth
-                ? tx('ui.expenses.total_month_since', { amount: formatAmount(totals.month), date: formatWindowDate(historyLoadedFrom()) })
-                : tx('ui.expenses.total_month', { amount: formatAmount(totals.month) });
+                ? moneyInText(t('ui.expenses.total_month_since', { amount: formatAmount(totals.month), date: formatWindowDate(historyLoadedFrom()) }), totals.month)
+                : moneyInText(t('ui.expenses.total_month', { amount: formatAmount(totals.month) }), totals.month);
             const shown = isExpenseSearch(this.search[category])
-                ? ` · <strong>${tx('ui.expenses.total_shown', { count: totals.shownCount, amount: formatAmount(totals.shown) })}</strong>` : '';
-            box.innerHTML = `${tx('ui.expenses.total_today', { amount: formatAmount(totals.today) })} · ${month}${shown}`;
+                ? ` · <strong>${moneyInText(t('ui.expenses.total_shown', { count: totals.shownCount, amount: formatAmount(totals.shown) }), totals.shown)}</strong>` : '';
+            box.innerHTML = `${moneyInText(t('ui.expenses.total_today', { amount: formatAmount(totals.today) }), totals.today)} · ${month}${shown}`;
         }
         const filter = formField(category, 'TypeFilter');
         if (filter) {
@@ -465,8 +462,8 @@ export class ExpensesManager {
             const templates = expenseTemplates(counted);
             this.templates[category] = templates;
             chips.hidden = templates.length === 0;
-            chips.innerHTML = templates.length === 0 ? '' : `<span class="expense-templates__label">${tx('ui.expenses.templates_label')}</span>`
-                + templates.map((tpl, i) => `<button type="button" class="expense-template-chip" data-onclick="expenses.applyTemplate('${category}', ${i})">${Helpers.escapeHtml(tpl.type)}${tpl.personName ? ` · ${Helpers.escapeHtml(tpl.personName)}` : ''} · ${formatRupees(tpl.amount, { small: true })}</button>`).join('');
+            chips.innerHTML = templates.length === 0 ? '' : `<span class="exp-templates-label">${tx('ui.expenses.templates_label')}</span>`
+                + templates.map((tpl, i) => `<button type="button" class="chip exp-template" data-onclick="expenses.applyTemplate('${category}', ${i})">${Helpers.escapeHtml(tpl.type)}${tpl.personName ? ` · ${Helpers.escapeHtml(tpl.personName)}` : ''} · ${moneyHtml(tpl.amount, { small: true })}</button>`).join('');
         }
     }
 
@@ -498,27 +495,22 @@ export class ExpensesManager {
         this.renderSectionTools(category, expenses);
         if (expenses.length === 0) {
             const empty = isExpenseSearch(this.search[category]) ? t('ui.expenses.no_match') : this.emptyExpenseMessage(category);
-            container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 40px;">${Helpers.escapeHtml(empty)}</p>`;
+            container.innerHTML = `<p class="empty">${Helpers.escapeHtml(empty)}</p>`;
             return;
         }
-        container.innerHTML = expenses.map(payment => {
+        container.innerHTML = `<div class="panel exp-list">${expenses.map(payment => {
             const voided = !isActiveExpense(payment);
             return `
-            <div class="expense-card${voided ? ' expense-card--voided' : ''}" style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px;"
-                 data-onclick="expenses.viewExpenseDetails('${Helpers.escapeJsAttr(payment.id)}', '${category}')">
-                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                    <div>
-                        ${payment.personName ? `<div style="font-weight: 600; font-size: 16px; color: #333;">${Helpers.escapeHtml(payment.personName)}</div>` : ''}
-                        <div style="font-size: 13px; color: #666; margin-top: 4px;">${Helpers.escapeHtml(payment.type)}${voided ? ` <span class="voided-chip">${tx('ui.void.chip')}</span>` : ''} ${SyncStatus.chipHtml(payment.id)}</div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div class="expense-card__amount" style="font-size: 18px; font-weight: bold; color: #2c3e50;">${formatRupees(payment.amount, { exact: true })}</div>
-                    </div>
+            <div class="row exp-row${voided ? ' is-voided' : ''}" data-onclick="expenses.viewExpenseDetails('${Helpers.escapeJsAttr(payment.id)}', '${category}')">
+                <div class="row-main">
+                    ${payment.personName ? `<div class="row-title">${Helpers.escapeHtml(payment.personName)}</div>` : ''}
+                    <div class="exp-row-type">${Helpers.escapeHtml(payment.type)}${voided ? ` <span class="tag">${tx('ui.void.chip')}</span>` : ''} ${SyncStatus.chipHtml(payment.id)}</div>
+                    ${payment.remarks ? `<div class="row-meta exp-row-note">${icon('file', 'i-sm')} ${Helpers.escapeHtml(payment.remarks)}</div>` : ''}
+                    <div class="row-meta">${icon('calendar', 'i-sm')} ${Helpers.escapeHtml(payment.date)} • ${modeLabel(payment)}${payment.createdByName ? ` • ${tx('ui.stock.by', { name: payment.createdByName })}` : ''}</div>
                 </div>
-                ${payment.remarks ? `<div style="font-size: 13px; color: #777; font-style: italic; margin-top: 8px;">📝 ${Helpers.escapeHtml(payment.remarks)}</div>` : ''}
-                <div style="font-size: 12px; color: #666; margin-top: 8px;">📅 ${Helpers.escapeHtml(payment.date)} • ${modeLabel(payment)}${payment.createdByName ? ` • ${tx('ui.stock.by', { name: payment.createdByName })}` : ''}</div>
+                <div class="row-trail row-amt exp-row-amt">${moneyHtml(payment.amount, { exact: true })}</div>
             </div>`;
-        }).join('');
+        }).join('')}</div>`;
     }
 
     /** "Show voided" switch of the expense lists (both sections follow it). */
@@ -619,72 +611,22 @@ export class ExpensesManager {
         window.currentExpenseCategory = category;
 
         const content = `
-            <div style="padding: 8px 0;">
-                ${voidedBannerHtml(expense)}
-                <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-                    <div style="display: grid; gap: 12px;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                            <div style="display: flex; align-items: center;">
-                                <span style="font-size: 20px; margin-right: 12px;">🏷️</span>
-                                <span style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.expenses.d_category')}</span>
-                            </div>
-                            <span style="font-size: 15px; color: #333; font-weight: 600; text-transform: capitalize;">${tx(category === 'personal' ? 'ui.expenses.personal_expenses' : 'ui.expenses.business_expenses')}</span>
-                        </div>
-                        
-                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                            <div style="display: flex; align-items: center;">
-                                <span style="font-size: 20px; margin-right: 12px;">📅</span>
-                                <span style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.history.date')}</span>
-                            </div>
-                            <span style="font-size: 14px; color: #333; font-weight: 500;">${Helpers.escapeHtml(expense.date)}</span>
-                        </div>
-
-                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                            <div style="display: flex; align-items: center;">
-                                <span style="font-size: 20px; margin-right: 12px;">💳</span>
-                                <span style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.expenses.d_paid_by')}</span>
-                            </div>
-                            <span style="font-size: 14px; color: #333; font-weight: 500;">${modeLabel(expense)}</span>
-                        </div>
-                        
-                        ${expense.createdByName ? `
-                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                            <div style="display: flex; align-items: center;">
-                                <span style="font-size: 20px; margin-right: 12px;">👨‍💼</span>
-                                <span style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.expenses.d_created_by')}</span>
-                            </div>
-                            <span style="font-size: 14px; color: #333; font-weight: 500;">${Helpers.escapeHtml(expense.createdByName)}</span>
-                        </div>
-                        ` : ''}
-                    </div>
-                </div>
-                
-                <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #f0f0f0;">
-                        <span style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.reports.pdf_type')}</span>
-                        <span style="font-size: 18px; font-weight: 600; color: #2c3e50;">${Helpers.escapeHtml(expense.type)}</span>
-                    </div>
-                    
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #f0f0f0;">
-                        <span style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.outstanding.sort_amount')}</span>
-                        <span style="font-size: 36px; font-weight: bold; color: #5560d6; letter-spacing: 1px;">${formatRupees(expense.amount, { exact: true })}</span>
-                    </div>
-                    
-                    ${expense.personName ? `
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <span style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.expenses.d_person')}</span>
-                        <span style="font-size: 18px; font-weight: 500; color: #2c3e50;">👤 ${Helpers.escapeHtml(expense.personName)}</span>
-                    </div>
-                    ` : ''}
-                </div>
-                
-                ${expense.remarks ? `
-                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 16px; border-radius: 8px;">
-                    <div style="font-size: 11px; color: #856404; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">📝 ${tx('ui.expenses.d_remarks')}</div>
-                    <div style="font-size: 14px; color: #856404; line-height: 1.5;">${Helpers.escapeHtml(expense.remarks)}</div>
-                </div>
-                ` : ''}
+            ${voidedBannerHtml(expense)}
+            <div class="exp-detail-figure">
+                <div class="metric-label">${tx('ui.outstanding.sort_amount')}</div>
+                <div class="display-num">${moneyHtml(expense.amount, { exact: true })}</div>
             </div>
+            <div class="panel">
+                <div class="row exp-field"><span class="row-main exp-field-label">${icon('tag', 'i-sm')}${tx('ui.reports.pdf_type')}</span><span class="row-trail">${Helpers.escapeHtml(expense.type)}</span></div>
+                <div class="row exp-field"><span class="row-main exp-field-label">${icon('grid', 'i-sm')}${tx('ui.expenses.d_category')}</span><span class="row-trail">${tx(category === 'personal' ? 'ui.expenses.personal_expenses' : 'ui.expenses.business_expenses')}</span></div>
+                <div class="row exp-field"><span class="row-main exp-field-label">${icon('calendar', 'i-sm')}${tx('ui.history.date')}</span><span class="row-trail">${Helpers.escapeHtml(expense.date)}</span></div>
+                <div class="row exp-field"><span class="row-main exp-field-label">${icon('card', 'i-sm')}${tx('ui.expenses.d_paid_by')}</span><span class="row-trail">${modeLabel(expense)}</span></div>
+                ${expense.personName ? `<div class="row exp-field"><span class="row-main exp-field-label">${icon('user', 'i-sm')}${tx('ui.expenses.d_person')}</span><span class="row-trail">${Helpers.escapeHtml(expense.personName)}</span></div>` : ''}
+                ${expense.createdByName ? `<div class="row exp-field"><span class="row-main exp-field-label">${icon('users', 'i-sm')}${tx('ui.expenses.d_created_by')}</span><span class="row-trail">${Helpers.escapeHtml(expense.createdByName)}</span></div>` : ''}
+            </div>
+            ${expense.remarks ? `
+            <div class="notice exp-detail-note">${icon('file', 'i-sm')}<div class="grow"><b>${tx('ui.expenses.d_remarks')}</b>${Helpers.escapeHtml(expense.remarks)}</div></div>
+            ` : ''}
         `;
 
         document.getElementById('expenseDetailsContent').innerHTML = content;
@@ -796,7 +738,7 @@ export class ExpensesManager {
      */
     static startReentry(expense, category) {
         this.stopReplacing();
-        const tabBtn = [...document.querySelectorAll('#expenses .filter-btn')][category === 'personal' ? 1 : 0];
+        const tabBtn = [...document.querySelectorAll(EXPENSE_TABS)][category === 'personal' ? 1 : 0];
         this.filterExpenseTab(category, tabBtn ? { target: tabBtn } : undefined);
         formField(category, 'Type').value = expense.type || '';
         formField(category, 'Amount').value = expense.amount || '';

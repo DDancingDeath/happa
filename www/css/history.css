@@ -824,75 +824,140 @@
     font-size: 0.85em;
 }
 
-/* Expense cards: lift on hover (was inline onmouseover/onmouseout, #89) */
-.expense-card {
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  cursor: pointer;
-  transition: all 0.2s ease;
+/* Expenses (redesign 5.4b): a form panel, then each section's totals, search and list of rows */
+.exp-seg,
+.exp-form,
+.exp-voided {
+  margin-bottom: var(--sp-4);
 }
 
-.expense-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  transform: translateY(-2px);
+.exp-form {
+  display: grid;
+  gap: var(--sp-3);
 }
 
-/* Voided expenses (#99): kept in the list, struck through */
-.expense-card--voided {
-  opacity: 0.7;
-}
-
-.expense-card--voided .expense-card__amount {
-  text-decoration: line-through;
-}
-
-.expenses-voided-toggle {
+.exp-actions {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 4px 0 12px;
-  font-size: 14px;
-  color: var(--text-secondary);
+  gap: var(--sp-3);
+  margin-top: var(--sp-1);
 }
 
-/* Expenses: totals, search and template chips (#90) */
-.expense-totals {
-  margin: 4px 0 8px;
-  font-size: 14px;
-  color: var(--text-secondary);
+.exp-actions > .btn {
+  flex: 1;
 }
-.expense-search {
+
+.exp-title {
+  margin: var(--sp-5) 0 var(--sp-2);
+  font-size: var(--fs-lead);
+}
+
+.exp-totals {
+  margin-bottom: var(--sp-2);
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+.exp-search {
   display: flex;
-  gap: 8px;
-  margin: 0 0 8px;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
 }
-.expense-search input {
+
+.exp-search > input {
   flex: 1 1 auto;
   min-width: 0;
 }
-.expense-search select {
+
+.exp-search > select {
   flex: 0 1 40%;
   min-width: 0;
 }
-.expense-templates {
+
+.exp-templates {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  margin: 0 0 12px;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
 }
-.expense-templates__label {
+
+.exp-templates-label {
+  color: var(--ink-3);
   font-size: var(--fs-sm);
-  color: var(--text-secondary);
 }
-.expense-template-chip {
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  background: var(--surface-muted);
-  color: var(--text-primary);
-  padding: 6px 12px;
+
+.exp-voided {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--ink-2);
   font-size: var(--fs-sm);
-  min-height: 36px;
+}
+
+.exp-row {
+  align-items: flex-start;
   cursor: pointer;
+}
+
+.exp-row:hover {
+  background: var(--surface-2);
+}
+
+.exp-row-type {
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+.exp-row-note {
+  font-style: italic;
+}
+
+.exp-row .row-meta > .i {
+  vertical-align: -2px;
+}
+
+.exp-row-amt {
+  font-size: var(--fs-lead);
+}
+
+/* Voided expenses (#99): kept in the list, struck through */
+.exp-row.is-voided {
+  opacity: 0.7;
+}
+
+.exp-row.is-voided .exp-row-amt {
+  text-decoration: line-through;
+}
+
+.exp-detail-figure {
+  margin-bottom: var(--sp-4);
+  text-align: center;
+}
+
+.exp-field-label {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+
+.exp-field > .row-trail {
+  font-weight: var(--w-strong);
+  overflow-wrap: anywhere;
+}
+
+.exp-detail-note {
+  margin-top: var(--sp-4);
+}
+
+.exp-detail-note b {
+  display: block;
+}
+
+.exp-dialog-actions > .btn {
+  flex: 1;
+  min-width: 0;
 }
 
 /* A bill date that can't be read (#80) */
