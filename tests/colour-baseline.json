@@ -1,6 +1,6 @@
 {
   "_readme": "Hard-coded colour ratchet (tests/ci/colour-guard.test.js). Counts may only go down: COLOUR_BASELINE=lower npx jest colour-guard. Use a design token (var(--…), www/css/variables.css) for a new colour.",
-  "total": 649,
+  "total": 641,
   "files": {
     "www/css/anomalies.css": 3,
     "www/css/app-updates.css": 11,
@@ -13,7 +13,6 @@
     "www/css/finance.css": 4,
     "www/css/health.css": 1,
     "www/css/history.css": 2,
-    "www/css/insights.css": 8,
     "www/css/items.css": 3,
     "www/css/navigation.css": 8,
     "www/css/notifications.css": 11,
