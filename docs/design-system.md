@@ -126,7 +126,10 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   `data-initials` (CSS, so the row's text is unchanged); bills are panels.
 - **Today › Cash (5.2a)**: Available cash is the hero figure, the day's other figures a `.metrics` panel (each figure draws its
   own hairlines, so the grid holds whichever ones show); Open, Record and Close are panels of `.field`s with ₹ as an `.adorn-pre`,
-  one primary button each (Record is tonal while Close shows); the Difference figure takes a tone class.
+  one primary button each (Record is tonal while Close shows); the Difference figure takes a tone class. The script's markup
+  (5.2b): the count check is a `.notice` with an icon per line; each history day is a `.row` with its figures in two columns and
+  a `.tag` status; "not counted" and duplicate days are notices; a day's details are `.metrics`, in / out sums and entry lines.
+  Every figure is `moneyHtml()`.
 - **Wholesale (5.5)**: Billing's components (customer field, line panel, row-list bill lines, totals panel with "Fill", Notes |
   Date, the phone action bar) on the page's `.bill-page` class: Billing's `#billing` rules read `:is(#billing, .bill-page)`,
   and its tones read `--bill-tone-text / -soft / -fill / -ink`, which `.bill-page` sets to the wholesale mode (violet fills and

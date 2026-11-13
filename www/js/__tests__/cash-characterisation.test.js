@@ -87,7 +87,7 @@ function signOutCheck(counted) {
     setVal('cashSignOutAmount', counted);
     CashManagementManager.validateSignOut();
     const alert = document.getElementById('cashDifferenceAlert');
-    return { counted, text: alert.textContent, display: alert.style.display, background: alert.style.background, color: alert.style.color };
+    return { counted, text: alert.textContent, display: alert.style.display, tone: [...alert.classList].filter(c => ['pos', 'warn', 'neg'].includes(c)).join(' ') };
 }
 
 /** Everything the page shows and writes for one fixture day. */

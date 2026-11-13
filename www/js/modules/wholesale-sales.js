@@ -936,7 +936,7 @@ export class WholesaleSalesManager {
                 const domId = Helpers.escapeHtml(sale.id);
                 div.innerHTML = `
                     <div class="history-header">
-                        <div class="due-bill-title"><span class="due-bill-no"><button type="button" class="due-bill-link" data-onclick="wholesaleSales.reprintSaleById('${id}')">#${Helpers.escapeHtml(billNumber)}</button></span>${sale.customerName ? `  <strong>${Helpers.escapeHtml(sale.customerName)}</strong>` : ''}</div>
+                        <span class="due-bill-title"><span class="due-bill-no"><button type="button" class="due-bill-link" data-onclick="wholesaleSales.reprintSaleById('${id}')">#${Helpers.escapeHtml(billNumber)}</button></span>${sale.customerName ? `  <strong>${Helpers.escapeHtml(sale.customerName)}</strong>` : ''}</span>
                         <span class="due-bill-due">${moneyInText(t('ui.outstanding.due_amount', { amount: formatAmount(sale.outstanding) }), sale.outstanding)}</span>
                     </div>
                     <div class="history-date">${Helpers.escapeHtml(sale.date)}${sale.createdByName ? ` • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(sale.createdByName)}</strong>` : ''}</div>

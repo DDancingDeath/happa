@@ -392,13 +392,8 @@ body.dark-mode .modal-box {
 
 .dark-mode [style*="background: #fff3cd"],
 .dark-mode [style*="background: #fef3c7"],
-.dark-mode [style*="background: #fffbeb"],
 .dark-mode [style*="background: #fff8e1"] {
   background: var(--warning-soft) !important;
-}
-
-.dark-mode [style*="background: #fff7ed"] {
-  background: var(--caution-soft) !important;
 }
 
 .dark-mode [style*="background: #fee2e2"],
@@ -407,7 +402,6 @@ body.dark-mode .modal-box {
 }
 
 .dark-mode [style*="background: #d1fae5"],
-.dark-mode [style*="background: #f0fdf4"],
 .dark-mode [style*="background: #d1e7dd"] {
   background: var(--success-soft) !important;
 }
@@ -458,8 +452,6 @@ body.dark-mode .modal-box {
 }
 
 .dark-mode [style*=" color: #059669"],
-.dark-mode [style^="color: #166534"],
-.dark-mode [style*=" color: #166534"],
 .dark-mode [style^="color: #15803d"],
 .dark-mode [style*=" color: #15803d"],
 .dark-mode [style^="color:#15803d"],
@@ -485,11 +477,7 @@ body.dark-mode .modal-box {
 .dark-mode [style^="color: rgb(138, 109, 0)"],
 .dark-mode [style*=" color: rgb(138, 109, 0)"],
 .dark-mode [style^="color:#92400e"],
-.dark-mode [style^="color: #9a3412"],
-.dark-mode [style*=" color: #9a3412"],
-.dark-mode [style^="color: #c2410c"],
 .dark-mode [style*=" color: #92400e"],
-.dark-mode [style*=" color: #78350f"],
 .dark-mode [style^="color: #b45309"],
 .dark-mode [style^="color:#b45309"],
 .dark-mode [style*=" color: #856404"],
@@ -499,9 +487,7 @@ body.dark-mode .modal-box {
 }
 
 .dark-mode [style*=" color: #7c3aed"],
-.dark-mode [style*=" color: #6d28d9"],
 .dark-mode [style*=" color: #5560d6"],
-.dark-mode [style^="color: #6366f1"],
 .dark-mode [style*=" color: #9333ea"] {
   color: var(--on-primary-soft) !important;
 }
@@ -518,15 +504,6 @@ body.dark-mode .modal-box {
 
 .dark-mode [style*="linear-gradient(135deg, #e3f2fd"] {
   background: var(--info-soft) !important;
-}
-
-/* Cash close: the "extra cash" note the script colours #997404 (3.9:1 on its yellow) */
-.dark-mode #cashDifferenceAlert[style*="background: rgb(255, 243, 205)"] {
-  background: var(--warning-soft) !important;
-}
-
-#cashDifferenceAlert[style*="color: rgb(153, 116, 4)"] {
-  color: var(--on-warning-soft) !important;
 }
 
 /* The old purple brand gradient still written inline by a few templates */
