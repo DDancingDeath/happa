@@ -13,7 +13,7 @@
             
             <!-- Login Form -->
             <div id="loginForm" class="auth-form">
-                <h2 data-i18n="ui.auth.welcome_back">Welcome Back</h2>
+                <h2 data-i18n="ui.auth.welcome_back">Welcome back</h2>
                 <form data-onsubmit="auth.login(); return false;">
                     <div class="form-group">
                         <label data-i18n="ui.auth.email">Email</label>
@@ -41,7 +41,7 @@
             
             <!-- Register Form -->
             <div id="registerForm" class="auth-form hidden">
-                <h2 data-i18n="ui.auth.create_account">Create Account</h2>
+                <h2 data-i18n="ui.auth.create_account">Create account</h2>
                 <form data-onsubmit="auth.register(); return false;">
                     <div class="form-group">
                         <label data-i18n="ui.rate_history.name">Name</label>
@@ -59,14 +59,14 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label data-i18n="ui.auth.confirm_password">Confirm Password</label>
+                        <label data-i18n="ui.auth.confirm_password">Confirm password</label>
                         <div class="password-field">
                             <input type="password" id="registerConfirmPassword" placeholder="Confirm your password" data-i18n-placeholder="ui.auth.confirm_your_password" autocomplete="new-password" required minlength="6">
                             <button type="button" class="password-toggle" data-password-toggle="registerConfirmPassword" aria-pressed="false" aria-label="Show password" title="Show password" data-i18n-aria-label="ui.auth.show_password" data-i18n-title="ui.auth.show_password" data-onclick="auth.togglePassword('registerConfirmPassword', this)">&#128065;</button>
                         </div>
                     </div>
                     <div id="registerMessage" class="auth-message" role="alert" aria-live="assertive" aria-atomic="true"></div>
-                    <button type="submit" class="auth-btn" data-i18n="ui.auth.create_account">Create Account</button>
+                    <button type="submit" class="auth-btn" data-i18n="ui.auth.create_account">Create account</button>
                 </form>
                 <p class="auth-link"><span data-i18n="ui.auth.already_have_an_account">Already have an account?</span> <a href="#" data-onclick="auth.showTab('login'); return false;" data-i18n="ui.auth.login">Login</a></p>
             </div>

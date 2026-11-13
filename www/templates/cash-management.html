@@ -11,19 +11,19 @@
             <div id="statusCardsContainer" class="panel metrics cash-metrics">
                 <!-- Open: opening, cash added (when there is some), cash in, cash out -->
                 <div id="statusOpeningCard" class="metric">
-                    <div class="metric-label" data-i18n="ui.cash.opening_label">Opening balance</div>
+                    <div class="metric-label" data-i18n="ui.cash.opening_balance">Opening balance</div>
                     <div class="metric-value" id="statusOpeningBalance">₹0</div>
                 </div>
                 <div id="statusCashAddedCard" class="metric cash-off">
-                    <div class="metric-label" data-i18n="ui.cash.added_label">Cash added</div>
+                    <div class="metric-label" data-i18n="ui.cash.cash_added">Cash added</div>
                     <div class="metric-value" id="statusCashAdded">₹0</div>
                 </div>
                 <div id="statusCashInCard" class="metric">
-                    <div class="metric-label" data-i18n="ui.cash.in_label">Cash in</div>
+                    <div class="metric-label" data-i18n="ui.cash.cash_in">Cash in</div>
                     <div class="metric-value" id="statusCashIn">₹0</div>
                 </div>
                 <div id="statusCashOutCard" class="metric">
-                    <div class="metric-label" data-i18n="ui.cash.out_label">Cash out</div>
+                    <div class="metric-label" data-i18n="ui.cash.cash_out">Cash out</div>
                     <div class="metric-value" id="statusCashOut">₹0</div>
                 </div>
 
@@ -37,15 +37,15 @@
                     <div class="metric-value" id="statusSale">₹0</div>
                 </div>
                 <div id="statusOthersCard" class="metric cash-off">
-                    <div class="metric-label" data-i18n="ui.cash.others_label">Expenses and others</div>
+                    <div class="metric-label" data-i18n="ui.cash.expenses_others">Expenses &amp; others</div>
                     <div class="metric-value" id="statusOthers">₹0</div>
                 </div>
                 <div id="statusExpectedCard" class="metric cash-off">
-                    <div class="metric-label" data-i18n="ui.cash.expected_label">Expected balance</div>
+                    <div class="metric-label" data-i18n="ui.cash.expected_balance">Expected balance</div>
                     <div class="metric-value" id="statusExpected">₹0</div>
                 </div>
                 <div id="statusActualCard" class="metric cash-off">
-                    <div class="metric-label" data-i18n="ui.cash.actual_label">Actual balance</div>
+                    <div class="metric-label" data-i18n="ui.cash.actual_balance">Actual balance</div>
                     <div class="metric-value" id="statusActual">-</div>
                 </div>
                 <div id="statusDiffCard" class="metric cash-off">
@@ -84,7 +84,7 @@
                 <div class="field">
                     <label for="cashTransactionType" data-i18n="ui.cash.transaction_type">Transaction type</label>
                     <select id="cashTransactionType" class="input">
-                        <option value="deposit" data-i18n="ui.cash.added_label">Cash added</option>
+                        <option value="deposit" data-i18n="ui.cash.cash_added">Cash added</option>
                         <option value="received" data-i18n="ui.cash.due_received">(+) Due received</option>
                         <option value="paid" data-i18n="ui.cash.due_paid">(-) Due paid</option>
                     </select>
@@ -129,8 +129,8 @@
             <h4 class="cash-sub-title" data-i18n="ui.cash.today_s_transactions">Today's transactions</h4>
             <div class="cash-sum">
                 <div class="cash-sum-group">
-                    <div class="cash-sum-row"><span data-i18n="ui.cash.opening_label">Opening balance</span><strong id="openingBalanceTotal">₹0</strong></div>
-                    <div class="cash-sum-row"><span data-i18n="ui.cash.added_label">Cash added</span><strong id="cashDepositsTotal">₹0</strong></div>
+                    <div class="cash-sum-row"><span data-i18n="ui.cash.opening_balance">Opening balance</span><strong id="openingBalanceTotal">₹0</strong></div>
+                    <div class="cash-sum-row"><span data-i18n="ui.cash.cash_added">Cash added</span><strong id="cashDepositsTotal">₹0</strong></div>
                     <div class="cash-sum-row"><span data-i18n="ui.cash.sales_label">Cash sales</span><strong id="cashSalesTotal">₹0</strong></div>
                     <div class="cash-sum-row"><span data-i18n="ui.cash.due_received_label">Due received</span><strong id="dueReceivedTotal">₹0</strong></div>
                     <div class="cash-sum-row cash-sum-total"><span class="cash-sum-in"><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-arrIn"/></svg><span data-i18n="ui.cash.total_in_label">Opening + added + cash in</span></span><strong id="totalCashIn">₹0</strong></div>
