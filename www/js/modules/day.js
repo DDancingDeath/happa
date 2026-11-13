@@ -457,9 +457,8 @@ export const DayManager = {
                 <div class="row today-item">
                     <div class="row-main">
                         <div class="row-title">${Helpers.escapeHtml(item.name)}</div>
-                        <div class="row-meta">${label(countKey)} <strong>${item.count}x</strong> · ${label('ui.today.qty_label')} <strong>${formatKg(item.quantity)} kg</strong> · ${label('ui.today.avg_rate_label')} <strong>${formatRate(item.avgRate ?? 0)}/kg</strong></div>
+                        <div class="row-meta">${label(countKey)} <strong>${item.count}x</strong> · ${label('ui.today.qty_label')} <strong>${formatKg(item.quantity)} kg</strong> · ${label('ui.billing.total_colon')} <strong class="row-amt">${formatCurrency(item.totalValue)}</strong> · ${label('ui.today.avg_rate_label')} <strong>${formatRate(item.avgRate ?? 0)}/kg</strong></div>
                     </div>
-                    <strong class="row-trail row-amt">${formatCurrency(item.totalValue)}</strong>
                 </div>`).join('');
     },
 

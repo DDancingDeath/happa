@@ -341,6 +341,7 @@ body.dark-mode .item-detail-row:hover {
 /* Item details (T17) */
 .today-item .row-meta { white-space: normal; }
 .today-item .row-meta strong { color: var(--ink-2); font-weight: var(--w-strong); }
+.today-item .row-meta .row-amt { color: var(--ink); }
 
 /* Cash open 14 h or more (C10, Q25 of #111) */
 .cash-long-open { background: var(--warning-soft); border: 1px solid var(--warning-border); color: var(--on-warning-soft); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-weight: var(--w-strong); }
