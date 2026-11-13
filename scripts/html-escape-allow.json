@@ -31,8 +31,8 @@
     "abs": "Math.abs",
     "min": "Math.min",
     "max": "Math.max",
-    "moneyHtml": "ui/components.js: formatRupees text, escaped, inside .money / .cur",
-    "icon": "ui/icons.js: constant sprite <svg> markup; every call passes a constant name (icon-sprite.test.js)"
+    "icon": "ui/icons.js: constant sprite <svg> markup; every call passes a constant name (icon-sprite.test.js)",
+    "moneyHtml": "ui/components.js: formatRupees text of a number, HTML-escaped, in constant .money / .cur spans"
   },
   "names": {},
   "properties": {

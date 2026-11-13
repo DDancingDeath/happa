@@ -8,6 +8,7 @@ import { exportStamp, stampPairs, stampLine, stampedCsv, exportFilename, exportA
 import { buildErrorReport, errorReportPeriod, nameScrubber } from '../utils/error-report.js';
 import * as UsersRepo from '../firebase/repos/users.js';
 import { Exporter } from '../services/exporter.js';
+import { icon } from '../ui/icons.js';
 import { AuditService } from '../services/audit.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { DiagnosticsManager } from '../modules/diagnostics.js';
@@ -251,5 +252,30 @@ describe('Diagnostics exports', () => {
         expect(nameScrubber(['Al', '', null])('Al Pacino')).toBe('Al Pacino');
         const placeholders = buildErrorReport([{ type: 'x', message: 'auth/user-not-found; Unknown error in User list', source: 'https://myhappa.web.app/js/services/user-admin.js', line: 3, userName: 'User', occurrences: [{ userName: 'Unknown' }] }], { names: ['Shop Staff', 'Unknown User'] });
         expect(placeholders.errors[0]).toMatchObject({ message: 'auth/user-not-found; Unknown error in User list', source: 'https://myhappa.web.app/js/services/user-admin.js:3' });
+    });
+});
+
+describe('Exporter.printPage: a statement printed in its own window (#444)', () => {
+    test('sprite icons are hidden and their ⚠ / ✓ words print as text', () => {
+        const frame = document.createElement('iframe');
+        document.body.appendChild(frame);
+        const w = frame.contentWindow;
+        w.print = jest.fn();
+        jest.spyOn(window, 'open').mockReturnValue(w);
+        const html = `<div class="notice warn">${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>Cost not known</span></div>`
+            + `<div class="notice pos">${icon('check', 'i-sm')}<span class="grow"><span class="sr-only">✓ </span>Matches Outstanding</span></div>`;
+        expect(Exporter.printPage({ title: 'Party ledger', html, stampText: 'Gupta Traders', lang: 'en' })).toBe(true);
+        const doc = w.document;
+        const svgs = [...doc.querySelectorAll('svg')];
+        expect(svgs).toHaveLength(2);
+        for (const svg of svgs) {
+            expect(svg.getAttribute('width')).toBe('1em');
+            expect(svg.getAttribute('height')).toBe('1em');
+            expect(w.getComputedStyle(svg).display).toBe('none');
+        }
+        for (const sr of doc.querySelectorAll('.sr-only')) expect(w.getComputedStyle(sr).position).toBe('static');
+        expect(doc.body.textContent).toContain('⚠ Cost not known');
+        expect(doc.body.textContent).toContain('✓ Matches Outstanding');
+        frame.remove();
     });
 });

@@ -196,19 +196,6 @@
     max-width: none;
   }
 
-  /* ---------- Page header (V1) until 4.2 styles it ---------- */
-  .page-head {
-    display: block;
-    margin-bottom: var(--sp-4);
-  }
-
-  .page-head > h2 {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: var(--fs-title);
-    font-weight: var(--w-strong);
-  }
-
   /* ---------- Outstanding (#46, redesign 5.3): legend in one line, party actions beside the amount ---------- */
   .aging-buckets {
     grid-template-columns: repeat(4, minmax(0, 1fr));

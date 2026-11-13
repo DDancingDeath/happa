@@ -82,7 +82,7 @@ www/js/modules/history.js: voidedBannerHtml(bill)
 www/js/modules/insights.js: extra
 www/js/modules/insights.js: i
 www/js/modules/insights.js: icon
-www/js/modules/insights.js: list (markup via map(p => `<tr data-party="${esc(p.key)}"><td>${esc(p.name || t('ui.insights.walk_in'))}</td><td class="num">${money(p.total)}</td><td class="num) .count)
+www/js/modules/insights.js: list (markup via map(p => `<tr data-party="${esc(p.key)}"><td>${esc(p.name || t('ui.insights.walk_in'))}</td><td class="num">${moneyHtml(p.total, TM)}</td><td cl) .count)
 www/js/modules/insights.js: p.count
 www/js/modules/insights.js: partySummary(src, kind, r) (markup via table)
 www/js/modules/insights.js: pct(m.M1.retail.total) ← sharePct(v, total)
