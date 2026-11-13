@@ -294,7 +294,7 @@ const NavigationManager = {
         if (route.tab === 'wholesale-sales' && window.app?.wholesaleSales) {
             const view = route.section || 'sales';
             this.resetFilterButtons('wholesale-sales');
-            setTimeout(() => window.app.wholesaleSales.filterTab(view, { target: document.querySelector(`#wholesale-sales .filter-btn[data-view="${view}"]`) || document.querySelector('#wholesale-sales .filter-btn') }), 100);
+            setTimeout(() => window.app.wholesaleSales.filterTab(view), 100);
         }
         
         // Render stock when Stock tab is shown

@@ -130,6 +130,12 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   (5.2b): the count check is a `.notice` with an icon per line; each history day is a `.row` with its figures in two columns and
   a `.tag` status; "not counted" and duplicate days are notices; a day's details are `.metrics`, in / out sums and entry lines.
   Every figure is `moneyHtml()`.
+- **Wholesale (5.5)**: Billing's components (customer field, line panel, row-list bill lines, totals panel with "Fill", Notes |
+  Date, the phone action bar) on the page's `.bill-page` class: Billing's `#billing` rules read `:is(#billing, .bill-page)`,
+  and its tones read `--bill-tone-text / -soft / -fill / -ink`, which `.bill-page` sets to the wholesale mode (violet fills and
+  soft, ink text). Sales | History | Outstanding is a `.seg`; stock and average rate are `.metrics`; Outstanding bills are
+  Outstanding's `.due-bill` panels; a bill opened from a list is panels of `.row`s and a `.table`.
+  `moneyInText(text, amount)` (`components.js`) draws the figure inside a translated sentence with `moneyHtml`.
 - **Feedback** `.notice` (`.pos/.neg/.warn/.info`), `.empty`, `.skel`, `.toast` (near-black; light in the
   Dark theme), `.dialog` / `.sheet` / `.scrim` (old `.modal-overlay > .modal-box`), `.spinner` (blocking
   saves only). Dialog buttons: Cancel (ghost) on the left, one primary on the right, labelled with a verb; a destructive

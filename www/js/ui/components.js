@@ -24,3 +24,17 @@ export function moneyHtml(amount, opts) {
     const i = text.indexOf('₹');
     return `<span class="money">${esc(text.slice(0, i))}<span class="cur">₹</span>${esc(text.slice(i + 1))}</span>`;
 }
+
+/**
+ * Translated text that holds formatRupees(amount), escaped, with that figure drawn by moneyHtml(); the text is unchanged.
+ * @param {*} text
+ * @param {*} amount
+ * @returns {string}
+ */
+export function moneyInText(text, amount) {
+    const s = String(text ?? '');
+    const figure = formatRupees(amount);
+    const i = s.indexOf(figure);
+    if (i < 0) return esc(s);
+    return `${esc(s.slice(0, i))}${moneyHtml(amount)}${esc(s.slice(i + figure.length))}`;
+}

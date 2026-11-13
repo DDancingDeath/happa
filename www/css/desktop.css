@@ -384,23 +384,13 @@
     margin-top: 0;
   }
 
-  #wholesale-sales .bill-col-entry > .bill-totals {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 16px;
-  }
-
-  #wholesale-sales .bill-col-entry > .bill-totals > * {
-    grid-column: 1 / -1;
-  }
-
   #billTable,
   #saleTable,
   #salesTable {
     table-layout: auto;
   }
 
-  #billTable td, #saleTable td {
+  #billTable td, :is(#saleTable, .bill-lines) td {
     max-width: none;
   }
 
@@ -694,43 +684,43 @@
   }
 
   .bill-col-summary input[type="number"],
-  #billing .bill-col-summary .bill-money > .input {
+  :is(#billing, .bill-page) .bill-col-summary .bill-money > .input {
     padding-top: 6px;
     padding-bottom: 6px;
   }
 
-  #billing .bill-col-summary .grand-total strong {
+  :is(#billing, .bill-page) .bill-col-summary .grand-total strong {
     font-size: var(--fs-title) !important;
   }
 
-  #billing .bill-col-summary :is(.grand-total, .payment-row.payment-total) {
+  :is(#billing, .bill-page) .bill-col-summary :is(.grand-total, .payment-row.payment-total) {
     padding: 6px 0 !important;
   }
 
-  #billing .bill-col-summary .bill-notes-date {
+  :is(#billing, .bill-page) .bill-col-summary .bill-notes-date {
     margin-bottom: 0;
   }
 
-  #billing .bill-col-summary > .bill-totals {
+  :is(#billing, .bill-page) .bill-col-summary > .bill-totals {
     margin-bottom: 0;
   }
 
-  #billing .bill-col-summary .payment-row > .pay-fill,
-  #billing .bill-col-summary .form-row.field.bill-notes > .bill-note-print {
+  :is(#billing, .bill-page) .bill-col-summary .payment-row > .pay-fill,
+  :is(#billing, .bill-page) .bill-col-summary .form-row.field.bill-notes > .bill-note-print {
     min-height: 30px;
   }
 
-  #billing .bill-col-summary > .bill-actions:last-child {
+  :is(#billing, .bill-page) .bill-col-summary > .bill-actions:last-child {
     padding: var(--sp-2) 0;
   }
 
-  #billing .bill-pay-title {
+  :is(#billing, .bill-page) .bill-pay-title {
     margin-top: 4px;
     padding-top: 6px;
   }
 
   .bill-col-summary > :is(.form-row, .bill-notes-date),
-  .bill-col-summary > :is(.bill-actions, div[style*="display: flex"]) {
+  .bill-col-summary > .bill-actions {
     margin-top: 10px !important;
   }
 
@@ -765,7 +755,7 @@
 
   /* The Save / Print row is the column's footer: it reaches the bottom of the screen (over the
      tab's 48px bottom padding, so no field shows under it) and focus scrolls a field clear of it. */
-  .bill-col-summary > :is(.bill-actions, div[style*="display: flex"]):last-child {
+  .bill-col-summary > .bill-actions:last-child {
     position: sticky;
     bottom: calc(-1 * var(--desktop-tab-end));
     z-index: 2;
@@ -775,12 +765,8 @@
     background: var(--light-bg);
   }
 
-  #billing.tab {
+  :is(#billing, .bill-page).tab {
     scroll-padding-bottom: 96px;
-  }
-
-  body.dark-mode .bill-col-summary > :is(.bill-actions, div[style*="display: flex"]):last-child {
-    background: var(--light-bg);
   }
 }
 

@@ -1,5 +1,5 @@
 /** @jest-environment jsdom */
-import { moneyHtml } from '../ui/components.js';
+import { moneyHtml, moneyInText } from '../ui/components.js';
 import { formatRupees } from '../utils/money.js';
 
 describe('moneyHtml', () => {
@@ -17,5 +17,18 @@ describe('moneyHtml', () => {
 
     test('a missing amount is a dash', () => {
         [null, undefined, '', NaN, 'x'].forEach(v => expect(moneyHtml(v)).toBe('—'));
+    });
+});
+
+describe('moneyInText', () => {
+    test('the text is unchanged and escaped; its figure is a .money span', () => {
+        const d = document.createElement('div');
+        d.innerHTML = moneyInText('<b> Due: ₹1,500', 1500);
+        expect(d.textContent).toBe('<b> Due: ₹1,500');
+        expect(d.querySelector('.money').textContent).toBe('₹1,500');
+    });
+
+    test('text without the figure is only escaped', () => {
+        expect(moneyInText('Due: ₹9', 1500)).toBe('Due: ₹9');
     });
 });

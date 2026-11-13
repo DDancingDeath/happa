@@ -31,8 +31,12 @@ import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity, isArchivedItem } from '../utils/item-catalog.js';
 import { billTimeFor, validateBillDay } from '../utils/bill-date.js';
 import { allowBackdatedCash, billDateWho, lockBillDate, pickedBillDay, prepareBillDate, resetBillDate } from '../ui/bill-date-input.js';
+import { moneyHtml, moneyInText } from '../ui/components.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
+
+/** formatRupees(amount) as markup with a muted ₹; the text stays formatRupees(amount) even when the amount is missing. */
+const money = (amount) => (moneyHtml(amount) === '—' ? Helpers.escapeHtml(formatRupees(amount)) : moneyHtml(amount));
 import {
     KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, readPayment, openingAmount, openingOldTotals, outstandingDue, isOpeningRecord, isActiveBill,
     formatAmount, formatKg, formatRate, formatRupees
@@ -267,8 +271,9 @@ export class WholesaleSalesManager {
         if (!tbody || !totalEl) return;
         
         if (wholesaleSaleItems.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 24px;" data-i18n="msg.common.no_items_in_bill">${L('msg.common.no_items_in_bill')}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="empty" data-i18n="msg.common.no_items_in_bill">${L('msg.common.no_items_in_bill')}</td></tr>`;
             totalEl.textContent = '0';
+            this.showBarTotal();
             if (expensesInput) expensesInput.value = '0';
             if (profitEl) profitEl.textContent = '0';
             if (profitPercentEl) profitPercentEl.textContent = '0';
@@ -277,21 +282,30 @@ export class WholesaleSalesManager {
             return;
         }
         
+        const remove = L('ui.modals.delete');
         tbody.innerHTML = wholesaleSaleItems.map((item, index) => {
             return `
-                <tr>
+                <tr class="bill-line">
                     <td>${Helpers.escapeHtml(lineItemIdentity(item, AppState.items, AppState.settings.showHindi).label)}</td>
                     <td>${formatRate(item.rate)}</td>
                     <td>${formatKg(item.qty)} kg</td>
-                    <td>${formatRupees(shownAmount(item.total))}</td>
-                    <td><button data-onclick="wholesaleSales.removeWholesaleItem(${index})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">×</button></td>
+                    <td>${money(shownAmount(item.total))}</td>
+                    <td><button type="button" class="bill-line-remove" data-onclick="wholesaleSales.removeWholesaleItem(${index})" aria-label="${remove}" title="${remove}">×</button></td>
                 </tr>
             `;
         }).join('');
         
         totalEl.textContent = shownAmount(this.computeTotals().total);
+        this.showBarTotal();
         
         this.updateProfitCalculation();
+    }
+
+    /** The phone action bar repeats Total receivable as shown. */
+    static showBarTotal() {
+        const bar = document.getElementById('wholesaleBarTotal');
+        const total = document.getElementById('salesTotalAmount');
+        if (bar && total) bar.textContent = total.textContent;
     }
 
     /**
@@ -668,14 +682,14 @@ export class WholesaleSalesManager {
      * Wholesale page tabs: Sales (entry + recent bills), History (every
      * wholesale bill, with date filter, search and Table View), Outstanding.
      * @param {'sales'|'history'|'outstanding'} view
-     * @param {Event} [evt]
      */
-    static filterSalesTab(view, evt) {
+    static filterSalesTab(view) {
         this.outstandingParty = null;
-        const buttons = document.querySelectorAll('#wholesale-sales .filter-btn');
-        buttons.forEach(btn => btn.classList.remove('active'));
-        const target = evt?.target?.closest?.('.filter-btn') || document.querySelector(`#wholesale-sales .filter-btn[data-view="${view}"]`);
-        target?.classList.add('active');
+        document.querySelectorAll('#wholesale-sales .ws-seg > [data-view]').forEach(btn => {
+            const on = btn.dataset.view === view;
+            btn.classList.toggle('active', on);
+            btn.setAttribute('aria-pressed', String(on));
+        });
         
         const sections = {
             sales: document.getElementById('salesEntrySection'),
@@ -683,7 +697,9 @@ export class WholesaleSalesManager {
             outstanding: document.getElementById('salesOutstandingSection')
         };
         Object.entries(sections).forEach(([key, el]) => {
-            if (el) el.style.display = key === view ? 'block' : 'none';
+            if (!el) return;
+            el.hidden = key !== view;
+            el.style.display = key === view ? 'block' : 'none';
         });
         if (view === 'outstanding') this.renderSalesOutstanding();
         else if (view === 'history') this.renderWholesaleHistory();
@@ -774,13 +790,13 @@ export class WholesaleSalesManager {
         const esc = (v) => Helpers.escapeHtml(v);
         const amount = Helpers.formatCurrency(shown.total);
         const html = `
-            <div style="text-align: left;">
-                <div style="margin-bottom: 10px;"><strong>${esc(String(name).trim())}</strong><br>
+            <div class="due-dlg">
+                <div><strong>${esc(String(name).trim())}</strong><br>
                     ${esc(t('msg.wholesale.complete_all_due_summary', { count: shown.bills.length, total: amount }))}</div>
-                ${shown.bills.length < group.bills.length ? `<div style="margin-bottom: 8px;">${esc(t('msg.wholesale.complete_all_due_oldest', { count: shown.bills.length, all: group.bills.length }))}</div>` : ''}
-                <div style="margin-bottom: 6px; font-weight: 600;">${esc(t('ui.wholesale.complete_all_due_how'))}</div>
-                <label style="display: block; margin: 4px 0;"><input type="radio" name="completeAllMethod" value="cash"> ${esc(t('ui.wholesale.complete_all_due_cash'))}</label>
-                <label style="display: block; margin: 4px 0;"><input type="radio" name="completeAllMethod" value="online"> ${esc(t('ui.wholesale.complete_all_due_online'))}</label>
+                ${shown.bills.length < group.bills.length ? `<div class="due-dlg-note">${esc(t('msg.wholesale.complete_all_due_oldest', { count: shown.bills.length, all: group.bills.length }))}</div>` : ''}
+                <div class="due-dlg-head">${esc(t('ui.wholesale.complete_all_due_how'))}</div>
+                <label class="due-dlg-opt"><input type="radio" name="completeAllMethod" value="cash"> ${esc(t('ui.wholesale.complete_all_due_cash'))}</label>
+                <label class="due-dlg-opt"><input type="radio" name="completeAllMethod" value="online"> ${esc(t('ui.wholesale.complete_all_due_online'))}</label>
             </div>`;
         const confirmed = await UIManager.showModalWithHtml(html, t('ui.wholesale.complete_all_due'), true);
         if (!confirmed) return;
@@ -859,8 +875,7 @@ export class WholesaleSalesManager {
      * @param {string} name Customer name as typed on the bill
      */
     static showOutstandingParty(name) {
-        const outstandingBtn = document.querySelectorAll('#wholesale-sales .filter-btn')[1];
-        this.filterSalesTab('outstanding', outstandingBtn ? { target: outstandingBtn } : undefined);
+        this.filterSalesTab('outstanding');
         const key = partyNameKey(name);
         if (!key) return;
         this.outstandingParty = { key, name: String(name).trim() };
@@ -906,7 +921,7 @@ export class WholesaleSalesManager {
             </div>` : '';
 
         if (outstandingSales.length === 0) {
-            container.innerHTML = `${partyNote}<p style="text-align: center; color: var(--text-secondary); margin-top: 40px;">${L(party ? 'ui.outstanding.nothing_for_party' : 'ui.wholesale.no_outstanding_payments')}</p>`;
+            container.innerHTML = `${partyNote}<p class="empty">${L(party ? 'ui.outstanding.nothing_for_party' : 'ui.wholesale.no_outstanding_payments')}</p>`;
             return;
         }
 
@@ -914,41 +929,43 @@ export class WholesaleSalesManager {
 
         outstandingSales.forEach(sale => {
                 const div = document.createElement("div");
-                div.className = "history-item";
+                div.className = "history-item due-bill";
                 
                 const billNumber = sale.billNumber || sale.id;
+                const id = Helpers.escapeJsAttr(sale.id);
+                const domId = Helpers.escapeHtml(sale.id);
                 div.innerHTML = `
                     <div class="history-header">
-                        <span><span style="cursor: pointer; color: var(--success-color); text-decoration: underline;" data-onclick="wholesaleSales.reprintSaleById('${Helpers.escapeJsAttr(sale.id)}')">#${Helpers.escapeHtml(billNumber)}</span>${sale.customerName ? `  <strong>${Helpers.escapeHtml(sale.customerName)}</strong>` : ''}</span>
-                        <span style="color: var(--danger-color); font-weight: 700;">${L('ui.outstanding.due_amount', { amount: formatAmount(sale.outstanding) })}</span>
+                        <span class="due-bill-title"><span class="due-bill-no"><button type="button" class="due-bill-link" data-onclick="wholesaleSales.reprintSaleById('${id}')">#${Helpers.escapeHtml(billNumber)}</button></span>${sale.customerName ? `  <strong>${Helpers.escapeHtml(sale.customerName)}</strong>` : ''}</span>
+                        <span class="due-bill-due">${moneyInText(t('ui.outstanding.due_amount', { amount: formatAmount(sale.outstanding) }), sale.outstanding)}</span>
                     </div>
                     <div class="history-date">${Helpers.escapeHtml(sale.date)}${sale.createdByName ? ` • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(sale.createdByName)}</strong>` : ''}</div>
                     ${openingOldTotals(sale) ? `<div class="history-date">${L('ui.outstanding.opening_balance', { total: formatAmount(openingOldTotals(sale).total), paid: formatAmount(openingOldTotals(sale).paid) })}</div>` : ''}
-                    <div style="background: #d1ecf1; border-left: 4px solid #15803d; padding: 12px; margin: 12px 0; border-radius: 4px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                    <div class="due-bill-body">
+                        <div class="due-bill-line">
                             <span>${L('ui.common.total_receivable')}</span>
-                            <strong>${formatRupees(sale.totalAmount)}</strong>
+                            <strong>${money(sale.totalAmount)}</strong>
                         </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <div class="due-bill-line">
                             <span>${L('ui.outstanding.received_label')}</span>
-                            <strong>${formatRupees(sale.paidAmount)}</strong>
+                            <strong>${money(sale.paidAmount)}</strong>
                         </div>
-                        <div style="display: flex; justify-content: space-between; border-top: 2px solid #17a2b8; padding-top: 6px; margin-top: 6px;">
-                            <span style="font-weight: 600;">${L('ui.outstanding.outstanding_label')}</span>
-                            <strong style="color: #b02a37; font-size: 16px;">${formatRupees(sale.outstanding)}</strong>
+                        <div class="due-bill-line due-bill-out">
+                            <span>${L('ui.outstanding.outstanding_label')}</span>
+                            <strong>${money(sale.outstanding)}</strong>
                         </div>
-                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #17a2b8;">
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                                <label style="font-weight: 500;">${L('ui.wholesale.payment_rs')}</label>
-                                <input type="number" inputmode="decimal" id="payment_${Helpers.escapeHtml(sale.id)}" placeholder="${L('ui.cash.enter_amount')}" style="flex: 1; padding: 6px; border: 1px solid #17a2b8; border-radius: 4px;" />
-                                <button data-record-payment data-onclick="wholesaleSales.recordPayment('${Helpers.escapeJsAttr(sale.id)}')" style="padding: 6px 12px; background: #15803d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">${L('ui.outstanding.record')}</button>
+                        <div class="due-bill-pay">
+                            <label>${L('ui.wholesale.payment_rs')}</label>
+                            <input type="number" class="input" inputmode="decimal" id="payment_${domId}" placeholder="${L('ui.cash.enter_amount')}" />
+                            <button type="button" class="btn btn-tonal" data-record-payment data-onclick="wholesaleSales.recordPayment('${id}')">${L('ui.outstanding.record')}</button>
+                        </div>
+                        <div class="due-bill-actions">
+                            <div class="ws-clear">
+                                <input type="checkbox" data-mark-cleared id="clear_${domId}" data-onchange="wholesaleSales.markSaleAsCleared('${id}')" />
+                                <label for="clear_${domId}">${L('ui.wholesale.mark_as_cleared')}</label>
                             </div>
-                            <div style="display: flex; align-items: center;">
-                                <input type="checkbox" data-mark-cleared id="clear_${Helpers.escapeHtml(sale.id)}" data-onchange="wholesaleSales.markSaleAsCleared('${Helpers.escapeJsAttr(sale.id)}')" style="margin-right: 8px; transform: scale(1.2);" />
-                                <label for="clear_${Helpers.escapeHtml(sale.id)}" style="cursor: pointer; font-weight: 500;">${L('ui.wholesale.mark_as_cleared')}</label>
-                            </div>
-                            <button type="button" data-write-off data-onclick="wholesaleSales.writeOffSale('${Helpers.escapeJsAttr(sale.id)}')" style="margin-top: 8px; padding: 6px 12px; background: transparent; color: var(--danger-color); border: 1px solid var(--danger-color); border-radius: 4px; cursor: pointer; font-weight: 500;">${L('ui.outstanding.write_off_bad_debt')}</button>
-                            ${this.canCompleteAllDue() && sale.customerName && !party ? `<button type="button" data-complete-all data-onclick="wholesaleSales.completeAllDue('${Helpers.escapeJsAttr(sale.customerName)}')" style="margin-top: 8px; padding: 6px 12px; background: #fff; color: #15803d; border: 1px solid #15803d; border-radius: 4px; cursor: pointer; font-weight: 500;">${L('ui.wholesale.complete_all_due_party', { party: sale.customerName })}</button>` : ''}
+                            <button type="button" class="btn btn-sm btn-ghost due-write-off" data-write-off data-onclick="wholesaleSales.writeOffSale('${id}')">${L('ui.outstanding.write_off_bad_debt')}</button>
+                            ${this.canCompleteAllDue() && sale.customerName && !party ? `<button type="button" class="btn btn-sm btn-ghost" data-complete-all data-onclick="wholesaleSales.completeAllDue('${Helpers.escapeJsAttr(sale.customerName)}')">${L('ui.wholesale.complete_all_due_party', { party: sale.customerName })}</button>` : ''}
                         </div>
                     </div>
                 `;
@@ -956,7 +973,6 @@ export class WholesaleSalesManager {
                 container.appendChild(div);
         });
     }
-
     /** Re-render the recent bills under the entry form and Wholesale › History. */
     static renderSalesHistory() {
         this.renderRecentSales();
@@ -994,7 +1010,7 @@ export class WholesaleSalesManager {
         const recent = filterHistoryBills(this.wholesaleBills().filter(b => isActiveBill(b) && !isOpeningRecord(b)), {}).slice(0, RECENT_SALES);
         if (recent.length === 0) {
             const message = isFullHistoryLoaded() ? t('ui.wholesale.no_sales_yet') : t('ui.wholesale.no_sales_since', { date: formatWindowDate(historyLoadedFrom()) });
-            container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 20px;">${Helpers.escapeHtml(message)}</p>`;
+            container.innerHTML = `<p class="empty">${Helpers.escapeHtml(message)}</p>`;
             return;
         }
         container.innerHTML = '';
@@ -1073,7 +1089,7 @@ export class WholesaleSalesManager {
             if (this.historySearch) message = t('ui.history.no_results_for', { searchTerm: this.historySearch });
             else if (ranged) message = t('ui.history.none_in_period', { noun: t('ui.history.noun_wholesale') });
             else message = isFullHistoryLoaded() ? t('ui.wholesale.no_sales_yet') : t('ui.wholesale.no_sales_since', { date: formatWindowDate(historyLoadedFrom()) });
-            container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 40px;">${Helpers.escapeHtml(message)}</p>`;
+            container.innerHTML = `<p class="empty">${Helpers.escapeHtml(message)}</p>`;
             placeToggle();
             return;
         }
@@ -1167,47 +1183,37 @@ export class WholesaleSalesManager {
             const qty = item.qty || item.quantity || 0;
             return `
                 <tr>
-                    <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb;">${Helpers.escapeHtml(item.name)}</td>
-                    <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">${Helpers.escapeHtml(item.rate)}</td>
-                    <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">${Helpers.escapeHtml(qty)}</td>
-                    <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: right;"><strong>${Math.round(item.total)}</strong></td>
+                    <td>${Helpers.escapeHtml(item.name)}</td>
+                    <td class="num">${Helpers.escapeHtml(item.rate)}</td>
+                    <td class="num">${Helpers.escapeHtml(qty)}</td>
+                    <td class="num"><strong>${Math.round(item.total)}</strong></td>
                 </tr>
             `;
         }).join('');
         
         const pay = readPayment(sale);
         const payment = { online: pay.online, cash: pay.cash, due: outstandingDue(sale) };
+        const payRow = (key, amount, tone) => `
+                    <div class="row bill-view-row">
+                        <span class="row-main">${L(key)}</span>
+                        <span class="tag ${Helpers.escapeHtml(tone)}">${money(amount)}</span>
+                    </div>`;
         const paymentHTML = (payment.online > 0 || payment.cash > 0 || payment.due > 0) ? `
-            <div style="background: white; padding: 14px; border-radius: 10px; border: 1px solid #dee2e6; margin-top: 12px;">
-                <h4 style="margin: 0 0 12px 0; font-size: 15px; color: #212529;">${L('ui.history.payment_details')}</h4>
-                ${payment.online > 0 ? `
-                    <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px;">
-                        <span>${L('ui.history.online')}</span>
-                        <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: 600; background: #cfe2ff; color: #084298;">${formatRupees(payment.online)}</span>
-                    </div>
-                ` : ''}
-                ${payment.cash > 0 ? `
-                    <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px;">
-                        <span>${L('ui.history.cash')}</span>
-                        <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: 600; background: #d1e7dd; color: #0f5132;">${formatRupees(payment.cash)}</span>
-                    </div>
-                ` : ''}
-                ${payment.due > 0 ? `
-                    <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px;">
-                        <span>${L('ui.history.due')}</span>
-                        <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: 600; background: #fff3cd; color: #997404;">${formatRupees(payment.due)}</span>
-                    </div>
-                ` : ''}
+            <div class="panel bill-view-panel">
+                <h4 class="bill-view-title">${L('ui.history.payment_details')}</h4>
+                ${payment.online > 0 ? payRow('ui.history.online', payment.online, 'info') : ''}
+                ${payment.cash > 0 ? payRow('ui.history.cash', payment.cash, 'pos') : ''}
+                ${payment.due > 0 ? payRow('ui.history.due', payment.due, 'warn') : ''}
             </div>
         ` : '';
         
         const paymentsHistoryHTML = sale.payments && sale.payments.length > 0 ? `
-            <div style="background: #e7f5e9; padding: 14px; border-radius: 10px; border: 1px solid #c3e6c3; margin-top: 12px;">
-                <h4 style="margin: 0 0 12px 0; font-size: 15px; color: #155724;">${L('ui.wholesale.payment_history')}</h4>
+            <div class="panel bill-view-panel">
+                <h4 class="bill-view-title">${L('ui.wholesale.payment_history')}</h4>
                 ${sale.payments.map(p => `
-                    <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px;">
-                        <span>• ${Helpers.escapeHtml(p.date)}${p.recordedBy ? ` ${L('ui.wholesale.by_name', { name: p.recordedBy })}` : ''}${p.kind === 'writeOff' ? ` — ${L('ui.wholesale.written_off', { reason: p.reason || '' })}` : ''}</span>
-                        <strong>${formatRupees(p.amount)}</strong>
+                    <div class="row bill-view-row">
+                        <span class="row-main">• ${Helpers.escapeHtml(p.date)}${p.recordedBy ? ` ${L('ui.wholesale.by_name', { name: p.recordedBy })}` : ''}${p.kind === 'writeOff' ? ` — ${L('ui.wholesale.written_off', { reason: p.reason || '' })}` : ''}</span>
+                        <strong class="row-amt">${money(p.amount)}</strong>
                     </div>
                 `).join('')}
             </div>
@@ -1216,46 +1222,45 @@ export class WholesaleSalesManager {
         const billNumber = sale.billNumber || sale.id;
         
         const content = `
-            <div style="padding: 16px; max-width: 100%;">
+            <div class="bill-view">
                 ${voidedBannerHtml(sale)}
-                <div class="bill-info-section">
-                    <div class="bill-info-row">
-                        <div class="bill-info-label">${L('ui.history.bill_no')}</div>
-                        <div class="bill-info-value"><strong style="color: var(--success-color);">#${Helpers.escapeHtml(billNumber)}</strong></div>
+                <div class="panel bill-view-info">
+                    <div class="row bill-view-row">
+                        <span class="row-main">${L('ui.history.bill_no')}</span>
+                        <strong>#${Helpers.escapeHtml(billNumber)}</strong>
                     </div>
-                    <div class="bill-info-row">
-                        <div class="bill-info-label">${L('ui.history.date_label')}</div>
-                        <div class="bill-info-value">${Helpers.escapeHtml(sale.date)}</div>
+                    <div class="row bill-view-row">
+                        <span class="row-main">${L('ui.history.date_label')}</span>
+                        <span>${Helpers.escapeHtml(sale.date)}</span>
                     </div>
                     ${sale.createdByName ? `
-                        <div class="bill-info-row">
-                            <div class="bill-info-label">${L('ui.history.created_by')}</div>
-                            <div class="bill-info-value">${Helpers.escapeHtml(sale.createdByName)}</div>
+                        <div class="row bill-view-row">
+                            <span class="row-main">${L('ui.history.created_by')}</span>
+                            <span>${Helpers.escapeHtml(sale.createdByName)}</span>
                         </div>
                     ` : ''}
                     ${sale.customerName ? `
-                        <div class="bill-info-row">
-                            <div class="bill-info-label">${L('ui.common.customer')}</div>
-                            <div class="bill-info-value"><strong>${Helpers.escapeHtml(sale.customerName)}</strong></div>
+                        <div class="row bill-view-row">
+                            <span class="row-main">${L('ui.common.customer')}</span>
+                            <strong>${Helpers.escapeHtml(sale.customerName)}</strong>
                         </div>
                     ` : ''}
                 </div>
-                
-                ${sale.comments ? `
-                    <div style="margin-bottom: 12px; padding: 10px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
-                        <span style="color: #6c757d; font-size: 14px;">${L('ui.wholesale.comments')}</span>
-                        <div style="font-size: 14px; color: #212529; margin-top: 4px;">${Helpers.escapeHtml(sale.comments)}</div>
+                                ${sale.comments ? `
+                    <div class="notice warn bill-view-note">
+                        <span>${L('ui.wholesale.comments')}</span>
+                        <div class="bill-view-note-text">${Helpers.escapeHtml(sale.comments)}</div>
                     </div>
                 ` : ''}
                 
-                <h4 style="margin: 16px 0 12px 0; color: #212529; font-size: 15px;">${L('ui.history.sale_items')}</h4>
-                <table style="width: 100%; border-collapse: collapse; background: white; margin-bottom: 16px;">
+                <h4 class="bill-view-title">${L('ui.history.sale_items')}</h4>
+                <table class="table bill-view-items">
                     <thead>
-                        <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                            <th style="padding: 10px 8px; text-align: left; font-size: 14px; font-weight: 600; color: #495057;">${L('ui.common.item_2')}</th>
-                            <th style="padding: 10px 8px; text-align: center; font-size: 14px; font-weight: 600; color: #495057;">${L('ui.history.rate_rs')}</th>
-                            <th style="padding: 10px 8px; text-align: center; font-size: 14px; font-weight: 600; color: #495057;">${L('ui.history.qty_kg')}</th>
-                            <th style="padding: 10px 8px; text-align: right; font-size: 14px; font-weight: 600; color: #495057;">${L('ui.history.total_rs')}</th>
+                        <tr>
+                            <th>${L('ui.common.item_2')}</th>
+                            <th class="num">${L('ui.history.rate_rs')}</th>
+                            <th class="num">${L('ui.history.qty_kg')}</th>
+                            <th class="num">${L('ui.history.total_rs')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1263,10 +1268,10 @@ export class WholesaleSalesManager {
                     </tbody>
                 </table>
                 
-                <div style="background: white; padding: 14px; border-radius: 10px; border: 1px solid #dee2e6;">
-                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px;">
-                        <span style="font-weight: 600;">${L('ui.billing.sale_total')}</span>
-                        <strong style="font-size: 17px; color: #1c7430;">${formatRupees(sale.total)}</strong>
+                <div class="panel bill-view-panel">
+                    <div class="row bill-view-row bill-view-total">
+                        <span class="row-main">${L('ui.billing.sale_total')}</span>
+                        <strong class="row-amt">${money(sale.total)}</strong>
                     </div>
                 </div>
                 
@@ -1275,8 +1280,7 @@ export class WholesaleSalesManager {
                 ${editsRowHtml(sale, 'history.showEdits()')}
             </div>
         `;
-        
-        document.getElementById('billDetailsContent').innerHTML = content;
+                document.getElementById('billDetailsContent').innerHTML = content;
         // Wholesale bills are not edited here; Void / Delete permanently as in History (#75)
         setBillActions(sale, { uid: AppState.currentUser?.uid, role: AppState.userRole, raw: AppState.settings?.roleAccess }, { editable: false });
         HistoryManager.renderPrintStatus();

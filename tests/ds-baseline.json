@@ -1,17 +1,17 @@
 {
   "_readme": "Design-system ratchet (tests/ci/ds-guard.test.js, docs/design-system.md §7). Per-file counts may only go down; lower them with DS_BASELINE=lower npx jest ds-guard. Files in \"strict\" are pinned at 0 on every metric.",
   "totals": {
-    "spacing": 1134,
-    "radius": 176,
+    "spacing": 1056,
+    "radius": 160,
     "shadow": 45,
     "zIndex": 35,
-    "important": 51,
-    "idSelector": 216,
-    "themeSelector": 30,
-    "inlineStyle": 445,
+    "important": 50,
+    "idSelector": 211,
+    "themeSelector": 29,
+    "inlineStyle": 359,
     "emoji": 14,
     "titleCase": 19,
-    "legacyClass": 697
+    "legacyClass": 692
   },
   "strict": [
     "www/css/outstanding.css",
@@ -35,7 +35,7 @@
       "www/css/charts.css": 40,
       "www/css/datefilter.css": 2,
       "www/css/day.css": 45,
-      "www/css/desktop.css": 26,
+      "www/css/desktop.css": 25,
       "www/css/finance.css": 68,
       "www/css/forms.css": 16,
       "www/css/health.css": 17,
@@ -62,7 +62,6 @@
       "www/js/modules/miscellaneous.js": 27,
       "www/js/modules/settings.js": 8,
       "www/js/modules/stock.js": 24,
-      "www/js/modules/wholesale-sales.js": 56,
       "www/js/services/exporter.js": 6,
       "www/js/utils/quota-guard.js": 2,
       "www/templates/admin.html": 21,
@@ -72,8 +71,7 @@
       "www/templates/history.html": 2,
       "www/templates/items.html": 10,
       "www/templates/settings.html": 6,
-      "www/templates/stock.html": 10,
-      "www/templates/wholesale-sales.html": 21
+      "www/templates/stock.html": 10
     },
     "radius": {
       "www/css/anomalies.css": 9,
@@ -105,14 +103,12 @@
       "www/js/modules/miscellaneous.js": 8,
       "www/js/modules/settings.js": 2,
       "www/js/modules/stock.js": 2,
-      "www/js/modules/wholesale-sales.js": 13,
       "www/js/services/exporter.js": 1,
       "www/templates/admin.html": 6,
       "www/templates/diagnostics.html": 11,
       "www/templates/items.html": 1,
       "www/templates/settings.html": 1,
-      "www/templates/stock.html": 1,
-      "www/templates/wholesale-sales.html": 3
+      "www/templates/stock.html": 1
     },
     "shadow": {
       "www/css/app-updates.css": 2,
@@ -170,28 +166,27 @@
       "www/css/rate-trends.css": 2,
       "www/css/reports.css": 4,
       "www/css/settings.css": 1,
-      "www/css/totals.css": 11
+      "www/css/totals.css": 10
     },
     "idSelector": {
       "www/css/anomalies.css": 1,
-      "www/css/billing.css": 25,
+      "www/css/billing.css": 24,
       "www/css/buttons.css": 1,
       "www/css/charts.css": 6,
       "www/css/day.css": 4,
-      "www/css/desktop.css": 44,
+      "www/css/desktop.css": 42,
       "www/css/finance.css": 6,
       "www/css/forms.css": 3,
       "www/css/history.css": 1,
       "www/css/items.css": 7,
       "www/css/stock.css": 2,
       "www/css/tables.css": 62,
-      "www/css/totals.css": 54
+      "www/css/totals.css": 52
     },
     "themeSelector": {
       "www/css/app-updates.css": 2,
       "www/css/bill-checks.css": 4,
       "www/css/day.css": 9,
-      "www/css/desktop.css": 1,
       "www/css/notifications.css": 9,
       "www/css/rentals.css": 4,
       "www/css/stock.css": 1
@@ -208,7 +203,6 @@
       "www/js/modules/rate-trends.js": 1,
       "www/js/modules/settings.js": 6,
       "www/js/modules/stock.js": 30,
-      "www/js/modules/wholesale-sales.js": 60,
       "www/js/ui/bottom-nav.js": 2,
       "www/js/utils/helpers.js": 5,
       "www/js/utils/quota-guard.js": 3,
@@ -222,8 +216,7 @@
       "www/templates/modals.html": 5,
       "www/templates/rate-trends.html": 9,
       "www/templates/settings.html": 11,
-      "www/templates/stock.html": 13,
-      "www/templates/wholesale-sales.html": 26
+      "www/templates/stock.html": 13
     },
     "emoji": {
       "www/js/i18n/en.js#ui.anom": 1,
@@ -269,7 +262,7 @@
       "www/js/modules/statements.js": 6,
       "www/js/modules/stock.js": 16,
       "www/js/modules/voice-billing.js": 1,
-      "www/js/modules/wholesale-sales.js": 5,
+      "www/js/modules/wholesale-sales.js": 1,
       "www/js/modules/workers.js": 1,
       "www/js/rentals/rent-advanced.js": 22,
       "www/js/rentals/rent-deposit.js": 18,
@@ -309,7 +302,7 @@
       "www/templates/rentals.html": 15,
       "www/templates/settings.html": 51,
       "www/templates/stock.html": 23,
-      "www/templates/wholesale-sales.html": 32
+      "www/templates/wholesale-sales.html": 31
     }
   }
 }

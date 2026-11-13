@@ -404,12 +404,10 @@ body.dark-mode .modal-box {
 }
 
 .dark-mode [style*="background: #d1fae5"],
-.dark-mode [style*="background: #d1e7dd"],
-.dark-mode [style*="background: #e7f5e9"] {
+.dark-mode [style*="background: #d1e7dd"] {
   background: var(--success-soft) !important;
 }
 
-.dark-mode [style*="background: #d1ecf1"],
 .dark-mode [style*="background: #cfe2ff"],
 .dark-mode [style*="background: #e3f2fd"] {
   background: var(--info-soft) !important;
@@ -461,7 +459,6 @@ body.dark-mode .modal-box {
 .dark-mode [style^="color:#15803d"],
 .dark-mode [style*=" color: #1c7430"],
 .dark-mode [style*=" color: #0f5132"],
-.dark-mode [style*=" color: #155724"],
 .dark-mode [style*=" color: #2e7d32"],
 .dark-mode [style^="color: #059669"] {
   color: var(--on-success-soft) !important;
@@ -3638,12 +3635,6 @@ html[data-updating] .updating-mark {
   text-shadow: 0 0 0 var(--on-success-soft);
 }
 
-/* Wholesale › Outstanding draws these without .btn (5.5) */
-[data-record-payment]:not(.btn),
-[data-mark-cleared]:not(.btn) {
-  font-size: 14px;
-}
-
 /* With zoom allowed, iOS (only it matches this @supports) zooms into any field under 16 px when it is focused */
 @supports (-webkit-touch-callout: none) {
   body input:not([type]),
@@ -3661,25 +3652,25 @@ html[data-updating] .updating-mark {
 }
 
 /* ---- css/tables.css ---- */
-#billTable, #saleTable {
+#billTable, :is(#saleTable, .bill-lines) {
   width: 100%;
   margin-top: 16px;
   table-layout: fixed;
   border-collapse: collapse;
 }
 
-#billTable thead, #saleTable thead {
+#billTable thead, :is(#saleTable, .bill-lines) thead {
   display: table-header-group;
   background: var(--surface-muted);
   font-weight: var(--w-strong);
   color: var(--text-primary);
 }
 
-#billTable thead tr, #saleTable thead tr {
+#billTable thead tr, :is(#saleTable, .bill-lines) thead tr {
   display: table-row;
 }
 
-#billTable thead th, #saleTable thead th {
+#billTable thead th, :is(#saleTable, .bill-lines) thead th {
   display: table-cell;
   padding: 10px 8px;
   text-align: center;
@@ -3689,18 +3680,18 @@ html[data-updating] .updating-mark {
   color: var(--text-secondary);
 }
 
-#billTable tbody tr, #saleTable tbody tr {
+#billTable tbody tr, :is(#saleTable, .bill-lines) tbody tr {
   display: table-row;
   background: var(--card-bg);
   border-bottom: 1px var(--rule-style) var(--border-color);
   transition: background var(--transition);
 }
 
-#billTable tbody tr:hover, #saleTable tbody tr:hover {
+#billTable tbody tr:hover, :is(#saleTable, .bill-lines) tbody tr:hover {
   background: var(--light-bg);
 }
 
-#billTable td, #saleTable td {
+#billTable td, :is(#saleTable, .bill-lines) td {
   display: table-cell;
   padding: 14px 8px;
   text-align: center;
@@ -3712,22 +3703,22 @@ html[data-updating] .updating-mark {
   color: var(--text-primary);
 }
 
-#billTable td:before, #saleTable td:before {
+#billTable td:before, :is(#saleTable, .bill-lines) td:before {
   display: none;
 }
 
-#billTable td:first-child, #saleTable td:first-child {
+#billTable td:first-child, :is(#saleTable, .bill-lines) td:first-child {
   text-align: left;
   font-weight: var(--w-strong);
 }
 
-#billTable td:last-child, #saleTable td:last-child {
+#billTable td:last-child, :is(#saleTable, .bill-lines) td:last-child {
   text-align: center;
 }
 
 /* Rate, Qty and Total line up on the right */
 #billTable :is(th, td):nth-child(n+2):nth-child(-n+4),
-#saleTable :is(th, td):nth-child(n+2):nth-child(-n+4) {
+:is(#saleTable, .bill-lines) :is(th, td):nth-child(n+2):nth-child(-n+4) {
   text-align: right;
 }
 
@@ -3736,7 +3727,7 @@ html[data-updating] .updating-mark {
   cursor: pointer;
 }
 
-#billTable td.bill-empty, #saleTable td.bill-empty {
+#billTable td.bill-empty, :is(#saleTable, .bill-lines) :is(td.bill-empty, td.empty) {
   padding: var(--sp-6) var(--sp-2);
   color: var(--ink-3);
   font-weight: var(--w-regular);
@@ -3766,7 +3757,7 @@ html[data-updating] .updating-mark {
 }
 
 /* Billing's remove is a quiet × (3.5) */
-#billing :is(.remove-bill-item, .remove-sale-item) {
+:is(#billing, .bill-page) :is(.remove-bill-item, .remove-sale-item, .bill-line-remove) {
   min-width: 40px;
   min-height: 40px;
   padding: 0;
@@ -3778,13 +3769,13 @@ html[data-updating] .updating-mark {
   line-height: 1;
 }
 
-#billing :is(.remove-bill-item, .remove-sale-item):hover {
+:is(#billing, .bill-page) :is(.remove-bill-item, .remove-sale-item, .bill-line-remove):hover {
   background: var(--state-hover);
   box-shadow: none;
   color: var(--negative);
 }
 
-#billing :is(.remove-bill-item, .remove-sale-item):focus-visible {
+:is(#billing, .bill-page) :is(.remove-bill-item, .remove-sale-item, .bill-line-remove):focus-visible {
   outline: none;
   box-shadow: var(--focus);
 }
@@ -3792,7 +3783,7 @@ html[data-updating] .updating-mark {
 /* Phone and tablet: the bill lines are a row list in a panel (3.5). Item over "kg × rate",
    the amount and × on the right. Same cells as the desktop table. */
 @media (max-width: 1023.98px) {
-  #billTable, #saleTable {
+  #billTable, :is(#saleTable, .bill-lines) {
     display: block;
     margin-top: 0;
     overflow: hidden;
@@ -3802,25 +3793,25 @@ html[data-updating] .updating-mark {
     box-shadow: var(--panel-shadow);
   }
 
-  #billTable thead, #saleTable thead {
+  #billTable thead, :is(#saleTable, .bill-lines) thead {
     display: none;
   }
 
-  #billTable tbody, #saleTable tbody {
+  #billTable tbody, :is(#saleTable, .bill-lines) tbody {
     display: block;
   }
 
-  #billTable tbody tr, #saleTable tbody tr {
+  #billTable tbody tr, :is(#saleTable, .bill-lines) tbody tr {
     display: block;
     border-bottom: none;
     background: none;
   }
 
-  #billTable tbody tr + tr, #saleTable tbody tr + tr {
+  #billTable tbody tr + tr, :is(#saleTable, .bill-lines) tbody tr + tr {
     border-top: 1px var(--rule-style) var(--line);
   }
 
-  #billTable tbody tr.bill-line, #saleTable tbody tr.bill-line {
+  #billTable tbody tr.bill-line, :is(#saleTable, .bill-lines) tbody tr.bill-line {
     display: grid;
     grid-template-columns: auto auto minmax(0, 1fr) auto auto;
     column-gap: var(--sp-1);
@@ -3829,14 +3820,14 @@ html[data-updating] .updating-mark {
     padding: 10px var(--sp-2) 10px var(--sp-4);
   }
 
-  #billTable tbody tr.bill-line > td, #saleTable tbody tr.bill-line > td {
+  #billTable tbody tr.bill-line > td, :is(#saleTable, .bill-lines) tbody tr.bill-line > td {
     display: block;
     max-width: none;
     padding: 0;
     text-align: left;
   }
 
-  #billTable tbody tr.bill-line > td:nth-child(1), #saleTable tbody tr.bill-line > td:nth-child(1) {
+  #billTable tbody tr.bill-line > td:nth-child(1), :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(1) {
     grid-column: 1 / 4;
     grid-row: 1;
     display: -webkit-box;
@@ -3851,7 +3842,7 @@ html[data-updating] .updating-mark {
   }
 
   #billTable tbody tr.bill-line > :is(td:nth-child(2), td:nth-child(3)),
-  #saleTable tbody tr.bill-line > :is(td:nth-child(2), td:nth-child(3)) {
+  :is(#saleTable, .bill-lines) tbody tr.bill-line > :is(td:nth-child(2), td:nth-child(3)) {
     grid-row: 2;
     color: var(--ink-3);
     font-size: var(--fs-sm);
@@ -3859,20 +3850,20 @@ html[data-updating] .updating-mark {
     white-space: nowrap;
   }
 
-  #billTable tbody tr.bill-line > td:nth-child(3), #saleTable tbody tr.bill-line > td:nth-child(3) {
+  #billTable tbody tr.bill-line > td:nth-child(3), :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(3) {
     grid-column: 1;
   }
 
-  #billTable tbody tr.bill-line > td:nth-child(2), #saleTable tbody tr.bill-line > td:nth-child(2) {
+  #billTable tbody tr.bill-line > td:nth-child(2), :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(2) {
     grid-column: 2;
   }
 
-  #billTable tbody tr.bill-line > td:nth-child(2)::before, #saleTable tbody tr.bill-line > td:nth-child(2)::before {
+  #billTable tbody tr.bill-line > td:nth-child(2)::before, :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(2)::before {
     display: inline;
     content: "× ";
   }
 
-  #billTable tbody tr.bill-line > td:nth-child(4), #saleTable tbody tr.bill-line > td:nth-child(4) {
+  #billTable tbody tr.bill-line > td:nth-child(4), :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(4) {
     grid-column: 4;
     grid-row: 1 / 3;
     padding-left: var(--sp-3);
@@ -3885,22 +3876,22 @@ html[data-updating] .updating-mark {
     white-space: nowrap;
   }
 
-  #billTable tbody tr.bill-line > td:nth-child(5), #saleTable tbody tr.bill-line > td:nth-child(5) {
+  #billTable tbody tr.bill-line > td:nth-child(5), :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(5) {
     grid-column: 5;
     grid-row: 1 / 3;
   }
 
-  #billTable tbody tr.bill-line:hover, #saleTable tbody tr.bill-line:hover {
+  #billTable tbody tr.bill-line:hover, :is(#saleTable, .bill-lines) tbody tr.bill-line:hover {
     background: var(--state-hover);
   }
 
   /* An empty bill and a check message under a line span the whole row */
-  #billTable :is(td.bill-empty, tr.bill-check-row > td), #saleTable :is(td.bill-empty, tr.bill-check-row > td) {
+  #billTable :is(td.bill-empty, tr.bill-check-row > td), :is(#saleTable, .bill-lines) :is(td.bill-empty, td.empty, tr.bill-check-row > td) {
     display: block;
     max-width: none;
   }
 
-  #billing :is(.remove-bill-item, .remove-sale-item) {
+  :is(#billing, .bill-page) :is(.remove-bill-item, .remove-sale-item, .bill-line-remove) {
     min-width: 44px;
     min-height: 44px;
   }
@@ -4349,7 +4340,6 @@ input[type="number"] {
 
 #saleSection .quick-add-btn-inline,
 #saleSection .add-to-bill-btn,
-#wholesale-sales .add-to-bill-btn,
 .items-add-btn {
   background: var(--btn-success);
   color: var(--btn-sale-ink);
@@ -4625,14 +4615,14 @@ input[type="number"] {
   font-variant-numeric: tabular-nums;
 }
 
-#billing .form-row.field {
+:is(#billing, .bill-page) .form-row.field {
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
   margin-bottom: var(--sp-3);
 }
 
-#billing .form-row.field > label {
+:is(#billing, .bill-page) .form-row.field > label {
   width: auto;
   margin: 0;
   color: var(--ink-2);
@@ -4640,7 +4630,7 @@ input[type="number"] {
   font-weight: var(--w-label);
 }
 
-#billing .form-row.field .input {
+:is(#billing, .bill-page) .form-row.field .input {
   flex: 1;
   min-width: 0;
   border-color: var(--input-border);
@@ -4652,22 +4642,22 @@ input[type="number"] {
   position: relative;
 }
 
-#billing .adorn > .adorn-pre + .input {
+:is(#billing, .bill-page) .adorn > .adorn-pre + .input {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }
 
-#billing .adorn > .input:has(+ .adorn-post) {
+:is(#billing, .bill-page) .adorn > .input:has(+ .adorn-post) {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
 
-#billing .bill-customer-box > .input {
+:is(#billing, .bill-page) .bill-customer-box > .input {
   width: 100%;
   padding-right: 52px;
 }
 
-#billing .bill-customer-box > .contact-pick-btn {
+:is(#billing, .bill-page) .bill-customer-box > .contact-pick-btn {
   position: absolute;
   top: 0;
   right: 0;
@@ -4679,8 +4669,8 @@ input[type="number"] {
   text-shadow: none;
 }
 
-#billing .bill-customer-box > .contact-pick-btn:hover {
-  color: var(--accent-text);
+:is(#billing, .bill-page) .bill-customer-box > .contact-pick-btn:hover {
+  color: var(--bill-tone-text, var(--accent-text));
 }
 
 /* Name suggestions while typing a customer / supplier (#139 phase 1) */
@@ -4764,7 +4754,7 @@ input[type="number"] {
   flex: 1 1 12em;
 }
 
-#billing .bill-section-title {
+:is(#billing, .bill-page) .bill-section-title {
   margin: var(--sp-5) 0 var(--sp-2);
   font-family: var(--font-display);
   font-style: var(--title-style);
@@ -4805,7 +4795,7 @@ input[type="number"] {
 }
 
 /* A live check message under Rate or Weight (bill-highlight.js) takes its own row below the three */
-#billing .bill-entry-grid > .bill-check-msg {
+:is(#billing, .bill-page) .bill-entry-grid > .bill-check-msg {
   grid-column: 1 / -1;
   order: 1;
 }
@@ -4956,6 +4946,202 @@ input[type="number"] {
 
 .draft-card-actions > .btn {
   flex: 1;
+}
+
+/* ---------- Wholesale (5.5): Billing's components in the wholesale (violet) mode ---------- */
+/* Billing's tones are --bill-tone-* with its accent as the fallback; the wholesale page sets them */
+.bill-page {
+  --bill-tone-text: var(--ink);
+  --bill-tone-soft: var(--mode-wholesale-soft);
+  --bill-tone-fill: var(--mode-wholesale);
+  --bill-tone-ink: var(--on-mode-wholesale);
+}
+
+.ws-seg {
+  margin-bottom: var(--sp-3);
+}
+
+.ws-seg > button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.ws-stock {
+  margin-bottom: var(--sp-3);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  background: var(--surface-2);
+}
+
+.ws-stock .metric-value {
+  font-size: var(--fs-lead);
+}
+
+.ws-per {
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-regular);
+}
+
+.ws-stock-note {
+  margin: 0 var(--sp-3) var(--sp-3);
+}
+
+.ws-stock-note[hidden] {
+  display: none;
+}
+
+.ws-entry-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Add to bill is tonal: Save is the screen's one primary button */
+.ws-add-btn {
+  width: 100%;
+  min-height: 48px;
+  border-color: transparent;
+  background-color: var(--bill-tone-soft);
+  color: var(--bill-tone-text);
+}
+
+.bill-line-remove {
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.bill-page .save-btn {
+  background-color: var(--bill-tone-fill);
+  color: var(--bill-tone-ink);
+}
+
+/* Expenses and the live profit (WS-PROFIT) */
+.ws-profit {
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-1) var(--sp-4);
+}
+
+.ws-profit .payment-row > span {
+  color: var(--ink-2);
+  font-weight: var(--w-regular);
+}
+
+.ws-profit .payment-row > strong {
+  color: var(--ink);
+  font-size: var(--fs-lead);
+  font-weight: var(--w-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-more {
+  margin: var(--sp-2) 0 var(--sp-4);
+  text-align: center;
+}
+
+.ws-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.ws-search > .i {
+  position: absolute;
+  top: 50%;
+  left: var(--sp-3);
+  color: var(--ink-3);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.ws-search > .input {
+  flex: 1;
+  min-width: 0;
+  padding-left: var(--sp-10);
+}
+
+.ws-search > .btn {
+  flex: none;
+}
+
+/* Wholesale › Outstanding: Mark as cleared is a tick box beside the bill's buttons */
+.ws-clear {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  padding-right: var(--sp-2);
+}
+
+.ws-clear > label {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
+  cursor: pointer;
+}
+
+.ws-clear > input {
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* A wholesale bill opened from a list (bill details sheet) */
+.bill-view {
+  padding: var(--sp-4);
+}
+
+.bill-view-title {
+  margin: var(--sp-4) 0 var(--sp-2);
+  color: var(--ink);
+  font-size: var(--fs-body);
+  font-weight: var(--w-strong);
+}
+
+.bill-view-panel {
+  margin-top: var(--sp-3);
+}
+
+.bill-view-panel > .bill-view-title {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4) 0;
+}
+
+.bill-view-note {
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-3);
+}
+
+.bill-view-note-text {
+  color: var(--ink);
+}
+
+.bill-view-items {
+  width: 100%;
+  margin-bottom: var(--sp-2);
+}
+
+.bill-view-row {
+  font-size: var(--fs-sm);
+}
+
+.bill-view-info .row-main {
+  color: var(--ink-3);
+}
+
+.bill-view-total {
+  font-size: var(--fs-body);
+  font-weight: var(--w-strong);
+}
+
+.bill-view-total > .row-amt {
+  font-size: var(--fs-lead);
 }
 
 /* ---- css/voice.css ---- */
@@ -5227,90 +5413,81 @@ input[type="number"] {
   animation: pulse 1.5s ease-in-out infinite;
 }
 
-/* Wholesale totals green */
-#wholesale-sales .payment-row.payment-total:not(.payment-excess) {
-  background: var(--success-soft);
-}
-
-#wholesale-sales .payment-row.payment-total:not(.payment-excess) :is(span, strong) {
-  color: var(--on-success-soft) !important;
-}
-
 /* ---------- Billing totals and payment (redesign 3.1b): colon-less labels, ₹ in the field ---------- */
-#billing .bill-col-summary > .bill-totals {
+:is(#billing, .bill-page) .bill-col-summary > .bill-totals {
   border: 1px solid var(--panel-border);
   border-radius: var(--r-panel);
   background: var(--panel-bg);
   box-shadow: var(--panel-shadow);
 }
 
-#billing .total-row span {
+:is(#billing, .bill-page) .total-row span {
   color: var(--ink-2);
   font-weight: var(--w-regular);
 }
 
-#billing .total-row strong {
+:is(#billing, .bill-page) .total-row strong {
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
 
 /* Totals (3.5): a plain panel; the payable is the big ink figure, Total paid a plain row */
-#billing .money > span:not(.cur) {
+:is(#billing, .bill-page) .money > span:not(.cur) {
   color: inherit;
   font-size: inherit;
   font-weight: inherit;
 }
 
 /* The shared .cur (surfaces.css), over the older span rules above */
-#billing .money > .cur {
+:is(#billing, .bill-page) .money > .cur {
   color: var(--ink-3);
   font-size: var(--fs-cur);
   font-weight: var(--w-regular);
 }
 
 @media print {
-  #billing .money > .cur {
+  :is(#billing, .bill-page) .money > .cur {
     color: inherit;
   }
 }
 
-#billing .grand-total,
-#billing .payment-row.payment-total {
+:is(#billing, .bill-page) .grand-total,
+:is(#billing, .bill-page) .payment-row.payment-total {
   margin: 0;
   padding: var(--sp-3) 0 !important;
   border-radius: 0;
   background: none;
 }
 
-#billing .grand-total {
+:is(#billing, .bill-page) .bill-totals > * + .grand-total {
   border-top: 1px var(--rule-style) var(--line);
 }
 
-#billing .grand-total > span {
+:is(#billing, .bill-page) .grand-total > span {
   color: var(--ink);
   font-weight: var(--w-strong);
 }
 
-#billing .payment-row.payment-total > span {
+:is(#billing, .bill-page) .payment-row.payment-total > span {
   color: var(--ink-2);
   font-weight: var(--w-regular);
 }
 
-#billing .payment-row.payment-total strong {
+:is(#billing, .bill-page) .payment-row.payment-total strong {
   color: var(--ink);
   font-size: var(--fs-lead);
   font-weight: var(--w-strong);
   font-variant-numeric: tabular-nums;
 }
 
-#billing .payment-row.payment-total.payment-excess {
+:is(#billing, .bill-page) .payment-row.payment-total.payment-excess {
   margin: 0 calc(-1 * var(--sp-3));
   padding: var(--sp-3) !important;
   border-bottom-color: transparent;
   border-radius: var(--r-control);
 }
 
-#billing .grand-total strong {
+:is(#billing, .bill-page) .grand-total strong {
   color: var(--ink) !important;
   font-family: var(--font-hero);
   font-size: var(--fs-display) !important;
@@ -5319,7 +5496,7 @@ input[type="number"] {
   letter-spacing: var(--tracking-display);
 }
 
-#billing .labor-input-row .checkbox-label {
+:is(#billing, .bill-page) .labor-input-row .checkbox-label {
   margin: 0;
 }
 
@@ -5329,11 +5506,11 @@ input[type="number"] {
   font-variant-numeric: tabular-nums;
 }
 
-#billing .bill-money {
+:is(#billing, .bill-page) .bill-money {
   flex: none;
 }
 
-#billing .bill-money > .input {
+:is(#billing, .bill-page) .bill-money > .input {
   width: 100px;
   min-width: 0;
   max-width: 100px;
@@ -5342,7 +5519,7 @@ input[type="number"] {
   text-align: right;
 }
 
-#billing .bill-pay-title {
+:is(#billing, .bill-page) .bill-pay-title {
   margin-top: var(--sp-2);
   padding-top: var(--sp-3);
   border-top: 1px var(--rule-style) var(--line);
@@ -5351,13 +5528,13 @@ input[type="number"] {
   font-weight: var(--w-label);
 }
 
-#billing .payment-row > label {
+:is(#billing, .bill-page) .payment-row > label {
   color: var(--ink);
 }
 
 /* "Fill" puts the whole bill in that row: the row's tick box, drawn as a text button. Ticked it reads
    "Filled ✓" on a solid fill; its name is the visible word plus the hidden hint (.pay-fill-hint). */
-#billing .payment-row > .pay-fill {
+:is(#billing, .bill-page) .payment-row > .pay-fill {
   position: relative;
   display: inline-flex;
   flex: none;
@@ -5365,13 +5542,13 @@ input[type="number"] {
   min-width: 48px;
   min-height: 44px;
   margin: 0;
-  color: var(--accent-text);
+  color: var(--bill-tone-text, var(--accent-text));
   font-size: var(--fs-sm);
   font-weight: var(--w-label);
   cursor: pointer;
 }
 
-#billing .payment-row > .pay-fill > input {
+:is(#billing, .bill-page) .payment-row > .pay-fill > input {
   position: absolute;
   inset: 0;
   z-index: 1;
@@ -5382,7 +5559,7 @@ input[type="number"] {
   cursor: pointer;
 }
 
-#billing .payment-row > .pay-fill > span {
+:is(#billing, .bill-page) .payment-row > .pay-fill > span {
   display: flex;
   flex: 1;
   align-items: center;
@@ -5396,25 +5573,25 @@ input[type="number"] {
   white-space: nowrap;
 }
 
-#billing .payment-row > .pay-fill > .pay-fill-on,
-#billing .payment-row > .pay-fill > input:checked ~ .pay-fill-off {
+:is(#billing, .bill-page) .payment-row > .pay-fill > .pay-fill-on,
+:is(#billing, .bill-page) .payment-row > .pay-fill > input:checked ~ .pay-fill-off {
   display: none;
 }
 
-#billing .payment-row > .pay-fill > input:checked ~ .pay-fill-on {
+:is(#billing, .bill-page) .payment-row > .pay-fill > input:checked ~ .pay-fill-on {
   display: flex;
-  border-color: var(--accent-text);
-  background: var(--btn-primary-bg);
-  color: var(--btn-primary-ink);
+  border-color: var(--bill-tone-fill, var(--accent-text));
+  background: var(--bill-tone-fill, var(--btn-primary-bg));
+  color: var(--bill-tone-ink, var(--btn-primary-ink));
   font-weight: var(--w-strong);
 }
 
-#billing .payment-row > .pay-fill > .pay-fill-on::after {
+:is(#billing, .bill-page) .payment-row > .pay-fill > .pay-fill-on::after {
   content: "✓" / "";
   margin-left: 4px;
 }
 
-#billing .payment-row > .pay-fill > .pay-fill-hint {
+:is(#billing, .bill-page) .payment-row > .pay-fill > .pay-fill-hint {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -5425,12 +5602,12 @@ input[type="number"] {
 }
 
 @media (hover: hover) {
-  #billing .payment-row > .pay-fill:hover > input:not(:checked) ~ .pay-fill-off {
+  :is(#billing, .bill-page) .payment-row > .pay-fill:hover > input:not(:checked) ~ .pay-fill-off {
     background: var(--state-hover);
   }
 }
 
-#billing .payment-row > .pay-fill > input:focus-visible ~ span {
+:is(#billing, .bill-page) .payment-row > .pay-fill > input:focus-visible ~ span {
   box-shadow: var(--focus);
 }
 
@@ -5445,15 +5622,15 @@ input[type="number"] {
 }
 
 @media (forced-colors: active) {
-  #billing .payment-row > .pay-fill > input:checked ~ .pay-fill-on {
+  :is(#billing, .bill-page) .payment-row > .pay-fill > input:checked ~ .pay-fill-on {
     outline: 2px solid Highlight;
   }
 }
 
-#billing .split-rest-btn {
+:is(#billing, .bill-page) .split-rest-btn {
   border-color: transparent;
-  background-color: var(--accent-soft);
-  color: var(--accent-text);
+  background-color: var(--bill-tone-soft, var(--accent-soft));
+  color: var(--bill-tone-text, var(--accent-text));
 }
 
 #billing #saleSection .split-rest-btn {
@@ -5461,7 +5638,7 @@ input[type="number"] {
   color: var(--positive);
 }
 
-#billing .form-row.field > .bill-note-print {
+:is(#billing, .bill-page) .form-row.field > .bill-note-print {
   align-self: flex-start;
   min-height: 44px;
   font-weight: var(--w-regular);
@@ -5476,11 +5653,11 @@ input[type="number"] {
   margin-bottom: var(--sp-3);
 }
 
-#billing .bill-notes-date > .form-row.field {
+:is(#billing, .bill-page) .bill-notes-date > .form-row.field {
   margin-bottom: 0;
 }
 
-#billing .form-row.field.bill-notes {
+:is(#billing, .bill-page) .form-row.field.bill-notes {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -5488,19 +5665,19 @@ input[type="number"] {
   row-gap: 0;
 }
 
-#billing .bill-notes > label[for] {
+:is(#billing, .bill-page) .bill-notes > label[for] {
   grid-row: 1;
   grid-column: 1;
   padding-bottom: 6px;
   align-self: end;
 }
 
-#billing .bill-notes > .input {
+:is(#billing, .bill-page) .bill-notes > .input {
   grid-row: 2;
   grid-column: 1 / -1;
 }
 
-#billing .form-row.field.bill-notes > .bill-note-print {
+:is(#billing, .bill-page) .form-row.field.bill-notes > .bill-note-print {
   grid-row: 1;
   grid-column: 2;
   align-self: end;
@@ -5586,13 +5763,13 @@ input[type="number"] {
 
 /* Phone and tablet: the row is compact (payable, two icon buttons, Save) */
 @media (max-width: 1023.98px) {
-  #billing .bill-bar-total {
+  :is(#billing, .bill-page) .bill-bar-total {
     display: block;
     flex: 1;
     min-width: 0;
   }
 
-  #billing .bill-bar-label {
+  :is(#billing, .bill-page) .bill-bar-label {
     display: block;
     overflow: hidden;
     color: var(--ink-3);
@@ -5601,7 +5778,7 @@ input[type="number"] {
     text-overflow: ellipsis;
   }
 
-  #billing .bill-bar-money {
+  :is(#billing, .bill-page) .bill-bar-money {
     display: block;
     overflow: hidden;
     color: var(--ink);
@@ -5614,13 +5791,13 @@ input[type="number"] {
     text-overflow: ellipsis;
   }
 
-  #billing .bill-actions > .bill-icon-btn {
+  :is(#billing, .bill-page) .bill-actions > .bill-icon-btn {
     flex: none;
     width: 48px;
     padding: 0;
   }
 
-  #billing .bill-actions > .print-btn .bill-btn-text {
+  :is(#billing, .bill-page) .bill-actions > .print-btn .bill-btn-text {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -5629,13 +5806,13 @@ input[type="number"] {
     white-space: nowrap;
   }
 
-  #billing .bill-actions > .save-btn {
+  :is(#billing, .bill-page) .bill-actions > .save-btn {
     flex: none;
     min-width: 96px;
     padding: 0 var(--sp-5);
   }
 
-  #billing .bill-actions > button[data-kbd]::before {
+  :is(#billing, .bill-page) .bill-actions > button[data-kbd]::before {
     content: none;
   }
 }
@@ -5644,7 +5821,7 @@ input[type="number"] {
    move it, so a tap that ends a field's focus still lands on Save). It runs down behind the tab bar.
    A short screen (a phone on its side, the app with its keyboard open) keeps the row at the end of the bill. */
 @media (max-width: 1023.98px) and (min-height: 481px) {
-  #billing .bill-actions {
+  :is(#billing, .bill-page) .bill-actions {
     position: fixed;
     left: 0;
     right: 0;
@@ -5657,24 +5834,24 @@ input[type="number"] {
     background: var(--surface);
   }
 
-  body.biz-rentals #billing .bill-actions {
+  body.biz-rentals :is(#billing, .bill-page) .bill-actions {
     padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   }
 
   /* The tab fades in without moving: a transform would hold the fixed bar for the animation */
-  #billing.tab.active {
+  :is(#billing, .bill-page).tab.active {
     animation-name: bill-fade-in;
   }
 
   /* Room under the last field (notes, date) to scroll clear of the bar, and for focus scrolling */
-  #billing.tab {
+  :is(#billing, .bill-page).tab {
     padding-bottom: calc(96px + 72px + env(safe-area-inset-bottom, 0px));
     scroll-padding-bottom: calc(64px + 72px + env(safe-area-inset-bottom, 0px));
   }
 
   /* Toasts and the update banner show above the bar, not on Save */
-  body:has(#billing.tab.active) .toast,
-  body:not(.biz-rentals):has(#billing.tab.active) .app-update-banner {
+  body:has(:is(#billing, .bill-page).tab.active) .toast,
+  body:not(.biz-rentals):has(:is(#billing, .bill-page).tab.active) .app-update-banner {
     bottom: calc(80px + 72px + env(safe-area-inset-bottom, 0px));
   }
 }
@@ -11633,23 +11810,13 @@ div.ins-wide,
     margin-top: 0;
   }
 
-  #wholesale-sales .bill-col-entry > .bill-totals {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 16px;
-  }
-
-  #wholesale-sales .bill-col-entry > .bill-totals > * {
-    grid-column: 1 / -1;
-  }
-
   #billTable,
   #saleTable,
   #salesTable {
     table-layout: auto;
   }
 
-  #billTable td, #saleTable td {
+  #billTable td, :is(#saleTable, .bill-lines) td {
     max-width: none;
   }
 
@@ -11943,43 +12110,43 @@ div.ins-wide,
   }
 
   .bill-col-summary input[type="number"],
-  #billing .bill-col-summary .bill-money > .input {
+  :is(#billing, .bill-page) .bill-col-summary .bill-money > .input {
     padding-top: 6px;
     padding-bottom: 6px;
   }
 
-  #billing .bill-col-summary .grand-total strong {
+  :is(#billing, .bill-page) .bill-col-summary .grand-total strong {
     font-size: var(--fs-title) !important;
   }
 
-  #billing .bill-col-summary :is(.grand-total, .payment-row.payment-total) {
+  :is(#billing, .bill-page) .bill-col-summary :is(.grand-total, .payment-row.payment-total) {
     padding: 6px 0 !important;
   }
 
-  #billing .bill-col-summary .bill-notes-date {
+  :is(#billing, .bill-page) .bill-col-summary .bill-notes-date {
     margin-bottom: 0;
   }
 
-  #billing .bill-col-summary > .bill-totals {
+  :is(#billing, .bill-page) .bill-col-summary > .bill-totals {
     margin-bottom: 0;
   }
 
-  #billing .bill-col-summary .payment-row > .pay-fill,
-  #billing .bill-col-summary .form-row.field.bill-notes > .bill-note-print {
+  :is(#billing, .bill-page) .bill-col-summary .payment-row > .pay-fill,
+  :is(#billing, .bill-page) .bill-col-summary .form-row.field.bill-notes > .bill-note-print {
     min-height: 30px;
   }
 
-  #billing .bill-col-summary > .bill-actions:last-child {
+  :is(#billing, .bill-page) .bill-col-summary > .bill-actions:last-child {
     padding: var(--sp-2) 0;
   }
 
-  #billing .bill-pay-title {
+  :is(#billing, .bill-page) .bill-pay-title {
     margin-top: 4px;
     padding-top: 6px;
   }
 
   .bill-col-summary > :is(.form-row, .bill-notes-date),
-  .bill-col-summary > :is(.bill-actions, div[style*="display: flex"]) {
+  .bill-col-summary > .bill-actions {
     margin-top: 10px !important;
   }
 
@@ -12014,7 +12181,7 @@ div.ins-wide,
 
   /* The Save / Print row is the column's footer: it reaches the bottom of the screen (over the
      tab's 48px bottom padding, so no field shows under it) and focus scrolls a field clear of it. */
-  .bill-col-summary > :is(.bill-actions, div[style*="display: flex"]):last-child {
+  .bill-col-summary > .bill-actions:last-child {
     position: sticky;
     bottom: calc(-1 * var(--desktop-tab-end));
     z-index: 2;
@@ -12024,12 +12191,8 @@ div.ins-wide,
     background: var(--light-bg);
   }
 
-  #billing.tab {
+  :is(#billing, .bill-page).tab {
     scroll-padding-bottom: 96px;
-  }
-
-  body.dark-mode .bill-col-summary > :is(.bill-actions, div[style*="display: flex"]):last-child {
-    background: var(--light-bg);
   }
 }
 
