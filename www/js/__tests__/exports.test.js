@@ -173,7 +173,7 @@ describe('Diagnostics exports', () => {
         expect(await DiagnosticsManager.exportAuditCsv()).toBe(true);
         const lines = saved[0].text.split('\r\n');
         expect(lines[5]).toBe('Time,Action,Who,Details');
-        expect(lines[6]).toMatch(/^2026-10-31 10:00,Void Bill,Ravi.*R-7.*typo/);
+        expect(lines[6]).toMatch(/^2026-10-31 10:00,Void bill,Ravi.*R-7.*typo/);
         expect(saved[0].name).toMatch(/^Gupta-Traders_audit_2026-10-30_2026-10-31_\d{8}-\d{4}\.csv$/);
         expect(note).toHaveBeenLastCalledWith('EXPORT', expect.objectContaining({ exportKind: 'audit', format: 'csv', from: '2026-10-30', to: '2026-10-31', rows: 2, exportStatus: 'done' }));
     });
@@ -188,7 +188,7 @@ describe('Diagnostics exports', () => {
         const lines = saved[0].text.split('\r\n');
         expect(lines.slice(0, 4).map(l => l.replace('\uFEFF', '').split(',')[0])).toEqual(['Shop', 'Period', 'Exported', 'By']);
         expect(lines[5]).toBe('Time,Action,Who,Details');
-        expect(lines[6]).toMatch(/Void Bill,Ravi \(Manager\),Bill: R-7/);
+        expect(lines[6]).toMatch(/Void bill,Ravi \(Manager\),Bill: R-7/);
         expect(saved[0].text).not.toMatch(/[\u0900-\u097F]/);
         const doc = { write: jest.fn(), close: jest.fn() };
         jest.spyOn(window, 'open').mockReturnValue({ document: doc, print: jest.fn() });

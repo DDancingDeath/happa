@@ -86,11 +86,11 @@
         </div>
 
         <div class="settings-card">
-            <h3 data-i18n="ui.settings.bluetooth_printer">Bluetooth Printer</h3>
+            <h3 data-i18n="ui.settings.bluetooth_printer">Bluetooth printer</h3>
             
             <label class="checkbox-label">
                 <input type="checkbox" id="settingBluetoothEnabled" data-onchange="settings.toggleBluetoothPrinter()">
-                <span data-i18n="ui.settings.enable_bluetooth_printer">Enable Bluetooth Printer</span>
+                <span data-i18n="ui.settings.enable_bluetooth_printer">Enable Bluetooth printer</span>
             </label>
             <p class="setting-description" data-i18n="ui.settings.use_bluetooth_thermal_printer">Use Bluetooth thermal printer for bill printing</p>
             
@@ -107,17 +107,17 @@
                 <div id="savedPrintersList"></div>
                 
                 <button class="add-item-btn" id="scanPrintersBtn" data-onclick="settings.scanBluetoothDevices()" style="margin-bottom: 8px;" data-i18n="ui.settings.scan_printers">
-                    🔍 Scan for Printers
+                    🔍 Scan for printers
                 </button>
                 
                 <div id="bluetoothDevicesList"></div>
                 
                 <button class="danger-btn" data-onclick="settings.disconnectPrinter()" id="disconnectBtn" style="display: none; margin-top: 12px;" data-i18n="ui.settings.disconnect_printer">
-                    Disconnect Printer
+                    Disconnect printer
                 </button>
                 
                 <button class="add-item-btn" data-onclick="settings.testPrint()" id="testPrintBtn" style="display: none; margin-top: 8px;" data-i18n="ui.settings.test_print">
-                    🖨️ Test Print
+                    🖨️ Test print
                 </button>
             </div>
         </div>
@@ -155,7 +155,7 @@
         </div>
 
         <div class="settings-card" id="installAppCard" style="display: none;">
-            <h3 data-i18n="ui.settings.install_app">Install App</h3>
+            <h3 data-i18n="ui.settings.install_app">Install app</h3>
             <button class="add-item-btn" id="installAppBtn" data-onclick="install.prompt()" style="display: none;" data-i18n="ui.settings.install_app_on_device">
                 📲 Install app on this device
             </button>
@@ -234,16 +234,16 @@
         </div>
 
         <div class="settings-card" id="labourSettingsCard">
-            <h3 data-i18n="ui.settings.labour_charges">Labour Charges</h3>
+            <h3 data-i18n="ui.settings.labour_charges">Labour charges</h3>
 
-            <label data-i18n="ui.settings.heavy_packet_weight_kg">Heavy packet weight (kg):</label>
+            <label data-i18n="ui.settings.heavy_packet_weight_kg">Heavy packet weight (kg)</label>
             <input type="number" inputmode="decimal" id="settingHeavyWeight" placeholder="30" value="30" data-onchange="settings.save()" />
             <p class="setting-description" data-i18n="ui.settings.packets_above_weight_get">Packets above this weight get a labour charge</p>
 
-            <label data-i18n="ui.settings.labour_per_heavy_packet">Labour per heavy packet (₹):</label>
+            <label data-i18n="ui.settings.labour_per_heavy_packet">Labour per heavy packet (₹)</label>
             <input type="number" inputmode="decimal" id="settingLaborRate" placeholder="6" value="6" data-onchange="settings.save()" />
 
-            <label for="settingLabourPackageKg" data-i18n="ui.settings.labour_package_kg">Package weight for labour (kg):</label>
+            <label for="settingLabourPackageKg" data-i18n="ui.settings.labour_package_kg">Package weight for labour (kg)</label>
             <input type="number" inputmode="decimal" id="settingLabourPackageKg" min="1" max="200" placeholder="35" value="35" data-onchange="settings.save()" />
             <p class="setting-description" data-i18n="ui.settings.labour_package_kg_hint">Today › Labour: today's purchased kg ÷ this weight, rounded up, × labour per packet = to pay labour.</p>
             <p class="setting-description" id="labourSettingsNote"><span data-i18n="ui.settings.saved_for_everyone">Saved for everyone.</span></p>

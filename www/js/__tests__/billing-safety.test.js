@@ -360,7 +360,7 @@ describe('Billing mode (D-5)', () => {
 describe('WhatsApp on the bill form shares a draft (S-10)', () => {
     test('the message says it is not saved', () => {
         const text = buildDraftShareText({ kind: 'retail', items: [{ name: 'Rice', rate: 36, qty: 4, total: 144 }], total: 144 });
-        expect(text.split('\n')[0]).toBe('*Sale Bill* (DRAFT, not saved)');
+        expect(text.split('\n')[0]).toBe('*Sale bill* (DRAFT, not saved)');
     });
 
     test('every bill-form share button is labelled "Share draft (not saved)"', () => {

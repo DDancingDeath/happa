@@ -35,7 +35,7 @@
     <div class="bill-details-overlay" id="draftsOverlay">
         <div class="bill-details-container">
             <div class="bill-details-header">
-                <h2 data-i18n="ui.modals.saved_drafts">Saved Drafts</h2>
+                <h2 data-i18n="ui.modals.saved_drafts">Saved drafts</h2>
                 <button class="bill-details-close" data-onclick="billing.closeDrafts()">✕</button>
             </div>
             <div class="bill-details-content" id="draftsContent" style="max-height: 60vh; overflow-y: auto;">
@@ -49,7 +49,7 @@
         <div class="bill-details-container" style="max-width: 700px;">
             <div class="bill-details-content" style="padding: 24px;">
                 <div style="margin-bottom: 20px;">
-                    <label style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px; display: block;" data-i18n="ui.modals.item_name_english">Item Name (English)*</label>
+                    <label style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px; display: block;" data-i18n="ui.modals.item_name_english">Item name (English)*</label>
                     <input type="text" id="itemModalName" 
                            data-oninput="items.onModalNameInput('name')" data-onfocus="items.acceptNameSuggestion('name')"
                            placeholder="Enter item name"
@@ -65,7 +65,7 @@
                 </div>
                 
                 <div data-perm="purchaseRates" style="margin-bottom: 20px;">
-                    <label style="font-size: 14px; font-weight: 600; color: #0058b8; margin-bottom: 8px; display: block;" data-i18n="ui.modals.purchase_rates_kg">Purchase Rates (₹/kg)</label>
+                    <label style="font-size: 14px; font-weight: 600; color: #0058b8; margin-bottom: 8px; display: block;" data-i18n="ui.modals.purchase_rates_kg">Purchase rates (₹/kg)</label>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <div id="itemModalPurchaseRates" class="rates-container" style="flex: 1;"></div>
                         <button class="add-rate-plus purchase" data-onclick="items.addModalRate('purchase')">+</button>
@@ -73,7 +73,7 @@
                 </div>
                 
                 <div style="margin-bottom: 20px;">
-                    <label style="font-size: 14px; font-weight: 600; color: #9333ea; margin-bottom: 8px; display: block;" data-i18n="ui.modals.wholesale_rates_kg">Wholesale Rates (₹/kg)</label>
+                    <label style="font-size: 14px; font-weight: 600; color: #9333ea; margin-bottom: 8px; display: block;" data-i18n="ui.modals.wholesale_rates_kg">Wholesale rates (₹/kg)</label>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <div id="itemModalWholesaleRates" class="rates-container" style="flex: 1;"></div>
                         <button class="add-rate-plus wholesale" data-onclick="items.addModalRate('wholesale')">+</button>
@@ -81,7 +81,7 @@
                 </div>
                 
                 <div style="margin-bottom: 20px;">
-                    <label style="font-size: 14px; font-weight: 600; color: #1c7430; margin-bottom: 8px; display: block;" data-i18n="ui.modals.retail_sale_rates_kg">Retail Rates (₹/kg)</label>
+                    <label style="font-size: 14px; font-weight: 600; color: #1c7430; margin-bottom: 8px; display: block;" data-i18n="ui.modals.retail_sale_rates_kg">Retail rates (₹/kg)</label>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <div id="itemModalSaleRates" class="rates-container" style="flex: 1;"></div>
                         <button class="add-rate-plus sale" data-onclick="items.addModalRate('sale')">+</button>
@@ -89,9 +89,9 @@
                 </div>
                 
                 <div style="margin-bottom: 20px;">
-                    <label style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px; display: block;" data-i18n="ui.modals.contact_person">Contact Person</label>
+                    <label style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px; display: block;" data-i18n="ui.modals.contact_person">Contact person</label>
                     <input type="text" id="itemModalContactPerson" 
-                           placeholder="Enter contact person name (Optional)"
+                           placeholder="Enter contact person name (optional)"
                            style="width: 100%; padding: 12px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 15px;" data-i18n-placeholder="ui.modals.enter_contact_person_name">
                 </div>
 

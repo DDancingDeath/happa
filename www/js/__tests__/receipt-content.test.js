@@ -491,10 +491,10 @@ describe('Settings › Printed bill', () => {
     test('sample and walk-in names follow the bill language, not the app language', async () => {
         setLang('hi');
         PrinterService.setSharedReceipt({ lang: 'en' });
-        expect(PrinterService.sampleBill()).toMatchObject({ customerName: 'Test Customer', items: [{ name: 'Test Item' }] });
+        expect(PrinterService.sampleBill()).toMatchObject({ customerName: 'Test customer', items: [{ name: 'Test item' }] });
         const print = jest.spyOn(PrinterService, 'printBill').mockResolvedValue(false);
         await PrinterService.printWholesaleSale({ billNumber: 'W-1', items: [], total: 0 });
-        expect(print.mock.calls[0][0].customerName).toBe('Walk-in Customer');
+        expect(print.mock.calls[0][0].customerName).toBe('Walk-in customer');
     });
 });
 
