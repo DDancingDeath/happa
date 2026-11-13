@@ -11053,6 +11053,7 @@ div.ins-wide,
 .st-flag td { background: var(--warning-soft); }
 .st-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); margin-top: var(--sp-2); }
 .st-balance { margin-top: 0; }
+.st-match { margin-top: var(--sp-2); }
 
 /* Period A vs period B, saved ranges, summary (#140) */
 .ins-abbar { width: 100%; }
