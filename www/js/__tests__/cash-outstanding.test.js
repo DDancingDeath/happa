@@ -62,7 +62,7 @@ describe('#69 session totals', () => {
         await CashManagementManager.showSessionDetails('2026-10-20');
         const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
         expect(text).toContain('Opening + added + cash in: ₹4,050');
-        expect(text).toContain('Total Cash Out: ₹1,830');
+        expect(text).toContain('Total cash out: ₹1,830');
     });
 
     test('a closed day\'s status card shows what it was closed with, not the live totals (a later void, #99)', () => {
