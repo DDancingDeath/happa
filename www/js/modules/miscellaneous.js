@@ -737,7 +737,9 @@ export class ExpensesManager {
         const reason = await askReason({
             titleKey: reenter ? 'ui.expenses.reenter_title' : 'ui.expenses.void_title',
             explainKey,
-            labelKey: 'ui.expenses.void_reason'
+            labelKey: 'ui.expenses.void_reason',
+            confirmKey: reenter ? 'ui.expenses.reenter_btn' : 'ui.expenses.void_confirm',
+            danger: true
         });
         if (!reason) return false;
         this.closeExpenseDetails();

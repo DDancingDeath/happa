@@ -149,9 +149,10 @@ describe('Void (#75)', () => {
     test('asks for a reason, voids, logs it and closes the details', async () => {
         AppState.userRole = 'staff';
         await HistoryManager.viewBill('id:P-1', 'purchase');
-        answerReason('  Entered twice ');
+        const ask = answerReason('  Entered twice ');
         await HistoryManager.confirmVoidBill();
         await flush();
+        expect(ask).toHaveBeenCalledWith(expect.stringContaining('reasonInput'), 'Void this bill?', true, { confirmLabel: 'Void bill', danger: true });
         // its audit entry goes in the void's own transaction (D-3)
         expect(FirebaseService.voidBill).toHaveBeenCalledWith('purchases', AppState.purchaseHistory[0], 'Entered twice',
             { audit: { action: 'VOID_BILL', details: expect.objectContaining({ billNumber: 'P-1', billType: 'purchase', amount: 500, reason: 'Entered twice' }) } });

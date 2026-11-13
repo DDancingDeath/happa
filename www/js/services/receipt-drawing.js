@@ -251,7 +251,7 @@ class ReceiptDrawing {
 
     _drawCustomerInfo(billData, utils, y) {
         if (billData.customerName) {
-            y = utils.drawLeft(`${this._t('ui.bill.customer')}: ${billData.customerName}`, y, { size: 18, weight: 'normal' });
+            y = utils.drawLeft(`${this._t(billData.isPurchase ? 'ui.bill.supplier' : 'ui.bill.customer')}: ${billData.customerName}`, y, { size: 18, weight: 'normal' });
             y += 8;
         }
         return y;

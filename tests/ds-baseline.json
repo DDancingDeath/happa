@@ -1,17 +1,17 @@
 {
   "_readme": "Design-system ratchet (tests/ci/ds-guard.test.js, docs/design-system.md §7). Per-file counts may only go down; lower them with DS_BASELINE=lower npx jest ds-guard. Files in \"strict\" are pinned at 0 on every metric.",
   "totals": {
-    "spacing": 1340,
-    "radius": 233,
+    "spacing": 1318,
+    "radius": 230,
     "shadow": 54,
     "zIndex": 35,
     "important": 53,
     "idSelector": 217,
     "themeSelector": 30,
-    "inlineStyle": 674,
+    "inlineStyle": 650,
     "emoji": 151,
     "titleCase": 19,
-    "legacyClass": 714
+    "legacyClass": 710
   },
   "strict": [
     "www/css/outstanding.css",
@@ -30,7 +30,7 @@
       "www/css/bill-checks.css": 12,
       "www/css/billing.css": 30,
       "www/css/buttons.css": 18,
-      "www/css/charts.css": 41,
+      "www/css/charts.css": 40,
       "www/css/datefilter.css": 2,
       "www/css/day.css": 47,
       "www/css/desktop.css": 42,
@@ -73,7 +73,6 @@
       "www/templates/expenses.html": 7,
       "www/templates/history.html": 2,
       "www/templates/items.html": 10,
-      "www/templates/modals.html": 21,
       "www/templates/settings.html": 6,
       "www/templates/stock.html": 10,
       "www/templates/wholesale-sales.html": 21
@@ -116,7 +115,6 @@
       "www/templates/cash-management.html": 29,
       "www/templates/diagnostics.html": 11,
       "www/templates/items.html": 1,
-      "www/templates/modals.html": 3,
       "www/templates/settings.html": 1,
       "www/templates/stock.html": 1,
       "www/templates/wholesale-sales.html": 3
@@ -233,7 +231,7 @@
       "www/templates/health.html": 2,
       "www/templates/history.html": 3,
       "www/templates/items.html": 13,
-      "www/templates/modals.html": 29,
+      "www/templates/modals.html": 5,
       "www/templates/navigation.html": 7,
       "www/templates/rate-trends.html": 9,
       "www/templates/settings.html": 11,
@@ -365,7 +363,7 @@
       "www/templates/history.html": 5,
       "www/templates/insights.html": 1,
       "www/templates/items.html": 6,
-      "www/templates/modals.html": 31,
+      "www/templates/modals.html": 27,
       "www/templates/money.html": 5,
       "www/templates/navigation.html": 8,
       "www/templates/rate-trends.html": 29,
