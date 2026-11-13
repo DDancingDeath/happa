@@ -242,8 +242,6 @@
 .split-rest-btn,
 .contact-pick-btn,
 .anomaly-btn,
-.aging-btn,
-.aging-sort-btn,
 .history-stale-refresh,
 [data-record-payment],
 [data-mark-cleared] {
@@ -273,8 +271,9 @@
   text-shadow: 0 0 0 var(--on-success-soft);
 }
 
-[data-record-payment],
-[data-mark-cleared] {
+/* Wholesale › Outstanding draws these without .btn (5.5) */
+[data-record-payment]:not(.btn),
+[data-mark-cleared]:not(.btn) {
   font-size: 14px;
 }
 
@@ -292,8 +291,4 @@
   body textarea {
     font-size: 16px !important;
   }
-}
-
-#dueList input[type="number"] {
-  min-height: 44px;
 }

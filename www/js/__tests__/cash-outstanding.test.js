@@ -687,7 +687,7 @@ describe('#104 "Mark as cleared" asks how and records it (no silent write-off)',
         OutstandingManager.renderDue();
         const list = document.getElementById('dueList');
         expect(list.querySelector('input[type="checkbox"]')).toBeNull();
-        expect([...list.querySelectorAll('button')].map(b => b.textContent.trim())).toContain('Mark as Cleared…');
+        expect([...list.querySelectorAll('button')].map(b => b.textContent.trim())).toContain('Mark as cleared…');
     });
 
     test('write-off: both due fields to 0, a write-off entry with amount/reason/who/when, not counted as money', async () => {

@@ -1,268 +1,436 @@
-/* Outstanding: dues aging panel and party rows (#46, #77) */
+/* Outstanding (redesign 5.3, DIRECTION 3.6): Purchases | Sales, search, kind chips, the owed hero with its
+   aging meter and legend, who to chase, party rows and the bill list (#46, #77, #125, #166). Tokens only. */
 
-.aging-panel {
-    margin-bottom: 12px;
+.due-seg {
+    margin-bottom: var(--sp-3);
+}
+
+.due-seg > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.due-search {
+    position: relative;
+    margin-bottom: var(--sp-3);
+}
+
+.due-search > .i {
+    position: absolute;
+    top: 50%;
+    left: var(--sp-3);
+    color: var(--ink-3);
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.due-search > .input {
+    padding-left: var(--sp-10);
+}
+
+.due-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-3);
+}
+
+.due-chips[hidden] {
+    display: none;
+}
+
+.due-chips > .chip {
+    min-height: var(--control-h);
+    font-family: inherit;
+    cursor: pointer;
+}
+
+/* ---------- Hero: what is owed, its meter and the age groups (O1–O4, OVERDUE) ---------- */
+.aging-hero {
+    margin: var(--sp-5) 0 var(--sp-2);
 }
 
 .aging-head {
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 8px;
+    flex-direction: column;
 }
 
 .aging-title {
-    font-weight: var(--w-strong);
-    color: var(--text-secondary);
+    margin: 0;
+    color: var(--ink-3);
+    font-family: inherit;
+    font-size: var(--fs-sm);
+    font-weight: var(--w-label);
 }
 
 .aging-total {
-    font-size: 18px;
-    color: var(--on-danger-soft);
+    color: var(--ink);
 }
 
 /* OVERDUE (OD-08): the part of the total on bills more than 30 days old */
 .aging-overdue {
+    margin-top: var(--sp-1);
+    color: var(--ink-3);
     font-size: var(--fs-sm);
-    color: var(--text-secondary);
-    margin: -4px 0 8px;
 }
+
+.aging-overdue-amount {
+    color: var(--ink-2);
+    font-weight: var(--w-strong);
+}
+
+.aging-meter {
+    margin: var(--sp-4) 0 var(--sp-2);
+}
+
+/* Each age group's share: its total as a flex weight (style="--w: …") */
+.aging-meter > span {
+    flex-grow: var(--w);
+}
+
+/* Age colours: ink, then amber after 30 days, orange after 60 and red after 90 */
+.aging-meter > .aging-b0,
+.aging-b0 > .aging-dot { background: var(--ink-3); }
+.aging-meter > .aging-b1,
+.aging-b1 > .aging-dot { background: var(--warning-dot); }
+.aging-meter > .aging-b2,
+.aging-b2 > .aging-dot { background: var(--on-caution-soft); }
+.aging-meter > .aging-b3,
+.aging-b3 > .aging-dot { background: var(--negative); }
 
 .aging-buckets {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 var(--sp-3);
+    margin: 0 calc(-1 * var(--sp-2));
 }
 
+/* A legend entry; tap to show only that age group */
 .aging-bucket {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    padding: 8px 6px;
-    border: 2px solid transparent;
-    border-left-width: 5px;
-    border-radius: 8px;
-    background: var(--surface-muted);
-    cursor: pointer;
-    text-align: left;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: var(--sp-2);
+    align-items: center;
+    align-content: center;
     min-width: 0;
+    min-height: var(--control-h);
+    padding: var(--sp-1) var(--sp-2);
+    border: none;
+    border-radius: var(--r-sm);
+    background: none;
+    color: var(--ink-2);
     font: inherit;
-    color: var(--text-primary);
+    text-align: left;
+    cursor: pointer;
+}
+
+.aging-bucket:hover {
+    background: var(--surface-2);
 }
 
 .aging-bucket.active {
-    border-color: currentColor;
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.08);
+    background: var(--surface-3);
 }
 
-.aging-bucket-label,
-.aging-bucket-count {
-    font-size: 14px;
-    color: var(--text-secondary);
+.aging-bucket:focus-visible {
+    outline: none;
+    box-shadow: var(--focus);
+}
+
+.aging-dot {
+    width: var(--sp-2);
+    height: var(--sp-2);
+    border-radius: var(--r-full);
+}
+
+.aging-bucket-label {
+    font-size: var(--fs-sm);
 }
 
 .aging-bucket-amount {
-    font-size: 14px;
-    overflow-wrap: anywhere;
-}
-
-/* Bucket colours: fresh → old */
-.aging-bucket.aging-b0 { border-left-color: #15803d; }
-.aging-bucket.aging-b1 { border-left-color: #ca8a04; }
-.aging-bucket.aging-b2 { border-left-color: #ea580c; }
-.aging-bucket.aging-b3 { border-left-color: #b91c1c; }
-.aging-bucket.aging-b0.active { border-color: #15803d; background: var(--success-soft); }
-.aging-bucket.aging-b1.active { border-color: #ca8a04; background: var(--warning-soft); }
-.aging-bucket.aging-b2.active { border-color: #ea580c; background: var(--caution-soft); }
-.aging-bucket.aging-b3.active { border-color: #b91c1c; background: var(--danger-soft); }
-
-.aging-age {
-    display: inline-block;
-    padding: 1px 6px;
-    border-radius: 10px;
-    font-size: 14px;
+    color: var(--ink);
     font-weight: var(--w-strong);
-    white-space: nowrap;
+    text-align: right;
 }
 
-.aging-age.aging-b0 { background: var(--success-soft); color: var(--on-success-soft); }
-.aging-age.aging-b1 { background: var(--warning-soft); color: var(--on-warning-soft); }
-.aging-age.aging-b2 { background: var(--caution-soft); color: var(--on-caution-soft); }
-.aging-age.aging-b3 { background: var(--danger-soft); color: var(--on-danger-soft); }
+.aging-bucket.aging-b3 .aging-bucket-amount {
+    color: var(--negative);
+}
+
+.aging-bucket-count {
+    grid-column: 2 / -1;
+    color: var(--ink-3);
+    font-size: var(--fs-caption);
+}
 
 .aging-filter-note {
-    margin-top: 6px;
+    margin-top: var(--sp-2);
+    color: var(--ink-3);
     font-size: var(--fs-caption);
-    color: var(--text-secondary);
 }
 
-.aging-subtitle {
-    font-weight: var(--w-strong);
-    color: var(--text-secondary);
-    margin: 12px 0 6px;
+/* ---------- Section titles, who to chase, party rows ---------- */
+.tab .aging-subtitle {
+    margin: var(--section-gap) 0 var(--sp-2);
+    color: var(--ink-3);
+    font-family: inherit;
+    font-size: var(--fs-sm);
+    font-weight: var(--w-label);
 }
 
 .aging-chase ol {
     margin: 0;
-    padding-left: 22px;
+    padding: 0;
+    list-style: none;
+    counter-reset: chase;
 }
 
 .aging-chase li {
-    margin: 4px 0;
+    justify-content: space-between;
 }
 
-.aging-empty {
-    font-size: var(--fs-sm);
-    color: var(--text-secondary);
+.aging-chase li > .row-main::before {
+    counter-increment: chase;
+    content: counter(chase) ". ";
+    color: var(--ink-3);
 }
 
-.aging-parties {
-    margin-top: 12px;
+.aging-chase .row-main {
+    overflow-wrap: anywhere;
 }
 
 .aging-parties > summary {
-    font-weight: var(--w-strong);
-    color: var(--text-secondary);
     cursor: pointer;
-    padding: 4px 0;
 }
 
 .aging-sort {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin: 6px 0;
-    font-size: 14px;
-    color: var(--text-secondary);
-}
-
-.aging-sort-btn {
-    padding: 4px 10px;
-    border: 1px solid var(--border-strong);
-    border-radius: 14px;
-    background: var(--card-bg);
-    cursor: pointer;
-    font-size: 14px;
-}
-
-.aging-sort-btn.active {
-    background: var(--btn-primary);
-    border-color: var(--btn-primary);
-    color: var(--btn-primary-ink);
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-2);
+    color: var(--ink-3);
+    font-size: var(--fs-sm);
 }
 
 .aging-party {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 4px 8px;
-    align-items: center;
-    padding: 8px 10px;
-    margin-bottom: 6px;
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-left: 5px solid #15803d;
-    border-radius: 8px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--sp-2) var(--sp-3);
+    padding-top: var(--sp-3);
+    padding-bottom: var(--sp-3);
 }
 
-.aging-party.aging-b1 { border-left-color: #ca8a04; }
-.aging-party.aging-b2 { border-left-color: #ea580c; }
-.aging-party.aging-b3 { border-left-color: #b91c1c; }
+.aging-avatar {
+    align-self: start;
+    border-radius: var(--r-full);
+    font-size: var(--fs-sm);
+    font-weight: var(--w-strong);
+}
+
+.aging-avatar::before {
+    content: attr(data-initials);
+}
 
 .aging-party-name {
     font-weight: var(--w-strong);
     overflow-wrap: anywhere;
 }
 
+.aging-badge {
+    margin-left: var(--sp-1);
+    vertical-align: middle;
+}
+
 .aging-party-meta {
-    font-size: 14px;
-    color: var(--text-secondary);
-    margin-top: 2px;
+    color: var(--ink-3);
+    font-size: var(--fs-sm);
 }
 
 .aging-party-total {
-    color: var(--on-danger-soft);
-    white-space: nowrap;
+    align-self: start;
+    color: var(--ink);
 }
 
 .aging-party-actions {
-    grid-column: 1 / -1;
+    grid-column: 2 / -1;
     display: flex;
-    gap: 6px;
     flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-2);
 }
 
-.aging-btn {
-    padding: 6px 12px;
-    border: 1px solid var(--border-strong);
-    border-radius: 6px;
-    background: var(--card-bg);
+/* Outstanding opened for one party from a bill (#166), a .notice; Wholesale › Outstanding shares it */
+.party-filter-note {
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: var(--sp-3);
+}
+
+/* ---------- Bills: one panel per open bill (BILL-DUE) ---------- */
+/* The .history-item hook (tests, search) keeps History's card rules; these undo its stripe and hover */
+.history-item.due-bill {
+    margin-bottom: var(--sp-3);
+    padding: var(--sp-4);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--r-panel);
+    background: var(--panel-bg);
+    box-shadow: var(--panel-shadow);
+}
+
+.history-item.due-bill:hover {
+    box-shadow: var(--panel-shadow);
+    transform: none;
+}
+
+.due-bill .history-header {
+    align-items: baseline;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-1);
+    color: var(--ink);
+    font-size: var(--fs-body);
+}
+
+.due-bill-title {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.due-bill-link {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--accent-text);
+    font: inherit;
+    text-decoration: underline;
     cursor: pointer;
-    font-weight: var(--w-strong);
-    font-size: 14px;
 }
 
-.aging-btn.aging-remind {
-    background: var(--btn-success);
-    border-color: var(--btn-success);
-    color: var(--btn-sale-ink);
-}
-
-.aging-badge {
-    display: inline-block;
-    margin-left: 4px;
-    padding: 1px 6px;
-    border-radius: 10px;
-    background: var(--btn-danger);
-    color: #fff;
-    font-size: 14px;
-    font-weight: var(--w-strong);
+/* Retail / wholesale tag on a bill in Sales › All (#125) */
+.due-kind-chip {
     vertical-align: middle;
 }
 
-.aging-bills-title {
-    margin-top: 14px;
+.due-bill .history-date {
+    color: var(--ink-3);
+    font-size: var(--fs-sm);
 }
 
-/* Outstanding opened for one party from a bill (#166) */
-.party-filter-note {
+.due-bill .aging-age {
+    margin-left: var(--sp-1);
+    vertical-align: middle;
+}
+
+.due-bill-body {
+    margin-top: var(--sp-3);
+}
+
+.due-bill-line {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-1) 0;
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+}
+
+.due-bill-line > strong {
+    color: var(--ink);
+    font-weight: var(--w-strong);
+}
+
+.due-bill-out {
+    margin-top: var(--sp-1);
+    padding-top: var(--sp-2);
+    border-top: 1px var(--rule-style) var(--line);
+    color: var(--ink);
+    font-size: var(--fs-body);
+    font-weight: var(--w-strong);
+}
+
+.due-bill-out > strong {
+    font-size: var(--fs-lead);
+}
+
+.due-bill-pay {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-2);
+    margin-top: var(--sp-3);
+}
+
+.due-bill-pay > label {
+    flex: none;
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+    font-weight: var(--w-label);
+}
+
+.due-bill-pay > .input {
+    flex: 1;
+    width: auto;
+    flex-basis: calc(2 * var(--sp-10));
+    min-width: 0;
+    min-height: var(--control-h);
+    padding: 0 var(--sp-3);
+}
+
+.due-bill-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    margin-top: var(--sp-2);
+}
+
+.due-bill-actions > .btn {
+    padding: 0 var(--sp-2);
+}
+
+.due-write-off {
+    color: var(--negative);
+}
+
+/* ---------- Dialogs: mark as cleared, write off, receive from a party ---------- */
+.due-dlg {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    text-align: left;
+}
+
+.due-dlg-head {
+    font-weight: var(--w-strong);
+}
+
+.due-dlg-opt {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
-    padding: 8px 10px;
-    border-radius: 8px;
-    background: var(--info-soft);
-    color: var(--on-info-soft);
-    font-size: 14px;
+    gap: var(--sp-2);
 }
 
-body.dark-mode .party-filter-note {
-    background: #172554;
-    color: #bfdbfe;
+.due-dlg-note {
+    color: var(--ink-3);
+    font-size: var(--fs-sm);
 }
 
-/* Retail / wholesale chip on a bill in Outstanding's "All" sales list (#125) */
-.due-kind-chip {
-    display: inline-block;
-    padding: 1px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: var(--w-label);
-    background: var(--success-soft);
-    color: var(--on-success-soft);
-    vertical-align: middle;
+.due-dlg textarea {
+    box-sizing: border-box;
+    width: 100%;
 }
 
-body.dark-mode .due-kind-chip {
-    background: #064e3b;
-    color: #a7f3d0;
+.due-pp-table {
+    font-size: var(--fs-sm);
 }
 
-/* Outstanding search box (its inline style; the id keeps it over the generic input rules) and
-   its focus ring, which was inline onfocus / onblur (#89) */
-#outstandingSearchInput { width: 100%; padding: 14px; border: 2px solid var(--border-color); border-radius: 10px; font-size: var(--fs-body); transition: all 0.2s; }
-#outstandingSearchInput:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+.due-pp-table td {
+    height: auto;
+    padding: var(--sp-1) var(--sp-2);
+}
+
+.due-pp-part {
+    padding: var(--sp-1) var(--sp-2);
+}

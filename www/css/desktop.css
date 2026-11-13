@@ -404,28 +404,36 @@
     max-width: none;
   }
 
-  /* ---------- Outstanding: aging panel (#46) ---------- */
-  .aging-bucket {
-    padding: 10px 14px;
-  }
-
-  .aging-bucket-amount {
-    font-size: 18px;
-  }
-
-  #dueAgingParties {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 10px;
+  /* ---------- Outstanding (#46, redesign 5.3): legend in one line, party actions beside the amount ---------- */
+  .aging-buckets {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .aging-party {
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center;
   }
 
   .aging-party-actions {
-    grid-column: auto;
+    grid-row: 1;
+    grid-column: 3;
     flex-wrap: nowrap;
+  }
+
+  .aging-party-total {
+    grid-row: 1;
+    grid-column: 4;
+    align-self: center;
+  }
+
+  .due-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 var(--sp-3);
+  }
+
+  .due-list > :not(.due-bill) {
+    grid-column: 1 / -1;
   }
 
   /* ---------- History / Wholesale › History: one aligned row per bill ---------- */
