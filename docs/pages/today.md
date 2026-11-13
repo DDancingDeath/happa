@@ -4,6 +4,8 @@ Part of the [owner guide](../owner-guide.md) (one file per page). Hindi: [today.
 
 Today's figures, from today's bills, expenses and cash sessions.
 
+The page opens with the net figure for the day (T12) and total in / out (T10, T11). Below it comes what needs attention: the cash drawer prompt, the reminders and, for owners and managers, the Day report. Then the day's figures, the bills and the items. On a computer the reminders and the Day report stand in a column on the right.
+
 | On screen | How it is worked out |
 |---|---|
 | Purchases, Sales (T1, T2) | Sum of today's bill totals, with the number of bills. |

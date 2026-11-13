@@ -30,7 +30,8 @@
     "ceil": "Math.ceil",
     "abs": "Math.abs",
     "min": "Math.min",
-    "max": "Math.max"
+    "max": "Math.max",
+    "icon": "ui/icons.js: constant sprite <svg> markup; every call passes a constant name (icon-sprite.test.js)"
   },
   "names": {},
   "properties": {

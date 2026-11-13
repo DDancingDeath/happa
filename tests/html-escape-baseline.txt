@@ -6,9 +6,8 @@ www/js/modules/admin.js: r
 www/js/modules/admin.js: r
 www/js/modules/admin.js: t('ui.admin.type_word_to_confirm', { word: `<strong>${Helpers.escapeHtml(DELETE_CONFIRM_WORD)}</strong>` })
 www/js/modules/anomalies.js: SEVERITIES (markup via map(sev => `<span class="anomaly-chip anomaly-sev-${sev}">${loc(SEVERITY_LABELS[sev])}: <strong>${s.bySeverity[sev]}</strong></span>`))
-www/js/modules/anomalies.js: SEV_COLORS[a.severity] || '#4b5563' ← SEV_COLORS[a.severity] {SEV_COLORS = { high: '#b91c1c', medium: '#92400e', low: '#4b5563' }}
 www/js/modules/anomalies.js: SEV_COLORS[sev] ← SEV_COLORS = { high: '#b91c1c', medium: '#92400e', low: '#4b5563' }
-www/js/modules/anomalies.js: SEV_COLORS[sev] ← SEV_COLORS = { high: '#b91c1c', medium: '#92400e', low: '#4b5563' }
+www/js/modules/anomalies.js: SEV_TONES[sev] ← SEV_TONES = { high: 'tone-neg', medium: 'tone-warn', low: 'tone-muted' }
 www/js/modules/anomalies.js: colorOf(ty) ← TYPE_COLORS[Math.max(0, p.types.indexOf(type)) % TYPE_COLORS.length] {TYPE_COLORS = ['#dc2626', '#2563eb', '#d97706', '#059669', '#7c3aed', '#db2777', '#0891b2', '#}
 www/js/modules/anomalies.js: h
 www/js/modules/anomalies.js: h % 3 === 0 ? h : '' ← h
@@ -45,10 +44,12 @@ www/js/modules/cash-management.js: diffBgColor ← parseInt(cardDiffColor.slice(
 www/js/modules/cash-management.js: diffColor ← DIFF_COLORS[level] {DIFF_COLORS = Object.freeze({ ok: '#15803d', warn: '#f59e0b', high: '#ef4444' })}
 www/js/modules/cash-management.js: diffTextColor ← DIFF_COLORS[countedLevel] {DIFF_COLORS = Object.freeze({ ok: '#15803d', warn: '#f59e0b', high: '#ef4444' })}
 www/js/modules/cash-management.js: diffTextColor ← DIFF_COLORS[countedLevel] {DIFF_COLORS = Object.freeze({ ok: '#15803d', warn: '#f59e0b', high: '#ef4444' })}
+www/js/modules/day.js: REMINDER_ICONS[kind] ← REMINDER_ICONS = { collect: icon('arrIn'), collect_wholesale: icon('truck'), pay: icon('arrOut'),
 www/js/modules/day.js: item.count
-www/js/modules/day.js: itemsArray (markup via map(item => { return ` <div class="stat-card ${cardClass}" style="text-align: left; padding: 14px;"> <div style="font-weight: 600; color: var(--) .count)
+www/js/modules/day.js: itemsArray (markup via map(item => ` <div class="row today-item"> <div class="row-main"> <div class="row-title">${Helpers.escapeHtml(item.name)}</div> <div class="row-) .count)
 www/js/modules/day.js: kind
 www/js/modules/day.js: kind (markup via block)
+www/js/modules/day.js: kind (markup via reminderOpen)
 www/js/modules/day.js: open
 www/js/modules/day.js: open (markup via block)
 www/js/modules/day.js: parts.join('') ← ManualReminders.html(toLocalISODate(now))
@@ -58,10 +59,6 @@ www/js/modules/day.js: s.dayBills ← s = todaySummary({ bills: { purchase: AppS
 www/js/modules/day.js: s.dayBills ← s = todaySummary({ bills: { purchase: AppState.purchaseHistory, wholesale: AppState. (markup via this.renderDayBills)
 www/js/modules/day.js: s.purchaseItems ← s = todaySummary({ bills: { purchase: AppState.purchaseHistory, wholesale: AppState. (markup via this.renderItemWiseDetails)
 www/js/modules/day.js: s.saleItems ← s = todaySummary({ bills: { purchase: AppState.purchaseHistory, wholesale: AppState. (markup via this.renderItemWiseDetails)
-www/js/modules/day.js: t.bgColor
-www/js/modules/day.js: t.color
-www/js/modules/day.js: t.icon
-www/js/modules/day.js: timeStr ← Helpers.formatTime(time)
 www/js/modules/day.js: type
 www/js/modules/day.js: type
 www/js/modules/diagnostics.js: actionIcon ← icons[action] {icons = { 'CREATE_BILL': '📥', 'DELETE_BILL': '🗑️', 'CREATE_SALE': '📤', 'DELETE_SALE':}
@@ -464,6 +461,8 @@ www/js/ui/bill-status.js: onclick
 www/js/ui/finance-breakdown-sheet.js: g (markup via opt)
 www/js/ui/finance-breakdown-sheet.js: groupOptions(b.rows) (markup via map(g => opt(g, `ui.finance.group_${g}`, this.state.group)))
 www/js/ui/finance-breakdown-sheet.js: value
+www/js/ui/icons.js: name
+www/js/ui/icons.js: size ? ` ${size}` : '' ← size
 www/js/ui/manual-reminders.js: REMINDER_PARTY_MAX
 www/js/ui/manual-reminders.js: REMINDER_TITLE_MAX
 www/js/ui/period-compare.js: Object.freeze(['last-month', 'this-month', 'last-year', 'this-year', 'last-fy', 'this-fy', 'last-30']) (markup via map(p => [p, t(PRESET_KEYS[p])]))

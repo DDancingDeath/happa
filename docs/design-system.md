@@ -102,6 +102,7 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
 - **Segmented control** `.seg` (old `.filter-buttons > .filter-btn`), with a mode dot for
   purchase / sale. **Tabs** `.tabs` (old `.sub-tabs > .sub-tab`). **Chips** `.chip`, **tags** `.tag`
   (`.pos/.neg/.warn/.info`).
+- **Mode dot** `.mode-dot` (`.sale`, `.wholesale`): 8 px identity dot beside a purchase / sale / wholesale label, never a status.
 - **Panel and rows** `.panel`, `.row` (`.row-main`, `.row-title`, `.row-meta`, `.row-trail`,
   `.row-amt`, `.lead-icon`). **Metrics** `.metrics > .metric`, `.hero-num`, `.display-num`, `.meter`.
 - **Feedback** `.notice` (`.pos/.neg/.warn/.info`), `.empty`, `.skel`, `.toast` (near-black; light in the
@@ -128,10 +129,9 @@ button has an `aria-label` (through `data-i18n-aria-label`). A new icon is a new
 in the sprite. `tests/ci/icon-sprite.test.js` checks that every `href="#i-…"` (double quotes) in `index.html`,
 templates, scripts and CSS (not `__tests__`) has a symbol, and that the sprite stays small.
 
-Scripts that draw an icon write the same markup with a constant icon name. The first module that
-needs this adds one shared helper (`icon(name)` in `www/js/ui/icons.js`) returning that constant
-string, so `check:html-escape` stays clean; never build an icon name from data. The same PR
-extends `icon-sprite.test.js` to check the names passed to `icon()`, which it does not see today.
+Scripts that draw an icon call `icon(name, size)` from `www/js/ui/icons.js` (Today, the Day report),
+which returns that markup; `icon` is on the `check:html-escape` allow list. Pass a constant name, never
+one built from data: `icon-sprite.test.js` checks every name passed to `icon()`.
 
 Emoji stay only where they are content: WhatsApp share text, receipts and print, and text people
 type.
