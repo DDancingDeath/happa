@@ -133,6 +133,7 @@ const STATIC_ASSETS = [
     '/js/ui/sync-status.js',
     '/js/ui/theme.js',
     '/js/ui/icons.js',
+    '/js/ui/components.js',
     '/js/ui/themes.js',
     '/js/ui/ui-manager.js',
     '/js/ui/voice-mic.js',
