@@ -227,7 +227,7 @@ describe('Expenses form (#118)', () => {
         const list = () => document.getElementById('businessExpenseHistoryList');
         expect(list().textContent).not.toContain('Diesel');
         ExpensesManager.toggleVoided(true);
-        expect(list().querySelectorAll('.expense-card--voided')).toHaveLength(1);
+        expect(list().querySelectorAll('.exp-row.is-voided')).toHaveLength(1);
         expect(list().textContent).toContain('Diesel');
         ExpensesManager.viewExpenseDetails('v1', 'business');
         expect(document.getElementById('expenseDetailsContent').textContent).toContain('typed twice');
