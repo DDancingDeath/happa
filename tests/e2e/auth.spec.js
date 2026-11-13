@@ -15,7 +15,7 @@ test('staff gets in without Money / Admin / Diagnostics', async ({ page, problem
         const out = {};
         document.querySelectorAll('.nav-menu a[data-onclick]').forEach(a => {
             const tab = a.getAttribute('data-onclick').match(/showTab\('([^']+)'/)?.[1];
-            if (tab) out[tab] = a.style.display === 'none';
+            if (tab) out[tab] = a.hidden;
         });
         return out;
     });

@@ -178,7 +178,7 @@ const NotificationsManager = {
     setBellVisible(visible) {
         const bell = document.getElementById('notifBell');
         if (!bell) return;
-        bell.style.display = visible ? '' : 'none';
+        bell.hidden = !visible;
         if (!visible) bell.classList.remove('notif-error');
     },
 

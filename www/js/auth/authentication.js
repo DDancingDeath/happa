@@ -697,9 +697,12 @@ const AuthManager = {
         
         // Update username display in navigation
         const userNameDisplay = document.getElementById('currentUserName');
-        if (userNameDisplay) {
-            const roleBadge = isOwner ? ' 👑' : (isOwnerOrManager ? ' 🔑' : '');
-            userNameDisplay.textContent = (AppState.userName || 'User') + roleBadge;
+        if (userNameDisplay) userNameDisplay.textContent = AppState.userName || 'User';
+        const roleDisplay = document.getElementById('currentUserRole');
+        if (roleDisplay) {
+            const roleKey = isOwner ? 'ui.role.owner' : (isOwnerOrManager ? 'ui.role.manager' : 'ui.role.member');
+            roleDisplay.setAttribute('data-i18n', roleKey);
+            roleDisplay.textContent = t(roleKey);
         }
         
         // Hide/show tabs based on role
@@ -721,37 +724,35 @@ const AuthManager = {
             const tabId = onclick?.match(/showTab\('([^']+)'/)?.[1];
             if (tabId) {
                 if (['money', 'insights', 'statements', 'wholesale-sales'].includes(tabId)) {
-                    item.style.display = mayOpen(tabId) ? '' : 'none';
+                    item.hidden = !mayOpen(tabId);
                 }
                 
                 // Anomalies (#187): owner/manager only until #84 decides otherwise
                 if (tabId === 'anomalies') {
-                    item.style.display = isOwnerOrManager ? '' : 'none';
+                    item.hidden = !isOwnerOrManager;
                 }
                 
                 // App health / Test in Production (#217): owner/manager only
                 if (tabId === 'health') {
-                    item.style.display = isOwnerOrManager ? '' : 'none';
+                    item.hidden = !isOwnerOrManager;
                 }
                 
                 // Diagnostics: owner; managers see only Number checks (#216)
                 if (tabId === 'diagnostics') {
-                    item.style.display = isOwnerOrManager ? '' : 'none';
+                    item.hidden = !isOwnerOrManager;
                 }
                 
-                if (tabId === 'admin' && !isOwner) {
-                    item.style.display = 'none';
-                } else if (tabId === 'admin' && isOwner) {
-                    item.style.display = '';
+                if (tabId === 'admin') {
+                    item.hidden = !isOwner;
                 }
 
                 // Workers / Salaries (#373) and Recurring bills (#437): owner only
                 if (tabId === 'workers' || tabId === 'recurring') {
-                    item.style.display = isOwner ? '' : 'none';
+                    item.hidden = !isOwner;
                 }
                 
                 if (tabId === 'sales') {
-                    item.style.display = mayOpen('wholesale-sales') ? '' : 'none';
+                    item.hidden = !mayOpen('wholesale-sales');
                 }
             }
         });

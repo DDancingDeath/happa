@@ -62,7 +62,7 @@
         <h1 class="app-bar-title" id="appBarTitle" tabindex="-1"></h1>
         <div class="sync-pill" id="syncStatus" role="status" aria-live="polite" hidden></div>
         <!-- Notifications bell + inbox (#12) -->
-        <button type="button" class="notif-bell app-bar-btn" id="notifBell" style="display: none;" data-onclick="notifications.toggle()" aria-label="Notifications" data-i18n-aria-label="ui.common.notifications" title="Notifications" data-i18n-title="ui.common.notifications">
+        <button type="button" class="notif-bell app-bar-btn" id="notifBell" hidden data-onclick="notifications.toggle()" aria-label="Notifications" data-i18n-aria-label="ui.common.notifications" title="Notifications" data-i18n-title="ui.common.notifications">
             <span class="notif-bell-icon" aria-hidden="true"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-bell"/></svg></span>
             <span class="notif-badge" id="notifBadge" hidden></span>
         </button>
@@ -71,10 +71,10 @@
     <div class="notif-panel" id="notifPanel" role="dialog" aria-label="Notifications" hidden data-i18n-aria-label="ui.common.notifications">
         <div class="notif-panel-header">
             <h3><svg class="i" aria-hidden="true" focusable="false"><use href="#i-bell"/></svg> <span data-i18n="ui.common.notifications">Notifications</span></h3>
-            <button type="button" class="notif-close" data-onclick="notifications.close()" aria-label="Close" data-i18n-aria-label="ui.common.close">×</button>
+            <button type="button" class="notif-close" data-onclick="notifications.close()" aria-label="Close" data-i18n-aria-label="ui.common.close"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-x"/></svg></button>
         </div>
         <div class="notif-panel-actions">
-            <button type="button" class="notif-mark-all" data-onclick="notifications.markAllRead()" data-i18n="ui.nav.mark_all_read">✓ Mark all read</button>
+            <button type="button" class="notif-mark-all" data-onclick="notifications.markAllRead()" ><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-check"/></svg> <span data-i18n="ui.nav.mark_all_read">Mark all read</span></button>
         </div>
         <div class="notif-list" id="notifList"></div>
         <button type="button" class="notif-more" id="notifMore" hidden data-onclick="notifications.loadMore()" data-i18n="ui.nav.show_more">Show more</button>
@@ -84,8 +84,9 @@
     <div class="side-nav" id="sideNav">
         <div class="nav-header">
             <div class="nav-who">
+                <span class="nav-mark" aria-hidden="true"><svg class="i nav-mark-shop" aria-hidden="true" focusable="false"><use href="#i-wheat"/></svg><svg class="i nav-mark-rentals" aria-hidden="true" focusable="false"><use href="#i-home"/></svg></span>
                 <h2 data-i18n="ui.app.name">Bahi</h2>
-                <div id="currentUserName" class="nav-user"><span data-i18n="ui.navigation.loading">Loading...</span></div>
+                <div class="nav-user"><span id="currentUserName"><span data-i18n="ui.navigation.loading">Loading...</span></span><span class="nav-role" id="currentUserRole"></span></div>
                 <div class="biz-switch" id="bizSwitch" role="group" aria-label="Business" data-i18n-aria-label="ui.biz.business" hidden>
                     <button type="button" data-biz-btn="shop" class="active" aria-pressed="true" data-onclick="business.set('shop')"><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-wheat"/></svg> <span data-i18n="ui.biz.shop">Aadhat</span></button>
                     <button type="button" data-biz-btn="rentals" aria-pressed="false" data-onclick="business.set('rentals')"><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-home"/></svg> <span data-i18n="ui.biz.rentals">Rentals</span></button>
@@ -143,11 +144,11 @@
                     <span class="nav-icon"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-list"/></svg></span>
                     <span data-i18n="ui.nav.statements">Statements</span>
                 </a>
-                <a href="#" data-onclick="nav.showTab('workers', event)" id="workersNavLink" style="display: none;">
+                <a href="#" data-onclick="nav.showTab('workers', event)" id="workersNavLink" hidden>
                     <span class="nav-icon"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-users"/></svg></span>
                     <span data-i18n="ui.nav.workers">Workers / Salaries</span>
                 </a>
-                <a href="#" data-onclick="nav.showTab('recurring', event)" id="recurringNavLink" style="display: none;">
+                <a href="#" data-onclick="nav.showTab('recurring', event)" id="recurringNavLink" hidden>
                     <span class="nav-icon"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-calendar"/></svg></span>
                     <span data-i18n="ui.nav.recurring">Recurring bills</span>
                 </a>
@@ -158,19 +159,19 @@
             </div>
             <div class="nav-group" role="group" aria-labelledby="navGroupManage">
                 <h3 class="nav-group-title" id="navGroupManage" data-i18n="ui.nav.group_manage">Manage</h3>
-                <a href="#" data-onclick="nav.showTab('anomalies', event)" id="anomaliesNavLink" style="display: none;">
+                <a href="#" data-onclick="nav.showTab('anomalies', event)" id="anomaliesNavLink" hidden>
                     <span class="nav-icon"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-flag"/></svg></span>
                     <span data-i18n="ui.nav.anomalies">Anomalies</span>
                 </a>
-                <a href="#" data-onclick="nav.showTab('health', event)" id="healthNavLink" style="display: none;">
+                <a href="#" data-onclick="nav.showTab('health', event)" id="healthNavLink" hidden>
                     <span class="nav-icon"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-pulse"/></svg></span>
                     <span data-i18n="ui.nav.health">App health</span>
                 </a>
-                <a href="#" data-onclick="nav.showTab('admin', event)" id="adminNavLink" style="display: none;">
+                <a href="#" data-onclick="nav.showTab('admin', event)" id="adminNavLink" hidden>
                     <span class="nav-icon"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-shield"/></svg></span>
                     <span data-i18n="ui.nav.admin">Admin</span>
                 </a>
-                <a href="#" data-onclick="nav.showTab('diagnostics', event)" id="diagnosticsNavLink" style="display: none;">
+                <a href="#" data-onclick="nav.showTab('diagnostics', event)" id="diagnosticsNavLink" hidden>
                     <span class="nav-icon"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-clipCheck"/></svg></span>
                     <span data-i18n="ui.nav.diagnostics">Diagnostics</span>
                 </a>
@@ -207,7 +208,7 @@
         <a href="#" class="bottom-nav-item" data-tab="due" data-onclick="nav.showTab('due', event)"><span class="bottom-nav-icon" aria-hidden="true"><svg class="i i-lg" aria-hidden="true" focusable="false"><use href="#i-wallet"/></svg></span><span class="bottom-nav-label" data-i18n="ui.nav.outstanding">Outstanding</span></a>
         <button type="button" class="bottom-nav-item" data-tab="more" data-onclick="nav.toggleMenu()" aria-controls="sideNav" aria-expanded="false"><span class="bottom-nav-icon" aria-hidden="true"><svg class="i i-lg" aria-hidden="true" focusable="false"><use href="#i-grid"/></svg></span><span class="bottom-nav-label" data-i18n="ui.nav.more">More</span></button>
     </nav>
-    <div class="pull-refresh" id="pullRefresh" hidden aria-hidden="true"><span class="pull-refresh-pull" data-i18n="ui.nav.pull_refresh">↓ Pull to refresh</span><span class="pull-refresh-release" data-i18n="ui.nav.release_refresh">↻ Release to refresh</span></div>
+    <div class="pull-refresh" id="pullRefresh" hidden aria-hidden="true"><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-refresh"/></svg><span class="pull-refresh-pull" data-i18n="ui.nav.pull_refresh">Pull to refresh</span><span class="pull-refresh-release" data-i18n="ui.nav.release_refresh">Release to refresh</span></div>
 
     <!-- Overlay -->
     <div class="overlay" id="overlay"></div>
