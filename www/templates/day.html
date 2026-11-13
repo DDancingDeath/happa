@@ -2,17 +2,13 @@
     <div class="day-container">
         
         <!-- Sub-navigation tabs -->
-        <div class="sub-tabs">
-            <button id="dayTabToday" class="sub-tab active" data-onclick="day.showSubTab('today')" data-i18n="ui.today.today_s_summary">
-                📊 Today's Summary
-            </button>
-            <button id="dayTabCash" class="sub-tab" data-onclick="day.showSubTab('cash')" data-i18n="ui.today.cash_management">
-                💵 Cash Management
-            </button>
+        <div class="sub-tabs tabs" role="tablist">
+            <button type="button" id="dayTabToday" class="sub-tab active" role="tab" aria-selected="true" aria-controls="dayTodayContent" data-onclick="day.showSubTab('today')" data-i18n="ui.today.today_s_summary">Summary</button>
+            <button type="button" id="dayTabCash" class="sub-tab" role="tab" aria-selected="false" aria-controls="dayCashContent" data-onclick="day.showSubTab('cash')" data-i18n="ui.today.cash_management">Cash</button>
         </div>
 
-        <!-- Today's Summary Sub-Tab -->
-        <div id="dayTodayContent" class="day-content">
+        <!-- Today's Summary Sub-Tab: hero, then what needs attention, then the day's figures (redesign 5.1) -->
+        <div id="dayTodayContent" class="day-content today-summary" role="tabpanel" aria-labelledby="dayTabToday">
 
             <!-- Figures from the phone's cache until the server answers (#59) -->
             <p class="updating-note" data-i18n="ui.sync.figures_updating">Updating… these figures may change when the latest entries arrive.</p>
@@ -20,42 +16,61 @@
             <!-- App health (#217): red banner when a live check is below its target (owner/manager) -->
             <div id="tipHealthBanner" class="tip-health-banner" style="display: none;"></div>
 
+            <!-- Net cash (T12) with the day's in (T10) and out (T11) -->
+            <section class="today-hero" aria-labelledby="todayCashFlowLabel">
+                <h2 class="today-hero-label" id="todayCashFlowLabel"><span data-i18n="ui.today.net_outflow">Net Outflow:</span></h2>
+                <div class="hero-num" id="todayNetCashFlow">₹0</div>
+                <div class="today-inout">
+                    <span class="today-in"><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-arrIn"/></svg><span data-i18n="ui.today.total_in">Total In</span> <strong id="todayTotalIn">₹0</strong></span>
+                    <span class="today-out"><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-arrOut"/></svg><span data-i18n="ui.today.total_out">Total Out</span> <strong id="todayTotalOut">₹0</strong></span>
+                </div>
+            </section>
+
+            <div class="today-side">
             <!-- Bills saved today but no cash session (#141) -->
-            <div id="todayCashPrompt" class="today-cash-prompt" role="status" hidden>
-                <span data-i18n="ui.today.no_session">Today has bills but the cash drawer isn't open.</span>
-                <button type="button" class="today-cash-prompt-btn" data-onclick="day.showSubTab('cash')" data-i18n="ui.today.open_cash">Open cash</button>
+            <div id="todayCashPrompt" class="notice warn today-cash-prompt" role="status" hidden>
+                <svg class="i" aria-hidden="true" focusable="false"><use href="#i-banknote"/></svg>
+                <span class="grow" data-i18n="ui.today.no_session">Today has bills but the cash drawer isn't open.</span>
+                <button type="button" class="btn btn-sm today-cash-prompt-btn" data-onclick="day.showSubTab('cash')" data-i18n="ui.today.open_cash">Open cash</button>
             </div>
 
             <!-- Reminders (#86): udhaar to collect / pay and rent due, from data already on the phone -->
-            <div id="todayReminders" class="modern-card today-reminders" hidden></div>
+            <div id="todayReminders" class="today-reminders" hidden></div>
 
             <!-- Day report / review queue (#187, #40): owner/manager only, filled by anomalies.js -->
-            <div id="dayReportCard" class="modern-card day-report-card" style="display: none;"></div>
+            <div id="dayReportCard" class="panel day-report-card" style="display: none;"></div>
+            </div>
 
-            <!-- 1. MONEY FLOW - Most Important -->
-            <div class="modern-card" style="background: linear-gradient(135deg, #5560d6 0%, #764ba2 100%); color: white; margin-bottom: 16px;">
-                <h3 class="section-title" style="color: white; margin-bottom: 12px;" data-i18n="ui.today.today_s_money_flow">💸 Today's Money Flow</h3>
-                <!-- Net Outflow on single line -->
-                <div style="display: flex; justify-content: center; align-items: center; gap: 10px; background: rgba(255,255,255,0.15); padding: 14px 20px; border-radius: 12px; margin-bottom: 12px;">
-                    <span style="font-size: 15px; opacity: 0.95;" id="todayCashFlowLabel"><span data-i18n="ui.today.net_outflow">Net Outflow:</span></span>
-                    <span style="font-size: 28px; font-weight: 700;" id="todayNetCashFlow">₹0</span>
+            <div class="today-main">
+            <!-- Purchases (T1), sales (T2), business (T4) and personal (T5) expenses -->
+            <h3 class="section-title" data-i18n="ui.today.transactions">Transactions</h3>
+            <div class="panel metrics today-metrics">
+                <div class="metric">
+                    <div class="metric-label"><span class="mode-dot" aria-hidden="true"></span><span data-i18n="ui.common.purchases">Purchases</span></div>
+                    <div class="metric-value" id="todayTotalPurchases">₹0</div>
+                    <div class="metric-sub" id="todayPurchaseCount"><span data-i18n="ui.day.0_bills">0 bills</span></div>
                 </div>
-                <div class="stats-grid stats-grid-2" style="margin-bottom: 0;">
-                    <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 14px; opacity: 0.9;" data-i18n="ui.today.total_out">Total Out</div>
-                        <div style="font-size: 18px; font-weight: 600;" id="todayTotalOut">₹0</div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 14px; opacity: 0.9;" data-i18n="ui.today.total_in">Total In</div>
-                        <div style="font-size: 18px; font-weight: 600;" id="todayTotalIn">₹0</div>
-                    </div>
+                <div class="metric">
+                    <div class="metric-label"><span class="mode-dot sale" aria-hidden="true"></span><span data-i18n="ui.common.sales">Sales</span></div>
+                    <div class="metric-value" id="todayTotalSales">₹0</div>
+                    <div class="metric-sub" id="todaySaleCount"><span data-i18n="ui.day.0_bills">0 bills</span></div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label" data-i18n="ui.today.business_exp">Business Exp.</div>
+                    <div class="metric-value" id="todayBusinessExpenses">₹0</div>
+                    <div class="metric-sub" id="todayBusinessExpenseCount"><span data-i18n="ui.day.0_entries">0 entries</span></div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label" data-i18n="ui.today.personal_exp">Personal Exp.</div>
+                    <div class="metric-value" id="todayPersonalExpenses">₹0</div>
+                    <div class="metric-sub" id="todayPersonalExpenseCount"><span data-i18n="ui.day.0_entries">0 entries</span></div>
                 </div>
             </div>
 
             <!-- LABOUR: deducted from farmers (T-LAB-1), paid to labourers (T-LAB-4), the difference (T-LAB-5) and the estimate to pay (T-LAB-2); tap for bill-wise breakdown -->
-            <div id="todayLabourCard" class="today-labour-card" role="button" tabindex="0"
+            <h3 class="section-title" data-i18n="ui.today.labor">Labour</h3>
+            <div id="todayLabourCard" class="panel today-labour-card" role="button" tabindex="0"
                 data-onclick="day.showLabourBreakdown()">
-                <div class="today-labour-title" data-i18n="ui.today.labor">👷 Labour:</div>
                 <div class="today-labour-row">
                     <span data-i18n="ui.today.labour_deducted">Deducted from farmers:</span>
                     <strong id="todayLaborCost">₹0</strong>
@@ -76,32 +91,51 @@
                 <div class="today-labour-hint" data-i18n="ui.today.labour_tap_hint">Tap for each bill</div>
             </div>
 
-            <!-- 2. PAYMENT BREAKDOWN -->
-            <div class="modern-card">
-                <h3 class="section-title" data-i18n="ui.today.payment_breakdown">💳 Payment Breakdown</h3>
-                <div class="summary-grid">
-                    <div class="summary-item summary-item-danger">
-                        <span data-i18n="ui.today.cash_out">Cash Out:</span>
-                        <strong id="todayCashPaid">₹0</strong>
-                    </div>
-                    <div class="summary-item summary-item-success">
-                        <span data-i18n="ui.today.cash_in">Cash In:</span>
-                        <strong id="todayCashReceived">₹0</strong>
-                    </div>
-                    <div class="summary-item summary-item-warning">
-                        <span data-i18n="ui.today.online_out">Online Out:</span>
-                        <strong id="todayOnlinePaid">₹0</strong>
-                    </div>
-                    <div class="summary-item summary-item-info">
-                        <span data-i18n="ui.today.online_in">Online In:</span>
-                        <strong id="todayOnlineReceived">₹0</strong>
-                    </div>
+            <!-- Cash and online in (T6, T7) and out (T8, T9) -->
+            <h3 class="section-title" data-i18n="ui.today.payment_breakdown">Payment breakdown</h3>
+            <div class="panel metrics">
+                <div class="metric">
+                    <div class="metric-label" data-i18n="ui.today.cash_out">Cash Out:</div>
+                    <div class="metric-value" id="todayCashPaid">₹0</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label" data-i18n="ui.today.cash_in">Cash In:</div>
+                    <div class="metric-value" id="todayCashReceived">₹0</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label" data-i18n="ui.today.online_out">Online Out:</div>
+                    <div class="metric-value" id="todayOnlinePaid">₹0</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label" data-i18n="ui.today.online_in">Online In:</div>
+                    <div class="metric-value" id="todayOnlineReceived">₹0</div>
                 </div>
             </div>
 
-            <!-- 2b. BY BILL TYPE (T18): cash / online at save, due still open -->
-            <div class="modern-card" id="todayChannelsCard">
-                <h3 class="section-title" data-i18n="ui.today.ch_title">🧾 By bill type</h3>
+            <!-- Dues settled (T13, T14) and new today (T15, T16) -->
+            <h3 class="section-title" data-i18n="ui.today.due_summary">Due summary</h3>
+            <div class="panel metrics">
+                <div class="metric">
+                    <div class="metric-label" data-i18n="ui.common.due_received">Due Received:</div>
+                    <div class="metric-value" id="todayDueReceived">₹0</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label" data-i18n="ui.common.due_paid">Due Paid:</div>
+                    <div class="metric-value" id="todayDuePaid">₹0</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label" data-i18n="ui.today.due_receive">New udhaar today:</div>
+                    <div class="metric-value" id="todayDueToReceive">₹0</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label" data-i18n="ui.today.due_pay">New to pay today:</div>
+                    <div class="metric-value" id="todayDueToPay">₹0</div>
+                </div>
+            </div>
+
+            <!-- BY BILL TYPE (T18): cash / online at save, due still open -->
+            <h3 class="section-title" data-i18n="ui.today.ch_title">By bill type</h3>
+            <div class="panel" id="todayChannelsCard">
                 <div class="today-channels">
                     <div class="today-channel" id="todayChRetail">
                         <div class="today-channel-head">
@@ -148,82 +182,33 @@
                 </div>
             </div>
 
-            <!-- 3. TRANSACTIONS -->
-            <div class="modern-card">
-                <h3 class="section-title" data-i18n="ui.today.transactions">📦 Transactions</h3>
-                <div class="stats-grid stats-grid-2" style="margin-bottom: 0;">
-                    <div class="stat-card stat-card-success">
-                        <div class="stat-label" data-i18n="ui.common.purchases">Purchases</div>
-                        <div class="stat-value stat-value-success" id="todayTotalPurchases">₹0</div>
-                        <div class="stat-subtitle" id="todayPurchaseCount"><span data-i18n="ui.day.0_bills">0 bills</span></div>
-                    </div>
-                    <div class="stat-card stat-card-info">
-                        <div class="stat-label" data-i18n="ui.common.sales">Sales</div>
-                        <div class="stat-value stat-value-info" id="todayTotalSales">₹0</div>
-                        <div class="stat-subtitle" id="todaySaleCount"><span data-i18n="ui.day.0_bills">0 bills</span></div>
-                    </div>
-                    <div class="stat-card stat-card-warning">
-                        <div class="stat-label" data-i18n="ui.today.business_exp">Business Exp.</div>
-                        <div class="stat-value stat-value-warning" id="todayBusinessExpenses">₹0</div>
-                        <div class="stat-subtitle" id="todayBusinessExpenseCount"><span data-i18n="ui.day.0_entries">0 entries</span></div>
-                    </div>
-                    <div class="stat-card stat-card-purple">
-                        <div class="stat-label" data-i18n="ui.today.personal_exp">Personal Exp.</div>
-                        <div class="stat-value stat-value-purple" id="todayPersonalExpenses">₹0</div>
-                        <div class="stat-subtitle" id="todayPersonalExpenseCount"><span data-i18n="ui.day.0_entries">0 entries</span></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 4. DUE SUMMARY -->
-            <div class="modern-card">
-                <h3 class="section-title" data-i18n="ui.today.due_summary">📋 Due Summary</h3>
-                <div class="summary-grid">
-                    <div class="summary-item summary-item-success">
-                        <span data-i18n="ui.common.due_received">Due Received:</span>
-                        <strong id="todayDueReceived">₹0</strong>
-                    </div>
-                    <div class="summary-item summary-item-danger">
-                        <span data-i18n="ui.common.due_paid">Due Paid:</span>
-                        <strong id="todayDuePaid">₹0</strong>
-                    </div>
-                    <div class="summary-item summary-item-info">
-                        <span data-i18n="ui.today.due_receive">New udhaar today:</span>
-                        <strong id="todayDueToReceive">₹0</strong>
-                    </div>
-                    <div class="summary-item summary-item-warning">
-                        <span data-i18n="ui.today.due_pay">New to pay today:</span>
-                        <strong id="todayDueToPay">₹0</strong>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 5. TODAY'S BILLS (T19): tap a row to open the bill -->
-            <div class="modern-card" id="todayBillsCard">
-                <h3 class="section-title" data-i18n="ui.today.bills_title">📃 Today's bills</h3>
+            <!-- TODAY'S BILLS (T19): tap a row to open the bill -->
+            <h3 class="section-title" data-i18n="ui.today.bills_title">Today's bills</h3>
+            <div class="panel" id="todayBillsCard">
                 <div id="todayBillsList" class="today-bills"></div>
                 <button type="button" id="todayBillsMore" class="today-bills-more" hidden data-onclick="day.toggleAllBills()"></button>
             </div>
 
-            <!-- 6. ITEM DETAILS (Scrollable) -->
-            <div class="modern-card">
-                <h3 class="section-title" data-i18n="ui.today.purchase_details">🛒 Purchase Details</h3>
+            <!-- ITEM DETAILS (T17) -->
+            <h3 class="section-title" data-i18n="ui.today.purchase_details">Purchase details</h3>
+            <div class="panel">
                 <div id="todayPurchaseItems" class="items-grid">
                     <p class="empty-state" data-i18n="ui.today.no_purchases_today">No purchases today</p>
                 </div>
             </div>
 
-            <div class="modern-card">
-                <h3 class="section-title" data-i18n="ui.today.sale_details">💰 Sale Details</h3>
+            <h3 class="section-title" data-i18n="ui.today.sale_details">Sale details</h3>
+            <div class="panel">
                 <div id="todaySaleItems" class="items-grid">
                     <p class="empty-state" data-i18n="ui.today.no_sales_today">No sales today</p>
                 </div>
+            </div>
             </div>
 
         </div>
 
         <!-- Cash Management Sub-Tab (Hidden by default) -->
-        <div id="dayCashContent" class="day-content" style="display: none;">
+        <div id="dayCashContent" class="day-content" role="tabpanel" aria-labelledby="dayTabCash" style="display: none;">
             <!-- Cash management content will be injected here dynamically -->
             <div id="dayCashManagementContainer"></div>
         </div>

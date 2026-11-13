@@ -111,6 +111,18 @@ a.row:active {
 .lead-icon.neg { background: var(--negative-soft); color: var(--negative); }
 .lead-icon.warn { background: var(--warning-soft); color: var(--warning); }
 
+/* Mode dot: identity of purchase / sale / wholesale, never status */
+.mode-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mode-purchase);
+}
+
+.mode-dot.sale { background: var(--mode-sale); }
+.mode-dot.wholesale { background: var(--mode-wholesale); }
+
 /* ---------- Metrics, hero figure, meter ---------- */
 .metrics {
   display: grid;

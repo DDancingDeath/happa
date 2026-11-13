@@ -5,7 +5,7 @@ import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { formatKg, labourCalcText } from '../utils/labour.js';
-import { parseAnyBillDate, todayLocalISO, displayLocale, toLocalISODate, formatDayTime } from '../utils/dates.js';
+import { todayLocalISO, displayLocale, toLocalISODate, formatDayTime } from '../utils/dates.js';
 import { todaySummary } from '../utils/calc/today.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { CashManagementManager } from './cash-management.js';
@@ -20,6 +20,7 @@ import { rentalsRole } from '../ui/business-switcher.js';
 import { formatINR } from '../utils/due-reminder.js';
 import { formatRate } from '../utils/money.js';
 import { ManualReminders } from '../ui/manual-reminders.js';
+import { icon } from '../ui/icons.js';
 import { payDueReminder, billsDueReminder } from '../utils/pay-reminder.js';
 
 // Use helper functions
@@ -30,6 +31,12 @@ const LABOUR_PAID_KEYS = { same: 'ui.today.labour_paid_same', more: 'ui.today.la
 const CHANNELS = { retail: 'Retail', wholesale: 'Wholesale', purchase: 'Purchase' };
 const BILL_KIND_KEYS = { retail: 'ui.finance.bill_retail', wholesale: 'ui.finance.bill_wholesale', purchase: 'ui.reports.pdf_purchase' };
 const BILLS_SHOWN = 8;
+const REMINDER_ICONS = {
+    collect: icon('arrIn'), collect_wholesale: icon('truck'), pay: icon('arrOut'), rent: icon('home'), leases: icon('file'),
+    salaries: icon('users'), bills: icon('receipt'), backup: icon('clipCheck')
+};
+/** Opens a Today reminder: its icon tile and body (the caller closes both divs). */
+const reminderOpen = (kind) => `<div class="today-reminder" data-reminder="${kind}"><span class="lead-icon">${REMINDER_ICONS[kind]}</span><div class="today-reminder-body">`;
 
 let anomaliesManager = null;
 let anomaliesLoading = null;
@@ -120,18 +127,20 @@ export const DayManager = {
         const cashBtn = document.getElementById('dayTabCash');
         const todayContent = document.getElementById('dayTodayContent');
         const cashContent = document.getElementById('dayCashContent');
+        todayBtn.setAttribute('aria-selected', String(tab === 'today'));
+        cashBtn.setAttribute('aria-selected', String(tab !== 'today'));
         
         if (tab === 'today') {
             todayBtn.classList.add('active');
             cashBtn.classList.remove('active');
-            todayContent.style.display = 'block';
+            todayContent.style.display = '';
             cashContent.style.display = 'none';
             this.loadTodayData();
         } else {
             cashBtn.classList.add('active');
             todayBtn.classList.remove('active');
             todayContent.style.display = 'none';
-            cashContent.style.display = 'block';
+            cashContent.style.display = '';
             this.loadCashManagement();
         }
     },
@@ -197,11 +206,7 @@ export const DayManager = {
             cashFlowLabel.textContent = t(s.isOutflow ? 'ui.today.net_outflow' : 'ui.today.net_inflow');
         }
         
-        const netCashFlowEl = document.getElementById('todayNetCashFlow');
-        if (netCashFlowEl) {
-            netCashFlowEl.style.color = s.isOutflow ? 'white' : '#a5f3fc';
-            netCashFlowEl.textContent = formatCurrency(s.netAmount);
-        }
+        this.updateElement('todayNetCashFlow', formatCurrency(s.netAmount));
 
         // Payment summary
         this.updateElement('todayCashReceived', formatCurrency(s.cashIn));
@@ -290,12 +295,12 @@ export const DayManager = {
             + ` <span class="today-reminder-days">${e([t('ui.outstanding.party_overdue', { amount: formatINR(p.overdue) }),
                 ...(p.oldestDays !== null && p.oldestDays !== undefined ? [t('ui.today.reminder_days', { count: p.oldestDays })] : [])].join(' · '))}</span>`
             + '</li>';
-        const block = (kind, r, open) => `<div class="today-reminder" data-reminder="${kind}">`
+        const block = (kind, r, open) => reminderOpen(kind)
             + `<div class="today-reminder-head"><strong>${e(t(`ui.today.reminder_${kind}`))}</strong> ${e(formatINR(r.total))}</div>`
             + `<div class="today-reminder-more" data-overdue>${e(t('ui.today.reminder_overdue', { amount: formatINR(r.overdue) }))}</div>`
             + `<ul>${r.parties.map(party).join('')}</ul>`
             + (r.more ? `<div class="today-reminder-more">${e(t('ui.today.reminder_more', { count: r.more }))}</div>` : '')
-            + `<button type="button" class="filter-btn" data-onclick="${open}">${e(t('ui.today.reminder_open_dues'))}</button></div>`;
+            + `<button type="button" class="filter-btn" data-onclick="${open}">${e(t('ui.today.reminder_open_dues'))}</button></div></div>`;
         const parts = [];
         // Manual reminders (#86) first: what someone asked to be done today
         const manual = ManualReminders.html(toLocalISODate(now));
@@ -312,20 +317,20 @@ export const DayManager = {
             let rent = null;
             try { rent = rentReminder(localStorage, AppState.currentUser?.uid, toLocalISODate(now).slice(0, 7)); } catch (_) { rent = null; }
             if (rent) {
-                parts.push(`<div class="today-reminder" data-reminder="rent"><div class="today-reminder-head"><strong>${e(t('ui.today.reminder_rent'))}</strong> ${e(formatINR(rent.due))}</div>`
+                parts.push(`${reminderOpen('rent')}<div class="today-reminder-head"><strong>${e(t('ui.today.reminder_rent'))}</strong> ${e(formatINR(rent.due))}</div>`
                     + `<div>${e(t('ui.today.reminder_rent_units', { count: rent.dueUnits, late: rent.late }))}</div>`
                     + `<div class="today-reminder-more">${e(t('ui.today.reminder_as_of', { time: formatDayTime(rent.at, { lang: getLang() }) }))}</div>`
-                    + `<button type="button" class="filter-btn" data-onclick="rentals.open('rent', event)">${e(t('ui.today.reminder_open_rent'))}</button></div>`);
+                    + `<button type="button" class="filter-btn" data-onclick="rentals.open('rent', event)">${e(t('ui.today.reminder_open_rent'))}</button></div></div>`);
             }
             // REM-4: agreements ending and rent increases due, as the Rent page last saw them this month
             let leases = null;
             try { leases = leaseReminder(localStorage, AppState.currentUser?.uid, toLocalISODate(now).slice(0, 7)); } catch (_) { leases = null; }
             if (leases) {
-                parts.push(`<div class="today-reminder" data-reminder="leases"><div class="today-reminder-head"><strong>${e(t('ui.today.reminder_leases'))}</strong></div>`
+                parts.push(`${reminderOpen('leases')}<div class="today-reminder-head"><strong>${e(t('ui.today.reminder_leases'))}</strong></div>`
                     + `<ul>${leases.items.map(x => `<li class="today-reminder-party"><span>${e([x.place, x.tenant].filter(Boolean).join(' · '))}</span> <span class="today-reminder-days">${e(leaseReminderText(x))}</span></li>`).join('')}</ul>`
                     + (leases.more ? `<div class="today-reminder-more">${e(t('ui.today.reminder_more', { count: leases.more }))}</div>` : '')
                     + `<div class="today-reminder-more">${e(t('ui.today.reminder_as_of', { time: formatDayTime(leases.at, { lang: getLang() }) }))}</div>`
-                    + `<button type="button" class="filter-btn" data-onclick="rentals.open('tenants', event)">${e(t('ui.today.reminder_open_tenants'))}</button></div>`);
+                    + `<button type="button" class="filter-btn" data-onclick="rentals.open('tenants', event)">${e(t('ui.today.reminder_open_tenants'))}</button></div></div>`);
             }
         }
         // REM-3 (#63): the owner checks a backup file at least every 30 days
@@ -334,30 +339,30 @@ export const DayManager = {
             let pay = null;
             try { pay = payDueReminder(localStorage, AppState.currentUser?.uid, toLocalISODate(now).slice(0, 7)); } catch (_) { pay = null; }
             if (pay) {
-                parts.push(`<div class="today-reminder" data-reminder="salaries"><div class="today-reminder-head"><strong>${e(t('ui.today.reminder_salaries'))}</strong> ${e(formatINR(pay.due))}</div>`
+                parts.push(`${reminderOpen('salaries')}<div class="today-reminder-head"><strong>${e(t('ui.today.reminder_salaries'))}</strong> ${e(formatINR(pay.due))}</div>`
                     + `<div>${e(tn('ui.today.reminder_salaries_workers', pay.count))}</div>`
                     + `<div class="today-reminder-more">${e(t('ui.today.reminder_salaries_as_of', { time: formatDayTime(pay.at, { lang: getLang() }) }))}</div>`
-                    + `<button type="button" class="filter-btn" data-onclick="nav.showTab('workers')">${e(t('ui.today.reminder_open_workers'))}</button></div>`);
+                    + `<button type="button" class="filter-btn" data-onclick="nav.showTab('workers')">${e(t('ui.today.reminder_open_workers'))}</button></div></div>`);
             }
             // RB-11 (#437): bills due within 3 days or overdue, as Recurring bills last worked them out on this phone
             let bills = null;
             try { bills = billsDueReminder(localStorage, AppState.currentUser?.uid, toLocalISODate(now)); } catch (_) { bills = null; }
             if (bills) {
-                parts.push(`<div class="today-reminder" data-reminder="bills"><div class="today-reminder-head"><strong>${e(t('ui.today.reminder_bills', { count: bills.count, amount: formatINR(bills.due) }))}</strong></div>`
+                parts.push(`${reminderOpen('bills')}<div class="today-reminder-head"><strong>${e(t('ui.today.reminder_bills', { count: bills.count, amount: formatINR(bills.due) }))}</strong></div>`
                     + (bills.nobill ? `<div>${e(t('ui.today.reminder_bills_nobill', { count: bills.nobill }))}</div>` : '')
                     + `<div class="today-reminder-more">${e(t('ui.today.reminder_bills_as_of', { time: formatDayTime(bills.at, { lang: getLang() }) }))}</div>`
-                    + `<button type="button" class="filter-btn" data-onclick="nav.showTab('recurring')">${e(t('ui.today.reminder_open_bills'))}</button></div>`);
+                    + `<button type="button" class="filter-btn" data-onclick="nav.showTab('recurring')">${e(t('ui.today.reminder_open_bills'))}</button></div></div>`);
             }
             let drill = null;
             try { drill = drillReminder(localStorage, AppState.currentUser?.uid || '', now.getTime()); } catch (_) { drill = null; }
             if (drill?.due) {
-                parts.push(`<div class="today-reminder" data-reminder="backup"><div class="today-reminder-head"><strong>${e(t('ui.today.reminder_backup'))}</strong></div>`
+                parts.push(`${reminderOpen('backup')}<div class="today-reminder-head"><strong>${e(t('ui.today.reminder_backup'))}</strong></div>`
                     + `<div>${e(drill.lastAt === null ? t('ui.today.reminder_backup_never') : t('ui.today.reminder_backup_days', { count: drill.days }))}</div>`
-                    + `<button type="button" class="filter-btn" data-onclick="day.openBackupCheck()">${e(t('ui.today.reminder_open_backup'))}</button></div>`);
+                    + `<button type="button" class="filter-btn" data-onclick="day.openBackupCheck()">${e(t('ui.today.reminder_open_backup'))}</button></div></div>`);
             }
         }
         host.hidden = parts.length === 0;
-        host.innerHTML = parts.length ? `<h3 class="today-reminders-title">${e(t('ui.today.reminders'))}</h3>${parts.join('')}` : '';
+        host.innerHTML = parts.length ? `<h3 class="today-reminders-title section-title">${e(t('ui.today.reminders'))}</h3><div class="panel today-reminder-list">${parts.join('')}</div>` : '';
         ManualReminders.restoreFocus();
     },
 
@@ -446,24 +451,15 @@ export const DayManager = {
             return;
         }
 
-        const cardClass = type === 'purchase' ? 'stat-card-info-light' : 'stat-card-success-light';
-        const labelClass = type === 'purchase' ? 'stat-value-info' : 'stat-value-success';
-
         const label = (key) => Helpers.escapeHtml(t(key));
-        container.innerHTML = itemsArray.map(item => {
-            
-            return `
-                <div class="stat-card ${cardClass}" style="text-align: left; padding: 14px;">
-                    <div style="font-weight: 600; color: var(--text-primary); font-size: 15px; margin-bottom: 8px;">${Helpers.escapeHtml(item.name)}</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 14px;">
-                        <div><span style="color: var(--text-secondary);">${label(type === 'purchase' ? 'ui.today.purchases_label' : 'ui.today.sales_label')}</span> <strong>${item.count}x</strong></div>
-                        <div><span style="color: var(--text-secondary);">${label('ui.today.qty_label')}</span> <strong>${formatKg(item.quantity)} kg</strong></div>
-                        <div><span style="color: var(--text-secondary);">${label('ui.billing.total_colon')}</span> <strong class="${labelClass}">${formatCurrency(item.totalValue)}</strong></div>
-                        <div><span style="color: var(--text-secondary);">${label('ui.today.avg_rate_label')}</span> <strong>${formatRate(item.avgRate ?? 0)}/kg</strong></div>
+        const countKey = type === 'purchase' ? 'ui.today.purchases_label' : 'ui.today.sales_label';
+        container.innerHTML = itemsArray.map(item => `
+                <div class="row today-item">
+                    <div class="row-main">
+                        <div class="row-title">${Helpers.escapeHtml(item.name)}</div>
+                        <div class="row-meta">${label(countKey)} <strong>${item.count}x</strong> · ${label('ui.today.qty_label')} <strong>${formatKg(item.quantity)} kg</strong> · ${label('ui.billing.total_colon')} <strong class="row-amt">${formatCurrency(item.totalValue)}</strong> · ${label('ui.today.avg_rate_label')} <strong>${formatRate(item.avgRate ?? 0)}/kg</strong></div>
                     </div>
-                </div>
-            `;
-        }).join('');
+                </div>`).join('');
     },
 
     /**
@@ -529,103 +525,6 @@ export const DayManager = {
             <p class="labour-breakdown-note"><strong>${esc(t('ui.today.labour_to_pay'))}</strong> ${esc(formatCurrency(toPay.amount))} ${esc(labourCalcText(toPay, 'ui.today.labour_to_pay_calc'))}</p>
             <p class="labour-breakdown-note">${esc(t('ui.today.labour_note'))}</p>`;
         return UIManager.showModalWithHtml(html, t('ui.today.labour_breakdown_title'));
-    },
-
-    /**
-     * Render today's transactions list
-     */
-    renderTransactionsList(purchases, wholesaleSales, retailSales, expenses) {
-        const container = document.getElementById('todayTransactionsList');
-        if (!container) return;
-
-        const filter = document.getElementById('todayTransactionFilter')?.value || 'all';
-
-        // Combine all transactions with type
-        let transactions = [];
-
-        if (filter === 'all' || filter === 'purchase') {
-            purchases.forEach(p => transactions.push({
-                type: 'purchase',
-                icon: '🛒',
-                label: t('ui.reports.pdf_purchase'),
-                party: p.seller || t('ui.reports.unknown'),
-                amount: p.total || 0,
-                date: p.date,
-                color: '#059669',
-                bgColor: '#d1fae5'
-            }));
-        }
-
-        if (filter === 'all' || filter === 'sale') {
-            wholesaleSales.forEach(s => transactions.push({
-                type: 'sale',
-                icon: '💰',
-                label: t('ui.finance.bill_wholesale'),
-                party: s.buyer || t('ui.reports.unknown'),
-                amount: s.total || 0,
-                date: s.date,
-                color: '#2563eb',
-                bgColor: '#dbeafe'
-            }));
-        }
-
-        if (filter === 'all' || filter === 'retail') {
-            retailSales.forEach(s => transactions.push({
-                type: 'retail',
-                icon: '🛍️',
-                label: t('ui.finance.bill_retail'),
-                party: s.buyer || t('ui.today.walk_in'),
-                amount: s.total || 0,
-                date: s.date,
-                color: '#7c3aed',
-                bgColor: '#f3e8ff'
-            }));
-        }
-
-        if (filter === 'all' || filter === 'expense') {
-            expenses.forEach(e => transactions.push({
-                type: 'expense',
-                icon: '💳',
-                label: e.type || t('ui.today.expense'),
-                party: e.description || (e.category === 'personal' ? t('ui.expenses.personal_expenses') : e.category === 'business' ? t('ui.expenses.business_expenses') : (e.category || t('ui.today.misc'))),
-                amount: e.amount || 0,
-                date: e.date,
-                color: '#92400e',
-                bgColor: '#fef3c7'
-            }));
-        }
-
-        // Sort by date (newest first)
-        transactions.sort((a, b) => {
-            const dateA = parseAnyBillDate(a.date) || 0;
-            const dateB = parseAnyBillDate(b.date) || 0;
-            return dateB - dateA;
-        });
-
-        if (transactions.length === 0) {
-            container.innerHTML = `<p style="text-align: center; color: #9ca3af; padding: 20px;">${Helpers.escapeHtml(t('ui.today.no_transactions'))}</p>`;
-            return;
-        }
-
-        container.innerHTML = transactions.map(t => {
-            const time = parseAnyBillDate(t.date);
-            const timeStr = time ? Helpers.formatTime(time) : '';
-            
-            return `
-                <div style="display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid #f3f4f6;">
-                    <div style="width: 40px; height: 40px; border-radius: 10px; background: ${t.bgColor}; display: flex; align-items: center; justify-content: center; font-size: 18px;">
-                        ${t.icon}
-                    </div>
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="font-weight: 600; color: #374151; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${Helpers.escapeHtml(t.party)}</div>
-                        <div style="font-size: 12px; color: #9ca3af;">${Helpers.escapeHtml(t.label)} • ${timeStr}</div>
-                    </div>
-                    <div style="font-weight: 700; color: ${t.color}; font-size: 15px;">
-                        ${t.type === 'expense' || t.type === 'purchase' ? '-' : '+'}${formatCurrency(t.amount)}
-                    </div>
-                </div>
-            `;
-        }).join('');
     },
 
     /**

@@ -272,22 +272,41 @@
     min-height: 40px;
   }
 
-  /* ---------- Today: dashboard grid ---------- */
+  /* ---------- Today: hero strip, the day's figures | needs attention (redesign 5.1) ---------- */
   #dayTodayContent:not([style*="none"]) {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+    grid-auto-flow: row dense;
+    column-gap: var(--sp-6);
     align-items: start;
   }
 
   #dayTodayContent > * {
-    margin: 0 !important;
+    grid-column: 1 / -1;
     min-width: 0;
   }
 
-  #dayTodayContent > :nth-child(1),
-  #dayTodayContent > :nth-child(2) {
-    grid-column: 1 / -1;
+  #dayTodayContent > .today-main { grid-column: 1; }
+  #dayTodayContent > .today-side { grid-column: 2; }
+
+  #dayTodayContent .today-hero {
+    margin-bottom: var(--sp-2);
+    padding: var(--sp-4) var(--sp-5);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--r-panel);
+    background: var(--panel-bg);
+  }
+
+  #dayTodayContent .today-side {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-5);
+  }
+
+  #dayTodayContent .today-side > *,
+  #dayTodayContent .today-side .section-title,
+  #dayTodayContent .today-main > .section-title:first-child {
+    margin-top: 0;
   }
 
   /* ---------- Generic: wider grids and tables ---------- */
@@ -622,30 +641,6 @@
   .ins-section > .ins-hero { grid-column: 1 / -1; }
   .ins-section > .ins-wide { grid-column: 1 / -1; }
   .ins-hero-value { font-size: 40px; }
-}
-
-/* Today (#141): the cash prompt (now before the day report), bill types and the bills list span both columns; bill types side by side */
-@media (min-width: 1024px) {
-  #dayTodayContent > #todayCashPrompt,
-  #dayTodayContent > #dayReportCard,
-  #dayTodayContent > #todayChannelsCard,
-  #dayTodayContent > #todayBillsCard {
-    grid-column: 1 / -1;
-  }
-
-  /* Full-width cards would otherwise leave a hole beside a lone half-width card */
-  #dayTodayContent:not([style*="none"]) {
-    grid-auto-flow: row dense;
-  }
-
-  .today-channels {
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  }
-
-  /* Four stat cards in a half-width card wrapped their amounts mid-number */
-  #dayTodayContent .stats-grid-2:has(> :nth-child(3)) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
 }
 
 /* Phone bottom bar and its settings (#142): the sidebar is permanent here */
