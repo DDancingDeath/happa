@@ -129,7 +129,7 @@
 
             <div class="payment-row">
                 <label for="onlinePayment" id="onlinePaymentLabel" data-i18n="ui.billing.online_label">Online</label>
-                <label class="pay-fill" title="Put the whole bill here" data-i18n-title="ui.billing.fill_all"><input type="checkbox" id="onlineCheckbox" aria-describedby="onlinePaymentLabel" data-onchange="billing.fillPayableAmount('online')" aria-label="Put the whole bill here" data-i18n-aria-label="ui.billing.fill_all" /><span aria-hidden="true" data-i18n="ui.billing.fill">Fill</span></label>
+                <label class="pay-fill" title="Fill: put the whole bill here" data-i18n-title="ui.billing.fill_all"><input type="checkbox" id="onlineCheckbox" aria-describedby="onlinePaymentLabel" data-onchange="billing.fillPayableAmount('online')" /><span class="pay-fill-off" data-i18n="ui.billing.fill">Fill</span><span class="pay-fill-on" data-i18n="ui.billing.filled">Filled</span><span class="pay-fill-hint" data-i18n="ui.billing.fill_hint">(put the whole bill here)</span></label>
                 <div class="adorn bill-money">
                     <span class="adorn-pre" aria-hidden="true">₹</span>
                     <input type="number" class="input" inputmode="decimal" id="onlinePayment" data-oninput="billing.updatePaymentTotal()" placeholder="0" />
@@ -137,7 +137,7 @@
             </div>
             <div class="payment-row">
                 <label for="cashPayment" id="cashPaymentLabel" data-i18n="ui.billing.cash_label">Cash</label>
-                <label class="pay-fill" title="Put the whole bill here" data-i18n-title="ui.billing.fill_all"><input type="checkbox" id="cashCheckbox" aria-describedby="cashPaymentLabel" data-onchange="billing.fillPayableAmount('cash')" aria-label="Put the whole bill here" data-i18n-aria-label="ui.billing.fill_all" /><span aria-hidden="true" data-i18n="ui.billing.fill">Fill</span></label>
+                <label class="pay-fill" title="Fill: put the whole bill here" data-i18n-title="ui.billing.fill_all"><input type="checkbox" id="cashCheckbox" aria-describedby="cashPaymentLabel" data-onchange="billing.fillPayableAmount('cash')" /><span class="pay-fill-off" data-i18n="ui.billing.fill">Fill</span><span class="pay-fill-on" data-i18n="ui.billing.filled">Filled</span><span class="pay-fill-hint" data-i18n="ui.billing.fill_hint">(put the whole bill here)</span></label>
                 <div class="adorn bill-money">
                     <span class="adorn-pre" aria-hidden="true">₹</span>
                     <input type="number" class="input" inputmode="decimal" id="cashPayment" data-oninput="billing.updatePaymentTotal()" placeholder="0" />
@@ -151,7 +151,7 @@
 
             <div class="payment-row">
                 <label for="dueAmount" id="dueAmountLabel" data-i18n="ui.billing.due_label">Due</label>
-                <label class="pay-fill" title="Put the whole bill here" data-i18n-title="ui.billing.fill_all"><input type="checkbox" id="dueCheckbox" aria-describedby="dueAmountLabel" data-onchange="billing.fillPayableAmount('due')" aria-label="Put the whole bill here" data-i18n-aria-label="ui.billing.fill_all" /><span aria-hidden="true" data-i18n="ui.billing.fill">Fill</span></label>
+                <label class="pay-fill" title="Fill: put the whole bill here" data-i18n-title="ui.billing.fill_all"><input type="checkbox" id="dueCheckbox" aria-describedby="dueAmountLabel" data-onchange="billing.fillPayableAmount('due')" /><span class="pay-fill-off" data-i18n="ui.billing.fill">Fill</span><span class="pay-fill-on" data-i18n="ui.billing.filled">Filled</span><span class="pay-fill-hint" data-i18n="ui.billing.fill_hint">(put the whole bill here)</span></label>
                 <div class="adorn bill-money">
                     <span class="adorn-pre" aria-hidden="true">₹</span>
                     <input type="number" class="input" inputmode="decimal" id="dueAmount" data-oninput="billing.updatePaymentTotal()" placeholder="0" />
@@ -297,7 +297,7 @@
 
             <div class="payment-row">
                 <label for="saleOnlinePayment" id="saleOnlinePaymentLabel" data-i18n="ui.billing.online_label">Online</label>
-                <label class="pay-fill" title="Put the whole bill here" data-i18n-title="ui.billing.fill_all"><input type="checkbox" id="saleOnlineCheckbox" aria-describedby="saleOnlinePaymentLabel" data-onchange="billing.fillReceivableAmount('online')" aria-label="Put the whole bill here" data-i18n-aria-label="ui.billing.fill_all" /><span aria-hidden="true" data-i18n="ui.billing.fill">Fill</span></label>
+                <label class="pay-fill" title="Fill: put the whole bill here" data-i18n-title="ui.billing.fill_all"><input type="checkbox" id="saleOnlineCheckbox" aria-describedby="saleOnlinePaymentLabel" data-onchange="billing.fillReceivableAmount('online')" /><span class="pay-fill-off" data-i18n="ui.billing.fill">Fill</span><span class="pay-fill-on" data-i18n="ui.billing.filled">Filled</span><span class="pay-fill-hint" data-i18n="ui.billing.fill_hint">(put the whole bill here)</span></label>
                 <div class="adorn bill-money">
                     <span class="adorn-pre" aria-hidden="true">₹</span>
                     <input type="number" class="input" inputmode="decimal" id="saleOnlinePayment" data-oninput="billing.updateSalePaymentTotal()" placeholder="0" />
@@ -305,7 +305,7 @@
             </div>
             <div class="payment-row">
                 <label for="saleCashPayment" id="saleCashPaymentLabel" data-i18n="ui.billing.cash_label">Cash</label>
-                <label class="pay-fill" title="Put the whole bill here" data-i18n-title="ui.billing.fill_all"><input type="checkbox" id="saleCashCheckbox" aria-describedby="saleCashPaymentLabel" data-onchange="billing.fillReceivableAmount('cash')" aria-label="Put the whole bill here" data-i18n-aria-label="ui.billing.fill_all" /><span aria-hidden="true" data-i18n="ui.billing.fill">Fill</span></label>
+                <label class="pay-fill" title="Fill: put the whole bill here" data-i18n-title="ui.billing.fill_all"><input type="checkbox" id="saleCashCheckbox" aria-describedby="saleCashPaymentLabel" data-onchange="billing.fillReceivableAmount('cash')" /><span class="pay-fill-off" data-i18n="ui.billing.fill">Fill</span><span class="pay-fill-on" data-i18n="ui.billing.filled">Filled</span><span class="pay-fill-hint" data-i18n="ui.billing.fill_hint">(put the whole bill here)</span></label>
                 <div class="adorn bill-money">
                     <span class="adorn-pre" aria-hidden="true">₹</span>
                     <input type="number" class="input" inputmode="decimal" id="saleCashPayment" data-oninput="billing.updateSalePaymentTotal()" placeholder="0" />
@@ -319,7 +319,7 @@
 
             <div class="payment-row">
                 <label for="saleDueAmount" id="saleDueAmountLabel" data-i18n="ui.billing.due_label">Due</label>
-                <label class="pay-fill" title="Put the whole bill here" data-i18n-title="ui.billing.fill_all"><input type="checkbox" id="saleDueCheckbox" aria-describedby="saleDueAmountLabel" data-onchange="billing.fillReceivableAmount('due')" aria-label="Put the whole bill here" data-i18n-aria-label="ui.billing.fill_all" /><span aria-hidden="true" data-i18n="ui.billing.fill">Fill</span></label>
+                <label class="pay-fill" title="Fill: put the whole bill here" data-i18n-title="ui.billing.fill_all"><input type="checkbox" id="saleDueCheckbox" aria-describedby="saleDueAmountLabel" data-onchange="billing.fillReceivableAmount('due')" /><span class="pay-fill-off" data-i18n="ui.billing.fill">Fill</span><span class="pay-fill-on" data-i18n="ui.billing.filled">Filled</span><span class="pay-fill-hint" data-i18n="ui.billing.fill_hint">(put the whole bill here)</span></label>
                 <div class="adorn bill-money">
                     <span class="adorn-pre" aria-hidden="true">₹</span>
                     <input type="number" class="input" inputmode="decimal" id="saleDueAmount" data-oninput="billing.updateSalePaymentTotal()" placeholder="0" />

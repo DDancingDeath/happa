@@ -176,11 +176,15 @@
   #billTable tbody tr.bill-line > td:nth-child(1), #saleTable tbody tr.bill-line > td:nth-child(1) {
     grid-column: 1 / 4;
     grid-row: 1;
+    display: -webkit-box;
     overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     color: var(--ink);
     font-size: var(--fs-body);
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
   }
 
   #billTable tbody tr.bill-line > :is(td:nth-child(2), td:nth-child(3)),

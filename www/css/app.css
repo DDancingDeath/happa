@@ -3897,11 +3897,15 @@ html[data-updating] .updating-mark {
   #billTable tbody tr.bill-line > td:nth-child(1), #saleTable tbody tr.bill-line > td:nth-child(1) {
     grid-column: 1 / 4;
     grid-row: 1;
+    display: -webkit-box;
     overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     color: var(--ink);
     font-size: var(--fs-body);
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
   }
 
   #billTable tbody tr.bill-line > :is(td:nth-child(2), td:nth-child(3)),
@@ -5401,17 +5405,16 @@ input[type="number"] {
   color: var(--ink);
 }
 
-/* "Fill" puts the whole bill in that row: the row's tick box, drawn as a text button */
+/* "Fill" puts the whole bill in that row: the row's tick box, drawn as a text button. Ticked it reads
+   "Filled ✓" on a solid fill; its name is the visible word plus the hidden hint (.pay-fill-hint). */
 #billing .payment-row > .pay-fill {
   position: relative;
   display: inline-flex;
   flex: none;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
   min-width: 48px;
-  min-height: 40px;
-  padding: 0 var(--sp-2);
-  border-radius: var(--r-control);
+  min-height: 44px;
+  margin: 0;
   color: var(--accent-text);
   font-size: var(--fs-sm);
   font-weight: var(--w-label);
@@ -5421,6 +5424,7 @@ input[type="number"] {
 #billing .payment-row > .pay-fill > input {
   position: absolute;
   inset: 0;
+  z-index: 1;
   width: 100%;
   height: 100%;
   margin: 0;
@@ -5429,20 +5433,54 @@ input[type="number"] {
 }
 
 #billing .payment-row > .pay-fill > span {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--sp-2);
+  border: 2px solid transparent;
+  border-radius: var(--r-control);
   color: inherit;
   font-size: inherit;
   font-weight: inherit;
+  white-space: nowrap;
 }
 
-#billing .payment-row > .pay-fill:hover {
-  background: var(--state-hover);
+#billing .payment-row > .pay-fill > .pay-fill-on,
+#billing .payment-row > .pay-fill > input:checked ~ .pay-fill-off {
+  display: none;
 }
 
-#billing .payment-row > .pay-fill:has(> input:checked) {
-  background: var(--accent-soft);
+#billing .payment-row > .pay-fill > input:checked ~ .pay-fill-on {
+  display: flex;
+  border-color: var(--accent-text);
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-ink);
+  font-weight: var(--w-strong);
 }
 
-#billing .payment-row > .pay-fill:has(> input:focus-visible) {
+#billing .payment-row > .pay-fill > .pay-fill-on::after {
+  content: "✓" / "";
+  margin-left: 4px;
+}
+
+#billing .payment-row > .pay-fill > .pay-fill-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (hover: hover) {
+  #billing .payment-row > .pay-fill:hover > input:not(:checked) ~ .pay-fill-off {
+    background: var(--state-hover);
+  }
+}
+
+#billing .payment-row > .pay-fill > input:focus-visible ~ span {
   box-shadow: var(--focus);
 }
 
@@ -5450,8 +5488,16 @@ input[type="number"] {
   color: var(--positive);
 }
 
-#billing #saleSection .payment-row > .pay-fill:has(> input:checked) {
-  background: var(--positive-soft);
+#billing #saleSection .payment-row > .pay-fill > input:checked ~ .pay-fill-on {
+  border-color: var(--positive);
+  background: var(--btn-sale-bg);
+  color: var(--btn-sale-ink);
+}
+
+@media (forced-colors: active) {
+  #billing .payment-row > .pay-fill > input:checked ~ .pay-fill-on {
+    outline: 2px solid Highlight;
+  }
 }
 
 #billing .split-rest-btn {
