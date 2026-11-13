@@ -40,7 +40,7 @@ const DIFF_COLORS = Object.freeze({ ok: '#15803d', warn: '#f59e0b', high: '#ef44
 /** The same bands on the status Difference figure, as tone classes. */
 const DIFF_TONE = Object.freeze({ ok: 'tone-pos', warn: 'tone-warn', high: 'tone-neg' });
 /** A status / summary figure, its ₹ muted (moneyHtml); the text is formatRupees(amount, opts). */
-const setMoney = (el, amount, opts, sign = '') => { if (el) el.innerHTML = sign + moneyHtml(amount, opts); };
+const setMoney = (el, amount, opts, plus = false) => { if (el) el.innerHTML = (plus ? '+' : '') + moneyHtml(amount, opts); };
 
 /** TIP CashClose run (#217); never throws. */
 function startCashCloseRun(session, expected, counted, difference) {
@@ -590,7 +590,7 @@ export class CashManagementManager {
             setMoney(statusExpected, expected, { exact: true });
             setMoney(statusActual, actual, { exact: true });
             if (statusDiff) {
-                setMoney(statusDiff, diff, { decimals: 2 }, diff >= 0 ? '+' : '');
+                setMoney(statusDiff, diff, { decimals: 2 }, diff >= 0);
                 statusDiff.classList.remove(...Object.values(DIFF_TONE));
                 statusDiff.classList.add(DIFF_TONE[diffLevel]);
             }

@@ -77,7 +77,7 @@ function screen() {
     return {
         text: Object.fromEntries([...STATUS_IDS, ...SUMMARY_IDS].map(id => [id, text(id)])),
         shown: Object.fromEntries(CARD_IDS.map(id => [id, document.getElementById(id).style.display])),
-        diffColor: document.getElementById('statusDiff').style.color,
+        diffTone: [...document.getElementById('statusDiff').classList].filter(c => c.startsWith('tone-')).join(' '),
         signInAmount: document.getElementById('cashSignInAmount').value,
         signInHint: text('cashSignInSuggestion')
     };

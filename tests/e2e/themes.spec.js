@@ -1,13 +1,13 @@
 /**
  * Themes (redesign 2.6, DIRECTION §4): text contrast (axe `color-contrast`, WCAG AA) on Billing (with a line and a ticked "Fill"),
- * Today and Outstanding, on the open Workers row, and on the app bar with the More sheet open, in every theme × mode (and in Hindi for the serif themes, whose Devanagari stays
+ * Today, Outstanding and Cash (drawer open, a count typed), on the open Workers row, and on the app bar with the More sheet open, in every theme × mode (and in Hindi for the serif themes, whose Devanagari stays
  * in the sans face), and the Settings › Appearance gallery: a tap previews
  * a theme app-wide without saving it, Cancel or leaving Settings restores the saved one, Apply saves it
  * (it survives a reload, applied before first paint); printing from a serif theme looks like Modern.
  * Phone project only: the CSS is the same on desktop.
  */
 const AxeBuilder = require('@axe-core/playwright').default;
-const { test, expect, login, showTab, settle } = require('./support/app');
+const { test, expect, login, showTab, settle, clickAfterTyping } = require('./support/app');
 const { seed } = require('./support/seed');
 const { commit } = require('./support/emulator');
 
@@ -26,7 +26,7 @@ const THEME_WORKER = {
     name: 'Theme Worker', startMonth: MONTH, active: true, pays: [{ from: MONTH, amount: 9000 }],
     entries: [{ id: 'e2e-theme-entry', amount: 3000, kind: 'advance', month: MONTH, date: `${MONTH}-01`, mode: 'cash' }],
 };
-const PAGES = [['Billing', 'billing'], ['Today', 'day'], ['Outstanding', 'due']];
+const PAGES = [['Billing', 'billing'], ['Today', 'day'], ['Outstanding', 'due'], ['Cash', 'cash-management']];
 
 /** Billing with a line in the row list and the whole bill put in Cash with its "Fill" (3.5), so axe sees both. */
 async function billWithFill(page) {
@@ -64,6 +64,16 @@ async function billWithFill(page) {
     await page.evaluate(() => document.activeElement?.blur?.());
 }
 
+/** Today › Cash with the drawer open and a short count typed, so axe sees the figures, both forms and the check under the count. */
+async function openCashWithCount(page) {
+    await page.fill('#cashSignInAmount', '1000');
+    await clickAfterTyping(page, 'button[data-onclick="cashManagement.signIn()"]');
+    await expect(page.locator('#cashSignOutAmount')).toBeVisible();
+    await page.fill('#cashSignOutAmount', '900');
+    await page.dispatchEvent('#cashSignOutAmount', 'input');
+    await expect(page.locator('#cashDifferenceAlert')).toBeVisible();
+    await page.evaluate(() => document.activeElement?.blur?.());
+}
 test.skip(({ isMobile }) => !isMobile, 'phone project only');
 test.beforeEach(async () => { await seed(); });
 
@@ -102,6 +112,7 @@ for (const [theme, appearance, lang = 'en'] of COMBOS) {
             await showTab(page, route);
             expect(await settle(page), `${name} finished loading`).toBe(true);
             if (route === 'billing') await billWithFill(page);
+            if (route === 'cash-management') await openCashWithCount(page);
             const result = await new AxeBuilder({ page }).withRules(['color-contrast']).analyze();
             for (const v of result.violations) {
                 for (const n of v.nodes) found.push(`${name}: ${n.target.join(' ')} — ${(n.any[0]?.message || v.help).replace(/\s+/g, ' ')}`);
