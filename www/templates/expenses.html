@@ -1,18 +1,19 @@
 <div id="expenses" class="tab">
     <header class="page-head"><h2 data-i18n="ui.nav.expenses">Expenses</h2></header>
 
-        <div class="filter-buttons" style="margin-bottom: 20px;">
-            <button class="filter-btn active" data-onclick="expenses.filterExpenseTab('business', event)" data-i18n="ui.expenses.business_expenses">Business expenses</button>
-            <button class="filter-btn" data-perm="personalExpenses" data-onclick="expenses.filterExpenseTab('personal', event)" data-i18n="ui.expenses.personal_expenses">Personal expenses</button>
+        <div class="seg exp-seg" role="group">
+            <button type="button" aria-pressed="true" data-onclick="expenses.filterExpenseTab('business', event)" data-i18n="ui.expenses.business_expenses">Business expenses</button>
+            <button type="button" aria-pressed="false" data-perm="personalExpenses" data-onclick="expenses.filterExpenseTab('personal', event)" data-i18n="ui.expenses.personal_expenses">Personal expenses</button>
         </div>
 
         <!-- Business Expenses Section -->
         <div id="businessExpenseSection">
-            <div class="expense-templates" id="businessExpenseTemplates" hidden></div>
+            <div class="exp-templates" id="businessExpenseTemplates" hidden></div>
 
-            <div class="form-row">
-                <label data-i18n="ui.expenses.expense_type">Expense type</label>
-                <input type="text" id="businessExpenseType" list="businessExpenseTypeOptions" placeholder="Enter expense type" data-i18n-placeholder="ui.expenses.enter_expense_type" />
+            <div class="panel panel-pad exp-form">
+            <div class="field">
+                <label for="businessExpenseType" data-i18n="ui.expenses.expense_type">Expense type</label>
+                <input type="text" class="input" id="businessExpenseType" list="businessExpenseTypeOptions" placeholder="Enter expense type" data-i18n-placeholder="ui.expenses.enter_expense_type" />
                 <datalist id="businessExpenseTypeOptions">
                     <option value="Labor">
                     <option value="Salary">
@@ -24,59 +25,64 @@
                 </datalist>
             </div>
 
-            <div class="form-row">
-                <label data-i18n="ui.expenses.amount">Amount (₹)</label>
-                <input type="number" inputmode="decimal" id="businessExpenseAmount" placeholder="Enter amount" data-i18n-placeholder="ui.cash.enter_amount" />
+            <div class="field">
+                <label for="businessExpenseAmount" data-i18n="ui.expenses.amount">Amount</label>
+                <div class="adorn">
+                    <span class="adorn-pre" aria-hidden="true">₹</span>
+                    <input type="number" class="input" inputmode="decimal" id="businessExpenseAmount" placeholder="Enter amount" data-i18n-placeholder="ui.cash.enter_amount" />
+                </div>
             </div>
 
-            <div class="form-row">
+            <div class="field">
                 <label for="businessExpenseDate" data-i18n="ui.expenses.date">Date</label>
-                <input type="date" id="businessExpenseDate" />
+                <input type="date" class="input" id="businessExpenseDate" />
             </div>
 
-            <div class="form-row">
+            <div class="field">
                 <label for="businessExpenseMode" data-i18n="ui.expenses.paid_by">Paid by</label>
-                <select id="businessExpenseMode">
+                <select class="input" id="businessExpenseMode">
                     <option value="cash" data-i18n="ui.expenses.mode_cash">Cash</option>
                     <option value="online" data-i18n="ui.expenses.mode_online">Online</option>
                 </select>
             </div>
 
-            <div class="form-row">
-                <label data-i18n="ui.expenses.person_name_optional">Person name (optional)</label>
-                <input type="text" id="businessExpensePerson" list="businessExpensePersonOptions" placeholder="Enter name" data-i18n-placeholder="ui.expenses.enter_name" />
+            <div class="field">
+                <label for="businessExpensePerson" data-i18n="ui.expenses.person_name_optional">Person name (optional)</label>
+                <input type="text" class="input" id="businessExpensePerson" list="businessExpensePersonOptions" placeholder="Enter name" data-i18n-placeholder="ui.expenses.enter_name" />
                 <datalist id="businessExpensePersonOptions"></datalist>
             </div>
 
-            <div class="form-row">
-                <label data-i18n="ui.expenses.remarks_optional">Remarks (optional)</label>
-                <input type="text" id="businessExpenseRemarks" placeholder="Enter remarks" data-i18n-placeholder="ui.expenses.enter_remarks" />
+            <div class="field">
+                <label for="businessExpenseRemarks" data-i18n="ui.expenses.remarks_optional">Remarks (optional)</label>
+                <input type="text" class="input" id="businessExpenseRemarks" placeholder="Enter remarks" data-i18n-placeholder="ui.expenses.enter_remarks" />
             </div>
 
-            <div style="display: flex; gap: 12px; margin-top: 16px;">
-                <button class="save-btn" data-expense-save data-onclick="expenses.saveBusinessExpense()" data-i18n="ui.expenses.save_expense">Save expense</button>
-                <button class="print-btn" data-expense-save data-onclick="expenses.saveAndPrintBusiness()" data-i18n="ui.expenses.print_expense">Print expense</button>
+            <div class="exp-actions">
+                <button type="button" class="btn btn-primary" data-expense-save data-onclick="expenses.saveBusinessExpense()" data-i18n="ui.expenses.save_expense">Save expense</button>
+                <button type="button" class="btn btn-tonal" data-expense-save data-onclick="expenses.saveAndPrintBusiness()"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-printer"/></svg><span data-i18n="ui.expenses.print_expense">Print expense</span></button>
+            </div>
             </div>
 
-            <h3 data-i18n="ui.expenses.business_expense_history">Business expense history</h3>
-            <div class="expense-totals" id="businessExpenseTotals" aria-live="polite"></div>
-            <div class="expense-search">
-                <input type="search" id="businessExpenseSearch" placeholder="Search expenses" data-i18n-placeholder="ui.expenses.search_placeholder" aria-label="Search expenses" data-i18n-aria-label="ui.expenses.search_placeholder" data-oninput="expenses.onSearch('business')" />
-                <select id="businessExpenseTypeFilter" aria-label="Expense type" data-i18n-aria-label="ui.expenses.expense_type" data-onchange="expenses.onSearch('business')"><option value="" data-i18n="ui.expenses.all_types">All types</option></select>
+            <h3 class="exp-title" data-i18n="ui.expenses.business_expense_history">Business expense history</h3>
+            <div class="exp-totals" id="businessExpenseTotals" aria-live="polite"></div>
+            <div class="exp-search">
+                <input type="search" class="input" id="businessExpenseSearch" placeholder="Search expenses" data-i18n-placeholder="ui.expenses.search_placeholder" aria-label="Search expenses" data-i18n-aria-label="ui.expenses.search_placeholder" data-oninput="expenses.onSearch('business')" />
+                <select class="input" id="businessExpenseTypeFilter" aria-label="Expense type" data-i18n-aria-label="ui.expenses.expense_type" data-onchange="expenses.onSearch('business')"><option value="" data-i18n="ui.expenses.all_types">All types</option></select>
             </div>
-            <label class="expenses-voided-toggle"><input type="checkbox" data-expense-voided-toggle data-onchange="expenses.toggleVoided(this.checked)"> <span data-i18n="ui.expenses.show_voided">Show voided</span></label>
+            <label class="exp-voided"><input type="checkbox" class="switch" data-expense-voided-toggle data-onchange="expenses.toggleVoided(this.checked)"> <span data-i18n="ui.expenses.show_voided">Show voided</span></label>
             <div id="businessExpenseHistoryList">
-                <p style="text-align: center; color: #666; margin-top: 40px;" data-i18n="ui.expenses.no_business_expenses_recorded_yet">No business expenses recorded yet</p>
+                <p class="empty" data-i18n="ui.expenses.no_business_expenses_recorded_yet">No business expenses recorded yet</p>
             </div>
         </div>
 
         <!-- Personal Expenses Section -->
-        <div id="personalExpenseSection" data-perm="personalExpenses" style="display: none;">
-            <div class="expense-templates" id="personalExpenseTemplates" hidden></div>
+        <div id="personalExpenseSection" data-perm="personalExpenses" hidden>
+            <div class="exp-templates" id="personalExpenseTemplates" hidden></div>
 
-            <div class="form-row">
-                <label data-i18n="ui.expenses.expense_type">Expense type</label>
-                <input type="text" id="personalExpenseType" list="personalExpenseTypeOptions" placeholder="Enter expense type" data-i18n-placeholder="ui.expenses.enter_expense_type" />
+            <div class="panel panel-pad exp-form">
+            <div class="field">
+                <label for="personalExpenseType" data-i18n="ui.expenses.expense_type">Expense type</label>
+                <input type="text" class="input" id="personalExpenseType" list="personalExpenseTypeOptions" placeholder="Enter expense type" data-i18n-placeholder="ui.expenses.enter_expense_type" />
                 <datalist id="personalExpenseTypeOptions">
                     <option value="Newspaper">
                     <option value="Bike Servicing">
@@ -87,49 +93,53 @@
                 </datalist>
             </div>
 
-            <div class="form-row">
-                <label data-i18n="ui.expenses.amount">Amount (₹)</label>
-                <input type="number" inputmode="decimal" id="personalExpenseAmount" placeholder="Enter amount" data-i18n-placeholder="ui.cash.enter_amount" />
+            <div class="field">
+                <label for="personalExpenseAmount" data-i18n="ui.expenses.amount">Amount</label>
+                <div class="adorn">
+                    <span class="adorn-pre" aria-hidden="true">₹</span>
+                    <input type="number" class="input" inputmode="decimal" id="personalExpenseAmount" placeholder="Enter amount" data-i18n-placeholder="ui.cash.enter_amount" />
+                </div>
             </div>
 
-            <div class="form-row">
+            <div class="field">
                 <label for="personalExpenseDate" data-i18n="ui.expenses.date">Date</label>
-                <input type="date" id="personalExpenseDate" />
+                <input type="date" class="input" id="personalExpenseDate" />
             </div>
 
-            <div class="form-row">
+            <div class="field">
                 <label for="personalExpenseMode" data-i18n="ui.expenses.paid_by">Paid by</label>
-                <select id="personalExpenseMode">
+                <select class="input" id="personalExpenseMode">
                     <option value="cash" data-i18n="ui.expenses.mode_cash">Cash</option>
                     <option value="online" data-i18n="ui.expenses.mode_online">Online</option>
                 </select>
             </div>
 
-            <div class="form-row">
-                <label data-i18n="ui.expenses.person_name_optional">Person name (optional)</label>
-                <input type="text" id="personalExpensePerson" list="personalExpensePersonOptions" placeholder="Enter name" data-i18n-placeholder="ui.expenses.enter_name" />
+            <div class="field">
+                <label for="personalExpensePerson" data-i18n="ui.expenses.person_name_optional">Person name (optional)</label>
+                <input type="text" class="input" id="personalExpensePerson" list="personalExpensePersonOptions" placeholder="Enter name" data-i18n-placeholder="ui.expenses.enter_name" />
                 <datalist id="personalExpensePersonOptions"></datalist>
             </div>
 
-            <div class="form-row">
-                <label data-i18n="ui.expenses.remarks_optional">Remarks (optional)</label>
-                <input type="text" id="personalExpenseRemarks" placeholder="Enter remarks" data-i18n-placeholder="ui.expenses.enter_remarks" />
+            <div class="field">
+                <label for="personalExpenseRemarks" data-i18n="ui.expenses.remarks_optional">Remarks (optional)</label>
+                <input type="text" class="input" id="personalExpenseRemarks" placeholder="Enter remarks" data-i18n-placeholder="ui.expenses.enter_remarks" />
             </div>
 
-            <div style="display: flex; gap: 12px; margin-top: 16px;">
-                <button class="save-btn" data-expense-save data-onclick="expenses.savePersonalExpense()" data-i18n="ui.expenses.save_expense">Save expense</button>
-                <button class="print-btn" data-expense-save data-onclick="expenses.saveAndPrintPersonal()" data-i18n="ui.expenses.print_expense">Print expense</button>
+            <div class="exp-actions">
+                <button type="button" class="btn btn-primary" data-expense-save data-onclick="expenses.savePersonalExpense()" data-i18n="ui.expenses.save_expense">Save expense</button>
+                <button type="button" class="btn btn-tonal" data-expense-save data-onclick="expenses.saveAndPrintPersonal()"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-printer"/></svg><span data-i18n="ui.expenses.print_expense">Print expense</span></button>
+            </div>
             </div>
 
-            <h3 data-i18n="ui.expenses.personal_expense_history">Personal expense history</h3>
-            <div class="expense-totals" id="personalExpenseTotals" aria-live="polite"></div>
-            <div class="expense-search">
-                <input type="search" id="personalExpenseSearch" placeholder="Search expenses" data-i18n-placeholder="ui.expenses.search_placeholder" aria-label="Search expenses" data-i18n-aria-label="ui.expenses.search_placeholder" data-oninput="expenses.onSearch('personal')" />
-                <select id="personalExpenseTypeFilter" aria-label="Expense type" data-i18n-aria-label="ui.expenses.expense_type" data-onchange="expenses.onSearch('personal')"><option value="" data-i18n="ui.expenses.all_types">All types</option></select>
+            <h3 class="exp-title" data-i18n="ui.expenses.personal_expense_history">Personal expense history</h3>
+            <div class="exp-totals" id="personalExpenseTotals" aria-live="polite"></div>
+            <div class="exp-search">
+                <input type="search" class="input" id="personalExpenseSearch" placeholder="Search expenses" data-i18n-placeholder="ui.expenses.search_placeholder" aria-label="Search expenses" data-i18n-aria-label="ui.expenses.search_placeholder" data-oninput="expenses.onSearch('personal')" />
+                <select class="input" id="personalExpenseTypeFilter" aria-label="Expense type" data-i18n-aria-label="ui.expenses.expense_type" data-onchange="expenses.onSearch('personal')"><option value="" data-i18n="ui.expenses.all_types">All types</option></select>
             </div>
-            <label class="expenses-voided-toggle"><input type="checkbox" data-expense-voided-toggle data-onchange="expenses.toggleVoided(this.checked)"> <span data-i18n="ui.expenses.show_voided">Show voided</span></label>
+            <label class="exp-voided"><input type="checkbox" class="switch" data-expense-voided-toggle data-onchange="expenses.toggleVoided(this.checked)"> <span data-i18n="ui.expenses.show_voided">Show voided</span></label>
             <div id="personalExpenseHistoryList">
-                <p style="text-align: center; color: #666; margin-top: 40px;" data-i18n="ui.expenses.no_personal_expenses_recorded_yet">No personal expenses recorded yet</p>
+                <p class="empty" data-i18n="ui.expenses.no_personal_expenses_recorded_yet">No personal expenses recorded yet</p>
             </div>
         </div>
 
@@ -139,10 +149,10 @@
                 <div class="bill-details-content" id="expenseDetailsContent">
                     <!-- Expense content will be inserted here -->
                 </div>
-                <div class="bill-details-footer">
-                    <button class="bill-action-btn btn-delete" id="expenseVoidBtn" data-onclick="expenses.voidExpenseFromModal()"><span data-i18n="ui.expenses.void_btn">Void</span></button>
-                    <button class="bill-action-btn btn-edit" id="expenseReenterBtn" data-onclick="expenses.reenterExpenseFromModal()"><span data-i18n="ui.expenses.reenter_btn">Void &amp; re-enter</span></button>
-                    <button class="bill-action-btn btn-close" data-onclick="expenses.closeExpenseDetails()" data-i18n="ui.common.close">Close</button>
+                <div class="bill-details-footer exp-dialog-actions">
+                    <button type="button" class="btn btn-ghost" data-dismiss data-onclick="expenses.closeExpenseDetails()" data-i18n="ui.common.close">Close</button>
+                    <button type="button" class="btn btn-tonal" id="expenseReenterBtn" data-onclick="expenses.reenterExpenseFromModal()"><span data-i18n="ui.expenses.reenter_btn">Void &amp; re-enter</span></button>
+                    <button type="button" class="btn danger" id="expenseVoidBtn" data-onclick="expenses.voidExpenseFromModal()"><span data-i18n="ui.expenses.void_btn">Void</span></button>
                 </div>
             </div>
         </div>

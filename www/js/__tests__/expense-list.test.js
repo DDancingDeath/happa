@@ -87,7 +87,7 @@ describe('Expenses page: search, templates and totals (#90)', () => {
     });
 
     const list = () => document.getElementById('businessExpenseHistoryList');
-    const cards = () => list().querySelectorAll('.expense-card').length;
+    const cards = () => list().querySelectorAll('.exp-row').length;
 
     test('totals line: today and this month; a search adds what it shows', () => {
         const totals = document.getElementById('businessExpenseTotals');
@@ -123,7 +123,7 @@ describe('Expenses page: search, templates and totals (#90)', () => {
 
     test('a template chip fills type, name and amount; nothing is saved', () => {
         const save = jest.spyOn(FirebaseService, 'startSaveExpense');
-        const chips = document.querySelectorAll('#businessExpenseTemplates .expense-template-chip');
+        const chips = document.querySelectorAll('#businessExpenseTemplates .exp-template');
         expect([...chips].map(c => c.textContent)).toEqual(['Tea · Ramu · ₹20', 'Labour · Shyam · ₹300', 'Rent · ₹5,000']);
         chips[1].click();
         expect(['Type', 'Person', 'Amount'].map(n => document.getElementById(`businessExpense${n}`).value)).toEqual(['Labour', 'Shyam', '300']);

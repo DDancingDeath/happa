@@ -144,6 +144,10 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   in a panel (`.stock-item` stays as the hook; an unmatched bucket takes a tone stripe); the low-stock list is a
   `.notice`; the adjustment form is a panel of `.field`s with kg and ₹ … /kg as `.adorn`, current stock and average
   rate as `.metrics`; adjustments are panels (`.history-item` hook). Sections switch with `hidden`.
+- **Expenses (5.4b)**: Business | Personal is a `.seg`; each form is a `.panel` of `.field`s (₹ as an `.adorn`) with a primary
+  Save and a tonal Print; a section's list is a `.panel` of `.row`s (amount in `.row-trail`, voided rows `.is-voided` with a
+  `.tag`), "Show voided" is a `.switch` and the quick-fill templates are `.chip`s. Expense details: the amount as a
+  `.display-num`, then a `.panel` of label | value `.row`s with sprite icons and the remarks as a `.notice`.
 - **Feedback** `.notice` (`.pos/.neg/.warn/.info`), `.empty`, `.skel`, `.toast` (near-black; light in the
   Dark theme), `.dialog` / `.sheet` / `.scrim` (old `.modal-overlay > .modal-box`), `.spinner` (blocking
   saves only). Dialog buttons: Cancel (ghost) on the left, one primary on the right, labelled with a verb; a destructive
