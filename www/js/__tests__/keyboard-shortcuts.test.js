@@ -85,3 +85,40 @@ describe('Esc closes JS-built popups (#88)', () => {
         expect(popup.isConnected).toBe(false);
     });
 });
+describe('Esc closes dialogs in Hindi', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const { setLang, t } = require('../i18n/index.js');
+    afterEach(() => {
+        setLang('en');
+        document.body.innerHTML = '';
+        delete window.__aadhatShortcutsInstalled;
+        jest.restoreAllMocks();
+    });
+
+    test('a Hindi Cancel ("रहने दें") is found by its text', () => {
+        const root = document.createElement('div');
+        root.innerHTML = '<button>बदलें</button><button>रहने दें</button>';
+        expect(findCloseControl(root).textContent).toBe('रहने दें');
+    });
+
+    test('Escape closes the Item dialog in Hindi through its Cancel', () => {
+        setLang('hi');
+        jest.spyOn(Element.prototype, 'getClientRects').mockReturnValue([{}]);
+        window.matchMedia = () => ({ matches: true });
+        jest.isolateModules(() => { require('../utils/keyboard-shortcuts.js'); });
+        const html = fs.readFileSync(path.join(__dirname, '..', '..', 'templates', 'modals.html'), 'utf8');
+        document.body.innerHTML = `<div id="appContent"><div class="tab active" id="items"></div></div>${html}`;
+        const overlay = document.getElementById('itemEditOverlay');
+        overlay.style.display = 'flex';
+        const cancel = overlay.querySelector('[data-onclick="items.closeItemModal()"]');
+        cancel.textContent = t('ui.modals.cancel');
+        expect(cancel.textContent).toBe('रहने दें');
+        expect(findCloseControl(overlay)).toBe(cancel);
+        const closed = jest.fn();
+        cancel.addEventListener('click', closed);
+        const evt = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+        document.body.dispatchEvent(evt);
+        expect(closed).toHaveBeenCalledTimes(1);
+    });
+});

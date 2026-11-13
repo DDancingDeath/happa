@@ -70,7 +70,7 @@ const editCheckContext = (bill) => ({
  */
 async function askEditReason(bill, updated) {
     if (!hasEditChanges(billEditChanges(bill, updated))) return '';
-    return askReason({ titleKey: 'ui.edits.reason_title', explainKey: 'ui.edits.reason_explain', labelKey: 'ui.edits.reason_label' });
+    return askReason({ titleKey: 'ui.edits.reason_title', explainKey: 'ui.edits.reason_explain', labelKey: 'ui.edits.reason_label', confirmKey: 'ui.common.save' });
 }
 
 // Per-bill "Print comments" toggle: carried through edit, drafts and autosave.

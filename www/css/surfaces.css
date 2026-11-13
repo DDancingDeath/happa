@@ -401,6 +401,13 @@ a.row:active {
   box-shadow: var(--btn-primary-shadow);
 }
 
+/* A destructive confirm (Void bill) */
+.modal-btn-confirm.modal-btn-danger {
+  background: var(--btn-danger-bg);
+  color: var(--btn-danger-ink);
+  box-shadow: none;
+}
+
 /* ---------- Toast: near-black in every theme; the type shows as a coloured bar ---------- */
 .toast {
   padding: 12px 16px;

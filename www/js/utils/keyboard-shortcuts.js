@@ -160,7 +160,7 @@ function isBodyOverlay(el) {
 }
 
 const CLOSE_SELECTOR = '.bill-details-close, .bill-action-btn.btn-close, .modal-close, [data-dismiss]';
-const CLOSE_TEXT = /^(cancel|close|✕|×|रद्द|बंद)/i;
+const CLOSE_TEXT = /^(cancel|close|✕|×|रद्द|रहने|बंद)/i;
 
 /**
  * The control that dismisses a dialog without side effects: a known close button,

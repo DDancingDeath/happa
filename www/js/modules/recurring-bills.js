@@ -95,7 +95,7 @@ const options = (pairs, chosen) => pairs.map(([v, text]) => `<option value="${es
 function formActions(save) {
     return `<div class="rb-actions">
             <button type="button" class="btn btn-primary" id="rbSave" data-onclick="recurring.${esc(save)}()">${et('ui.rbills.save')}</button>
-            <button type="button" class="btn btn-ghost" data-onclick="recurring.cancel()">${et('ui.rbills.cancel')}</button>
+            <button type="button" class="btn btn-ghost" data-onclick="recurring.cancel()">${et('ui.modals.cancel')}</button>
         </div>`;
 }
 
