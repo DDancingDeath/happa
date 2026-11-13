@@ -2,6 +2,8 @@
 
 Part of the [owner guide](../owner-guide.md) (one file per page). Hindi: [outstanding.hi.md](outstanding.hi.md). The codes in brackets are spec IDs in [calculations.md](../calculations.md).
 
+The page opens with the total owed (O3 or O4) in large figures, the overdue part (O5) under it and a bar split by age: up to 30 days in grey, 31–60 amber, 61–90 orange and 90+ red. Tap an age group under the bar to show only its bills and parties. Then come who to chase first (sales), the parties with their initials, total and age, and the bills.
+
 | On screen | How it is worked out |
 |---|---|
 | Purchase dues per party (O1) | Sum of the due on that supplier's purchases. |

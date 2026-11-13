@@ -120,6 +120,11 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   each payment row's "Fill" (`.pay-fill`) is its tick box (`#cashCheckbox` …) drawn as a text button, so ticking
   still puts the whole bill there; ticked it reads "Filled ✓" on the primary (sale: sale) fill, its name is the visible word plus a hidden hint; the bill lines are a row list in a panel below 1024 px (the same `#billTable`
   cells; desktop keeps the table); Notes and Date sit side by side.
+- **Outstanding (5.3)**: the owed total is the hero figure, with a `.meter` and its legend (the age groups,
+  still buttons that filter). Age colours: up to 30 days `--ink-3`, 31–60 `--warning-dot`, 61–90
+  `--on-caution-soft`, 90+ `--negative`; dues themselves stay in ink, and ages are `.tag` (`.warn` after 30
+  days, `.neg` after 90). Party rows are `.row`s in a panel with an initials avatar drawn from
+  `data-initials` (CSS, so the row's text is unchanged); bills are panels.
 - **Today › Cash (5.2a)**: Available cash is the hero figure, the day's other figures a `.metrics` panel (each figure draws its
   own hairlines, so the grid holds whichever ones show); Open, Record and Close are panels of `.field`s with ₹ as an `.adorn-pre`,
   one primary button each (Record is tonal while Close shows); the Difference figure takes a tone class.

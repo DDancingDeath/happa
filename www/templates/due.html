@@ -1,27 +1,32 @@
 <div id="due" class="tab">
+        <header class="page-head"><h2 data-i18n="ui.nav.outstanding">Outstanding</h2></header>
+
         <!-- Figures from the phone's cache until the server answers (#59) -->
         <p class="updating-note" data-i18n="ui.sync.figures_updating">Updating… these figures may change when the latest entries arrive.</p>
-        
-        <div class="filter-buttons" style="margin-bottom: 20px;">
-            <button class="filter-btn filter-purchase active" data-onclick="outstanding.filterDue('purchase', event)" data-i18n="ui.common.purchases">Purchases</button>
-            <button class="filter-btn filter-sale" data-onclick="outstanding.filterDue('sale', event)" data-i18n="ui.common.sales">Sales</button>
-        </div>
-        <div class="filter-buttons" id="dueSaleKinds" style="margin-bottom: 16px;" hidden>
-            <button type="button" class="filter-btn" data-due-kind="sale" data-onclick="outstanding.filterDue('sale')" data-i18n="ui.outstanding.kind_all">All</button>
-            <button type="button" class="filter-btn" data-due-kind="retail" data-onclick="outstanding.filterDue('retail')" data-i18n="ui.outstanding.kind_retail">Retail</button>
-            <button type="button" class="filter-btn" data-due-kind="wholesale" data-onclick="outstanding.filterDue('wholesale')" data-i18n="ui.outstanding.kind_wholesale">Wholesale</button>
+
+        <!-- Purchases | Sales, search, then All / Retail / Wholesale chips under Sales (redesign 5.3) -->
+        <div class="seg due-seg" role="group">
+            <button type="button" class="filter-purchase active" aria-pressed="true" data-onclick="outstanding.filterDue('purchase', event)"><span class="mode-dot" aria-hidden="true"></span><span data-i18n="ui.common.purchases">Purchases</span></button>
+            <button type="button" class="filter-sale" aria-pressed="false" data-onclick="outstanding.filterDue('sale', event)"><span class="mode-dot sale" aria-hidden="true"></span><span data-i18n="ui.common.sales">Sales</span></button>
         </div>
 
-        <div style="margin-bottom: 20px;">
-            <input type="text" 
-                   id="outstandingSearchInput" 
-                   placeholder="🔍 Search by customer name or ID..."
-                   data-oninput="outstanding.searchOutstanding()" data-i18n-placeholder="ui.outstanding.search_customer_name_id">
+        <div class="due-search">
+            <svg class="i" aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
+            <input type="text" class="input"
+                   id="outstandingSearchInput"
+                   placeholder="Search by customer name or ID…"
+                   data-oninput="outstanding.searchOutstanding()" data-i18n-placeholder="ui.outstanding.search_customer_name_id" data-i18n-aria-label="ui.outstanding.search_customer_name_id" aria-label="Search by customer name or ID…">
+        </div>
+
+        <div class="due-chips" id="dueSaleKinds" role="group" hidden>
+            <button type="button" class="chip" data-due-kind="sale" data-onclick="outstanding.filterDue('sale')" data-i18n="ui.outstanding.kind_all">All</button>
+            <button type="button" class="chip" data-due-kind="retail" data-onclick="outstanding.filterDue('retail')" data-i18n="ui.outstanding.kind_retail">Retail</button>
+            <button type="button" class="chip" data-due-kind="wholesale" data-onclick="outstanding.filterDue('wholesale')" data-i18n="ui.outstanding.kind_wholesale">Wholesale</button>
         </div>
 
         <div id="dueAging"></div>
 
-        <div id="dueList">
-            <p style="text-align: center; color: #666; margin-top: 40px;" data-i18n="ui.outstanding.no_outstanding_amounts">No outstanding amounts</p>
+        <div id="dueList" class="due-list">
+            <p class="empty" data-i18n="ui.outstanding.no_outstanding_amounts">No outstanding amounts</p>
         </div>
     </div>

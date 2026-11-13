@@ -285,7 +285,7 @@ describe('#125 wholesale dues on Outstanding (All / Retail / Wholesale)', () => 
     });
     const ids = () => [...document.querySelectorAll('#dueList .history-item')].map(el => el.querySelector('input[type="number"]').id.replace(/^(due)?[pP]ayment_/, '')).sort();
     const total = () => document.querySelector('#dueAging .aging-total').textContent;
-    const active = () => [...document.querySelectorAll('#due .filter-btn.active')].map(b => b.dataset.dueKind || b.className.match(/filter-(purchase|sale)/)[1]);
+    const active = () => [...document.querySelectorAll('#due .seg > .active, #dueSaleKinds > .active')].map(b => b.dataset.dueKind || b.className.match(/filter-(purchase|sale)/)[1]);
 
     test('Sales shows All by default: retail and open wholesale bills (not paid, voided, cleared or a few paise)', () => {
         OutstandingManager.filterDue('sale');
