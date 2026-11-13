@@ -24,6 +24,20 @@ let toastTimer = null;
 let loadingShown = false;
 let loadingHolds = 0;
 
+/** Confirm button of #modalOverlay: "OK", or a verb (and danger) for this one dialog. */
+function setConfirmButton({ confirmLabel = '', danger = false } = {}) {
+    const btn = document.getElementById('modalConfirm');
+    if (!btn) return;
+    if (confirmLabel) {
+        btn.removeAttribute('data-i18n');
+        btn.textContent = confirmLabel;
+    } else {
+        btn.setAttribute('data-i18n', 'ui.modals.ok');
+        btn.textContent = t('ui.modals.ok');
+    }
+    btn.classList.toggle('modal-btn-danger', !!danger);
+}
+
 const TOAST_TYPES = ['success', 'error', 'warning', 'info'];
 const TOAST_TYPE_DURATIONS = { error: 5000, warning: 4000, info: 3000, success: 2000 };
 
@@ -186,9 +200,10 @@ const UIManager = {
      * @param {string} message - The message to display
      * @param {string} [title='Alert'] - The modal title
      * @param {boolean} [showCancel=false] - Whether to show cancel button
+     * @param {{confirmLabel?: string, danger?: boolean}} [opts] - A verb for the confirm button; danger styles it destructive
      * @returns {Promise<boolean>} Resolves with user's choice (true for OK, false for Cancel)
      */
-    showModal(message, title = t('ui.modals.alert'), showCancel = false) {
+    showModal(message, title = t('ui.modals.alert'), showCancel = false, opts = {}) {
         return new Promise((resolve) => {
             const overlay = document.getElementById('modalOverlay');
             const modalTitle = document.getElementById('modalTitle');
@@ -204,6 +219,7 @@ const UIManager = {
             // Use textContent to prevent XSS attacks
             modalMessage.textContent = message;
             cancelBtn.style.display = showCancel ? 'inline-block' : 'none';
+            setConfirmButton(opts);
             overlay.classList.add('active');
             
             AppState.modalResolve = resolve;
@@ -273,9 +289,10 @@ const UIManager = {
      * @param {string} htmlMessage - The HTML message to display
      * @param {string} [title='Alert'] - The modal title
      * @param {boolean} [showCancel=false] - Whether to show cancel button
+     * @param {{confirmLabel?: string, danger?: boolean}} [opts] - A verb for the confirm button; danger styles it destructive
      * @returns {Promise<boolean>} Resolves with user's choice
      */
-    showModalWithHtml(htmlMessage, title = t('ui.modals.alert'), showCancel = false) {
+    showModalWithHtml(htmlMessage, title = t('ui.modals.alert'), showCancel = false, opts = {}) {
         return new Promise((resolve) => {
             const overlay = document.getElementById('modalOverlay');
             const modalTitle = document.getElementById('modalTitle');
@@ -291,6 +308,7 @@ const UIManager = {
             // WARNING: Only use for trusted content. Consider DOMPurify for user-generated content.
             modalMessage.innerHTML = htmlMessage;
             cancelBtn.style.display = showCancel ? 'inline-block' : 'none';
+            setConfirmButton(opts);
             overlay.classList.add('active');
             
             AppState.modalResolve = resolve;

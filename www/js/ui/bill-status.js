@@ -72,16 +72,17 @@ export function renderEditsList(list, edits) {
 
 /**
  * Asks for a required reason (void or edit). Too short or cancelled: null.
- * @param {{titleKey: string, explainKey?: string, labelKey: string}} keys
+ * @param {{titleKey: string, explainKey?: string, labelKey: string, confirmKey?: string, danger?: boolean}} keys
+ *   confirmKey: the confirm button's verb ("Void bill"); danger: a destructive confirm
  * @returns {Promise<?string>}
  */
-export async function askReason({ titleKey, explainKey, labelKey }) {
+export async function askReason({ titleKey, explainKey, labelKey, confirmKey, danger = false }) {
     const html = `<div class="reason-dialog">
         ${explainKey ? `<p class="reason-dialog__explain">${L(explainKey)}</p>` : ''}
         <label class="reason-dialog__label" for="reasonInput">${L(labelKey)}</label>
         <textarea id="reasonInput" class="reason-dialog__input" rows="2" maxlength="${REASON_MAX}"></textarea>
     </div>`;
-    const ok = await UIManager.showModalWithHtml(html, t(titleKey), true);
+    const ok = await UIManager.showModalWithHtml(html, t(titleKey), true, { confirmLabel: confirmKey ? t(confirmKey) : '', danger });
     if (!ok) return null;
     const reason = cleanReason(document.getElementById('reasonInput')?.value);
     if (!reason) {

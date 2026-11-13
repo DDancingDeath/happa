@@ -585,7 +585,7 @@ export class HistoryManager {
                     ` : ''}
                     ${bill.customerName ? `
                         <div class="bill-info-row">
-                            <div class="bill-info-label">${L('ui.common.customer')}</div>
+                            <div class="bill-info-label">${L(isPurchase ? 'ui.common.supplier' : 'ui.common.customer')}</div>
                             <div class="bill-info-value"><strong>${Helpers.escapeHtml(bill.customerName)}</strong></div>
                         </div>
                     ` : ''}
@@ -755,7 +755,7 @@ export class HistoryManager {
             UIManager.showToast(t('msg.void.needs_internet'));
             return;
         }
-        const reason = await askReason({ titleKey: 'ui.void.title', explainKey: 'ui.void.explain', labelKey: 'ui.void.reason_label' });
+        const reason = await askReason({ titleKey: 'ui.void.title', explainKey: 'ui.void.explain', labelKey: 'ui.void.reason_label', confirmKey: 'ui.void.confirm', danger: true });
         if (!reason) return;
         await Helpers.runExclusive('bill-void', '#billVoidBtn', () => this.voidBill(type, bill, reason));
     }

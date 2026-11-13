@@ -98,7 +98,7 @@ const options = (keys, chosen) => Object.entries(keys).map(([v, key]) => `<optio
 function formActions(save) {
     return `<div class="wp-actions">
             <button type="button" class="btn btn-primary" id="wpSave" data-onclick="workers.${esc(save)}()">${et('ui.workers.save')}</button>
-            <button type="button" class="btn btn-ghost" data-onclick="workers.cancel()">${et('ui.workers.cancel')}</button>
+            <button type="button" class="btn btn-ghost" data-onclick="workers.cancel()">${et('ui.modals.cancel')}</button>
         </div>`;
 }
 
