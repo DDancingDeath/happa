@@ -198,6 +198,7 @@ counts toward the 1.5 KB. A look that tokens can't express needs a new token in 
 |---|---|
 | `tests/ci/colour-guard.test.js` | a file gaining a hard-coded colour (baseline `tests/colour-baseline.json`, may only go down: `COLOUR_BASELINE=lower`) |
 | `tests/ci/type-guard.test.js` | a raw `font-size` / `font-weight` (baseline `tests/type-baseline.json`, `TYPE_BASELINE=lower`) |
+| `tests/ci/ds-guard.test.js` | a file gaining raw spacing, radius, shadow or z-index, `!important`, an `#id` or `.dark-mode` / `[data-theme]` selector, an inline style, an emoji, a Title Case label or a legacy component class (baseline `tests/ds-baseline.json`, `DS_BASELINE=lower`; see "Ratchets" below) |
 | `tests/ci/themes.test.js` | a theme missing from the registry, `styles.css` or i18n; a non-token rule or a colour outside `@media screen` in a theme file; a theme over 1.5 KB gzip; a rule in `www/css` or a template `<style>` that sets an accent, sale, wholesale, positive or negative fill and white text together |
 | `tests/ci/theme-contrast.test.js` | a text / background pair under 4.5:1 in any theme × mode |
 | `tests/ci/icon-sprite.test.js` | a missing `#i-*` symbol, or the sprite growing too large |
@@ -205,3 +206,38 @@ counts toward the 1.5 KB. A look that tokens can't express needs a new token in 
 | `tests/e2e/themes.spec.js` | axe contrast on Billing, Today, Outstanding and the open More sheet per theme × mode; the gallery preview, Cancel, Apply |
 | `tests/e2e/app-shell.spec.js` | the phone app bar title (en, hi), one `main`, the More sheet's focus, Tab, Esc and Back; the desktop sidebar |
 | `tests/e2e/a11y-contrast.spec.js`, `billing-fold.spec.js` | contrast on the main pages (en, hi); Save / Print above the fold |
+
+### Ratchets
+
+Why: the app looks inconsistent because every screen grew its own spacing, radii, shadows, inline styles, emoji icons, Title Case labels and
+component classes. Fixing that takes many page PRs; the ratchets make sure nothing new drifts in meanwhile, so the counts can only fall.
+Each guard keeps a per-file count in a committed baseline. CI fails when:
+
+* a file's count goes **up** (use the token, class or icon the message names);
+* a file's count goes **down** but its baseline doesn't. A fix must be locked in, or it can be spent on new drift later;
+* a baseline row is higher than on the PR base (checked against `origin/<base>`), or a `strict` file is dropped.
+
+| Guard | Baseline | Counts, per file |
+|---|---|---|
+| `colour-guard` | `tests/colour-baseline.json` | hex / `rgb()` / `hsl()` / colour names |
+| `type-guard` | `tests/type-baseline.json` | raw `font-size` / `font-weight` |
+| `ds-guard` `spacing` | `tests/ds-baseline.json` | `margin` / `padding` / `gap` with a non-zero px / rem / em (use `--sp-*`) |
+| `ds-guard` `radius`, `shadow`, `zIndex` | 〃 | raw `border-radius` (`--r-*`), `box-shadow` / `text-shadow` (`--e1`…`--e3`), numeric `z-index` |
+| `ds-guard` `important`, `idSelector`, `themeSelector` | 〃 | `!important`; selectors with `#id`; `.dark-mode` / `[data-theme]` / `[data-mode]` outside `variables.css` and `themes/` |
+| `ds-guard` `inlineStyle` | 〃 | template `style="…"`, `style="…"` in JS strings, `.style.x =` writes other than `display`, `setAttribute('style')`. A style holding only custom properties (`style="--w:42%"`) is allowed |
+| `ds-guard` `emoji` | 〃 | emoji in templates; `ui.*` keys with an emoji in `en.js` / `hi.js`, one row per area (`www/js/i18n/en.js#ui.cash`) |
+| `ds-guard` `titleCase` | 〃 | Title Case `ui.*` labels (2–7 words) in `en.js`, one row per area |
+| `ds-guard` `legacyClass` | 〃 + `tests/ds-legacy-classes.json` | uses of a legacy component class (registry: old class → its replacement) in `class="…"`, `className` and `classList.add/toggle` |
+
+Scope: `www/css` (not `app.css`, `variables.css` or `themes/`), `www/index.html`, `www/templates`, `www/js`. `@media print` and the receipt files
+(`rent-receipt.css`, `printer.js`, `receipt-drawing.js`, `rent-receipt.js`) stay out.
+
+Updating a baseline, after you removed drift (never to allow new drift; CI refuses a raised row):
+
+```
+DS_BASELINE=lower npx jest ds-guard          # also COLOUR_BASELINE=lower colour-guard, TYPE_BASELINE=lower type-guard
+```
+
+Commit the lowered JSON in the same PR. `DS_BASELINE=reset` rewrites the baseline from scratch (local only, for a new metric).
+A page that meets the Definition of Done joins the `strict` list in `tests/ds-baseline.json`: its files are then pinned at 0 on every metric,
+and the list may only grow.
