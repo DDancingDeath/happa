@@ -85,7 +85,7 @@ fills, the toast.
 
 - `tests/ci/theme-contrast.test.js` checks those pairs from the CSS (resolving `var()` chains and
   compositing translucent fills) for every theme × mode. A theme can't merge with a failing pair.
-- `tests/e2e/themes.spec.js` runs axe `color-contrast` on Billing, Today and Outstanding for every
+- `tests/e2e/themes.spec.js` runs axe `color-contrast` on Billing, Today, Outstanding, Money, Insights and Statements for every
   theme × mode, and `tests/e2e/a11y-contrast.spec.js` covers the main pages in Modern, en and hi, phone and desktop.
 
 ## 3. Components
@@ -107,7 +107,14 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   `.row-amt`, `.lead-icon`). **Metrics** `.metrics > .metric`, `.hero-num`, `.display-num`, `.meter`.
 - **Money figure** `.money` with the sign in `<span class="cur">₹</span>` (smaller, `--fs-cur`, and muted
   `ink-3`; plain in print): `<strong class="money"><span class="cur">₹</span><span id="…">0</span></strong>`.
-  Billing's totals and action bar use it; the digits keep their own id.
+  Billing's totals and action bar use it; the digits keep their own id. Scripts write a figure with
+  `moneyHtml(amount, opts)` (`www/js/ui/components.js`, on the `check:html-escape` allow list): `<span class="money">`,
+  the minus outside `.cur`, `—` when missing; its text is exactly `formatRupees(amount, opts)`.
+- **Page head** `<header class="page-head"><h2>…</h2></header>` (optionally with `<div class="page-head-actions">` for the page's mode and actions): the page's title. Below 1024 px it is not drawn (the app bar is the title); on desktop (4.2) the h2 is for screen readers, since the header bar shows the same title, and the row shows only when it has actions (an h2-only head takes no space). It is not a second banner landmark. `.sr-only` hides any other text that only screen readers need (Money keeps
+  its ⚠ / ✓ status words that way beside the sprite icon).
+- **Money, Insights, Statements (5.7)**: plain hero figures (`.hero-num`), section titles above panels of `.row`s,
+  Cash in / out as `.metrics`, `.tabs` for the sections and `.seg` for sub-views, `.notice` caveats and checks,
+  `.empty`, `.table`; `.ins-row` stays only as a hook (oracle, number audit, statement print).
 - **Billing (3.5)**: the totals are a plain panel (the payable is the big ink figure, Total paid a plain row);
   each payment row's "Fill" (`.pay-fill`) is its tick box (`#cashCheckbox` …) drawn as a text button, so ticking
   still puts the whole bill there; ticked it reads "Filled ✓" on the primary (sale: sale) fill, its name is the visible word plus a hidden hint; the bill lines are a row list in a panel below 1024 px (the same `#billTable`
@@ -117,7 +124,6 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   saves only).
 - **App shell (phone and tablet, <1024 px)**: `header.app-bar` (`hamburger.css`) holds the open page's title (`#appBarTitle`, the menu name `t('ui.nav.*')` set by `ui/bottom-nav.js` on `aadhat:tabshown`), the sync pill (`#syncStatus`) and the bell; pages scroll under it (`--appbar-h`, `--tab-top`). The menu button shows only in Rentals (no tab bar). **More** opens `#sideNav` as a modal bottom sheet (`navigation.css`): the business switch and the pages not on the tab bar (`data-bar` links are hidden there) in groups (`.nav-group`); it takes focus, keeps Tab inside, closes on Esc, Back or a swipe down and gives focus back. The open page is the `main` landmark (`role="main"`, set by `showTab`).
 - **Desktop shell (≥1024 px, 4.2, `desktop.css`)**: the same `header.app-bar` becomes the 60 px page header beside the sidebar (`--desktop-header-h`): the page title (the same `#appBarTitle`), the sync pill and the bell; pages scroll under it. The sidebar is the same `#sideNav` on `--surface-2`: the business (`.nav-mark`, name and role, the business switch), the same `.nav-group`s as the More sheet (a group shows only when the role may open one of its pages; links a role may not open carry `hidden`), Alt+1…9 hints (`.nav-kbd`, from `TAB_SHORTCUTS` in `keyboard-shortcuts.js`, which also sets `aria-keyshortcuts`), Settings and Shortcuts. At 1024–1279 px it is a 64 px icon rail (names stay for screen readers and show as tooltips). Density: `--control-h` 36, `--row-h` 44. Tab order: header, sidebar, page.
-- **Page head** `<header class="page-head"><h2>Title</h2><div class="page-head-actions">…</div></header>`, first in a page's `.tab`: hidden below 1024 px (the app bar is the title); on desktop the h2 is for screen readers (the header bar shows the title) and the row holds the page's mode and actions. It is not a second banner landmark.
 - **Tones** for text written by scripts: `.tone-pos`, `.tone-neg`, `.tone-warn`, `.tone-info`,
   `.tone-muted`, instead of inline colours.
 
@@ -205,7 +211,7 @@ counts toward the 1.5 KB. A look that tokens can't express needs a new token in 
 | `tests/ci/theme-contrast.test.js` | a text / background pair under 4.5:1 in any theme × mode |
 | `tests/ci/icon-sprite.test.js` | a missing `#i-*` symbol, or the sprite growing too large |
 | `www/js/__tests__/theme-manager.test.js`, `theme-boot.test.js` | Appearance, System, preview and the pre-paint boot |
-| `tests/e2e/themes.spec.js` | axe contrast on Billing, Today, Outstanding and the open More sheet per theme × mode; the gallery preview, Cancel, Apply |
+| `tests/e2e/themes.spec.js` | axe contrast on Billing, Today, Outstanding, Money, Insights, Statements and the open More sheet per theme × mode; the gallery preview, Cancel, Apply |
 | `tests/e2e/app-shell.spec.js` | the phone app bar title (en, hi), one `main`, the More sheet's focus, Tab, Esc and Back; the desktop page header title per page (en, hi), one banner / nav / main, the grouped sidebar per role, Tab order, Alt+1…9 and the 1024 px rail |
 | `tests/e2e/a11y-contrast.spec.js`, `billing-fold.spec.js` | contrast on the main pages (en, hi); Save / Print above the fold |
 

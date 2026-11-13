@@ -280,8 +280,8 @@
     height: calc(100dvh - var(--desktop-header-h));
   }
 
-  /* A page's head, first in its .tab: <header class="page-head"><h2>Title</h2><div class="page-head-actions">…</div></header>.
-     The header bar shows the title, so the h2 stays for screen readers and the row holds the page's mode and actions. */
+  /* A page's head (<header class="page-head"><h2>Title</h2>[<div class="page-head-actions">…</div>]</header>; surfaces.css hides it
+     below 1024 px). The header bar shows the title, so the h2 stays for screen readers and the row holds the page's mode and actions. */
   .page-head {
     display: flex;
     flex-wrap: wrap;
@@ -290,8 +290,9 @@
     margin: 0 0 var(--sp-5);
   }
 
+  /* Title only: nothing to draw, and no box (inside a grid such as .ins-head it takes no cell) */
   .page-head:not(:has(> :not(h2))) {
-    margin: 0;
+    display: contents;
   }
 
   .tab .page-head > h2 {
@@ -868,16 +869,15 @@
 }
 /* ---------- Money, Insights, Statements (redesign): two columns, wider period bar ---------- */
 @media (min-width: 1024px) {
-  .ins-title { margin-left: 0; }
-
+  /* The page title is in the header bar: the tabs, then the period; Compare & share shows open */
   .ins-head {
     display: grid;
-    grid-template-columns: auto 1fr minmax(320px, 420px);
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
     align-items: center;
-    gap: 16px;
+    gap: var(--sp-2) var(--sp-4);
   }
 
-  .ins-head .ins-title { margin-bottom: 0; }
+  .ins-head > .ins-abbar { grid-column: 1 / -1; }
   .ins-head .ins-period { margin-top: 0; }
   .ins-cmp-toggle { display: none; }
   .ins-head:not(.ins-cmp-open) .ins-cmp-more { display: block; }
@@ -885,13 +885,12 @@
   .ins-section:not([hidden]) {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 16px;
+    gap: 0 var(--sp-4);
     align-items: start;
   }
 
   .ins-section > .ins-hero { grid-column: 1 / -1; }
   .ins-section > .ins-wide { grid-column: 1 / -1; }
-  .ins-hero-value { font-size: 40px; }
 }
 
 /* Phone bottom bar and its settings (#142): the sidebar is permanent here */

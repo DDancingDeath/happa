@@ -89,11 +89,6 @@
     z-index: auto;
   }
 
-  /* A page's own head (.page-head, see desktop.css): the app bar is the title here */
-  .page-head {
-    display: none;
-  }
-
   /* The canvas band under the bar, so content scrolling up never shows between the bar and a page's sticky head (F10) */
   .tab::before {
     content: '';
