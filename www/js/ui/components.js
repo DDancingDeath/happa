@@ -26,15 +26,21 @@ export function moneyHtml(amount, opts) {
 }
 
 /**
- * Translated text that holds formatRupees(amount), escaped, with that figure drawn by moneyHtml(); the text is unchanged.
+ * Translated text that holds formatRupees(amount) for each amount (in that order), escaped, with those figures drawn
+ * by moneyHtml(); the text is unchanged.
  * @param {*} text
- * @param {*} amount
+ * @param {...*} amounts
  * @returns {string}
  */
-export function moneyInText(text, amount) {
-    const s = String(text ?? '');
-    const figure = formatRupees(amount);
-    const i = s.indexOf(figure);
-    if (i < 0) return esc(s);
-    return `${esc(s.slice(0, i))}${moneyHtml(amount)}${esc(s.slice(i + figure.length))}`;
+export function moneyInText(text, ...amounts) {
+    let rest = String(text ?? '');
+    let out = '';
+    for (const amount of amounts) {
+        const figure = formatRupees(amount);
+        const i = rest.indexOf(figure);
+        if (i < 0) continue;
+        out += `${esc(rest.slice(0, i))}${moneyHtml(amount)}`;
+        rest = rest.slice(i + figure.length);
+    }
+    return out + esc(rest);
 }

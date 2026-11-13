@@ -31,4 +31,14 @@ describe('moneyInText', () => {
     test('text without the figure is only escaped', () => {
         expect(moneyInText('Due: ₹9', 1500)).toBe('Due: ₹9');
     });
+
+    test('several figures, in order; a missing one is skipped', () => {
+        const d = document.createElement('div');
+        d.innerHTML = moneyInText('cash ₹1,500 · online ₹500', 1500, 500);
+        expect(d.textContent).toBe('cash ₹1,500 · online ₹500');
+        expect([...d.querySelectorAll('.money')].map(m => m.textContent)).toEqual(['₹1,500', '₹500']);
+        d.innerHTML = moneyInText('cash ₹1,500 · online ₹500', 7, 500);
+        expect(d.textContent).toBe('cash ₹1,500 · online ₹500');
+        expect([...d.querySelectorAll('.money')].map(m => m.textContent)).toEqual(['₹500']);
+    });
 });

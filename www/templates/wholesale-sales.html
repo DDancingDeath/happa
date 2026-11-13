@@ -193,10 +193,10 @@
                     <option value="custom" data-i18n="ui.history.custom">Custom</option>
                 </select>
                 <div id="wholesaleHistoryCustomRange" class="history-custom-range" hidden>
-                    <input type="date" id="wholesaleHistoryFrom" aria-label="From date" min="2020-01-01" data-i18n-aria-label="ui.history.from_date">
+                    <input type="date" id="wholesaleHistoryFrom" class="input" aria-label="From date" min="2020-01-01" data-i18n-aria-label="ui.history.from_date">
                     <span aria-hidden="true">–</span>
-                    <input type="date" id="wholesaleHistoryTo" aria-label="To date" min="2020-01-01" data-i18n-aria-label="ui.history.to_date">
-                    <button type="button" class="history-apply-range" data-onclick="wholesaleSales.applyHistoryRange()" data-i18n="ui.history.apply">Apply</button>
+                    <input type="date" id="wholesaleHistoryTo" class="input" aria-label="To date" min="2020-01-01" data-i18n-aria-label="ui.history.to_date">
+                    <button type="button" class="btn btn-primary btn-sm history-apply-range" data-onclick="wholesaleSales.applyHistoryRange()" data-i18n="ui.history.apply">Apply</button>
                 </div>
                 <div id="wholesaleHistoryRangeHint" class="history-range-hint" role="alert" hidden></div>
             </div>

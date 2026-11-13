@@ -474,10 +474,6 @@
     font-size: var(--fs-caption);
   }
 
-  .history-view-toggle {
-    min-height: 40px;
-  }
-
   /* ---------- Today: hero strip, the day's figures | needs attention (redesign 5.1) ---------- */
   #dayTodayContent:not([style*="none"]) {
     display: grid;

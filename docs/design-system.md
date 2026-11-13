@@ -135,7 +135,7 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   and its tones read `--bill-tone-text / -soft / -fill / -ink`, which `.bill-page` sets to the wholesale mode (violet fills and
   soft, ink text). Sales | History | Outstanding is a `.seg`; stock and average rate are `.metrics`; Outstanding bills are
   Outstanding's `.due-bill` panels; a bill opened from a list is panels of `.row`s and a `.table`.
-  `moneyInText(text, amount)` (`components.js`) draws the figure inside a translated sentence with `moneyHtml`.
+  `moneyInText(text, ...amounts)` (`components.js`) draws the figures inside a translated sentence with `moneyHtml`, in order.
 - **Feedback** `.notice` (`.pos/.neg/.warn/.info`), `.empty`, `.skel`, `.toast` (near-black; light in the
   Dark theme), `.dialog` / `.sheet` / `.scrim` (old `.modal-overlay > .modal-box`), `.spinner` (blocking
   saves only). Dialog buttons: Cancel (ghost) on the left, one primary on the right, labelled with a verb; a destructive

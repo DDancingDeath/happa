@@ -65,13 +65,8 @@ www/js/modules/diagnostics.js: typeColors[error.type] || '#666' ← typeColors[e
 www/js/modules/diagnostics.js: typeLabels[error.type] || Helpers.escapeHtml(error.type) ← typeLabels[error.type] {typeLabels = { 'uncaught': `🔴 ${tx('ui.diag.t_uncaught')}`, 'unhandledrejection': `🟠 ${tx('}
 www/js/modules/health.js: html (sink)
 www/js/modules/history.js: (toMoney(item.total) ?? toMoney(item.amount)) === null ? '—' : formatAmount(toMoney(item.total) ?? toMoney(item.amount), { exact: true }) ← formatAmount(toMoney(item.total) ?? toMoney(item.amount), { exact: true })
-www/js/modules/history.js: bg
 www/js/modules/history.js: billTableHtml(bills, { openings: this.pageOpenings, voided: this.pageVoided, typeTags: type === 'sale', onclickFor: (bill) => `history.viewB (sink)
 www/js/modules/history.js: editsRowHtml(bill, 'history.showEdits()')
-www/js/modules/history.js: fg
-www/js/modules/history.js: known ? formatRupees(billLineTotal(bill, true)) : UNKNOWN_AMOUNT ← UNKNOWN_AMOUNT
-www/js/modules/history.js: known ? formatRupees(billTotal(bill)) : UNKNOWN_AMOUNT ← UNKNOWN_AMOUNT
-www/js/modules/history.js: known ? formatRupees(billTotal(bill)) : UNKNOWN_AMOUNT ← UNKNOWN_AMOUNT
 www/js/modules/history.js: shownDate.bad ? badDateBadgeHtml() : '' ← badDateBadgeHtml()
 www/js/modules/history.js: toMoney(item.rate) === null ? '—' : formatAmount(item.rate, { decimals: 2 }) ← formatAmount(item.rate, { decimals: 2 })
 www/js/modules/history.js: voidedBannerHtml(bill)

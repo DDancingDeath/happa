@@ -38,9 +38,13 @@ import { openExternal } from '../utils/open-external.js';
 import { billTraceId } from '../utils/status-report.js';
 import { track } from '../services/usage.js';
 import { t, tn, loadAllCatalogues } from '../i18n/index.js';
+import { moneyHtml, moneyInText } from '../ui/components.js';
+import { icon } from '../ui/icons.js';
 import { billLabour, billLineTotal, billTotal, hasBillAmount, isActiveBill, isOpeningRecord, readPayment, UNKNOWN_AMOUNT, formatRupees, formatAmount, formatKg, toMoney } from '../utils/money.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
+/** A figure as moneyHtml; a missing amount keeps formatRupees' text. */
+const money = (amount) => (moneyHtml(amount) === '—' ? Helpers.escapeHtml(formatRupees(amount)) : moneyHtml(amount));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', sale: 'ui.history.noun_sale' };
 /** Bill type → Firestore collection key and AppState list. */
 const BILL_COLLECTION = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' };
@@ -84,9 +88,9 @@ function billTimesHtml(bill) {
     const { entered, server, far } = billTimes(bill, { waiting });
     if (!entered && !server) return '';
     const row = (key, d) => (d ? `
-                        <div class="bill-info-row bill-time-row">
-                            <div class="bill-info-label">${L(key)}</div>
-                            <div class="bill-info-value">${Helpers.escapeHtml(Helpers.formatDateTime(d))}</div>
+                        <div class="row bill-view-row bill-time-row">
+                            <span class="row-main">${L(key)}</span>
+                            <span>${Helpers.escapeHtml(Helpers.formatDateTime(d))}</span>
                         </div>` : '');
     return row('ui.history.entered_at', entered) + row('ui.history.server_at', server)
         + (far ? `<div class="bill-times-note" role="note">${L('ui.history.times_differ')}</div>` : '');
@@ -276,7 +280,7 @@ export class HistoryManager {
         }
 
         if (sortedBills.length === 0 && !showOpenings && !showVoided) {
-            container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 40px;">${Helpers.escapeHtml(this.emptyMessage(type, searchTerm))}</p>`;
+            container.innerHTML = `<p class="empty">${Helpers.escapeHtml(this.emptyMessage(type, searchTerm))}</p>`;
             this.renderShowMore(container);
             this.updateOlderHistoryUi();
             return;
@@ -326,7 +330,6 @@ export class HistoryManager {
         if (!this.hasHiddenBills()) return;
         const row = document.createElement('div');
         row.className = 'history-show-more';
-        row.style.cssText = 'text-align:center;padding:12px;';
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'infinite-scroll-more';
@@ -433,17 +436,17 @@ export class HistoryManager {
             list.parentNode?.appendChild(footer);
         }
         if (!this.activeSearch || ranged || (isFullHistoryLoaded() && !this.searchingOlder)) {
-            footer.style.display = 'none';
+            footer.hidden = true;
             footer.textContent = '';
             return;
         }
-        footer.style.display = '';
+        footer.hidden = false;
         footer.textContent = '';
         const text = document.createElement('span');
         text.textContent = t('ui.history.matches_since', { date: formatWindowDate(historyLoadedFrom()) });
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'history-search-older-btn';
+        btn.className = 'btn btn-tonal btn-sm';
         btn.disabled = this.searchingOlder;
         btn.textContent = t(this.searchingOlder ? 'ui.history.searching_older' : 'ui.history.search_older');
         btn.addEventListener('click', () => this.searchOlderBills());
@@ -509,7 +512,6 @@ export class HistoryManager {
         
         const totalPackets = bill.totalPackets || 0;
         const isPurchase = type === 'purchase';
-        const billColor = isPurchase ? '#0058b8' : '#1c7430';
         
         // Build weight breakdown (purchases and sales)
         let weightBreakdownHTML = '';
@@ -518,9 +520,11 @@ export class HistoryManager {
             if (item.weights && item.weights.length >= 2) {
                 const weightsDisplay = item.weights.map(w => formatKg(w)).join('&nbsp;&nbsp;');
                 weightBreakdownHTML += `
-                    <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid ${billColor};">
-                        <div style="font-weight: 600; color: #495057; margin-bottom: 6px;">${Helpers.escapeHtml(item.name)} (${Helpers.escapeHtml(tn('ui.history.packets_kg', item.weights.length, { packets: item.weights.length, kg: formatKg(item.qty) }))})</div>
-                        <div style="color: #6c757d; font-size: 14px; white-space: pre;">${weightsDisplay}</div>
+                    <div class="row bill-view-row bill-view-weight">
+                        <div class="row-main">
+                            <div class="row-title">${Helpers.escapeHtml(item.name)} (${Helpers.escapeHtml(tn('ui.history.packets_kg', item.weights.length, { packets: item.weights.length, kg: formatKg(item.qty) }))})</div>
+                            <div class="bill-view-weights">${weightsDisplay}</div>
+                        </div>
                     </div>
                 `;
             }
@@ -529,10 +533,10 @@ export class HistoryManager {
         // Build items table
         const itemsHTML = bill.items.map(item => `
             <tr>
-                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb;">${Helpers.escapeHtml(item.name)}</td>
-                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">${toMoney(item.rate) === null ? '—' : formatAmount(item.rate, { decimals: 2 })}</td>
-                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">${formatKg(item.qty || item.quantity)}</td>
-                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: right;"><strong>${(toMoney(item.total) ?? toMoney(item.amount)) === null ? '—' : formatAmount(toMoney(item.total) ?? toMoney(item.amount), { exact: true })}</strong></td>
+                <td>${Helpers.escapeHtml(item.name)}</td>
+                <td class="num">${toMoney(item.rate) === null ? '—' : formatAmount(item.rate, { decimals: 2 })}</td>
+                <td class="num">${formatKg(item.qty || item.quantity)}</td>
+                <td class="num"><strong>${(toMoney(item.total) ?? toMoney(item.amount)) === null ? '—' : formatAmount(toMoney(item.total) ?? toMoney(item.amount), { exact: true })}</strong></td>
             </tr>
         `).join('');
         
@@ -543,84 +547,83 @@ export class HistoryManager {
             ? { atSave: { cash: voidPay.cash, online: voidPay.online }, later: { cash: 0, online: 0, total: 0 }, writtenOff: 0, due: 0 }
             : paymentBreakdown(bill);
         const afterSave = parts.later.total > 0 || parts.writtenOff > 0;
-        const money = (v) => Helpers.escapeHtml(Helpers.formatCurrency(v));
-        const payRow = (key, value, bg, fg, note = '') => `
-                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; font-size: 14px;">
-                        <span>${L(key)}${note ? `<br><small style="color: #595959;">${Helpers.escapeHtml(note)}</small>` : ''}</span>
-                        <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: 600; background: ${bg}; color: ${fg};">${money(value)}</span>
+        const payRow = (key, value, tone, split = false) => `
+                    <div class="row bill-view-row">
+                        <div class="row-main">
+                            <div>${L(key)}</div>
+                            ${split ? `<div class="row-meta">${moneyInText(t('ui.history.paid_later_split', { cash: Helpers.formatCurrency(parts.later.cash), online: Helpers.formatCurrency(parts.later.online) }), parts.later.cash, parts.later.online)}</div>` : ''}
+                        </div>
+                        <span class="tag ${Helpers.escapeHtml(tone)}">${money(value)}</span>
                     </div>`;
         const paymentHTML = (parts.atSave.online > 0 || parts.atSave.cash > 0 || afterSave || parts.due > 0) ? `
-            <div style="background: white; padding: 14px; border-radius: 10px; border: 1px solid #dee2e6; margin-top: 12px;">
-                <h4 style="margin: 0 0 12px 0; font-size: 15px; color: #212529;">${L('ui.history.payment_details')}</h4>
-                ${parts.atSave.online > 0 ? payRow(afterSave ? 'ui.history.online_at_save' : 'ui.history.online', parts.atSave.online, '#cfe2ff', '#084298') : ''}
-                ${parts.atSave.cash > 0 ? payRow(afterSave ? 'ui.history.cash_at_save' : 'ui.history.cash', parts.atSave.cash, '#d1e7dd', '#0f5132') : ''}
-                ${parts.later.total > 0 ? payRow('ui.history.paid_later', parts.later.total, '#e0f2fe', '#075985',
-                    t('ui.history.paid_later_split', { cash: Helpers.formatCurrency(parts.later.cash), online: Helpers.formatCurrency(parts.later.online) })) : ''}
-                ${parts.writtenOff > 0 ? payRow('ui.history.written_off', parts.writtenOff, '#f3f4f6', '#374151') : ''}
-                ${parts.due > 0 ? payRow('ui.history.due', parts.due, '#fff3cd', '#997404') : ''}
+            <div class="panel bill-view-panel">
+                <h4 class="bill-view-title">${L('ui.history.payment_details')}</h4>
+                ${parts.atSave.online > 0 ? payRow(afterSave ? 'ui.history.online_at_save' : 'ui.history.online', parts.atSave.online, 'info') : ''}
+                ${parts.atSave.cash > 0 ? payRow(afterSave ? 'ui.history.cash_at_save' : 'ui.history.cash', parts.atSave.cash, 'pos') : ''}
+                ${parts.later.total > 0 ? payRow('ui.history.paid_later', parts.later.total, 'info', true) : ''}
+                ${parts.writtenOff > 0 ? payRow('ui.history.written_off', parts.writtenOff, '') : ''}
+                ${parts.due > 0 ? payRow('ui.history.due', parts.due, 'warn') : ''}
             </div>
         ` : '';
-                const billNumber = bill.billNumber || (typeof bill.id === 'string' ? bill.id.substring(0, 8) : bill.id);
+        const billNumber = bill.billNumber || (typeof bill.id === 'string' ? bill.id.substring(0, 8) : bill.id);
         // A bill that stores no amount shows "—", not ₹0 (#80)
         const known = hasBillAmount(bill);
         const shownDate = billRowDate(bill);
         
         const content = `
-            <div style="padding: 16px; max-width: 100%;">
+            <div class="bill-view${isPurchase ? '' : ' is-sale'}">
                 ${voidedBannerHtml(bill)}
-                <div class="bill-info-section">
-                    <div class="bill-info-row">
-                        <div class="bill-info-label">${L('ui.history.bill_no')}</div>
-                        <div class="bill-info-value"><strong style="color: ${isPurchase ? 'var(--info-color)' : 'var(--success-color)'};">#${Helpers.escapeHtml(billNumber)}</strong></div>
+                <div class="panel bill-view-info">
+                    <div class="row bill-view-row">
+                        <span class="row-main">${L('ui.history.bill_no')}</span>
+                        <strong class="bill-view-no">#${Helpers.escapeHtml(billNumber)}</strong>
                     </div>
-                    <div class="bill-info-row">
-                        <div class="bill-info-label">${L('ui.history.date_label')}</div>
-                        <div class="bill-info-value">${Helpers.escapeHtml(shownDate.text)}${shownDate.bad ? badDateBadgeHtml() : ''}</div>
+                    <div class="row bill-view-row">
+                        <span class="row-main">${L('ui.history.date_label')}</span>
+                        <span>${Helpers.escapeHtml(shownDate.text)}${shownDate.bad ? badDateBadgeHtml() : ''}</span>
                     </div>
                     ${bill.createdByName || bill.userName ? `
-                        <div class="bill-info-row">
-                            <div class="bill-info-label">${L('ui.history.created_by')}</div>
-                            <div class="bill-info-value">${Helpers.escapeHtml(bill.createdByName || bill.userName)}</div>
+                        <div class="row bill-view-row">
+                            <span class="row-main">${L('ui.history.created_by')}</span>
+                            <span>${Helpers.escapeHtml(bill.createdByName || bill.userName)}</span>
                         </div>
                     ` : ''}
                     ${bill.customerName ? `
-                        <div class="bill-info-row">
-                            <div class="bill-info-label">${L(isPurchase ? 'ui.common.supplier' : 'ui.common.customer')}</div>
-                            <div class="bill-info-value"><strong>${Helpers.escapeHtml(bill.customerName)}</strong></div>
+                        <div class="row bill-view-row">
+                            <span class="row-main">${L(isPurchase ? 'ui.common.supplier' : 'ui.common.customer')}</span>
+                            <strong>${Helpers.escapeHtml(bill.customerName)}</strong>
                         </div>
                     ` : ''}
                     ${billTimesHtml(bill)}
                     ${billTraceId(bill, type) ? `
-                        <div class="bill-info-row bill-trace-row">
-                            <div class="bill-info-label">${L('ui.status.trace_id')}</div>
-                            <div class="bill-info-value"><code lang="zxx" translate="no" style="font-size:12px;">${Helpers.escapeHtml(billTraceId(bill, type))}</code>
-                                <button type="button" class="btn-link bill-trace-copy" data-onclick="history.copyTraceId()" style="margin-left:6px;font-size:12px;">${L('ui.status.copy_short')}</button></div>
+                        <div class="row bill-view-row bill-trace-row">
+                            <span class="row-main">${L('ui.status.trace_id')}</span>
+                            <span class="bill-trace"><code lang="zxx" translate="no">${Helpers.escapeHtml(billTraceId(bill, type))}</code>
+                                <button type="button" class="btn btn-ghost btn-sm bill-trace-copy" data-onclick="history.copyTraceId()">${L('ui.status.copy_short')}</button></span>
                         </div>
                     ` : ''}
                 </div>
                 
                 ${bill.comments ? `
-                    <div style="margin-bottom: 12px; padding: 10px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
-                        <span style="color: #6c757d; font-size: 14px;">${L('ui.wholesale.comments')}</span>
-                        <div style="font-size: 14px; color: #212529; margin-top: 4px;">${Helpers.escapeHtml(bill.comments)}</div>
+                    <div class="notice warn bill-view-note">
+                        <span>${L('ui.wholesale.comments')}</span>
+                        <div class="bill-view-note-text">${Helpers.escapeHtml(bill.comments)}</div>
                     </div>
                 ` : ''}
                 
                 ${weightBreakdownHTML ? `
-                    <div style="margin: 16px 0;">
-                        <h4 style="margin-bottom: 12px; color: #212529; font-size: 15px;">${L('ui.history.weight_breakdown')}</h4>
-                        ${weightBreakdownHTML}
-                    </div>
+                    <h4 class="bill-view-title">${L('ui.history.weight_breakdown')}</h4>
+                    <div class="panel">${weightBreakdownHTML}</div>
                 ` : ''}
                 
-                <h4 style="margin: 16px 0 12px 0; color: #212529; font-size: 15px;">${L(isPurchase ? 'ui.common.bill_items' : 'ui.history.sale_items')}</h4>
-                <table style="width: 100%; border-collapse: collapse; background: white; margin-bottom: 16px;">
+                <h4 class="bill-view-title">${L(isPurchase ? 'ui.common.bill_items' : 'ui.history.sale_items')}</h4>
+                <table class="table bill-view-items">
                     <thead>
-                        <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                            <th style="padding: 10px 8px; text-align: left; font-size: 14px; font-weight: 600; color: #495057;">${L('ui.common.item_2')}</th>
-                            <th style="padding: 10px 8px; text-align: center; font-size: 14px; font-weight: 600; color: #495057;">${L('ui.history.rate_rs')}</th>
-                            <th style="padding: 10px 8px; text-align: center; font-size: 14px; font-weight: 600; color: #495057;">${L('ui.history.qty_kg')}</th>
-                            <th style="padding: 10px 8px; text-align: right; font-size: 14px; font-weight: 600; color: #495057;">${L('ui.history.total_rs')}</th>
+                        <tr>
+                            <th>${L('ui.common.item_2')}</th>
+                            <th class="num">${L('ui.history.rate_rs')}</th>
+                            <th class="num">${L('ui.history.qty_kg')}</th>
+                            <th class="num">${L('ui.history.total_rs')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -628,32 +631,32 @@ export class HistoryManager {
                     </tbody>
                 </table>
                 
-                <div style="text-align: right; padding: 8px 0; font-size: 14px; color: #6c757d; margin-bottom: 12px;">
-                    ${L('ui.billing.total_packets')} <strong style="color: #212529; font-size: 15px;">${Helpers.escapeHtml(totalPackets)}</strong>
+                <div class="bill-view-packets">
+                    ${L('ui.billing.total_packets')} <strong>${Helpers.escapeHtml(totalPackets)}</strong>
                 </div>
                 
-                <div style="background: white; padding: 14px; border-radius: 10px; border: 1px solid #dee2e6;">
+                <div class="panel bill-view-panel">
                     ${isPurchase ? `
-                        <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px;">
-                            <span style="font-weight: 600;">${L('ui.billing.purchase_total')}</span>
-                            <strong style="font-size: 17px; color: ${billColor};">${known ? formatRupees(billLineTotal(bill, true)) : UNKNOWN_AMOUNT}</strong>
+                        <div class="row bill-view-row bill-view-total">
+                            <span class="row-main">${L('ui.billing.purchase_total')}</span>
+                            <strong class="row-amt">${known ? money(billLineTotal(bill, true)) : Helpers.escapeHtml(UNKNOWN_AMOUNT)}</strong>
                         </div>
                         
                         ${billLabour(bill) > 0 ? `
-                            <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; border-top: 1px solid #e9ecef;">
-                                <span style="font-weight: 600;">${L('ui.billing.labor')}</span>
-                                <strong style="font-size: 17px; color: #ffc107;">${formatRupees(billLabour(bill))}</strong>
+                            <div class="row bill-view-row bill-view-total">
+                                <span class="row-main">${L('ui.billing.labor')}</span>
+                                <strong class="row-amt tone-warn">${money(billLabour(bill))}</strong>
                             </div>
                             
-                            <div style="display: flex; justify-content: space-between; padding: 12px 0; font-size: 16px; border-top: 2px solid ${billColor}; margin-top: 8px; background: linear-gradient(135deg, #e3f2fd, #bbdefb); margin: 8px -14px -14px -14px; padding: 12px 14px; border-radius: 0 0 10px 10px;">
-                                <span style="font-weight: 700;">${L('ui.billing.total_payable')}</span>
-                                <strong style="font-size: 18px; color: #1976d2;">${known ? formatRupees(billTotal(bill)) : UNKNOWN_AMOUNT}</strong>
+                            <div class="row bill-view-row bill-view-total bill-view-grand">
+                                <span class="row-main">${L('ui.billing.total_payable')}</span>
+                                <strong class="row-amt">${known ? money(billTotal(bill)) : Helpers.escapeHtml(UNKNOWN_AMOUNT)}</strong>
                             </div>
                         ` : ''}
                     ` : `
-                        <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px;">
-                            <span style="font-weight: 600;">${L('ui.billing.sale_total')}</span>
-                            <strong style="font-size: 17px; color: ${billColor};">${known ? formatRupees(billTotal(bill)) : UNKNOWN_AMOUNT}</strong>
+                        <div class="row bill-view-row bill-view-total">
+                            <span class="row-main">${L('ui.billing.sale_total')}</span>
+                            <strong class="row-amt">${known ? money(billTotal(bill)) : Helpers.escapeHtml(UNKNOWN_AMOUNT)}</strong>
                         </div>
                     `}
                 </div>
@@ -670,7 +673,7 @@ export class HistoryManager {
         setBillActions(bill, who, { editable: type !== 'wholesale' });
         if (isActiveBill(bill) && AppState.userRole !== 'owner' && !withinBillEditWindow(bill, who)) {
             document.getElementById('billDetailsContent').insertAdjacentHTML('beforeend',
-                `<div class="bill-window-note" style="margin: 0 16px 16px; padding: 10px; background: #f8f9fa; border-radius: 8px; color: #6c757d; font-size: 13px;">🔒 ${L('msg.roles.edit_window_closed', { days: accessFor(AppState.userRole, who.raw).editDays })}</div>`);
+                `<div class="notice bill-window-note">${icon('lock', 'i-sm')}<span class="grow">${L('msg.roles.edit_window_closed', { days: accessFor(AppState.userRole, who.raw).editDays })}</span></div>`);
         }
         this.renderPrintStatus();
         
@@ -954,7 +957,7 @@ export class HistoryManager {
         text.textContent = t('ui.history.bills_before_not_loaded', { date });
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'history-search-older-btn';
+        btn.className = 'btn btn-tonal btn-sm';
         btn.disabled = this.loadingGap;
         btn.textContent = t(this.loadingGap ? 'ui.history.loading' : 'ui.history.load_older');
         btn.addEventListener('click', () => this.loadRangeGap());
@@ -1000,7 +1003,7 @@ export class HistoryManager {
     /** Reflect the remembered filter in the History controls. */
     static syncFilterUi() {
         const filter = this.getFilter();
-        document.querySelectorAll('#history .history-type-filter .filter-btn').forEach(btn => {
+        document.querySelectorAll('#history .history-type-filter [data-type]').forEach(btn => {
             const active = btn.dataset.type === filter.type;
             btn.classList.toggle('active', active);
             btn.setAttribute('aria-pressed', active ? 'true' : 'false');
@@ -1086,9 +1089,9 @@ export class HistoryManager {
         const markHand = !st || st.s === 'failed' || st.s === 'uncertain';
         host.insertAdjacentHTML('beforeend', `
             <div class="bill-print-status" id="billPrintStatus" data-state="${Helpers.escapeHtml(st ? st.s : 'none')}">
-                <span class="bill-print-status__text">🖨️ ${Helpers.escapeHtml(printStatusText(current.bill, (e) => PrinterService.errorText(e)))}</span>
-                ${retry ? `<button type="button" class="filter-btn" data-onclick="history.retryPrint()">${L('ui.print_status.retry')}</button>` : ''}
-                ${markHand ? `<button type="button" class="filter-btn" data-onclick="history.markPrintedByHand()">${L('ui.print_status.mark_hand')}</button>` : ''}
+                <span class="bill-print-status__text">${icon('printer', 'i-sm')} ${Helpers.escapeHtml(printStatusText(current.bill, (e) => PrinterService.errorText(e)))}</span>
+                ${retry ? `<button type="button" class="btn btn-sm" data-onclick="history.retryPrint()">${L('ui.print_status.retry')}</button>` : ''}
+                ${markHand ? `<button type="button" class="btn btn-sm" data-onclick="history.markPrintedByHand()">${L('ui.print_status.mark_hand')}</button>` : ''}
             </div>`);
     }
 
@@ -1139,7 +1142,7 @@ export class HistoryManager {
         if (bills.length === 0 && this.pageOpenings.length === 0 && this.pageVoided.length === 0) {
             const searchInput = document.getElementById('historySearch');
             const searchTerm = searchInput ? searchInput.value : '';
-            container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 40px;">${Helpers.escapeHtml(this.emptyMessage(type, searchTerm))}</p>`;
+            container.innerHTML = `<p class="empty">${Helpers.escapeHtml(this.emptyMessage(type, searchTerm))}</p>`;
             return;
         }
 

@@ -131,7 +131,7 @@ describe('History tabs: Purchase | Sale (retail + wholesale)', () => {
 
     test('tab labels: Purchase | Sale in English, खरीद | बिक्री in Hindi', () => {
         const tpl = read('templates/history.html');
-        const keys = [...tpl.matchAll(/class="filter-btn[^"]*"[^>]*data-i18n="([^"]+)"/g)].map(m => m[1]);
+        const keys = [...tpl.matchAll(/data-type="(?:purchase|sale)"[^>]*>.*?data-i18n="([^"]+)"/g)].map(m => m[1]);
         expect(keys).toEqual(['ui.history.tab_purchase', 'ui.history.tab_sale']);
         expect(keys.map(k => en[k])).toEqual(['Purchase', 'Sale']);
         expect(keys.map(k => hi[k])).toEqual(['खरीद', 'बिक्री']);
