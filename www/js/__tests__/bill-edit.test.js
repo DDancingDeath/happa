@@ -120,7 +120,8 @@ describe('saveEditedBill', () => {
     it('asks for a reason and passes it with the edit (#121)', async () => {
         const update = jest.spyOn(FirebaseService, 'updatePurchase').mockImplementation(async b => b);
         expect(await BillingManager.saveEditedBill()).toBeDefined();
-        expect(UIManager.showModalWithHtml).toHaveBeenCalledWith(expect.stringContaining('reasonInput'), t('ui.edits.reason_title'), true);
+        expect(UIManager.showModalWithHtml).toHaveBeenCalledWith(expect.stringContaining('reasonInput'), t('ui.edits.reason_title'), true,
+            { confirmLabel: t('ui.common.save'), danger: false });
         // the audit entry goes in the edit's own transaction (D-3)
         expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: 'b1' }),
             { reason: 'Typo fix', audit: expect.objectContaining({ action: 'EDIT_BILL', details: expect.objectContaining({ amount: 0 }) }) });

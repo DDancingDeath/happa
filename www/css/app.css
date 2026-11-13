@@ -2123,6 +2123,13 @@ a.row:active {
   box-shadow: var(--btn-primary-shadow);
 }
 
+/* A destructive confirm (Void bill) */
+.modal-btn-confirm.modal-btn-danger {
+  background: var(--btn-danger-bg);
+  color: var(--btn-danger-ink);
+  box-shadow: none;
+}
+
 /* ---------- Toast: near-black in every theme; the type shows as a coloured bar ---------- */
 .toast {
   padding: 12px 16px;
@@ -3961,7 +3968,8 @@ html[data-updating] .updating-mark {
     background: var(--state-hover);
   }
 
-  #billTable td.bill-empty, #saleTable td.bill-empty {
+  /* An empty bill and a check message under a line span the whole row */
+  #billTable :is(td.bill-empty, tr.bill-check-row > td), #saleTable :is(td.bill-empty, tr.bill-check-row > td) {
     display: block;
     max-width: none;
   }
@@ -5836,6 +5844,7 @@ tr.bill-check-warn > td:first-child {
     font-size: 14px;
     font-weight: var(--w-strong);
     line-height: 1.35;
+    text-align: left;
     color: var(--on-danger-soft);
 }
 
@@ -8438,17 +8447,6 @@ html {
   padding: 14px 20px;
   text-align: center;
   border-bottom: 1px solid var(--border-color);
-  border-top: 4px solid var(--primary-color);
-}
-
-body:has(.tab.purchase-theme.active) .modal-overlay .modal-header {
-  background: var(--card-bg);
-  border-top-color: var(--btn-primary);
-}
-
-body:has(.tab.sale-theme.active) .modal-overlay .modal-header {
-  background: var(--card-bg);
-  border-top-color: var(--btn-success);
 }
 
 .modal-header h3 {
@@ -8489,20 +8487,20 @@ body:has(.tab.sale-theme.active) .modal-overlay .modal-header {
 }
 
 
-body:has(.tab.purchase-theme.active) .modal-btn-confirm {
+body:has(.tab.purchase-theme.active) .modal-btn-confirm:not(.modal-btn-danger) {
   background: var(--btn-primary);
 }
 
-body:has(.tab.purchase-theme.active) .modal-btn-confirm:hover {
+body:has(.tab.purchase-theme.active) .modal-btn-confirm:not(.modal-btn-danger):hover {
   box-shadow: var(--shadow);
 }
 
-body:has(.tab.sale-theme.active) .modal-btn-confirm {
+body:has(.tab.sale-theme.active) .modal-btn-confirm:not(.modal-btn-danger) {
   background: var(--btn-success);
   color: var(--btn-sale-ink);
 }
 
-body:has(.tab.sale-theme.active) .modal-btn-confirm:hover {
+body:has(.tab.sale-theme.active) .modal-btn-confirm:not(.modal-btn-danger):hover {
   box-shadow: var(--shadow);
 }
 
@@ -8703,10 +8701,31 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   background: var(--danger-soft);
 }
 
+.item-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.item-modal-rates {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.item-modal-rates > .rates-container {
+  flex: 1;
+}
+
+/* Cancel, then the primary on the right, as in every dialog */
+.item-modal-footer {
+  justify-content: flex-end;
+}
+
 .item-modal-danger {
   display: flex;
   justify-content: flex-start;
-  margin-top: 24px;
+  margin-top: var(--sp-2);
   padding-top: 16px;
   border-top: 1px solid var(--border-color);
 }
