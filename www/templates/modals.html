@@ -8,7 +8,7 @@
                 <div id="modalMessage"><span data-i18n="ui.modals.this_is_a_message">This is a message</span></div>
             </div>
             <div class="modal-footer" id="modalFooter">
-                <button class="modal-btn modal-btn-cancel" id="modalCancel" data-onclick="ui.closeModal(false)" data-i18n="ui.modals.cancel">Cancel</button>
+                <button class="modal-btn modal-btn-cancel" id="modalCancel" data-dismiss data-onclick="ui.closeModal(false)" data-i18n="ui.modals.cancel">Cancel</button>
                 <button class="modal-btn modal-btn-confirm" id="modalConfirm" data-onclick="ui.closeModal(true)" data-i18n="ui.modals.ok">OK</button>
             </div>
         </div>
@@ -46,57 +46,57 @@
 
     <!-- ITEM EDIT MODAL -->
     <div class="bill-details-overlay" id="itemEditOverlay" style="display: none;">
-        <div class="bill-details-container" style="max-width: 700px;">
-            <div class="bill-details-content" style="padding: 24px;">
-                <div style="margin-bottom: 20px;">
-                    <label style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px; display: block;" data-i18n="ui.modals.item_name_english">Item name (English)*</label>
-                    <input type="text" id="itemModalName" 
+        <div class="bill-details-container item-modal">
+            <div class="bill-details-header">
+                <h2 id="itemModalTitle" data-i18n="ui.items.dialog_add_title">Add item</h2>
+            </div>
+            <div class="bill-details-content item-modal-body">
+                <div class="field">
+                    <label for="itemModalName" data-i18n="ui.modals.item_name_english">Item name (English)*</label>
+                    <input type="text" id="itemModalName" class="input"
                            data-oninput="items.onModalNameInput('name')" data-onfocus="items.acceptNameSuggestion('name')"
-                           placeholder="Enter item name"
-                           style="width: 100%; padding: 12px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 15px;" data-i18n-placeholder="ui.modals.enter_item_name">
+                           placeholder="Enter item name" data-i18n-placeholder="ui.modals.enter_item_name">
                 </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px; display: block;" data-i18n="ui.items.hindi_name_label">Hindi name</label>
-                    <input type="text" id="itemModalHindiName" 
+
+                <div class="field">
+                    <label for="itemModalHindiName" data-i18n="ui.items.hindi_name_label">Hindi name</label>
+                    <input type="text" id="itemModalHindiName" class="input"
                            data-oninput="items.onModalNameInput('hindiName')" data-onfocus="items.acceptNameSuggestion('hindiName')"
-                           placeholder="Hindi name (optional)" data-i18n-placeholder="ui.items.hindi_name_optional"
-                           style="width: 100%; padding: 12px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 15px;">
+                           placeholder="Hindi name (optional)" data-i18n-placeholder="ui.items.hindi_name_optional">
                 </div>
-                
-                <div data-perm="purchaseRates" style="margin-bottom: 20px;">
-                    <label style="font-size: 14px; font-weight: 600; color: #0058b8; margin-bottom: 8px; display: block;" data-i18n="ui.modals.purchase_rates_kg">Purchase rates (₹/kg)</label>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div id="itemModalPurchaseRates" class="rates-container" style="flex: 1;"></div>
+
+                <div class="field" data-perm="purchaseRates">
+                    <label data-i18n="ui.modals.purchase_rates_kg">Purchase rates (₹/kg)</label>
+                    <div class="item-modal-rates">
+                        <div id="itemModalPurchaseRates" class="rates-container"></div>
                         <button class="add-rate-plus purchase" data-onclick="items.addModalRate('purchase')">+</button>
                     </div>
                 </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="font-size: 14px; font-weight: 600; color: #9333ea; margin-bottom: 8px; display: block;" data-i18n="ui.modals.wholesale_rates_kg">Wholesale rates (₹/kg)</label>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div id="itemModalWholesaleRates" class="rates-container" style="flex: 1;"></div>
+
+                <div class="field">
+                    <label data-i18n="ui.modals.wholesale_rates_kg">Wholesale rates (₹/kg)</label>
+                    <div class="item-modal-rates">
+                        <div id="itemModalWholesaleRates" class="rates-container"></div>
                         <button class="add-rate-plus wholesale" data-onclick="items.addModalRate('wholesale')">+</button>
                     </div>
                 </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="font-size: 14px; font-weight: 600; color: #1c7430; margin-bottom: 8px; display: block;" data-i18n="ui.modals.retail_sale_rates_kg">Retail rates (₹/kg)</label>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div id="itemModalSaleRates" class="rates-container" style="flex: 1;"></div>
+
+                <div class="field">
+                    <label data-i18n="ui.modals.retail_sale_rates_kg">Retail rates (₹/kg)</label>
+                    <div class="item-modal-rates">
+                        <div id="itemModalSaleRates" class="rates-container"></div>
                         <button class="add-rate-plus sale" data-onclick="items.addModalRate('sale')">+</button>
                     </div>
                 </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px; display: block;" data-i18n="ui.modals.contact_person">Contact person</label>
-                    <input type="text" id="itemModalContactPerson" 
-                           placeholder="Enter contact person name (optional)"
-                           style="width: 100%; padding: 12px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 15px;" data-i18n-placeholder="ui.modals.enter_contact_person_name">
+
+                <div class="field">
+                    <label for="itemModalContactPerson" data-i18n="ui.modals.contact_person">Contact person</label>
+                    <input type="text" id="itemModalContactPerson" class="input"
+                           placeholder="Enter contact person name (optional)" data-i18n-placeholder="ui.modals.enter_contact_person_name">
                 </div>
 
-                <div id="itemModalHistorySection" style="display: none; margin-bottom: 8px;">
-                    <label style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px; display: block;" data-i18n="ui.modals.change_history">Change history</label>
+                <div id="itemModalHistorySection" class="field" style="display: none;">
+                    <label data-i18n="ui.modals.change_history">Change history</label>
                     <button type="button" id="itemModalHistoryBtn" class="filter-btn" data-onclick="items.loadModalHistory()" data-i18n="ui.modals.show_rate_name_changes">Show rate &amp; name changes</button>
                     <div id="itemModalHistoryList"></div>
                 </div>
@@ -104,9 +104,9 @@
                     <button type="button" class="item-delete-btn" id="itemModalArchiveBtn" data-onclick="items.archiveFromModal()" style="display: none;" data-i18n="ui.items.archive_item">Archive item</button>
                 </div>
             </div>
-            <div class="bill-details-footer">
-                <button class="bill-action-btn btn-edit" data-onclick="items.saveItemFromModal()" data-i18n="ui.common.save">Save</button>
-                <button class="bill-action-btn btn-close" data-onclick="items.closeItemModal()" data-i18n="ui.modals.cancel">Cancel</button>
+            <div class="bill-details-footer item-modal-footer">
+                <button type="button" class="btn btn-ghost" data-dismiss data-onclick="items.closeItemModal()" data-i18n="ui.modals.cancel">Cancel</button>
+                <button type="button" class="btn btn-primary" data-onclick="items.saveItemFromModal()" data-i18n="ui.common.save">Save</button>
             </div>
         </div>
     </div>

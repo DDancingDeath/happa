@@ -818,6 +818,7 @@ const ItemsManager = {
         document.getElementById('itemModalHindiName').value = '';
         document.getElementById('itemModalContactPerson').value = '';
         document.getElementById('itemModalArchiveBtn').style.display = 'none';
+        this.setModalTitle('ui.items.dialog_add_title');
         this.resetNameFill(null);
         this.editStartSnapshot = null;
         this.resetModalHistory(false);
@@ -835,6 +836,7 @@ const ItemsManager = {
         document.getElementById('itemModalName').value = item.name || '';
         document.getElementById('itemModalHindiName').value = item.hindiName || '';
         document.getElementById('itemModalContactPerson').value = item.contactPerson || '';
+        this.setModalTitle('ui.items.dialog_edit_title');
         this.resetNameFill(item);
         const archiveBtn = document.getElementById('itemModalArchiveBtn');
         archiveBtn.style.display = canArchiveItem(AppState.userRole) ? 'block' : 'none';
@@ -856,12 +858,23 @@ const ItemsManager = {
     },
 
     /**
+     * Item dialog title: "Add item" or "Edit item"; kept through a language change.
+     * @param {string} key
+     */
+    setModalTitle(key) {
+        const title = document.getElementById('itemModalTitle');
+        if (!title) return;
+        title.setAttribute('data-i18n', key);
+        title.textContent = t(key);
+    },
+
+    /**
      * Shows/hides the "Change history" block and clears loaded entries.
      * @param {boolean} visible
      */
     resetModalHistory(visible) {
         const section = document.getElementById('itemModalHistorySection');
-        if (section) section.style.display = visible ? 'block' : 'none';
+        if (section) section.style.display = visible ? '' : 'none';
         const list = document.getElementById('itemModalHistoryList');
         if (list) list.innerHTML = '';
         const btn = document.getElementById('itemModalHistoryBtn');

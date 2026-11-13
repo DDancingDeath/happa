@@ -90,6 +90,7 @@ tr.bill-check-warn > td:first-child {
     font-size: 14px;
     font-weight: var(--w-strong);
     line-height: 1.35;
+    text-align: left;
     color: var(--on-danger-soft);
 }
 

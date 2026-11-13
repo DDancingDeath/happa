@@ -231,7 +231,8 @@
     background: var(--state-hover);
   }
 
-  #billTable td.bill-empty, #saleTable td.bill-empty {
+  /* An empty bill and a check message under a line span the whole row */
+  #billTable :is(td.bill-empty, tr.bill-check-row > td), #saleTable :is(td.bill-empty, tr.bill-check-row > td) {
     display: block;
     max-width: none;
   }
