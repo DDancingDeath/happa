@@ -86,7 +86,7 @@
   --rule-style: solid;
 }
 
-/* Every token defined with var() (layer 2, the old names): re-declared on each themed element, so it follows that element's layer-1 values */
+/* Every token defined with var() (layer 2): re-declared on each themed element, so it follows that element's layer-1 values */
 :root,
 [data-theme],
 [data-mode] {
@@ -119,69 +119,6 @@
   --preview-apply-line: transparent;
   --r-md: calc(var(--r-control) + 2px);
   --r-lg: calc(var(--r-panel) + 2px);
-
-  /* Old names (32 stylesheets and script-written styles use them); new code uses the tokens above */
-  --primary-color: var(--accent-text);
-  --primary-dark: var(--accent-hover);
-  --primary-light: var(--accent-text);
-  --primary-soft: var(--accent-soft);
-  --primary-gradient: var(--accent-strong);
-  --primary-border: var(--accent-line);
-  --on-primary-soft: var(--accent-text);
-  --focus-ring: var(--focus);
-  --success-color: var(--positive);
-  --success-light: var(--positive-soft);
-  --success-dark: var(--positive);
-  --success-soft: var(--positive-soft);
-  --on-success-soft: var(--positive);
-  --success-border: var(--positive-line);
-  --danger-color: var(--negative);
-  --danger-light: var(--negative-soft);
-  --danger-dark: var(--negative);
-  --danger-soft: var(--negative-soft);
-  --on-danger-soft: var(--negative);
-  --danger-border: var(--negative-line);
-  --warning-color: var(--warning-dot);
-  --warning-light: var(--warning-soft);
-  --warning-dark: var(--warning);
-  --on-warning-soft: var(--warning);
-  --warning-border: var(--warning-line);
-  --info-color: var(--info);
-  --info-light: var(--info-soft);
-  --info-dark: var(--info);
-  --on-info-soft: var(--info);
-  --info-border: var(--info-line);
-  --purchase-color: var(--accent-text);
-  --purchase-light: var(--mode-purchase-soft);
-  --purchase-dark: var(--accent-text);
-  --sale-color: var(--positive);
-  --sale-light: var(--mode-sale-soft);
-  --sale-dark: var(--positive);
-  --wholesale-color: var(--mode-wholesale);
-  --wholesale-soft: var(--mode-wholesale-soft);
-  --dark-color: var(--ink);
-  --text-primary: var(--ink);
-  --text-secondary: var(--ink-2);
-  --text-muted: var(--ink-3);
-  --light-bg: var(--bg);
-  --white: var(--surface);
-  --card-bg: var(--panel-bg);
-  --seg-bg: var(--seg-track);
-  --seg-active: var(--seg-on);
-  --border-color: var(--line);
-  --border-light: var(--line);
-  --border-strong: var(--line-strong);
-  --surface-muted: var(--surface-2);
-  --btn-primary: var(--btn-primary-bg);
-  --btn-success: var(--btn-sale-bg);
-  --btn-danger: var(--btn-danger-bg);
-  --shadow-xs: var(--e1);
-  --shadow-sm: var(--e1);
-  --shadow: var(--e1);
-  --shadow-md: var(--e2);
-  --shadow-lg: var(--e3);
-  --shadow-xl: var(--e3);
-  --font-sans: var(--font-ui);
 }
 
 /* Graphite dark. Screen only: printing from any theme or mode uses the light values (black on white) */
@@ -319,21 +256,6 @@
   --ring-danger: 0 0 0 2px rgba(220, 38, 38, 0.25);
   --ring-warning: 0 0 0 2px rgba(217, 119, 6, 0.25);
 
-  --transition-fast: var(--dur-1) var(--ease);
-  --transition: var(--dur-2) var(--ease);
-  --transition-slow: var(--dur-3) var(--ease);
-  --radius-sm: var(--r-sm);
-  --radius: var(--r-control);
-  --radius-md: var(--r-panel);
-  --radius-lg: var(--r-panel);
-  --radius-full: var(--r-full);
-  --space-xs: var(--sp-1);
-  --space-sm: var(--sp-2);
-  --space-md: var(--sp-3);
-  --space-lg: var(--sp-4);
-  --space-xl: var(--sp-5);
-  --space-2xl: var(--sp-6);
-  --space-3xl: var(--sp-8);
   --text-xs: 12px;
   --text-sm: 13px;
   --text-base: 14px;
@@ -376,7 +298,7 @@ html[lang="hi"] [data-theme] {
 }
 
 :focus-visible {
-  outline: 2px solid var(--primary-color);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
 
@@ -393,9 +315,9 @@ html {
 }
 
 body {
-  font-family: var(--font-sans);
-  background: var(--light-bg);
-  color: var(--text-primary);
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--ink);
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
@@ -425,17 +347,17 @@ input[type="number"],
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
-  border-radius: var(--radius-full);
+  border-radius: var(--r-full);
   font-size: var(--fs-caption);
   font-weight: var(--w-strong);
 }
 
 .badge-success {
-  background: var(--success-light);
-  color: var(--success-dark);
+  background: var(--positive-soft);
+  color: var(--positive);
 }
 
 .badge-info {
-  background: var(--info-light);
-  color: var(--info-dark);
+  background: var(--info-soft);
+  color: var(--info);
 }

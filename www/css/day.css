@@ -15,7 +15,7 @@
   font-style: var(--title-style);
   font-size: var(--fs-body);
   font-weight: var(--w-strong);
-  color: var(--text-primary);
+  color: var(--ink);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -43,7 +43,7 @@
 
 .labour-breakdown-note {
   font-size: var(--fs-caption);
-  color: var(--text-secondary);
+  color: var(--ink-2);
   margin: 8px 0 0;
 }
 
@@ -83,7 +83,7 @@
 .cash-form .field { display: block; }
 .cash-form .field > * + * { margin-top: var(--sp-2); }
 .cash-hint { color: var(--ink-3); font-size: var(--fs-caption); }
-.cash-diff-alert { display: none; padding: var(--sp-3); border-radius: var(--radius); font-weight: var(--w-strong); }
+.cash-diff-alert { display: none; padding: var(--sp-3); border-radius: var(--r-control); font-weight: var(--w-strong); }
 .cash-history-list { max-height: 400px; overflow-y: auto; }
 
 /* ---------- Today › Summary (redesign 5.1): hero, needs attention, metrics, rows ---------- */
@@ -159,7 +159,7 @@
 .today-item .row-meta .row-amt { color: var(--ink); }
 
 /* Cash open 14 h or more (C10, Q25 of #111) */
-.cash-long-open { background: var(--warning-soft); border: 1px solid var(--warning-border); color: var(--on-warning-soft); border-radius: var(--radius); padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3); font-weight: var(--w-strong); }
+.cash-long-open { background: var(--warning-soft); border: 1px solid var(--warning-line); color: var(--warning); border-radius: var(--r-control); padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3); font-weight: var(--w-strong); }
 
 /* Manual reminders (#86) */
 .reminder-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: var(--fs-sm); padding: 4px 0; }
@@ -169,30 +169,30 @@
 
 .today-reminder-form { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .today-reminder-form input, .today-reminder-form select { min-height: 44px; font-size: var(--fs-input); padding: 6px 10px; }
-.today-reminder-repeat { color: var(--text-secondary); font-size: var(--fs-caption); }
+.today-reminder-repeat { color: var(--ink-2); font-size: var(--fs-caption); }
 .today-reminder-form-actions { display: flex; gap: var(--sp-2); }
 
 /* Ask (#88) */
 .ask-page { max-width: 720px; }
-.ask-intro { color: var(--text-secondary); margin: 4px 0 12px; }
+.ask-intro { color: var(--ink-2); margin: 4px 0 12px; }
 .ask-form { display: flex; gap: 8px; }
 .ask-form input { flex: 1; min-width: 0; min-height: 44px; font-size: var(--fs-input); padding: 8px 12px; }
 .ask-examples { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
 .ask-example { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .ask-answers { display: flex; flex-direction: column; gap: 10px; }
-.ask-answer { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--r-md); padding: 10px 12px; }
+.ask-answer { background: var(--panel-bg); border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px 12px; }
 .ask-question { font-weight: var(--w-strong); margin-bottom: 4px; }
 .ask-line { margin: 2px 0; }
 .ask-answer .ask-open { margin-top: 6px; }
 .ask-answer .ask-open + .ask-open { margin-left: 6px; }
-.ask-change { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border-color); }
-.ask-change-field { display: flex; flex: 1 1 140px; min-width: 0; flex-direction: column; gap: 2px; font-size: var(--fs-sm); color: var(--text-secondary); }
+.ask-change { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.ask-change-field { display: flex; flex: 1 1 140px; min-width: 0; flex-direction: column; gap: 2px; font-size: var(--fs-sm); color: var(--ink-2); }
 .ask-change-field select { width: 100%; min-height: 44px; font-size: var(--fs-body); }
 .ask-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .ask-kind { min-height: 44px; }
 
 /* Cash › history (5.2b): each day is a row, its figures two columns; it lights up under the pointer (#89) */
-.cash-history-list .row.cash-day { align-items: flex-start; padding: var(--sp-3) 0; cursor: pointer; transition: background var(--transition-fast); }
+.cash-history-list .row.cash-day { align-items: flex-start; padding: var(--sp-3) 0; cursor: pointer; transition: background var(--dur-1) var(--ease); }
 .cash-history-list .row.cash-day + .row.cash-day::before { left: 0; }
 .cash-history-list .row.cash-day:hover { background: var(--surface-2); }
 .cash-day-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }

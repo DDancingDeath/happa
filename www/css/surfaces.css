@@ -432,8 +432,8 @@ a.row:active {
   padding-right: 4px;
   font-size: var(--fs-title);
   font-weight: var(--w-strong);
-  color: var(--text-secondary);
-  background: linear-gradient(to right, transparent, var(--card-bg) 70%);
+  color: var(--ink-2);
+  background: linear-gradient(to right, transparent, var(--panel-bg) 70%);
   border-radius: 0 var(--r-panel) var(--r-panel) 0;
   pointer-events: none;
 }
@@ -486,7 +486,7 @@ a.row:active {
   z-index: calc(var(--z-drawer) - 1);
   opacity: 0;
   visibility: hidden;
-  transition: all var(--transition-slow);
+  transition: all var(--dur-3) var(--ease);
 }
 
 .nav-scrim.active {

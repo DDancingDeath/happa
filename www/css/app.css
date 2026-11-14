@@ -88,7 +88,7 @@
   --rule-style: solid;
 }
 
-/* Every token defined with var() (layer 2, the old names): re-declared on each themed element, so it follows that element's layer-1 values */
+/* Every token defined with var() (layer 2): re-declared on each themed element, so it follows that element's layer-1 values */
 :root,
 [data-theme],
 [data-mode] {
@@ -121,69 +121,6 @@
   --preview-apply-line: transparent;
   --r-md: calc(var(--r-control) + 2px);
   --r-lg: calc(var(--r-panel) + 2px);
-
-  /* Old names (32 stylesheets and script-written styles use them); new code uses the tokens above */
-  --primary-color: var(--accent-text);
-  --primary-dark: var(--accent-hover);
-  --primary-light: var(--accent-text);
-  --primary-soft: var(--accent-soft);
-  --primary-gradient: var(--accent-strong);
-  --primary-border: var(--accent-line);
-  --on-primary-soft: var(--accent-text);
-  --focus-ring: var(--focus);
-  --success-color: var(--positive);
-  --success-light: var(--positive-soft);
-  --success-dark: var(--positive);
-  --success-soft: var(--positive-soft);
-  --on-success-soft: var(--positive);
-  --success-border: var(--positive-line);
-  --danger-color: var(--negative);
-  --danger-light: var(--negative-soft);
-  --danger-dark: var(--negative);
-  --danger-soft: var(--negative-soft);
-  --on-danger-soft: var(--negative);
-  --danger-border: var(--negative-line);
-  --warning-color: var(--warning-dot);
-  --warning-light: var(--warning-soft);
-  --warning-dark: var(--warning);
-  --on-warning-soft: var(--warning);
-  --warning-border: var(--warning-line);
-  --info-color: var(--info);
-  --info-light: var(--info-soft);
-  --info-dark: var(--info);
-  --on-info-soft: var(--info);
-  --info-border: var(--info-line);
-  --purchase-color: var(--accent-text);
-  --purchase-light: var(--mode-purchase-soft);
-  --purchase-dark: var(--accent-text);
-  --sale-color: var(--positive);
-  --sale-light: var(--mode-sale-soft);
-  --sale-dark: var(--positive);
-  --wholesale-color: var(--mode-wholesale);
-  --wholesale-soft: var(--mode-wholesale-soft);
-  --dark-color: var(--ink);
-  --text-primary: var(--ink);
-  --text-secondary: var(--ink-2);
-  --text-muted: var(--ink-3);
-  --light-bg: var(--bg);
-  --white: var(--surface);
-  --card-bg: var(--panel-bg);
-  --seg-bg: var(--seg-track);
-  --seg-active: var(--seg-on);
-  --border-color: var(--line);
-  --border-light: var(--line);
-  --border-strong: var(--line-strong);
-  --surface-muted: var(--surface-2);
-  --btn-primary: var(--btn-primary-bg);
-  --btn-success: var(--btn-sale-bg);
-  --btn-danger: var(--btn-danger-bg);
-  --shadow-xs: var(--e1);
-  --shadow-sm: var(--e1);
-  --shadow: var(--e1);
-  --shadow-md: var(--e2);
-  --shadow-lg: var(--e3);
-  --shadow-xl: var(--e3);
-  --font-sans: var(--font-ui);
 }
 
 /* Graphite dark. Screen only: printing from any theme or mode uses the light values (black on white) */
@@ -321,21 +258,6 @@
   --ring-danger: 0 0 0 2px rgba(220, 38, 38, 0.25);
   --ring-warning: 0 0 0 2px rgba(217, 119, 6, 0.25);
 
-  --transition-fast: var(--dur-1) var(--ease);
-  --transition: var(--dur-2) var(--ease);
-  --transition-slow: var(--dur-3) var(--ease);
-  --radius-sm: var(--r-sm);
-  --radius: var(--r-control);
-  --radius-md: var(--r-panel);
-  --radius-lg: var(--r-panel);
-  --radius-full: var(--r-full);
-  --space-xs: var(--sp-1);
-  --space-sm: var(--sp-2);
-  --space-md: var(--sp-3);
-  --space-lg: var(--sp-4);
-  --space-xl: var(--sp-5);
-  --space-2xl: var(--sp-6);
-  --space-3xl: var(--sp-8);
   --text-xs: 12px;
   --text-sm: 13px;
   --text-base: 14px;
@@ -378,7 +300,7 @@ html[lang="hi"] [data-theme] {
 }
 
 :focus-visible {
-  outline: 2px solid var(--primary-color);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
 
@@ -395,9 +317,9 @@ html {
 }
 
 body {
-  font-family: var(--font-sans);
-  background: var(--light-bg);
-  color: var(--text-primary);
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--ink);
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
@@ -427,19 +349,19 @@ input[type="number"],
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
-  border-radius: var(--radius-full);
+  border-radius: var(--r-full);
   font-size: var(--fs-caption);
   font-weight: var(--w-strong);
 }
 
 .badge-success {
-  background: var(--success-light);
-  color: var(--success-dark);
+  background: var(--positive-soft);
+  color: var(--positive);
 }
 
 .badge-info {
-  background: var(--info-light);
-  color: var(--info-dark);
+  background: var(--info-soft);
+  color: var(--info);
 }
 
 /* ---- css/themes/vintage.css ---- */
@@ -1061,7 +983,7 @@ input[type="number"],
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--e2);
   pointer-events: none;
 }
 
@@ -1070,23 +992,23 @@ input[type="number"],
 }
 
 .sync-pill[data-state="pending"] {
-  background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--card-bg);
-  color: var(--on-warning-soft);
+  background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--panel-bg);
+  color: var(--warning);
 }
 
 .sync-pill[data-state="synced"] {
-  background: linear-gradient(var(--positive-soft), var(--positive-soft)), var(--card-bg);
+  background: linear-gradient(var(--positive-soft), var(--positive-soft)), var(--panel-bg);
   color: var(--positive);
 }
 
 .sync-pill[data-state="updating"] {
-  background: linear-gradient(var(--info-soft), var(--info-soft)), var(--card-bg);
+  background: linear-gradient(var(--info-soft), var(--info-soft)), var(--panel-bg);
   color: var(--info);
 }
 
 .sync-pill[data-state="stale"] {
-  background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--card-bg);
-  color: var(--on-warning-soft);
+  background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--panel-bg);
+  color: var(--warning);
 }
 
 /* Figures from the phone's cache until the server answers (#59): ui/sync-status.js sets html[data-updating] */
@@ -1099,7 +1021,7 @@ html[data-updating] .updating-note {
   display: block;
   margin: 0 0 12px;
   padding: 8px 12px;
-  border-radius: var(--radius-md);
+  border-radius: var(--r-panel);
   background: var(--info-soft);
   color: var(--info);
   font-size: var(--fs-caption);
@@ -1118,7 +1040,7 @@ html[data-updating] .updating-mark {
   font-size: var(--fs-caption);
   font-weight: var(--w-label);
   background: var(--warning-soft);
-  color: var(--on-warning-soft);
+  color: var(--warning);
 }
 
 .sync-chip[hidden] {
@@ -1126,8 +1048,8 @@ html[data-updating] .updating-mark {
 }
 
 .sync-chip[data-state="synced"] {
-  background: var(--success-soft);
-  color: var(--on-success-soft);
+  background: var(--positive-soft);
+  color: var(--positive);
 }
 
 .ins-line .sync-chip {
@@ -1148,7 +1070,7 @@ html[data-updating] .updating-mark {
   min-height: 44px;
   padding: 0 16px;
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
+  border-radius: var(--r-control);
   background-color: var(--surface);
   color: var(--ink);
   font-family: inherit;
@@ -1158,8 +1080,8 @@ html[data-updating] .updating-mark {
   text-align: center;
   text-decoration: none;
   cursor: pointer;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast),
-    color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+  transition: background-color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease),
+    color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
 }
 
 .btn-primary {
@@ -1298,11 +1220,11 @@ input[type="text"] {
   width: 100%;
   padding: 13px 15px;
   border: 1px solid var(--input-border);
-  border-radius: var(--radius);
+  border-radius: var(--r-control);
   background-color: var(--input-bg);
   color: var(--ink);
   font-size: var(--fs-body);
-  transition: border-color var(--transition), box-shadow var(--transition);
+  transition: border-color var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
 }
 
 /* Other text-like fields keep their own size but take the field colours in every theme and mode (no specificity: page rules win) */
@@ -1362,12 +1284,12 @@ select:not([multiple]):not([size]) {
 
 .adorn > .adorn-pre {
   border-right: none;
-  border-radius: var(--radius) 0 0 var(--radius);
+  border-radius: var(--r-control) 0 0 var(--r-control);
 }
 
 .adorn > .adorn-post {
   border-left: none;
-  border-radius: 0 var(--radius) var(--radius) 0;
+  border-radius: 0 var(--r-control) var(--r-control) 0;
 }
 
 .adorn > .adorn-pre + .input {
@@ -1415,7 +1337,7 @@ input[type="checkbox"].switch,
   border-radius: var(--r-full);
   background: radial-gradient(circle at 11px 50%, var(--surface) 8px, transparent 8.5px), var(--ink-3);
   cursor: pointer;
-  transition: background var(--transition-fast);
+  transition: background var(--dur-1) var(--ease);
 }
 
 input[type="checkbox"].switch:checked,
@@ -1448,7 +1370,7 @@ input[type="checkbox"].switch:focus-visible,
   min-height: 44px;
   padding: 0 12px;
   border: none;
-  border-radius: var(--radius);
+  border-radius: var(--r-control);
   background-color: transparent;
   box-shadow: none;
   color: var(--ink-2);
@@ -1499,7 +1421,7 @@ input[type="checkbox"].switch:focus-visible,
   font-size: var(--fs-sm);
   font-weight: var(--w-label);
   cursor: pointer;
-  transition: color var(--transition-fast), border-color var(--transition-fast);
+  transition: color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
 }
 
 .tabs > button:hover {
@@ -1564,7 +1486,7 @@ button, .btn, input[type="submit"], input[type="button"] {
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  transition: transform var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
 }
 
 button:active, .btn:active {
@@ -1578,7 +1500,7 @@ input, textarea, select {
 
 /* Better focus states for accessibility */
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
-  outline: 3px solid var(--primary-color);
+  outline: 3px solid var(--accent-text);
   outline-offset: 2px;
 }
 
@@ -2033,8 +1955,8 @@ a.row:active {
   padding-right: 4px;
   font-size: var(--fs-title);
   font-weight: var(--w-strong);
-  color: var(--text-secondary);
-  background: linear-gradient(to right, transparent, var(--card-bg) 70%);
+  color: var(--ink-2);
+  background: linear-gradient(to right, transparent, var(--panel-bg) 70%);
   border-radius: 0 var(--r-panel) var(--r-panel) 0;
   pointer-events: none;
 }
@@ -2087,7 +2009,7 @@ a.row:active {
   z-index: calc(var(--z-drawer) - 1);
   opacity: 0;
   visibility: hidden;
-  transition: all var(--transition-slow);
+  transition: all var(--dur-3) var(--ease);
 }
 
 .nav-scrim.active {
@@ -2171,7 +2093,7 @@ a.row:active {
   height: 40px;
   border: 3px solid var(--line-strong);
   border-top-color: var(--accent);
-  border-radius: var(--radius-full);
+  border-radius: var(--r-full);
   box-shadow: none;
   animation: spin 0.8s linear infinite;
 }
@@ -2420,7 +2342,7 @@ a.row:active {
 }
 
 body {
-  font-family: var(--font-sans);
+  font-family: var(--font-ui);
   background: var(--bg);
   color: var(--ink);
   line-height: 1.6;
@@ -2485,7 +2407,7 @@ body {
     color: var(--ink);
     box-shadow: none;
     cursor: pointer;
-    transition: background-color var(--transition-fast);
+    transition: background-color var(--dur-1) var(--ease);
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -2561,7 +2483,7 @@ body {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
   overscroll-behavior-y: contain;
-  background: var(--light-bg);
+  background: var(--bg);
   position: relative;
 }
 
@@ -2575,7 +2497,7 @@ body {
   font-size: var(--text-2xl);
   font-weight: var(--w-strong);
   letter-spacing: var(--tracking-display);
-  color: var(--text-primary);
+  color: var(--ink);
   margin-bottom: 20px;
   padding-bottom: 12px;
   border-bottom: 3px solid transparent;
@@ -2589,18 +2511,18 @@ body {
   left: 0;
   width: 32px;
   height: 3px;
-  background: var(--primary-color);
-  border-radius: var(--radius-full);
+  background: var(--accent-text);
+  border-radius: var(--r-full);
 }
 
 .tab h3 {
   font-size: var(--fs-lead);
   font-weight: var(--w-strong);
-  color: var(--text-primary);
+  color: var(--ink);
   margin: 20px 0 12px 0;
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--sp-2);
 }
 
 @keyframes fadeInUp {
@@ -2621,8 +2543,8 @@ body {
   width: 280px;
   max-width: 85vw;
   height: 100%;
-  background: var(--card-bg);
-  box-shadow: var(--shadow-xl);
+  background: var(--panel-bg);
+  box-shadow: var(--e3);
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: calc(var(--z-drawer) + 1);
   display: flex;
@@ -2655,7 +2577,7 @@ body {
   color: var(--ink-2);
   width: 40px;
   height: 40px;
-  border-radius: var(--radius-full);
+  border-radius: var(--r-full);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -2681,7 +2603,7 @@ body {
 .nav-menu.nav-menu-footer {
   flex: 0 0 auto;
   overflow: visible;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--line);
 }
 
 .nav-menu a {
@@ -2692,7 +2614,7 @@ body {
   padding: var(--sp-2) var(--sp-6);
   color: var(--ink);
   text-decoration: none;
-  transition: all var(--transition);
+  transition: all var(--dur-2) var(--ease);
   font-size: var(--fs-body);
   font-weight: var(--w-regular);
   margin: 0 var(--sp-2);
@@ -2828,7 +2750,7 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none; }
   /* Not "all": an inherited visibility change would be animated too, and the sheet's controls could not take focus as it opens */
   .nav-close,
   .nav-menu a {
-    transition: background-color var(--transition-fast), color var(--transition-fast);
+    transition: background-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
   }
 
   .biz-switch {
@@ -2961,7 +2883,7 @@ body {
   padding: var(--sp-1) 0;
   border: none;
   background: none;
-  color: var(--text-secondary);
+  color: var(--ink-2);
   font: inherit;
   font-size: var(--fs-caption);
   font-weight: var(--w-strong);
@@ -2973,7 +2895,7 @@ body {
   display: inline-flex;
   padding: var(--sp-1) var(--sp-4);
   border-radius: var(--r-full);
-  transition: background var(--transition);
+  transition: background var(--dur-2) var(--ease);
 }
 
 .bottom-nav-label {
@@ -2984,15 +2906,15 @@ body {
 }
 
 .bottom-nav-item.active {
-  color: var(--primary-color);
+  color: var(--accent-text);
 }
 
 .bottom-nav-item.active .bottom-nav-icon {
-  background: var(--primary-soft);
+  background: var(--accent-soft);
 }
 
 .bottom-nav-item:focus-visible {
-  outline: 2px solid var(--primary-color);
+  outline: 2px solid var(--accent-text);
   outline-offset: -4px;
 }
 
@@ -3140,22 +3062,22 @@ body.typing .bottom-nav {
   padding: 0 0 0 var(--sp-2);
   border-radius: var(--r-control);
   border: 2px solid;
-  transition: all var(--transition);
+  transition: all var(--dur-2) var(--ease);
 }
 
 .rate-group:has(.rate-input.purchase) {
-  border-color: var(--purchase-color);
-  background: var(--purchase-light);
+  border-color: var(--accent-text);
+  background: var(--mode-purchase-soft);
 }
 
 .rate-group:has(.rate-input.wholesale) {
-  border-color: var(--wholesale-color);
-  background: var(--wholesale-soft);
+  border-color: var(--mode-wholesale);
+  background: var(--mode-wholesale-soft);
 }
 
 .rate-group:has(.rate-input.sale) {
-  border-color: var(--sale-color);
-  background: var(--sale-light);
+  border-color: var(--positive);
+  background: var(--mode-sale-soft);
 }
 
 .rates-container .rate-group > .rate-input {
@@ -3189,7 +3111,7 @@ body.typing .bottom-nav {
 
 /* Item name suggested from the other language (#134), until the user takes it */
 .autofill-suggest {
-  color: var(--text-muted);
+  color: var(--ink-3);
   font-style: italic;
 }
 
@@ -3204,9 +3126,9 @@ body.typing .bottom-nav {
 
 #billTable thead, :is(#saleTable, .bill-lines) thead {
   display: table-header-group;
-  background: var(--surface-muted);
+  background: var(--surface-2);
   font-weight: var(--w-strong);
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
 #billTable thead tr, :is(#saleTable, .bill-lines) thead tr {
@@ -3220,18 +3142,18 @@ body.typing .bottom-nav {
   border-bottom: 1px solid var(--table-rule);
   font-size: var(--fs-caption);
   font-weight: var(--w-label);
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 
 #billTable tbody tr, :is(#saleTable, .bill-lines) tbody tr {
   display: table-row;
-  background: var(--card-bg);
-  border-bottom: 1px var(--rule-style) var(--border-color);
-  transition: background var(--transition);
+  background: var(--panel-bg);
+  border-bottom: 1px var(--rule-style) var(--line);
+  transition: background var(--dur-2) var(--ease);
 }
 
 #billTable tbody tr:hover, :is(#saleTable, .bill-lines) tbody tr:hover {
-  background: var(--light-bg);
+  background: var(--bg);
 }
 
 #billTable td, :is(#saleTable, .bill-lines) td {
@@ -3243,7 +3165,7 @@ body.typing .bottom-nav {
   word-wrap: break-word;
   overflow-wrap: break-word;
   max-width: 0;
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
 #billTable td:before, :is(#saleTable, .bill-lines) td:before {
@@ -3401,7 +3323,7 @@ body.typing .bottom-nav {
   flex-shrink: 0;
   font-weight: var(--w-label);
   font-size: var(--fs-sm);
-  color: var(--text-primary);
+  color: var(--ink);
   margin: 0;
 }
 
@@ -3411,12 +3333,12 @@ body.typing .bottom-nav {
 .bill-form-field input[type="text"] {
   flex: 1;
   padding: 13px 15px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-control);
   font-size: var(--fs-body);
-  background: var(--card-bg);
-  color: var(--text-primary);
-  transition: all var(--transition);
+  background: var(--panel-bg);
+  color: var(--ink);
+  transition: all var(--dur-2) var(--ease);
   margin: 0;
 }
 
@@ -3433,9 +3355,9 @@ input[type="number"] {
 
 .bill-form-field select:focus,
 .bill-form-field input:focus {
-  border-color: var(--primary-color);
+  border-color: var(--accent-text);
   outline: none;
-  box-shadow: var(--focus-ring);
+  box-shadow: var(--focus);
 }
 
 label {
@@ -3444,7 +3366,7 @@ label {
   margin-bottom: 8px;
   font-weight: var(--w-label);
   font-size: var(--fs-sm);
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
 /* Remove spinner arrows from all number inputs */
@@ -3494,16 +3416,16 @@ input[type="number"] {
 }
 
 .bill-line-sum {
-  background: var(--card-bg);
+  background: var(--panel-bg);
   padding: 12px 16px;
-  border-radius: var(--radius-md);
+  border-radius: var(--r-panel);
   margin: 12px 0;
-  box-shadow: var(--shadow);
+  box-shadow: var(--e1);
   display: flex;
   flex-wrap: nowrap;
   justify-content: space-around;
   gap: 16px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--line);
 }
 
 /* -------------------- BILLING THEME -------------------- */
@@ -3520,24 +3442,24 @@ input[type="number"] {
   font-size: var(--fs-input);
   font-weight: var(--w-strong);
   border: 2px solid;
-  border-radius: var(--radius);
+  border-radius: var(--r-control);
   text-align: center;
-  transition: all var(--transition);
+  transition: all var(--dur-2) var(--ease);
 }
 
 .rate-input.purchase {
-  border-color: var(--purchase-color);
-  background: var(--purchase-light);
+  border-color: var(--accent-text);
+  background: var(--mode-purchase-soft);
 }
 
 .rate-input.sale {
-  border-color: var(--sale-color);
-  background: var(--sale-light);
+  border-color: var(--positive);
+  background: var(--mode-sale-soft);
 }
 
 .rate-input:focus {
   outline: none;
-  box-shadow: var(--focus-ring);
+  box-shadow: var(--focus);
 }
 
 /* Unsaved-bill notice and bill number hint (#117) */
@@ -3551,7 +3473,7 @@ input[type="number"] {
 .bill-no-hint {
   margin-top: 12px;
   font-size: var(--fs-sm);
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 /* Voice billing (#81): shown only when switched on in Settings */
 .btn[data-voice-mic] {
@@ -3559,8 +3481,8 @@ input[type="number"] {
 }
 
 .btn[data-voice-mic].voice-listening {
-  background-color: var(--danger-soft);
-  color: var(--on-danger-soft);
+  background-color: var(--negative-soft);
+  color: var(--negative);
 }
 
 .voice-check th {
@@ -3570,7 +3492,7 @@ input[type="number"] {
 }
 
 .voice-warn {
-  color: var(--on-warning-soft);
+  color: var(--warning);
 }
 
 /* Save with a line not added to the bill (BF-PENDING), extreme rate (BF-RATECHECK): choices wrap on a phone */
@@ -3687,7 +3609,7 @@ input[type="number"] {
   border: 1px solid var(--line-strong);
   border-radius: var(--r-control);
   background: var(--surface);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--e2);
 }
 
 .party-suggest[hidden] {
@@ -3727,7 +3649,7 @@ input[type="number"] {
 }
 
 .party-suggest-due.has-due {
-  color: var(--on-warning-soft);
+  color: var(--warning);
 }
 
 /* "Did you mean …?" under the name: a warning, never a stop */
@@ -3738,10 +3660,10 @@ input[type="number"] {
   gap: var(--sp-2);
   margin: 0 0 var(--sp-3);
   padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--warning-border);
+  border: 1px solid var(--warning-line);
   border-radius: var(--r-control);
   background: var(--warning-soft);
-  color: var(--on-warning-soft);
+  color: var(--warning);
   font-size: var(--fs-sm);
 }
 
@@ -4132,7 +4054,7 @@ input[type="number"] {
   padding: 8px 10px;
   border-radius: var(--r-control);
   background: var(--warning-soft);
-  color: var(--on-warning-soft);
+  color: var(--warning);
   font-size: var(--fs-sm);
 }
 
@@ -4161,7 +4083,7 @@ input[type="number"] {
 }
 
 .voice-lines thead th {
-  color: var(--text-secondary);
+  color: var(--ink-2);
   font-size: var(--fs-sm);
 }
 
@@ -4191,7 +4113,7 @@ input[type="number"] {
 
 .voice-readback {
   margin-top: var(--sp-3);
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 
 /* Transcript strip under the mic and the Undo button (#131) */
@@ -4211,7 +4133,7 @@ input[type="number"] {
 .voice-transcript {
   flex: 1 1 12rem;
   margin: 0;
-  color: var(--text-secondary);
+  color: var(--ink-2);
   font-size: var(--fs-sm);
   overflow-wrap: anywhere;
 }
@@ -4232,7 +4154,7 @@ input[type="number"] {
   margin: var(--sp-2) 0;
   padding: var(--sp-2);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--r-control);
   background: var(--surface-2);
 }
 
@@ -4251,12 +4173,12 @@ input[type="number"] {
 /* ---- css/totals.css ---- */
 /* -------------------- BILL TOTALS -------------------- */
 .bill-totals {
-  background: var(--card-bg);
+  background: var(--panel-bg);
   padding: 16px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-panel);
   margin: 16px 0;
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border-color);
+  box-shadow: var(--e1);
+  border: 1px solid var(--line);
 }
 
 .total-line {
@@ -4269,13 +4191,13 @@ input[type="number"] {
 
 .total-line span {
   font-weight: var(--w-strong);
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 
 .total-line strong {
   font-size: var(--fs-lead);
   font-weight: var(--w-strong);
-  color: var(--primary-color);
+  color: var(--accent-text);
 }
 
 .bill-labour {
@@ -4293,15 +4215,15 @@ input[type="number"] {
   font-weight: var(--w-label);
   cursor: pointer;
   font-size: var(--fs-body);
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
 .checkbox-label input[type="checkbox"] {
   width: 20px;
   height: 20px;
   cursor: pointer;
-  accent-color: var(--primary-color);
-  border-radius: var(--radius-sm);
+  accent-color: var(--accent-text);
+  border-radius: var(--r-sm);
 }
 
 .bill-labour input[type="number"] {
@@ -4310,35 +4232,35 @@ input[type="number"] {
   text-align: right;
   font-size: var(--fs-input);
   font-weight: var(--w-strong);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-control);
   margin: 0;
   max-width: 120px;
-  transition: all var(--transition);
+  transition: all var(--dur-2) var(--ease);
 }
 
 .bill-labour input[type="number"]:focus {
-  border-color: var(--primary-color);
-  box-shadow: var(--focus-ring);
+  border-color: var(--accent-text);
+  box-shadow: var(--focus);
 }
 
 .grand-total {
   padding: 14px !important;
   margin-top: 10px;
   font-size: var(--fs-body) !important;
-  background: var(--success-soft);
-  border-radius: var(--radius);
+  background: var(--positive-soft);
+  border-radius: var(--r-control);
   margin: 10px -4px;
 }
 
 .grand-total span {
   font-weight: var(--w-strong);
-  color: var(--on-success-soft);
+  color: var(--positive);
 }
 
 .grand-total strong {
   font-size: 22px !important;
-  color: var(--on-success-soft) !important;
+  color: var(--positive) !important;
 }
 
 .pay-line {
@@ -4347,7 +4269,7 @@ input[type="number"] {
   align-items: center;
   padding: var(--sp-3) 0;
   gap: 12px;
-  border-bottom: 1px var(--rule-style) var(--border-color);
+  border-bottom: 1px var(--rule-style) var(--line);
 }
 
 .pay-line:last-child {
@@ -4359,19 +4281,19 @@ input[type="number"] {
   font-weight: var(--w-label);
   font-size: var(--fs-body);
   flex: 1;
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
 .pay-line span {
   font-weight: var(--w-strong);
   font-size: var(--fs-body);
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 
 .pay-line strong {
   font-size: var(--fs-lead);
-  color: var(--primary-color);
-  transition: color var(--transition);
+  color: var(--accent-text);
+  transition: color var(--dur-2) var(--ease);
 }
 
 .pay-line input[type="number"] {
@@ -4382,34 +4304,34 @@ input[type="number"] {
   text-align: right;
   font-size: var(--fs-input);
   font-weight: var(--w-strong);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-control);
   margin: 0;
   flex-shrink: 0;
-  transition: all var(--transition);
+  transition: all var(--dur-2) var(--ease);
 }
 
 .pay-line input[type="number"]:focus {
-  border-color: var(--primary-color);
-  box-shadow: var(--focus-ring);
+  border-color: var(--accent-text);
+  box-shadow: var(--focus);
 }
 
 .pay-line.payment-total {
   background: var(--info-soft);
   padding: 14px;
-  border-radius: var(--radius);
+  border-radius: var(--r-control);
   margin: 10px -4px;
-  transition: background var(--transition);
+  transition: background var(--dur-2) var(--ease);
 }
 
 .pay-line.payment-total span {
   font-weight: var(--w-strong);
-  color: var(--on-info-soft);
+  color: var(--info);
 }
 
 .pay-line.payment-total strong {
   font-size: var(--fs-lead);
-  color: var(--info-dark);
+  color: var(--info);
 }
 
 /* Cash + Online + Due must add up to the bill total (#23) */
@@ -4837,9 +4759,9 @@ input[type="number"] {
   flex-shrink: 0;
   cursor: pointer;
   border-radius: var(--r-sm);
-  border: 2px solid var(--border-color);
+  border: 2px solid var(--line);
   margin: 0;
-  accent-color: var(--primary-color);
+  accent-color: var(--accent-text);
 }
 
 /* ---- css/bill-checks.css ---- */
@@ -4894,22 +4816,22 @@ input[type="number"] {
 
 input.bill-check-block,
 select.bill-check-block {
-    border-color: var(--danger-dark) !important;
+    border-color: var(--negative) !important;
     box-shadow: var(--ring-danger) !important;
 }
 
 input.bill-check-warn,
 select.bill-check-warn {
-    border-color: var(--warning-dark) !important;
+    border-color: var(--warning) !important;
     box-shadow: var(--ring-warning) !important;
 }
 
 tr.bill-check-block > td {
-    background: var(--danger-soft);
+    background: var(--negative-soft);
 }
 
 tr.bill-check-block > td:first-child {
-    box-shadow: var(--stripe) var(--danger-dark);
+    box-shadow: var(--stripe) var(--negative);
 }
 
 tr.bill-check-warn > td {
@@ -4917,7 +4839,7 @@ tr.bill-check-warn > td {
 }
 
 tr.bill-check-warn > td:first-child {
-    box-shadow: var(--stripe) var(--warning-dark);
+    box-shadow: var(--stripe) var(--warning);
 }
 
 .bill-check-msg {
@@ -4926,11 +4848,11 @@ tr.bill-check-warn > td:first-child {
     font-weight: var(--w-strong);
     line-height: 1.35;
     text-align: left;
-    color: var(--on-danger-soft);
+    color: var(--negative);
 }
 
 .bill-check-msg.bill-check-warn {
-    color: var(--on-warning-soft);
+    color: var(--warning);
 }
 
 tr.bill-check-line > td {
@@ -4948,7 +4870,7 @@ tr.bill-check-line .bill-check-msg {
 }
 
 .bill-check-save-override {
-    outline: 2px dashed var(--warning-dark);
+    outline: 2px dashed var(--warning);
     outline-offset: 2px;
 }
 
@@ -4972,10 +4894,10 @@ tr.bill-check-line .bill-check-msg {
     width: 100%;
     margin: -4px 0 10px;
     padding: 6px 10px;
-    border: 1px solid var(--info-border);
+    border: 1px solid var(--info-line);
     border-radius: var(--r-sm);
     background: var(--info-soft);
-    color: var(--on-info-soft);
+    color: var(--info);
     font-size: var(--fs-sm);
     font-weight: var(--w-strong);
     line-height: 1.35;
@@ -4984,9 +4906,9 @@ tr.bill-check-line .bill-check-msg {
 }
 
 .party-due-line.party-due-old {
-    border-color: var(--warning-border);
+    border-color: var(--warning-line);
     background: var(--warning-soft);
-    color: var(--on-warning-soft);
+    color: var(--warning);
 }
 
 /* ---- css/history.css ---- */
@@ -4997,18 +4919,18 @@ tr.bill-check-line .bill-check-msg {
   margin-bottom: 12px;
   font-weight: var(--w-strong);
   font-size: var(--fs-body);
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
 .history-date {
-  color: var(--text-secondary);
+  color: var(--ink-2);
   font-size: var(--fs-sm);
   margin-bottom: 8px;
 }
 
 .bill-row__items {
   font-size: var(--fs-sm);
-  color: var(--text-secondary);
+  color: var(--ink-2);
   margin-bottom: 8px;
   font-weight: var(--w-strong);
 }
@@ -5032,8 +4954,8 @@ tr.bill-check-line .bill-check-msg {
   border-radius: var(--r-md);
   font-size: var(--fs-caption);
   font-weight: var(--w-label);
-  background: var(--primary-soft);
-  color: var(--on-primary-soft);
+  background: var(--accent-soft);
+  color: var(--accent-text);
   vertical-align: middle;
 }
 
@@ -5045,12 +4967,12 @@ tr.bill-check-line .bill-check-msg {
   font-size: var(--fs-caption);
   font-weight: var(--w-label);
   vertical-align: middle;
-  background: var(--seg-bg);
-  color: var(--text-secondary);
+  background: var(--seg-track);
+  color: var(--ink-2);
 }
 
-.print-chip--failed { background: var(--danger-soft); color: var(--on-danger-soft); }
-.print-chip--uncertain { background: var(--warning-soft); color: var(--on-warning-soft); }
+.print-chip--failed { background: var(--negative-soft); color: var(--negative); }
+.print-chip--uncertain { background: var(--warning-soft); color: var(--warning); }
 
 .bill-print-status {
   margin: 0 var(--sp-4) var(--sp-4);
@@ -5116,7 +5038,7 @@ tr.bill-check-line .bill-check-msg {
   min-height: 1px;
   padding: 10px 0 16px;
   text-align: center;
-  color: var(--text-secondary);
+  color: var(--ink-2);
   font-size: var(--fs-sm);
 }
 
@@ -5128,10 +5050,10 @@ tr.bill-check-line .bill-check-msg {
 .history-range-retry {
   margin-left: 6px;
   padding: 6px 14px;
-  border: 1px solid var(--primary-border);
+  border: 1px solid var(--accent-line);
   border-radius: var(--r-sm);
-  background: var(--card-bg);
-  color: var(--on-primary-soft);
+  background: var(--panel-bg);
+  color: var(--accent-text);
   font-weight: var(--w-strong);
   font-size: var(--fs-sm);
   cursor: pointer;
@@ -5327,7 +5249,7 @@ tr.bill-check-line .bill-check-msg {
 .bill-row__party {
   grid-area: party;
   font-size: var(--fs-body);
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
 .bill-row__amount {
@@ -5348,7 +5270,7 @@ tr.bill-check-line .bill-check-msg {
   gap: 4px 6px;
   min-width: 0;
   font-size: var(--fs-sm);
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 
 .bill-row__date {
@@ -5394,16 +5316,16 @@ tr.bill-check-line .bill-check-msg {
 .bill-group--opening {
   margin: 0 0 14px;
   padding: 8px 0 2px;
-  border: 1px dashed var(--primary-border);
-  border-radius: var(--radius-lg);
-  background: var(--primary-soft);
+  border: 1px dashed var(--accent-line);
+  border-radius: var(--r-panel);
+  background: var(--accent-soft);
 }
 
 .bill-group__title {
   margin: 0 12px 8px;
   font-size: var(--fs-caption);
   font-weight: var(--w-strong);
-  color: var(--on-primary-soft);
+  color: var(--accent-text);
 }
 
 /* "Bills older than … aren't updated live" — one subtle line */
@@ -5413,7 +5335,7 @@ tr.bill-check-line .bill-check-msg {
   gap: 8px;
   margin: 2px 0 8px;
   font-size: var(--fs-sm);
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 
 .history-stale-text {
@@ -5462,7 +5384,7 @@ tr.bill-check-line .bill-check-msg {
 
 .bill-table__by {
   font-size: var(--fs-sm);
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 
 .bill-table__chips .payment-badge {
@@ -5471,14 +5393,14 @@ tr.bill-check-line .bill-check-msg {
 
 .bill-table__group th {
   padding: 6px 8px;
-  background: var(--primary-soft);
-  color: var(--on-primary-soft);
+  background: var(--accent-soft);
+  color: var(--accent-text);
   font-size: var(--fs-caption);
   text-align: left;
 }
 
 .bill-table__row.is-opening {
-  background: var(--primary-soft);
+  background: var(--accent-soft);
 }
 
 /* Wholesale › History controls */
@@ -5498,15 +5420,15 @@ tr.bill-check-line .bill-check-msg {
   border-radius: var(--r-md);
   font-size: var(--fs-caption);
   font-weight: var(--w-strong);
-  background: var(--surface-muted);
-  color: var(--text-secondary);
+  background: var(--surface-2);
+  color: var(--ink-2);
   vertical-align: middle;
 }
 
 .voided-reason {
   margin-left: 6px;
   font-size: var(--fs-caption);
-  color: var(--text-secondary);
+  color: var(--ink-2);
   font-style: italic;
 }
 
@@ -5523,13 +5445,13 @@ tr.bill-check-line .bill-check-msg {
 .bill-group--voided {
   margin: 0 0 14px;
   padding: 8px 0 2px;
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-lg);
-  background: var(--surface-muted);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-panel);
+  background: var(--surface-2);
 }
 
 .bill-group--voided .bill-group__title {
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 
 /* Bill details: voided notice, edit history (#121), reason dialog */
@@ -5548,14 +5470,14 @@ tr.bill-check-line .bill-check-msg {
 .bill-edits {
   margin-top: 12px;
   font-size: var(--fs-sm);
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 
 .bill-edits__view {
   border: none;
   background: none;
   padding: 0;
-  color: var(--primary-color);
+  color: var(--accent-text);
   font-size: var(--fs-sm);
   text-decoration: underline;
   cursor: pointer;
@@ -5569,8 +5491,8 @@ tr.bill-check-line .bill-check-msg {
   margin-bottom: 8px;
   padding: 8px 10px;
   border-radius: var(--r-control);
-  background: var(--surface-muted);
-  color: var(--text-primary);
+  background: var(--surface-2);
+  color: var(--ink);
 }
 
 .bill-edit__head {
@@ -5579,7 +5501,7 @@ tr.bill-check-line .bill-check-msg {
 
 .bill-edit__reason {
   margin-top: 2px;
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 
 .bill-edit__changes {
@@ -5745,8 +5667,8 @@ tr.bill-check-line .bill-check-msg {
   border-radius: var(--r-sm);
   font-size: var(--fs-caption);
   font-weight: var(--w-strong);
-  background: var(--danger-soft);
-  color: var(--on-danger-soft);
+  background: var(--negative-soft);
+  color: var(--negative);
 }
 
 /* ---- css/outstanding.css ---- */
@@ -6425,13 +6347,13 @@ tr.bill-check-line .bill-check-msg {
   padding: var(--sp-5);
   opacity: 0;
   visibility: hidden;
-  transition: opacity var(--transition-slow), visibility var(--transition-slow);
+  transition: opacity var(--dur-3) var(--ease), visibility var(--dur-3) var(--ease);
 }
 
 .app-scrim.active {
   opacity: 1;
   visibility: visible;
-  transition: opacity var(--transition-slow), visibility 0s;
+  transition: opacity var(--dur-3) var(--ease), visibility 0s;
 }
 
 .app-dialog {
@@ -6446,7 +6368,7 @@ tr.bill-check-line .bill-check-msg {
   color: var(--ink);
   outline: none;
   transform: scale(0.9);
-  transition: transform var(--transition-slow);
+  transition: transform var(--dur-3) var(--ease);
 }
 
 .app-scrim.active > .app-dialog {
@@ -6607,7 +6529,7 @@ body:has(.tab.sale-theme.active) .dialog-actions > .btn-primary {
   justify-content: flex-start;
   margin-top: var(--sp-2);
   padding-top: var(--sp-4);
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--line);
 }
 
 @media (max-width: 480px) {
@@ -6632,7 +6554,7 @@ body:has(.tab.sale-theme.active) .dialog-actions > .btn-primary {
 /* -------------------- SETTINGS -------------------- */
 .setting-description {
   font-size: var(--fs-sm);
-  color: var(--text-secondary);
+  color: var(--ink-2);
   margin: var(--sp-2) 0 var(--sp-4);
   font-style: italic;
   line-height: 1.6;
@@ -7078,7 +7000,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
   font-style: var(--title-style);
   font-size: var(--fs-body);
   font-weight: var(--w-strong);
-  color: var(--text-primary);
+  color: var(--ink);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -7106,7 +7028,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 
 .labour-breakdown-note {
   font-size: var(--fs-caption);
-  color: var(--text-secondary);
+  color: var(--ink-2);
   margin: 8px 0 0;
 }
 
@@ -7146,7 +7068,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .cash-form .field { display: block; }
 .cash-form .field > * + * { margin-top: var(--sp-2); }
 .cash-hint { color: var(--ink-3); font-size: var(--fs-caption); }
-.cash-diff-alert { display: none; padding: var(--sp-3); border-radius: var(--radius); font-weight: var(--w-strong); }
+.cash-diff-alert { display: none; padding: var(--sp-3); border-radius: var(--r-control); font-weight: var(--w-strong); }
 .cash-history-list { max-height: 400px; overflow-y: auto; }
 
 /* ---------- Today › Summary (redesign 5.1): hero, needs attention, metrics, rows ---------- */
@@ -7222,7 +7144,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .today-item .row-meta .row-amt { color: var(--ink); }
 
 /* Cash open 14 h or more (C10, Q25 of #111) */
-.cash-long-open { background: var(--warning-soft); border: 1px solid var(--warning-border); color: var(--on-warning-soft); border-radius: var(--radius); padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3); font-weight: var(--w-strong); }
+.cash-long-open { background: var(--warning-soft); border: 1px solid var(--warning-line); color: var(--warning); border-radius: var(--r-control); padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3); font-weight: var(--w-strong); }
 
 /* Manual reminders (#86) */
 .reminder-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: var(--fs-sm); padding: 4px 0; }
@@ -7232,30 +7154,30 @@ body.no-perm-contacts [data-perm~="contacts"] {
 
 .today-reminder-form { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .today-reminder-form input, .today-reminder-form select { min-height: 44px; font-size: var(--fs-input); padding: 6px 10px; }
-.today-reminder-repeat { color: var(--text-secondary); font-size: var(--fs-caption); }
+.today-reminder-repeat { color: var(--ink-2); font-size: var(--fs-caption); }
 .today-reminder-form-actions { display: flex; gap: var(--sp-2); }
 
 /* Ask (#88) */
 .ask-page { max-width: 720px; }
-.ask-intro { color: var(--text-secondary); margin: 4px 0 12px; }
+.ask-intro { color: var(--ink-2); margin: 4px 0 12px; }
 .ask-form { display: flex; gap: 8px; }
 .ask-form input { flex: 1; min-width: 0; min-height: 44px; font-size: var(--fs-input); padding: 8px 12px; }
 .ask-examples { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
 .ask-example { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .ask-answers { display: flex; flex-direction: column; gap: 10px; }
-.ask-answer { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--r-md); padding: 10px 12px; }
+.ask-answer { background: var(--panel-bg); border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px 12px; }
 .ask-question { font-weight: var(--w-strong); margin-bottom: 4px; }
 .ask-line { margin: 2px 0; }
 .ask-answer .ask-open { margin-top: 6px; }
 .ask-answer .ask-open + .ask-open { margin-left: 6px; }
-.ask-change { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border-color); }
-.ask-change-field { display: flex; flex: 1 1 140px; min-width: 0; flex-direction: column; gap: 2px; font-size: var(--fs-sm); color: var(--text-secondary); }
+.ask-change { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.ask-change-field { display: flex; flex: 1 1 140px; min-width: 0; flex-direction: column; gap: 2px; font-size: var(--fs-sm); color: var(--ink-2); }
 .ask-change-field select { width: 100%; min-height: 44px; font-size: var(--fs-body); }
 .ask-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .ask-kind { min-height: 44px; }
 
 /* Cash › history (5.2b): each day is a row, its figures two columns; it lights up under the pointer (#89) */
-.cash-history-list .row.cash-day { align-items: flex-start; padding: var(--sp-3) 0; cursor: pointer; transition: background var(--transition-fast); }
+.cash-history-list .row.cash-day { align-items: flex-start; padding: var(--sp-3) 0; cursor: pointer; transition: background var(--dur-1) var(--ease); }
 .cash-history-list .row.cash-day + .row.cash-day::before { left: 0; }
 .cash-history-list .row.cash-day:hover { background: var(--surface-2); }
 .cash-day-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
@@ -7589,13 +7511,13 @@ body.no-perm-contacts [data-perm~="contacts"] {
 /* ---- css/finance.css ---- */
 /* ==================== SUMMARY ROWS ==================== */
 .amount-positive {
-    color: var(--success-color);
+    color: var(--positive);
     font-weight: var(--w-strong);
     font-size: var(--fs-lead);
 }
 
 .amount-negative {
-    color: var(--danger-color);
+    color: var(--negative);
     font-weight: var(--w-strong);
     font-size: var(--fs-lead);
 }
@@ -7604,24 +7526,24 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .form-control {
     width: 100%;
     padding: 13px 15px;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-control);
     font-size: var(--fs-body);
-    transition: all var(--transition);
-    background: var(--card-bg);
+    transition: all var(--dur-2) var(--ease);
+    background: var(--panel-bg);
     box-sizing: border-box;
 }
 
 .form-control:focus {
     outline: none;
-    border-color: var(--primary-color);
-    box-shadow: var(--focus-ring);
+    border-color: var(--accent-text);
+    box-shadow: var(--focus);
 }
 
 /* ==================== CARD BREAKDOWN (#215), an app dialog ==================== */
 .fin-period {
     font-size: var(--fs-caption);
-    color: var(--text-muted);
+    color: var(--ink-3);
 }
 
 .fin-value {
@@ -7636,8 +7558,8 @@ body.no-perm-contacts [data-perm~="contacts"] {
 }
 
 .fin-term {
-    border: 1px solid var(--border-color);
-    background: var(--light-bg);
+    border: 1px solid var(--line);
+    background: var(--bg);
     border-radius: var(--r-lg);
     padding: 2px 10px;
     font-size: var(--fs-sm);
@@ -7664,7 +7586,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
     justify-content: space-between;
     gap: 10px;
     padding: 10px 0;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--line);
 }
 
 .fin-line-tap {
@@ -7683,7 +7605,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 
 .fin-line-sub {
     font-size: var(--fs-caption);
-    color: var(--text-muted);
+    color: var(--ink-3);
     overflow-wrap: anywhere;
 }
 
@@ -7700,7 +7622,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
     padding: 10px 0;
     background: none;
     border: none;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--line);
     font-size: var(--fs-sm);
     text-align: left;
     cursor: pointer;
@@ -7720,7 +7642,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
     display: flex;
     justify-content: space-between;
     padding-top: var(--sp-3);
-    border-top: 2px solid var(--border-color);
+    border-top: 2px solid var(--line);
     font-size: var(--fs-sm);
 }
 
@@ -7733,8 +7655,8 @@ body.no-perm-contacts [data-perm~="contacts"] {
 
 .fin-note {
     background: var(--warning-soft);
-    border-color: var(--warning-border);
-    color: var(--on-warning-soft);
+    border-color: var(--warning-line);
+    color: var(--warning);
 }
 
 /* ---- css/rate-trends.css ---- */
@@ -7746,32 +7668,32 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .rt-panel h3 { margin: 0 0 var(--sp-2); font-size: var(--fs-body); }
 .rt-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-2); }
 .rt-head h3 { margin: 0; }
-.rt-head select { width: auto; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); font-size: var(--fs-input); }
+.rt-head select { width: auto; padding: 6px 8px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); font-size: var(--fs-input); }
 .rt-sub { margin-top: 12px !important; }
-.rt-muted { color: var(--text-secondary); font-size: var(--fs-caption); margin-top: 6px; }
+.rt-muted { color: var(--ink-2); font-size: var(--fs-caption); margin-top: 6px; }
 .rt-note { font-size: var(--fs-sm); line-height: 1.45; }
-.rt-ok { font-size: var(--fs-sm); line-height: 1.45; color: var(--on-success-soft); }
-.rt-warn { font-size: var(--fs-sm); line-height: 1.45; color: var(--on-warning-soft); background: var(--warning-soft); border-radius: var(--r-control); padding: 8px 10px; margin-bottom: 8px; }
+.rt-ok { font-size: var(--fs-sm); line-height: 1.45; color: var(--positive); }
+.rt-warn { font-size: var(--fs-sm); line-height: 1.45; color: var(--warning); background: var(--warning-soft); border-radius: var(--r-control); padding: 8px 10px; margin-bottom: 8px; }
 .rt-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
 .rt-actions .btn { white-space: normal; text-align: left; }
-.rt-budget { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--fs-caption); color: var(--text-secondary); margin-top: 6px; }
-.rt-budget select { width: auto; padding: 4px 6px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); }
+.rt-budget { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--fs-caption); color: var(--ink-2); margin-top: 6px; }
+.rt-budget select { width: auto; padding: 4px 6px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); }
 
 .rt-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
-.rt-controls label { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-caption); color: var(--text-secondary); min-width: 0; }
-.rt-controls select { padding: 8px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); font-size: var(--fs-input); width: 100%; min-width: 0; box-sizing: border-box; }
+.rt-controls label { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-caption); color: var(--ink-2); min-width: 0; }
+.rt-controls select { padding: 8px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); font-size: var(--fs-input); width: 100%; min-width: 0; box-sizing: border-box; }
 
-.rt-outlook { border-left: 4px solid var(--border-strong); border-radius: var(--r-control); background: var(--surface-muted); padding: 10px; margin-bottom: 8px; }
-.rt-outlook-up { border-left-color: #b91c1c; background: var(--danger-soft); }
-.rt-outlook-down { border-left-color: #059669; background: var(--success-soft); }
-.rt-outlook-flat { border-left-color: var(--border-strong); }
+.rt-outlook { border-left: 4px solid var(--line-strong); border-radius: var(--r-control); background: var(--surface-2); padding: 10px; margin-bottom: 8px; }
+.rt-outlook-up { border-left-color: #b91c1c; background: var(--negative-soft); }
+.rt-outlook-down { border-left-color: #059669; background: var(--positive-soft); }
+.rt-outlook-flat { border-left-color: var(--line-strong); }
 .rt-outlook-head { font-weight: var(--w-strong); font-size: var(--fs-sm); }
 .rt-outlook-meta { font-size: var(--fs-caption); margin-top: 4px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .rt-arrow { font-size: var(--fs-body); }
-.rt-conf { padding: 2px 8px; border-radius: var(--r-full); font-weight: var(--w-strong); background: var(--seg-bg); }
-.rt-conf-high { background: var(--success-soft); color: var(--on-success-soft); }
-.rt-conf-medium { background: var(--warning-soft); color: var(--on-warning-soft); }
-.rt-conf-low { background: var(--surface-muted); color: var(--text-secondary); }
+.rt-conf { padding: 2px 8px; border-radius: var(--r-full); font-weight: var(--w-strong); background: var(--seg-track); }
+.rt-conf-high { background: var(--positive-soft); color: var(--positive); }
+.rt-conf-medium { background: var(--warning-soft); color: var(--warning); }
+.rt-conf-low { background: var(--surface-2); color: var(--ink-2); }
 
 .rt-chart-wrap { width: 100%; }
 .rt-chart-wrap canvas { width: 100%; display: block; }
@@ -7783,16 +7705,16 @@ body.no-perm-contacts [data-perm~="contacts"] {
 [data-rt-table] th, [data-rt-table] td { height: auto; padding: 6px; text-align: right; white-space: nowrap; }
 [data-rt-table] th { text-align: center; }
 [data-rt-table] td:first-child { text-align: left; font-weight: var(--w-strong); }
-.rt-neg { color: var(--on-danger-soft); }
+.rt-neg { color: var(--negative); }
 
-.rt-line { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--text-secondary); margin-right: 4px; vertical-align: middle; }
+.rt-line { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--ink-2); margin-right: 4px; vertical-align: middle; }
 .rt-line-dashed { border-top-style: dashed; }
-.rt-warn-inline { color: var(--on-warning-soft); }
-.rt-src { font-size: var(--fs-caption); color: var(--text-secondary); text-align: left !important; }
+.rt-warn-inline { color: var(--warning); }
+.rt-src { font-size: var(--fs-caption); color: var(--ink-2); text-align: left !important; }
 .rt-click { cursor: pointer; }
 .rt-selected td { background: var(--info-soft); }
-.rt-week td { background: var(--surface-muted); font-weight: var(--w-strong); }
-.rt-total td { font-weight: var(--w-strong); border-top: 2px solid var(--border-strong); }
+.rt-week td { background: var(--surface-2); font-weight: var(--w-strong); }
+.rt-total td { font-weight: var(--w-strong); border-top: 2px solid var(--line-strong); }
 
 /* ---- css/health.css ---- */
 /* App health / test in production (#217; 5.8a) */
@@ -8628,7 +8550,7 @@ div.ins-wide,
     background: transparent;
     color: var(--ink-2);
     box-shadow: none;
-    transition: background-color var(--transition-fast), color var(--transition-fast);
+    transition: background-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
   }
 
   .app-bar .notif-bell:hover {
@@ -8769,7 +8691,7 @@ div.ins-wide,
     font-size: var(--fs-body);
     text-align: left;
     cursor: pointer;
-    transition: background-color var(--transition-fast), color var(--transition-fast);
+    transition: background-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
   }
 
   .nav-icon {
@@ -9286,7 +9208,7 @@ div.ins-wide,
     margin-top: auto !important;
     padding: var(--sp-3) 0;
     border-top: 1px solid var(--line);
-    background: var(--light-bg);
+    background: var(--bg);
   }
 
   :is(#billing, .bill-page).tab {

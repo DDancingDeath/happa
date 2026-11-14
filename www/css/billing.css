@@ -8,9 +8,9 @@
 
 #billTable thead, :is(#saleTable, .bill-lines) thead {
   display: table-header-group;
-  background: var(--surface-muted);
+  background: var(--surface-2);
   font-weight: var(--w-strong);
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
 #billTable thead tr, :is(#saleTable, .bill-lines) thead tr {
@@ -24,18 +24,18 @@
   border-bottom: 1px solid var(--table-rule);
   font-size: var(--fs-caption);
   font-weight: var(--w-label);
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 
 #billTable tbody tr, :is(#saleTable, .bill-lines) tbody tr {
   display: table-row;
-  background: var(--card-bg);
-  border-bottom: 1px var(--rule-style) var(--border-color);
-  transition: background var(--transition);
+  background: var(--panel-bg);
+  border-bottom: 1px var(--rule-style) var(--line);
+  transition: background var(--dur-2) var(--ease);
 }
 
 #billTable tbody tr:hover, :is(#saleTable, .bill-lines) tbody tr:hover {
-  background: var(--light-bg);
+  background: var(--bg);
 }
 
 #billTable td, :is(#saleTable, .bill-lines) td {
@@ -47,7 +47,7 @@
   word-wrap: break-word;
   overflow-wrap: break-word;
   max-width: 0;
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
 #billTable td:before, :is(#saleTable, .bill-lines) td:before {
@@ -205,7 +205,7 @@
   flex-shrink: 0;
   font-weight: var(--w-label);
   font-size: var(--fs-sm);
-  color: var(--text-primary);
+  color: var(--ink);
   margin: 0;
 }
 
@@ -215,12 +215,12 @@
 .bill-form-field input[type="text"] {
   flex: 1;
   padding: 13px 15px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-control);
   font-size: var(--fs-body);
-  background: var(--card-bg);
-  color: var(--text-primary);
-  transition: all var(--transition);
+  background: var(--panel-bg);
+  color: var(--ink);
+  transition: all var(--dur-2) var(--ease);
   margin: 0;
 }
 
@@ -237,9 +237,9 @@ input[type="number"] {
 
 .bill-form-field select:focus,
 .bill-form-field input:focus {
-  border-color: var(--primary-color);
+  border-color: var(--accent-text);
   outline: none;
-  box-shadow: var(--focus-ring);
+  box-shadow: var(--focus);
 }
 
 label {
@@ -248,7 +248,7 @@ label {
   margin-bottom: 8px;
   font-weight: var(--w-label);
   font-size: var(--fs-sm);
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
 /* Remove spinner arrows from all number inputs */
@@ -298,16 +298,16 @@ input[type="number"] {
 }
 
 .bill-line-sum {
-  background: var(--card-bg);
+  background: var(--panel-bg);
   padding: 12px 16px;
-  border-radius: var(--radius-md);
+  border-radius: var(--r-panel);
   margin: 12px 0;
-  box-shadow: var(--shadow);
+  box-shadow: var(--e1);
   display: flex;
   flex-wrap: nowrap;
   justify-content: space-around;
   gap: 16px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--line);
 }
 
 /* -------------------- BILLING THEME -------------------- */
@@ -324,24 +324,24 @@ input[type="number"] {
   font-size: var(--fs-input);
   font-weight: var(--w-strong);
   border: 2px solid;
-  border-radius: var(--radius);
+  border-radius: var(--r-control);
   text-align: center;
-  transition: all var(--transition);
+  transition: all var(--dur-2) var(--ease);
 }
 
 .rate-input.purchase {
-  border-color: var(--purchase-color);
-  background: var(--purchase-light);
+  border-color: var(--accent-text);
+  background: var(--mode-purchase-soft);
 }
 
 .rate-input.sale {
-  border-color: var(--sale-color);
-  background: var(--sale-light);
+  border-color: var(--positive);
+  background: var(--mode-sale-soft);
 }
 
 .rate-input:focus {
   outline: none;
-  box-shadow: var(--focus-ring);
+  box-shadow: var(--focus);
 }
 
 /* Unsaved-bill notice and bill number hint (#117) */
@@ -355,7 +355,7 @@ input[type="number"] {
 .bill-no-hint {
   margin-top: 12px;
   font-size: var(--fs-sm);
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 /* Voice billing (#81): shown only when switched on in Settings */
 .btn[data-voice-mic] {
@@ -363,8 +363,8 @@ input[type="number"] {
 }
 
 .btn[data-voice-mic].voice-listening {
-  background-color: var(--danger-soft);
-  color: var(--on-danger-soft);
+  background-color: var(--negative-soft);
+  color: var(--negative);
 }
 
 .voice-check th {
@@ -374,7 +374,7 @@ input[type="number"] {
 }
 
 .voice-warn {
-  color: var(--on-warning-soft);
+  color: var(--warning);
 }
 
 /* Save with a line not added to the bill (BF-PENDING), extreme rate (BF-RATECHECK): choices wrap on a phone */
@@ -491,7 +491,7 @@ input[type="number"] {
   border: 1px solid var(--line-strong);
   border-radius: var(--r-control);
   background: var(--surface);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--e2);
 }
 
 .party-suggest[hidden] {
@@ -531,7 +531,7 @@ input[type="number"] {
 }
 
 .party-suggest-due.has-due {
-  color: var(--on-warning-soft);
+  color: var(--warning);
 }
 
 /* "Did you mean …?" under the name: a warning, never a stop */
@@ -542,10 +542,10 @@ input[type="number"] {
   gap: var(--sp-2);
   margin: 0 0 var(--sp-3);
   padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--warning-border);
+  border: 1px solid var(--warning-line);
   border-radius: var(--r-control);
   background: var(--warning-soft);
-  color: var(--on-warning-soft);
+  color: var(--warning);
   font-size: var(--fs-sm);
 }
 
@@ -936,7 +936,7 @@ input[type="number"] {
   padding: 8px 10px;
   border-radius: var(--r-control);
   background: var(--warning-soft);
-  color: var(--on-warning-soft);
+  color: var(--warning);
   font-size: var(--fs-sm);
 }
 

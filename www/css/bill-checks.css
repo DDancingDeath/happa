@@ -49,22 +49,22 @@
 
 input.bill-check-block,
 select.bill-check-block {
-    border-color: var(--danger-dark) !important;
+    border-color: var(--negative) !important;
     box-shadow: var(--ring-danger) !important;
 }
 
 input.bill-check-warn,
 select.bill-check-warn {
-    border-color: var(--warning-dark) !important;
+    border-color: var(--warning) !important;
     box-shadow: var(--ring-warning) !important;
 }
 
 tr.bill-check-block > td {
-    background: var(--danger-soft);
+    background: var(--negative-soft);
 }
 
 tr.bill-check-block > td:first-child {
-    box-shadow: var(--stripe) var(--danger-dark);
+    box-shadow: var(--stripe) var(--negative);
 }
 
 tr.bill-check-warn > td {
@@ -72,7 +72,7 @@ tr.bill-check-warn > td {
 }
 
 tr.bill-check-warn > td:first-child {
-    box-shadow: var(--stripe) var(--warning-dark);
+    box-shadow: var(--stripe) var(--warning);
 }
 
 .bill-check-msg {
@@ -81,11 +81,11 @@ tr.bill-check-warn > td:first-child {
     font-weight: var(--w-strong);
     line-height: 1.35;
     text-align: left;
-    color: var(--on-danger-soft);
+    color: var(--negative);
 }
 
 .bill-check-msg.bill-check-warn {
-    color: var(--on-warning-soft);
+    color: var(--warning);
 }
 
 tr.bill-check-line > td {
@@ -103,7 +103,7 @@ tr.bill-check-line .bill-check-msg {
 }
 
 .bill-check-save-override {
-    outline: 2px dashed var(--warning-dark);
+    outline: 2px dashed var(--warning);
     outline-offset: 2px;
 }
 
@@ -127,10 +127,10 @@ tr.bill-check-line .bill-check-msg {
     width: 100%;
     margin: -4px 0 10px;
     padding: 6px 10px;
-    border: 1px solid var(--info-border);
+    border: 1px solid var(--info-line);
     border-radius: var(--r-sm);
     background: var(--info-soft);
-    color: var(--on-info-soft);
+    color: var(--info);
     font-size: var(--fs-sm);
     font-weight: var(--w-strong);
     line-height: 1.35;
@@ -139,7 +139,7 @@ tr.bill-check-line .bill-check-msg {
 }
 
 .party-due-line.party-due-old {
-    border-color: var(--warning-border);
+    border-color: var(--warning-line);
     background: var(--warning-soft);
-    color: var(--on-warning-soft);
+    color: var(--warning);
 }

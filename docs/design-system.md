@@ -53,15 +53,15 @@ the stacking order stays exact. `ds-guard` counts any numeric `z-index`.
 | `--z-toast` | 100000 | toasts; −2 the storage-full banner (`quota-guard.js`) |
 | `--z-max` | 2147483647 | reserved: nothing may sit above it |
 
-**Old names** (`--primary-color`, `--card-bg`, `--white`, `--success-color`, `--btn-primary`,
-`--shadow-md`, `--radius`, …) are aliases of the tokens above, so older stylesheets follow every
-theme. New code uses the new names.
+**One name per token.** The old aliases (`--primary-color`, `--card-bg`, `--text-secondary`, `--border-color`,
+`--shadow-md`, `--radius`, `--space-*`, `--transition*`, …) are gone: every stylesheet and script uses the
+names above (`--accent-text`, `--panel-bg`, `--ink-2`, `--line`, `--e2`, `--r-control`, `--sp-*`,
+`var(--dur-2) var(--ease)`). Don't bring an old name back.
 
 **Why the third selector.** The materials and inks derived with `var()` from layer-1 colours sit in a block on
 `:root, [data-theme], [data-mode]`, so they are recomputed on each themed element. That is what lets a
 gallery card (`<span data-theme="nature" data-mode="dark">`) render another theme in place. A new
-derived colour token goes in that block too. (The old `--radius*`, `--space-*` and `--transition*`
-aliases are on `:root` only, so a scoped preview keeps the page's values for them; new code uses `--r-*`.)
+derived colour token goes in that block too.
 
 ### Modes and themes
 

@@ -1,11 +1,11 @@
 /* -------------------- BILL TOTALS -------------------- */
 .bill-totals {
-  background: var(--card-bg);
+  background: var(--panel-bg);
   padding: 16px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-panel);
   margin: 16px 0;
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border-color);
+  box-shadow: var(--e1);
+  border: 1px solid var(--line);
 }
 
 .total-line {
@@ -18,13 +18,13 @@
 
 .total-line span {
   font-weight: var(--w-strong);
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 
 .total-line strong {
   font-size: var(--fs-lead);
   font-weight: var(--w-strong);
-  color: var(--primary-color);
+  color: var(--accent-text);
 }
 
 .bill-labour {
@@ -42,15 +42,15 @@
   font-weight: var(--w-label);
   cursor: pointer;
   font-size: var(--fs-body);
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
 .checkbox-label input[type="checkbox"] {
   width: 20px;
   height: 20px;
   cursor: pointer;
-  accent-color: var(--primary-color);
-  border-radius: var(--radius-sm);
+  accent-color: var(--accent-text);
+  border-radius: var(--r-sm);
 }
 
 .bill-labour input[type="number"] {
@@ -59,35 +59,35 @@
   text-align: right;
   font-size: var(--fs-input);
   font-weight: var(--w-strong);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-control);
   margin: 0;
   max-width: 120px;
-  transition: all var(--transition);
+  transition: all var(--dur-2) var(--ease);
 }
 
 .bill-labour input[type="number"]:focus {
-  border-color: var(--primary-color);
-  box-shadow: var(--focus-ring);
+  border-color: var(--accent-text);
+  box-shadow: var(--focus);
 }
 
 .grand-total {
   padding: 14px !important;
   margin-top: 10px;
   font-size: var(--fs-body) !important;
-  background: var(--success-soft);
-  border-radius: var(--radius);
+  background: var(--positive-soft);
+  border-radius: var(--r-control);
   margin: 10px -4px;
 }
 
 .grand-total span {
   font-weight: var(--w-strong);
-  color: var(--on-success-soft);
+  color: var(--positive);
 }
 
 .grand-total strong {
   font-size: 22px !important;
-  color: var(--on-success-soft) !important;
+  color: var(--positive) !important;
 }
 
 .pay-line {
@@ -96,7 +96,7 @@
   align-items: center;
   padding: var(--sp-3) 0;
   gap: 12px;
-  border-bottom: 1px var(--rule-style) var(--border-color);
+  border-bottom: 1px var(--rule-style) var(--line);
 }
 
 .pay-line:last-child {
@@ -108,19 +108,19 @@
   font-weight: var(--w-label);
   font-size: var(--fs-body);
   flex: 1;
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
 .pay-line span {
   font-weight: var(--w-strong);
   font-size: var(--fs-body);
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 
 .pay-line strong {
   font-size: var(--fs-lead);
-  color: var(--primary-color);
-  transition: color var(--transition);
+  color: var(--accent-text);
+  transition: color var(--dur-2) var(--ease);
 }
 
 .pay-line input[type="number"] {
@@ -131,34 +131,34 @@
   text-align: right;
   font-size: var(--fs-input);
   font-weight: var(--w-strong);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-control);
   margin: 0;
   flex-shrink: 0;
-  transition: all var(--transition);
+  transition: all var(--dur-2) var(--ease);
 }
 
 .pay-line input[type="number"]:focus {
-  border-color: var(--primary-color);
-  box-shadow: var(--focus-ring);
+  border-color: var(--accent-text);
+  box-shadow: var(--focus);
 }
 
 .pay-line.payment-total {
   background: var(--info-soft);
   padding: 14px;
-  border-radius: var(--radius);
+  border-radius: var(--r-control);
   margin: 10px -4px;
-  transition: background var(--transition);
+  transition: background var(--dur-2) var(--ease);
 }
 
 .pay-line.payment-total span {
   font-weight: var(--w-strong);
-  color: var(--on-info-soft);
+  color: var(--info);
 }
 
 .pay-line.payment-total strong {
   font-size: var(--fs-lead);
-  color: var(--info-dark);
+  color: var(--info);
 }
 
 /* Cash + Online + Due must add up to the bill total (#23) */
@@ -586,7 +586,7 @@
   flex-shrink: 0;
   cursor: pointer;
   border-radius: var(--r-sm);
-  border: 2px solid var(--border-color);
+  border: 2px solid var(--line);
   margin: 0;
-  accent-color: var(--primary-color);
+  accent-color: var(--accent-text);
 }
