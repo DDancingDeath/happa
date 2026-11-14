@@ -28,15 +28,11 @@
 }
 
 .labour-breakdown-table {
-  width: 100%;
-  border-collapse: collapse;
   font-size: var(--fs-sm);
 }
 
 .labour-breakdown-table th,
 .labour-breakdown-table td {
-  padding: 6px 4px;
-  border-bottom: 1px solid var(--border-color);
   text-align: right;
 }
 

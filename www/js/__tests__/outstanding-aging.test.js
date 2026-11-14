@@ -5,7 +5,7 @@
  * Timezone is pinned to Asia/Kolkata in jest.config.js.
  */
 import {
-    AGING_BUCKETS, ageInDays, bucketIndex, buildAging, chaseFirst, dueRows, filterBillsByBucket,
+    AGING_BUCKETS, ageInDays, bucketIndex, buildAging, chaseFirst, dueRows, dueTone, filterBillsByBucket,
     normalizePartyName, sortParties
 } from '../utils/aging.js';
 import {
@@ -36,6 +36,13 @@ describe('#46 aging bucket math', () => {
         expect(bucketIndex(90)).toBe(2);
         expect(bucketIndex(91)).toBe(3);
         expect(bucketIndex(null)).toBe(AGING_BUCKETS.length - 1);
+    });
+
+    test('due colour: ink to 30 days, amber after 30, red after 90; ₹0 or no age is ink', () => {
+        expect([0, 30, 31, 90, 91].map(d => dueTone(d, 100))).toEqual(['', '', 'warn', 'warn', 'neg']);
+        expect(dueTone(200, 0)).toBe('');
+        expect(dueTone(200, 0.001)).toBe('');
+        expect(dueTone(null, 100)).toBe('');
     });
 
     test('age counts local (IST) calendar days, not 24 h blocks or UTC days', () => {
@@ -214,6 +221,14 @@ describe('#46/#77 Outstanding panel', () => {
         expect(panel.querySelector('.aging-chase li').textContent).toContain('₹500 overdue');
         expect(panel.textContent.toLowerCase()).not.toContain('staff');
         expect(document.querySelectorAll('#dueList .history-item')).toHaveLength(2);
+    });
+
+    test('an age group with ₹0 is not coloured by its age', () => {
+        AppState.retailSalesHistory = AppState.retailSalesHistory.slice(1);
+        OutstandingManager.renderDue();
+        const old = document.querySelector('#dueAging .aging-bucket.aging-b3');
+        expect(old.classList.contains('is-zero')).toBe(true);
+        expect(document.querySelector('#dueAging .aging-bucket.aging-b0').classList.contains('is-zero')).toBe(false);
     });
 
     test('tapping a bucket filters the bill list; tapping again shows all', () => {
