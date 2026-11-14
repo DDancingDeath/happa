@@ -430,18 +430,6 @@
 }
 
 /* ==================== FORM STYLES ==================== */
-.form-group {
-    margin-bottom: 16px;
-}
-
-.form-group label {
-    display: block;
-    font-size: 14px;
-    font-weight: var(--w-regular);
-    margin-bottom: 6px;
-    color: var(--text-primary);
-}
-
 .form-control {
     width: 100%;
     padding: 13px 15px;

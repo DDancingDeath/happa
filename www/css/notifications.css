@@ -1,16 +1,16 @@
-/* Notifications bell + inbox (#12). Desktop placement lives in desktop.css. */
+/* Notifications bell + inbox (#12, 5.10): a bottom sheet of .rows. Desktop placement lives in desktop.css. */
 .notif-bell {
   position: fixed;
-  top: 12px;
-  right: 12px;
-  z-index: 1000;
+  top: var(--sp-3);
+  right: var(--sp-3);
+  z-index: var(--z-bell);
   width: 46px;
   height: 46px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--card-bg);
-  color: var(--text-primary);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--panel-bg);
+  color: var(--ink);
+  box-shadow: var(--e1);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -52,86 +52,52 @@
 .notif-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 1002;
-  background: rgba(0, 0, 0, 0.35);
+  z-index: var(--z-notif-scrim);
 }
 
-.notif-panel {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1003;
+.notif-sheet {
+  z-index: var(--z-notif);
   max-height: 85vh;
   display: flex;
   flex-direction: column;
-  background: var(--card-bg);
-  border-radius: 16px 16px 0 0;
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.2);
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  overflow: hidden;
+  padding: 0 0 env(safe-area-inset-bottom, 0px);
 }
 
 .notif-backdrop[hidden],
-.notif-panel[hidden] {
+.notif-sheet[hidden] {
   display: none;
 }
 
-.notif-panel-header {
+.notif-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px 6px;
+  padding: var(--sp-2) var(--sp-2) 0 var(--sp-4);
 }
 
-.notif-panel-header h3 {
+.notif-head h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
   margin: 0;
-  font-size: 18px;
-}
-
-.notif-panel-hi {
-  font-weight: var(--w-regular);
-  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: var(--fs-lead);
+  font-style: var(--title-style);
+  font-weight: var(--w-strong);
 }
 
 .notif-close {
-  border: none;
-  background: transparent;
-  font-size: var(--fs-display);
-  line-height: 1;
-  cursor: pointer;
-  color: var(--text-secondary);
-  padding: 4px 8px;
+  color: var(--ink-2);
 }
 
-.notif-panel-actions {
-  padding: 0 16px 8px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.notif-mark-all {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-1);
-}
-
-.notif-mark-all,
-.notif-more {
-  border: 1px solid var(--primary-border);
-  background: var(--primary-soft);
-  color: var(--on-primary-soft);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 14px;
-  font-weight: var(--w-strong);
-  cursor: pointer;
+.notif-actions {
+  padding: 0 var(--sp-4) var(--sp-2);
+  border-bottom: 1px solid var(--line);
 }
 
 .notif-more {
-  margin: 10px 16px 14px;
-}
-
-.notif-more[hidden] {
-  display: none;
+  margin: var(--sp-3) var(--sp-4);
 }
 
 .notif-list {
@@ -139,80 +105,32 @@
   flex: 1;
 }
 
-.notif-row {
-  display: flex;
-  gap: 12px;
-  width: 100%;
-  text-align: left;
-  border: none;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--card-bg);
-  padding: 12px 16px;
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
+.notif-item .row-title,
+.notif-item .row-meta {
+  display: block;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
-.notif-row.unread {
+.notif-item .row-meta {
+  color: var(--ink-2);
+}
+
+.notif-item.unread {
   background: var(--info-soft);
-  box-shadow: inset 4px 0 0 #3b82f6;
 }
 
-.notif-icon {
-  font-size: 22px;
-  line-height: 1.2;
+.notif-item.unread::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--sp-1);
+  background: var(--info);
 }
 
-.notif-body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.notif-en {
-  font-weight: var(--w-strong);
-  color: var(--text-primary);
-  word-break: break-word;
-}
-
-.notif-hi {
-  color: var(--text-secondary);
-  word-break: break-word;
-}
-
-.notif-meta {
-  font-size: var(--fs-caption);
-  color: var(--text-secondary);
-}
-
-.notif-empty {
-  padding: 28px 16px;
-  text-align: center;
-  color: var(--text-secondary);
-}
-
-body.dark-mode .notif-panel,
-body.dark-mode .notif-row {
-  background: #1f2937;
-  color: #e5e7eb;
-}
-
-body.dark-mode .notif-row.unread {
-  background: #1e3a5f;
-}
-
-body.dark-mode .notif-en {
-  color: #f9fafb;
-}
-
-body.dark-mode .notif-hi,
-body.dark-mode .notif-meta,
-body.dark-mode .notif-panel-hi {
-  color: #d1d5db;
-}
-
-body.dark-mode .notif-row,
-body.dark-mode .notif-panel-actions {
-  border-color: #374151;
+.notif-item.unread .lead-icon {
+  background: var(--panel-bg);
+  color: var(--info);
 }
