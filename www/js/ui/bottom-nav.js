@@ -68,7 +68,7 @@ export function trackTyping(doc = document) {
     doc.addEventListener('focusout', () => setTimeout(sync, 0));
 }
 
-const somethingOpen = () => !!document.querySelector('.side-nav.active, .modal-overlay.active, .bill-details-overlay.active, #notifPanel:not([hidden])');
+const somethingOpen = () => !!document.querySelector('.side-nav.active, .app-scrim.active, #notifPanel:not([hidden])');
 
 export const BottomNav = {
     swipeOn: false,
