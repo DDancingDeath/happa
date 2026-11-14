@@ -273,21 +273,3 @@
     border-color: var(--warning-border);
     color: var(--on-warning-soft);
 }
-
-/* Sub-tab and date-filter bars: room for the tap hint, all five periods fit on a phone (F09) */
-@media (max-width: 1023.98px) {
-    #finance > .filter-buttons {
-        margin-bottom: 12px;
-    }
-
-    #finance .filter-buttons {
-        flex-wrap: wrap;
-    }
-
-    #finance .filter-buttons .filter-btn {
-        min-width: 0;
-        flex: 1 0 auto;
-        padding: 12px 8px;
-        white-space: nowrap;
-    }
-}

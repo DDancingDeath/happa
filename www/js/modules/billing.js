@@ -203,7 +203,7 @@ const BillingManager = {
     /**
      * Switch between purchase and sale modes
      * @param {'purchase'|'sale'} mode - The mode to switch to
-     * @param {Event} [event] - Optional click event for button styling
+     * @param {Event} [event] - The click, if any (the buttons follow the mode either way)
      */
     switchMode(mode, event) {
         const purchaseSection = document.getElementById('purchaseSection');
@@ -218,13 +218,13 @@ const BillingManager = {
             this.autoSaveToCloud().catch(e => console.warn('Auto-save failed:', e));
         }
         
-        // Update button states
-        if (event) {
-            purchaseBtn.classList.remove('active');
-            saleBtn.classList.remove('active');
-            // The tab for this mode (a delegated click's currentTarget is the document, #89)
-            (mode === 'sale' ? saleBtn : purchaseBtn).classList.add('active');
-        }
+        // The buttons follow the mode shown, whoever switched it (a draft passes no event)
+        const onBtn = mode === 'sale' ? saleBtn : purchaseBtn;
+        [purchaseBtn, saleBtn].forEach(btn => {
+            if (!btn) return;
+            btn.classList.toggle('active', btn === onBtn);
+            btn.setAttribute('aria-pressed', String(btn === onBtn));
+        });
         
         if (mode === 'sale') {
             this.currentMode = 'sale';

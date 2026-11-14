@@ -41,7 +41,7 @@ const opening = (id, timestamp, amount = 2500) => bill(id, timestamp, {
 const html = `
     <div id="history">
       <div class="history-type-filter">
-        <button class="filter-btn" data-type="purchase"></button><button class="filter-btn" data-type="sale"></button>
+        <button data-type="purchase"></button><button data-type="sale"></button>
       </div>
       <select id="historyDatePreset"><option value="all"></option><option value="today"></option>
         <option value="yesterday"></option><option value="week"></option><option value="month"></option>
