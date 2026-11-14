@@ -5,7 +5,7 @@
 .rt-card h3 { margin: 0 0 8px; font-size: var(--fs-body); }
 .rt-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .rt-card-head h3 { margin: 0; }
-.rt-card-head select { width: auto; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: var(--fs-sm); }
+.rt-card-head select { width: auto; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: var(--fs-input); }
 .rt-sub { margin-top: 12px !important; }
 .rt-muted { color: var(--text-secondary); font-size: var(--fs-caption); margin-top: 6px; }
 .rt-empty { color: var(--text-secondary); padding: 12px; text-align: center; font-size: var(--fs-sm); }
@@ -19,7 +19,7 @@
 
 .rt-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .rt-controls label { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-caption); color: var(--text-secondary); min-width: 0; }
-.rt-controls select { padding: 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: var(--fs-sm); width: 100%; min-width: 0; box-sizing: border-box; }
+.rt-controls select { padding: 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: var(--fs-input); width: 100%; min-width: 0; box-sizing: border-box; }
 
 .rt-outlook { border-left: 4px solid var(--border-strong); border-radius: 8px; background: var(--surface-muted); padding: 10px; margin-bottom: 8px; }
 .rt-outlook-up { border-left-color: #b91c1c; background: var(--danger-soft); }
