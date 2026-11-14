@@ -17,7 +17,7 @@ import {
     isFullHistoryLoaded, historyLoadedFrom, formatWindowDate, rangeStatus, retryRange, applyRangeState, renderStaleHistoryHint
 } from '../utils/history-window.js';
 import { filterHistoryBills, resolveHistoryRange, validateCustomRange, billTimeMs } from '../utils/history-filters.js';
-import { buildBillRow, buildOpeningGroup, addOpeningToggle, addVoidedToggle, billTableHtml } from '../ui/bill-row.js';
+import { buildBillRow, buildOpeningGroup, addOpeningToggle, addVoidedToggle, billTableHtml, byNameHtml } from '../ui/bill-row.js';
 import { editsRowHtml, setBillActions, voidedBannerHtml } from '../ui/bill-status.js';
 import { billPool, HistoryManager } from './history.js';
 import { todayLocalISO } from '../utils/dates.js';
@@ -949,7 +949,7 @@ export class WholesaleSalesManager {
                         <span class="due-bill-title"><span class="due-bill-no"><button type="button" class="due-bill-link" data-onclick="wholesaleSales.reprintSaleById('${id}')">#${Helpers.escapeHtml(billNumber)}</button></span>${sale.customerName ? `  <strong>${Helpers.escapeHtml(sale.customerName)}</strong>` : ''}</span>
                         <span class="due-bill-due">${moneyInText(t('ui.outstanding.due_amount', { amount: formatAmount(sale.outstanding) }), sale.outstanding)}</span>
                     </div>
-                    <div class="history-date">${Helpers.escapeHtml(sale.date)}${sale.createdByName ? ` • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(sale.createdByName)}</strong>` : ''}</div>
+                    <div class="history-date">${Helpers.escapeHtml(sale.date)}${sale.createdByName ? ` • ${byNameHtml(sale.createdByName)}` : ''}</div>
                     ${openingOldTotals(sale) ? `<div class="history-date">${L('ui.outstanding.opening_balance', { total: formatAmount(openingOldTotals(sale).total), paid: formatAmount(openingOldTotals(sale).paid) })}</div>` : ''}
                     <div class="due-bill-body">
                         <div class="due-bill-line">

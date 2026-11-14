@@ -234,7 +234,7 @@ describe('cash management escapes session values', () => {
         CashManagementManager.renderHistoryFromCache();
         const list = document.getElementById('cashHistoryList');
         assertNoInjection(list);
-        expect(list.textContent).toContain('Opening: ₹0');
+        expect(list.textContent).toContain('Opening ₹0');
     });
 
     test('session details (signed out and in progress)', async () => {

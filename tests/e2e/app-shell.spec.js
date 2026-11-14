@@ -162,7 +162,7 @@ test('desktop: the page header names the open page (en, hi) with the sync pill a
     test.skip(testInfo.project.name !== 'desktop', 'desktop shell');
     await login(page, 'owner');
     const pages = [['billing', 'Billing'], ['day', 'Today'], ['wholesale-sales', 'Wholesale'], ['expenses', 'Expenses'], ['rates', 'Rates'],
-        ['history', 'History'], ['stock', 'Stocks'], ['due', 'Outstanding'], ['money', 'Money'], ['insights', 'Insights'],
+        ['history', 'History'], ['stock', 'Stock'], ['due', 'Outstanding'], ['money', 'Money'], ['insights', 'Insights'],
         ['statements', 'Statements'], ['anomalies', 'Anomalies'], ['admin', 'Admin'], ['settings-common', 'Settings']];
     for (const [route, title] of pages) {
         await showTab(page, route);

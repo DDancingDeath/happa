@@ -32,7 +32,8 @@
     "max": "Math.max",
     "icon": "ui/icons.js: constant sprite <svg> markup; every call passes a constant name (icon-sprite.test.js)",
     "moneyHtml": "ui/components.js: formatRupees text of a number, HTML-escaped, in constant .money / .cur spans",
-    "moneyInText": "ui/components.js: the text HTML-escaped, with its formatRupees figure drawn by moneyHtml"
+    "moneyInText": "ui/components.js: the text HTML-escaped, with its formatRupees figure drawn by moneyHtml",
+    "byNameHtml": "ui/bill-row.js: L('ui.outstanding.by_name') with {name} replaced by the HTML-escaped name in a constant <strong>"
   },
   "names": {},
   "properties": {
