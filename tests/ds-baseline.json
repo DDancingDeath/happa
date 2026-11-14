@@ -1,17 +1,17 @@
 {
   "_readme": "Design-system ratchet (tests/ci/ds-guard.test.js, docs/design-system.md §7). Per-file counts may only go down; lower them with DS_BASELINE=lower npx jest ds-guard. Files in \"strict\" are pinned at 0 on every metric.",
   "totals": {
-    "spacing": 279,
-    "radius": 38,
-    "shadow": 16,
-    "zIndex": 27,
+    "spacing": 257,
+    "radius": 33,
+    "shadow": 12,
+    "zIndex": 23,
     "important": 30,
     "idSelector": 159,
-    "themeSelector": 6,
+    "themeSelector": 4,
     "inlineStyle": 31,
     "emoji": 12,
     "titleCase": 15,
-    "legacyClass": 147
+    "legacyClass": 132
   },
   "strict": [
     "www/css/admin.css",
@@ -66,14 +66,12 @@
   ],
   "metrics": {
     "spacing": {
-      "www/css/app-updates.css": 7,
       "www/css/bill-checks.css": 10,
       "www/css/billing.css": 18,
       "www/css/buttons.css": 17,
-      "www/css/charts.css": 8,
       "www/css/day.css": 36,
       "www/css/desktop.css": 22,
-      "www/css/finance.css": 22,
+      "www/css/finance.css": 15,
       "www/css/forms.css": 16,
       "www/css/history.css": 38,
       "www/css/overlay.css": 2,
@@ -88,11 +86,10 @@
       "www/js/utils/quota-guard.js": 2
     },
     "radius": {
-      "www/css/app-updates.css": 3,
       "www/css/bill-checks.css": 2,
-      "www/css/charts.css": 2,
+      "www/css/charts.css": 1,
       "www/css/day.css": 2,
-      "www/css/finance.css": 2,
+      "www/css/finance.css": 1,
       "www/css/forms.css": 2,
       "www/css/history.css": 7,
       "www/css/overlay.css": 1,
@@ -104,24 +101,19 @@
       "www/js/services/exporter.js": 1
     },
     "shadow": {
-      "www/css/app-updates.css": 1,
       "www/css/bill-checks.css": 4,
       "www/css/billing.css": 1,
-      "www/css/charts.css": 1,
-      "www/css/desktop.css": 1,
-      "www/css/finance.css": 1,
       "www/css/recurring-bills.css": 1,
       "www/css/surfaces.css": 4,
       "www/css/workers.css": 1,
       "www/js/utils/quota-guard.js": 1
     },
     "zIndex": {
-      "www/css/app-updates.css": 2,
+      "www/css/app-updates.css": 1,
       "www/css/bill-checks.css": 1,
       "www/css/billing.css": 1,
-      "www/css/charts.css": 1,
-      "www/css/desktop.css": 5,
-      "www/css/finance.css": 2,
+      "www/css/desktop.css": 4,
+      "www/css/finance.css": 1,
       "www/css/hamburger.css": 2,
       "www/css/insights.css": 1,
       "www/css/navigation.css": 3,
@@ -149,7 +141,6 @@
       "www/css/totals.css": 49
     },
     "themeSelector": {
-      "www/css/app-updates.css": 2,
       "www/css/bill-checks.css": 4
     },
     "inlineStyle": {
@@ -193,17 +184,15 @@
       "www/js/modules/wholesale-sales.js": 1,
       "www/js/ui/bill-highlight.js": 2,
       "www/js/ui/bill-row.js": 5,
-      "www/js/ui/finance-breakdown-sheet.js": 17,
+      "www/js/ui/finance-breakdown-sheet.js": 7,
       "www/js/ui/manual-reminders.js": 1,
       "www/js/ui/pending-line.js": 1,
       "www/js/ui/period-compare.js": 2,
       "www/js/ui/rate-check.js": 1,
-      "www/js/utils/keyboard-shortcuts.js": 1,
       "www/templates/billing.html": 45,
       "www/templates/day.html": 4,
-      "www/templates/expenses.html": 1,
       "www/templates/insights.html": 1,
-      "www/templates/modals.html": 4,
+      "www/templates/modals.html": 1,
       "www/templates/money.html": 1,
       "www/templates/navigation.html": 5,
       "www/templates/rate-trends.html": 5,

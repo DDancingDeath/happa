@@ -144,12 +144,13 @@
         </div>
 
         <!-- Expense Details Modal -->
-        <div class="bill-details-overlay" id="expenseDetailsOverlay">
-            <div class="bill-details-container">
-                <div class="bill-details-content" id="expenseDetailsContent">
+        <div class="scrim app-scrim page-sheet" id="expenseDetailsOverlay">
+            <div class="app-dialog dialog" role="dialog" aria-modal="true" tabindex="-1">
+                <div class="grabber" aria-hidden="true"></div>
+                <div class="dialog-body" id="expenseDetailsContent">
                     <!-- Expense content will be inserted here -->
                 </div>
-                <div class="bill-details-footer exp-dialog-actions">
+                <div class="dialog-actions exp-dialog-actions">
                     <button type="button" class="btn btn-ghost" data-dismiss data-onclick="expenses.closeExpenseDetails()" data-i18n="ui.common.close">Close</button>
                     <button type="button" class="btn btn-tonal" id="expenseReenterBtn" data-onclick="expenses.reenterExpenseFromModal()"><span data-i18n="ui.expenses.reenter_btn">Void &amp; re-enter</span></button>
                     <button type="button" class="btn danger" id="expenseVoidBtn" data-onclick="expenses.voidExpenseFromModal()"><span data-i18n="ui.expenses.void_btn">Void</span></button>

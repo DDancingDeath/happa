@@ -1295,7 +1295,7 @@ export class WholesaleSalesManager {
         // Wholesale bills are not edited here; Void / Delete permanently as in History (#75)
         setBillActions(sale, { uid: AppState.currentUser?.uid, role: AppState.userRole, raw: AppState.settings?.roleAccess }, { editable: false });
         HistoryManager.renderPrintStatus();
-        document.getElementById('billDetailsOverlay').classList.add('active');
+        UIManager.openSheet(document.getElementById('billDetailsOverlay'));
     }
 
     static async reprintSaleById(saleId) {

@@ -81,7 +81,7 @@ describe('Rates page (items list)', () => {
         expect(document.getElementById('itemsActionButtons').style.display).toBe('none');
         expect(document.querySelector('#itemsViewTableBody tr').cells).toHaveLength(3);
         document.querySelector('#itemsViewTableBody tr').click();
-        expect(document.getElementById('itemEditOverlay').style.display).toBe('none');
+        expect(document.getElementById('itemEditOverlay').classList.contains('active')).toBe(false);
     });
 
     test('clicking a sorted row edits that item (by id, not list position)', async () => {

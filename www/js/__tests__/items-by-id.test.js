@@ -16,6 +16,8 @@ jest.mock('../firebase/firestore-service.js', () => ({
 jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}), note: jest.fn(), ACTIONS: { ARCHIVE_ITEM: 'ARCHIVE_ITEM', UNARCHIVE_ITEM: 'UNARCHIVE_ITEM' } } }));
 jest.mock('../ui/ui-manager.js', () => ({
     UIManager: {
+        openSheet: jest.fn(),
+        closeSheet: jest.fn(),
         showToast: jest.fn(),
         showLoading: jest.fn(),
         hideLoading: jest.fn(),

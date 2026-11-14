@@ -110,7 +110,7 @@ describe('Esc closes dialogs in Hindi', () => {
         const html = fs.readFileSync(path.join(__dirname, '..', '..', 'templates', 'modals.html'), 'utf8');
         document.body.innerHTML = `<div id="appContent"><div class="tab active" id="items"></div></div>${html}`;
         const overlay = document.getElementById('itemEditOverlay');
-        overlay.style.display = 'flex';
+        overlay.classList.add('active');
         const cancel = overlay.querySelector('[data-onclick="items.closeItemModal()"]');
         cancel.textContent = t('ui.modals.cancel');
         expect(cancel.textContent).toBe('रहने दें');
@@ -136,5 +136,27 @@ describe('Esc closes dialogs in Hindi', () => {
         cancel.addEventListener('click', closed);
         document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
         expect(closed).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('the shortcuts help (C5b)', () => {
+    afterEach(() => {
+        document.body.innerHTML = '';
+        delete window.__aadhatShortcutsInstalled;
+        jest.restoreAllMocks();
+    });
+
+    test('? opens it as an app dialog with Close focused; Esc closes it', () => {
+        jest.spyOn(Element.prototype, 'getClientRects').mockReturnValue([{}]);
+        window.matchMedia = () => ({ matches: true, addEventListener() {} });
+        jest.isolateModules(() => { require('../utils/keyboard-shortcuts.js'); });
+        document.body.innerHTML = '<div id="appContent"><div class="tab active" id="billing"></div></div>';
+        const key = (k) => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+        key('?');
+        const help = document.getElementById('kbdHelpOverlay');
+        expect(help.matches('.app-scrim.active')).toBe(true);
+        expect(document.activeElement).toBe(help.querySelector('[data-dismiss]'));
+        key('Escape');
+        expect(document.getElementById('kbdHelpOverlay')).toBeNull();
     });
 });

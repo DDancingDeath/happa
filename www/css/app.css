@@ -6837,69 +6837,26 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   position: absolute;
 }
 
-/* Bill Details Overlay */
-.bill-details-overlay {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  z-index: 10000;
-  animation: fadeIn 0.2s ease;
+/* Page dialogs (bill and expense details, drafts, item, breakdown, What's new): below the confirms they open */
+.app-scrim.page-sheet {
+  z-index: calc(var(--z-dialog) + var(--sheet-layer, 0));
+}
+
+.dialog-wide {
+  width: min(560px, 100%);
+}
+
+/* A title row with its own buttons (Back, Close) */
+.dialog-head {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 20px;
+  gap: var(--sp-2);
 }
 
-.bill-details-overlay.active {
-  display: flex;
-}
-
-.bill-details-container {
-  background: var(--white);
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  width: 100%;
-  max-width: 500px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  animation: slideUp 0.3s ease;
-}
-
-.bill-details-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color);
-  flex-shrink: 0;
-}
-
-.bill-details-header h2 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-title);
-  color: var(--dark-color);
-}
-
-.bill-details-content {
+.dialog-head > .dialog-title,
+.dialog-head > .grow {
   flex: 1;
-  overflow-y: auto;
-  padding: 24px;
-}
-
-.bill-details-footer {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 16px;
-  border-top: 1px solid var(--border-color);
-  flex-shrink: 0;
-  background: var(--surface-muted);
+  min-width: 0;
 }
 
 /* Close (ghost) on the left, Void (danger), Reprint and Share (tonal), Edit (the one primary) on the right */
@@ -6907,15 +6864,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   flex: 1;
   min-width: 0;
   padding: 0 var(--sp-3);
-}
-
-.bill-details-footer [hidden],
-.item-modal-body [hidden] {
-  display: none;
-}
-
-.bill-details-content.drafts-list {
-  max-height: 60vh;
 }
 
 .item-modal-body {
@@ -6934,25 +6882,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   flex: 1;
 }
 
-/* Cancel, then the primary on the right, as in every dialog */
-.item-modal-footer {
-  justify-content: flex-end;
-}
-
 .item-modal-danger {
   display: flex;
   justify-content: flex-start;
   margin-top: var(--sp-2);
-  padding-top: 16px;
+  padding-top: var(--sp-4);
   border-top: 1px solid var(--border-color);
 }
 
 @media (max-width: 480px) {
-  .bill-details-footer {
-    gap: 6px;
-    padding: 12px;
-  }
-  
   .bill-details-footer > .btn {
     padding: 0 var(--sp-1);
     font-size: var(--fs-sm);
@@ -8025,62 +7963,19 @@ body.no-perm-contacts [data-perm~="contacts"] {
     box-shadow: var(--focus-ring);
 }
 
-/* ==================== CARD BREAKDOWN SHEET (#215) ==================== */
-.fin-sheet-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    z-index: 9000;
-    align-items: flex-end;
-    justify-content: center;
-}
-
-.fin-sheet-overlay.active {
-    display: flex;
-}
-
-.fin-sheet {
-    background: var(--white, #fff);
-    width: 100%;
-    max-height: 88vh;
-    border-radius: 16px 16px 0 0;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.25);
-    animation: slideUp 0.25s ease;
-}
-
-.fin-sheet-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 14px 16px 6px;
-}
-
-.fin-sheet-title {
-    flex: 1;
-    min-width: 0;
-}
-
-.fin-sheet-title h3 {
-    margin: 0;
-    font-size: var(--fs-lead);
-}
-
-.fin-sheet-title span {
+/* ==================== CARD BREAKDOWN (#215), an app dialog ==================== */
+.fin-period {
     font-size: var(--fs-caption);
     color: var(--text-muted);
 }
 
-.fin-sheet-value {
+.fin-value {
     font-size: 26px;
     font-weight: var(--w-strong);
-    padding: 0 16px;
 }
 
-.fin-sheet-formula {
-    padding: 8px 16px;
+.fin-formula {
+    padding: var(--sp-2) 0;
     font-size: var(--fs-sm);
     line-height: 2;
 }
@@ -8094,26 +7989,19 @@ body.no-perm-contacts [data-perm~="contacts"] {
     cursor: pointer;
 }
 
-.fin-sheet-tools {
+.fin-tools {
     display: flex;
     gap: 6px;
-    padding: 6px 16px;
+    padding: 6px 0;
     flex-wrap: wrap;
 }
 
-.fin-sheet-tools input {
+.fin-tools input {
     flex: 1 1 100%;
 }
 
-.fin-sheet-tools select {
+.fin-tools select {
     flex: 1 1 40%;
-}
-
-.fin-sheet-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0 16px;
-    -webkit-overflow-scrolling: touch;
 }
 
 .fin-row {
@@ -8173,16 +8061,16 @@ body.no-perm-contacts [data-perm~="contacts"] {
     margin: var(--sp-2) auto;
 }
 
-.fin-sheet-total {
+.fin-total {
     display: flex;
     justify-content: space-between;
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    padding-top: var(--sp-3);
     border-top: 2px solid var(--border-color);
     font-size: var(--fs-sm);
 }
 
-.fin-sheet-notes {
-    padding: 0 16px 8px;
+.fin-notes {
+    padding-bottom: var(--sp-2);
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
@@ -8376,63 +8264,11 @@ body.no-perm-contacts [data-perm~="contacts"] {
 }
 
 /* ---- css/app-updates.css ---- */
-/* What's new sheet, Android update banner, Settings → App updates */
+/* What's new notes (an app dialog), Android update banner, Settings → App updates */
 
-.app-sheet-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  z-index: 9000;
-}
-
-.app-sheet {
-  background: var(--card-bg);
-  color: var(--text-primary);
-  width: 100%;
-  max-width: 520px;
-  max-height: 85vh;
-  overflow-y: auto;
-  border-radius: 16px 16px 0 0;
-  padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px));
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.2);
-}
-
-@media (min-width: 600px) {
-  .app-sheet-backdrop { align-items: center; }
-  .app-sheet { border-radius: 16px; }
-}
-
-.app-sheet-title {
-  margin: 0 0 12px;
-  font-size: var(--fs-lead);
-}
-
-.app-sheet-version {
-  color: var(--text-secondary);
-  font-size: var(--fs-sm);
-  margin: -8px 0 8px;
-}
-
-.app-sheet-fallback {
-  margin: 4px 0 0;
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-size: var(--fs-sm);
-  background: var(--warning-soft);
-  color: var(--on-warning-soft);
-}
-
-.app-sheet-notes {
-  margin: 6px 0 10px;
-  padding-left: 20px;
-  line-height: 1.5;
-}
-
-.app-sheet-close {
-  margin-top: var(--sp-2);
+.whats-new-notes {
+  margin: 0;
+  padding-left: var(--sp-5);
 }
 
 .app-update {
@@ -8448,16 +8284,6 @@ body.no-perm-contacts [data-perm~="contacts"] {
 
 .app-update-text {
   flex: 1 1 180px;
-}
-
-body.dark-mode .app-sheet {
-  background: #1f2937;
-  color: #f3f4f6;
-}
-
-body.dark-mode .app-sheet-fallback {
-  background: #78350f;
-  color: #fef3c7;
 }
 
 /* ---- css/notifications.css ---- */
@@ -9603,8 +9429,8 @@ div.ins-wide,
   }
 
   /* ---------- Modals: centered dialogs with comfortable width ---------- */
-  .bill-details-container {
-    max-width: 680px;
+  .dialog-wide {
+    width: min(680px, 100%);
   }
 
   .bill-details-footer {
@@ -9627,33 +9453,6 @@ div.ins-wide,
   }
 
   /* ---------- Keyboard shortcuts help ---------- */
-  .kbd-help-overlay {
-    position: fixed;
-    inset: 0;
-    background: var(--scrim);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 21000;
-  }
-
-  .kbd-help {
-    background: var(--panel-bg);
-    color: var(--ink);
-    border-radius: var(--r-sheet);
-    box-shadow: var(--e3);
-    width: min(560px, 92vw);
-    max-height: 85vh;
-    overflow-y: auto;
-    padding: var(--sp-5) var(--sp-6);
-  }
-
-  .kbd-help h3 {
-    margin: 0 0 var(--sp-3);
-    font-family: var(--font-display);
-    font-size: var(--fs-lead);
-  }
-
   .kbd-help table {
     width: 100%;
     border-collapse: collapse;
@@ -9670,11 +9469,6 @@ div.ins-wide,
     white-space: nowrap;
     width: 1%;
     padding-right: var(--sp-4);
-  }
-
-  .kbd-help-close {
-    float: right;
-    margin-top: var(--sp-3);
   }
 
   /* Anomalies page (#187): filters in one row, patterns in two columns, row actions inline */
@@ -9918,27 +9712,13 @@ div.ins-wide,
   }
 }
 
-/* Finance card breakdown (#215): side panel instead of a bottom sheet */
+/* Finance card breakdown (#215): search and the two pickers on one line */
 @media (min-width: 1024px) {
-  .fin-sheet-overlay {
-    align-items: stretch;
-    justify-content: flex-end;
-  }
-
-  .fin-sheet {
-    width: 520px;
-    max-width: 100%;
-    max-height: none;
-    height: 100%;
-    border-radius: 0;
-    box-shadow: -8px 0 30px rgba(0, 0, 0, 0.25);
-  }
-
-  .fin-sheet-tools input {
+  .fin-tools input {
     flex: 2 1 200px;
   }
 
-  .fin-sheet-tools select {
+  .fin-tools select {
     flex: 1 1 120px;
   }
 }
