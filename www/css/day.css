@@ -95,10 +95,6 @@
 #dayTodayContent .items-grid { gap: 0; }
 
 /* Hero: net (T12), in (T10) and out (T11) */
-.today-hero { padding: var(--sp-2) 0 var(--sp-1); }
-#dayTodayContent .today-hero-label { margin: 0; padding: 0; border: 0; color: var(--ink-3); font-family: inherit; font-size: var(--fs-sm); font-weight: var(--w-label); letter-spacing: normal; }
-#dayTodayContent .today-hero-label::after { content: none; }
-.today-hero .hero-num { margin-top: var(--sp-1); color: var(--ink); }
 .today-inout { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-5); margin-top: var(--sp-2); color: var(--ink-2); font-size: var(--fs-sm); }
 .today-inout > span { display: inline-flex; align-items: center; gap: 6px; }
 .today-in .i { color: var(--positive); }
@@ -122,12 +118,10 @@
 .today-reminder-party span:first-child { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .today-reminder-party .today-reminder-days { flex-basis: 100%; }
 .today-reminder-days, .today-reminder-more { color: var(--ink-3); font-size: var(--fs-caption); }
-.day-report-card { margin-top: var(--section-gap); padding: var(--sp-4); }
+.day-report { margin-top: var(--section-gap); }
 
 /* Labour (T-LAB-*): tap for each bill */
-.today-labour-card { padding: var(--sp-3) var(--sp-4); cursor: pointer; }
-.today-labour-card:hover { background: var(--surface-2); }
-.today-labour-card:focus-visible { outline: none; box-shadow: var(--focus); }
+.today-labour { padding: var(--sp-3) var(--sp-4); }
 .today-labour-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; padding: 2px 0; color: var(--ink-2); font-size: var(--fs-sm); }
 .today-labour-sub, .today-labour-diff { color: var(--ink-3); font-size: var(--fs-caption); }
 .today-labour-hint { margin-top: var(--sp-2); color: var(--accent-text); font-size: var(--fs-sm); font-weight: var(--w-label); }

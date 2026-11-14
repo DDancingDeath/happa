@@ -762,14 +762,14 @@ const BillingManager = {
                 content.innerHTML = `<p class="drafts-empty">${Helpers.escapeHtml(t('ui.billing.no_saved_drafts'))}</p>`;
             } else {
                 content.innerHTML = drafts.map((draft) => `
-                    <div class="draft-card draft-card-${draft.mode === 'purchase' ? 'purchase' : 'sale'}">
-                        <div class="draft-card-head">
-                            <span class="draft-card-title">${Helpers.escapeHtml(t(draft.mode === 'purchase' ? 'ui.billing.purchase_draft' : 'ui.billing.sale_draft'))}</span>
-                            <span class="draft-card-meta">${Helpers.escapeHtml(t(draft.weights?.length > 0 ? 'ui.billing.draft_items_weights' : 'ui.billing.draft_items', { items: draft.items?.length || 0, weights: draft.weights?.length || 0 }))}</span>
+                    <div class="panel draft">
+                        <div class="draft-head">
+                            <span class="draft-title"><span class="mode-dot${draft.mode === 'purchase' ? '' : ' sale'}" aria-hidden="true"></span>${Helpers.escapeHtml(t(draft.mode === 'purchase' ? 'ui.billing.purchase_draft' : 'ui.billing.sale_draft'))}</span>
+                            <span class="draft-meta">${Helpers.escapeHtml(t(draft.weights?.length > 0 ? 'ui.billing.draft_items_weights' : 'ui.billing.draft_items', { items: draft.items?.length || 0, weights: draft.weights?.length || 0 }))}</span>
                         </div>
-                        <div class="draft-card-date">${Helpers.escapeHtml(draft.date)}</div>
-                        ${draft.customerName ? `<div class="draft-card-customer">${Helpers.escapeHtml(t('ui.common.customer'))} ${Helpers.escapeHtml(draft.customerName)}</div>` : ''}
-                        <div class="draft-card-actions">
+                        <div class="draft-date">${Helpers.escapeHtml(draft.date)}</div>
+                        ${draft.customerName ? `<div class="draft-customer">${Helpers.escapeHtml(t('ui.common.customer'))} ${Helpers.escapeHtml(draft.customerName)}</div>` : ''}
+                        <div class="draft-actions">
                             <button type="button" class="btn btn-primary btn-sm" data-onclick="billing.loadDraft('${Helpers.escapeJsAttr(draft.id)}')">
                                 ${Helpers.escapeHtml(t('ui.billing.load'))}
                             </button>
