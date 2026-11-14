@@ -355,7 +355,10 @@ file, except for the entries in `tests/ds-allowlist.json`. CI fails when:
 
 * a file has a count but no entry, or more than its entry (use the token, class or icon the message names);
 * a file's count is **below** its entry. Lower the entry in the same PR, so the fix can't be spent on new drift later;
-* an entry names an unknown metric or list, has no reason, or is listed twice.
+* an entry names an unknown metric or list, has no reason, or is listed twice;
+* the allowlist is looser than on the PR base (`git show origin/<base>:tests/ds-allowlist.json`, or `ARCH_BASE_REF`): an entry's
+  count rises, a metric's total rises, or a new entry appears. Skipped with a message when the base ref isn't available
+  (local runs), unless `ARCH_REQUIRE_BASE=1` (CI on pull requests).
 
 | Guard (metric) | Allowlist | Counts, per file |
 |---|---|---|
@@ -386,21 +389,26 @@ The lists (`"lists"` in the file) say which kinds of exception are legitimate:
 | `cascade` | an `!important` or `#id` selector that decides which rule wins today (the `#billing` layer); removing it needs its own cascade-checked PR |
 | `visible-fix` | drift whose fix is a visible change (an emoji to swap for a sprite icon), left for the page PR |
 
-Adding an entry is the exception, not the fix: first use the token, class or icon. When the drift is legitimate, add one line to `"entries"`:
+Adding an entry is the exception, not the fix: first use the token, class or icon. Drift in a file that already exists on the base can't be
+allowlisted at all: an existing entry may only go down, and a new entry for an existing file fails. Only a file that is **new in the PR**
+(a new theme file, a new canvas chart) may get an entry, and it must say when it was added:
 
 ```
-{"metric":"colour","file":"www/js/ui/new-chart.js","count":4,"list":"canvas","reason":"series colours drawn on the canvas"}
+{"metric":"colour","file":"www/js/ui/new-chart.js","count":4,"list":"canvas","reason":"series colours drawn on the canvas","added":"#490"}
 ```
 
-* `metric` is a ds-guard metric, `colour` or `type`; `file` is the path the failure message prints (i18n rows are `www/js/i18n/en.js#ui.<area>`);
+* `metric` is a ds-guard metric, `colour` or `type`; `file` is the path the failure message prints (i18n rows are `www/js/i18n/en.js#ui.<area>`,
+  so a new i18n row is never new-file);
 * `count` is the file's exact count, from the failure message;
 * `list` is one of the lists above. A new kind of exception adds a list with a description, in the same reviewed PR;
-* `reason` (20+ characters) says why this file needs it: which values, which output, why no token fits.
+* `reason` (20+ characters) says why this file needs it: which values, which output, why no token fits;
+* `added` is the PR number (`#490`) or the date (`2026-11-14`). A justified new entry doesn't count towards its metric's total.
 
-Reviewers treat a new or raised entry like new drift that needs a justification. After you remove drift, lower the entries (an entry at 0 is dropped):
+Reviewers treat a new entry like new drift that needs a justification. After you remove drift, lower the entries (an entry at 0 is dropped):
 
 ```
 DS_ALLOWLIST=lower npx jest -i ds-guard colour-guard type-guard
 ```
 
-Commit the lowered JSON in the same PR. Moving rules between stylesheets moves their entry with them (one PR, same counts).
+Commit the lowered JSON in the same PR. Moving rules from an existing stylesheet into another existing one raises the destination's entry,
+which the base check refuses: fix the moved drift in the same PR instead.

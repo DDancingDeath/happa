@@ -20,11 +20,12 @@
  * @media print and the receipt files stay out, as in colour-guard.
  *
  * Strict: every metric is 0 outside tests/ds-allowlist.json, whose entries (metric, file, count,
- * list, reason) hold the documented exceptions at their exact counts (see ds-allowlist.js).
+ * list, reason) hold the documented exceptions at their exact counts, and may only shrink against the
+ * PR base (see ds-allowlist.js).
  */
 const fs = require('fs');
 const path = require('path');
-const { load, compare, invalid, expectAllowed } = require('./ds-allowlist');
+const { load, compare, invalid, expectAllowed, raisedVsBase, baseAllowlist } = require('./ds-allowlist');
 
 const ROOT = path.join(__dirname, '..', '..');
 const LEGACY = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests/ds-legacy-classes.json'), 'utf8')).classes;
@@ -225,6 +226,48 @@ describe('design-system guard (strict outside tests/ds-allowlist.json)', () => {
 
     test('every allowlist entry names a known metric and list, and gives a reason', () => {
         expect(invalid(load(), [...METRICS, 'colour', 'type'])).toEqual([]);
+    });
+
+    test('the allowlist is no looser than on the PR base', () => {
+        const base = baseAllowlist();
+        if (!base.doc) {
+            const why = base.missing === 'ref' ? `${base.ref} is not available (no git / shallow clone)` : `${base.ref} has no tests/ds-allowlist.json yet`;
+            if (base.missing === 'ref' && process.env.ARCH_REQUIRE_BASE === '1') throw new Error(`Cannot compare the allowlist with the PR base: ${why}.`);
+            console.log(`Allowlist not compared with the base: ${why}.`);
+            return;
+        }
+        expect(raisedVsBase(base.doc, load(), base.existedAtBase)).toEqual([]);
+    });
+
+    describe('raisedVsBase', () => {
+        const e = (file, count, extra = {}) => ({ metric: 'spacing', file, count, list: 'off-scale', reason: '6px and 10px gaps have no token', ...extra });
+        const BASE = { entries: [e('www/css/a.css', 3), e('www/css/b.css', 2)] };
+        const atBase = (f) => ['www/css/a.css', 'www/css/b.css', 'www/css/day.css'].includes(f);
+
+        test('no change passes', () => {
+            expect(raisedVsBase(BASE, BASE, atBase)).toEqual([]);
+        });
+
+        test('a lowered or dropped entry passes', () => {
+            expect(raisedVsBase(BASE, { entries: [e('www/css/a.css', 1)] }, atBase)).toEqual([]);
+        });
+
+        test('a count above the base fails, even when the total holds', () => {
+            expect(raisedVsBase(BASE, { entries: [e('www/css/a.css', 4), e('www/css/b.css', 1)] }, atBase))
+                .toEqual(['spacing www/css/a.css: 3 -> 4 (above the base)']);
+        });
+
+        test('a metric total above the base fails', () => {
+            const now = { entries: [e('www/css/a.css', 3), e('www/css/b.css', 2), e('www/css/day.css', 1)] };
+            expect(raisedVsBase(BASE, now, atBase)).toEqual(['spacing total: 5 -> 6', 'spacing www/css/day.css: new entry without "added" (#PR or date)']);
+        });
+
+        test('a new entry needs "added" and a file that is new in this PR', () => {
+            const old = { entries: [...BASE.entries, e('www/css/day.css', 1, { added: '#482' })] };
+            expect(raisedVsBase(BASE, old, atBase)).toContain('spacing www/css/day.css: new entry for a file that exists on the base (fix the drift instead)');
+            const fresh = { entries: [...BASE.entries, e('www/css/themes/new.css', 2, { added: '2026-11-14' })] };
+            expect(raisedVsBase(BASE, fresh, atBase)).toEqual([]);
+        });
     });
 
     test('compare: a row over its entry or without one fails, an entry over its row asks for lowering', () => {
