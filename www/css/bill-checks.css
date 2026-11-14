@@ -6,7 +6,7 @@
 .bill-checks-warn {
     outline: 1px solid var(--negative-line);
     outline-offset: 4px;
-    border-radius: 12px;
+    border-radius: var(--r-panel);
 }
 
 .bill-checks-warn {
@@ -16,7 +16,7 @@
 .bill-check-notice {
     position: sticky;
     top: 0;
-    z-index: 5;
+    z-index: var(--z-sticky);
     flex-direction: column;
     gap: var(--sp-1);
     margin: 0 0 12px;
@@ -50,13 +50,13 @@
 input.bill-check-block,
 select.bill-check-block {
     border-color: var(--danger-dark) !important;
-    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25) !important;
+    box-shadow: var(--ring-danger) !important;
 }
 
 input.bill-check-warn,
 select.bill-check-warn {
     border-color: var(--warning-dark) !important;
-    box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.25) !important;
+    box-shadow: var(--ring-warning) !important;
 }
 
 tr.bill-check-block > td {
@@ -64,7 +64,7 @@ tr.bill-check-block > td {
 }
 
 tr.bill-check-block > td:first-child {
-    box-shadow: inset 4px 0 0 var(--danger-dark);
+    box-shadow: var(--stripe) var(--danger-dark);
 }
 
 tr.bill-check-warn > td {
@@ -72,7 +72,7 @@ tr.bill-check-warn > td {
 }
 
 tr.bill-check-warn > td:first-child {
-    box-shadow: inset 4px 0 0 var(--warning-dark);
+    box-shadow: var(--stripe) var(--warning-dark);
 }
 
 .bill-check-msg {
@@ -136,7 +136,7 @@ body.dark-mode tr.bill-check-warn > td {
     margin: -4px 0 10px;
     padding: 6px 10px;
     border: 1px solid var(--info-border);
-    border-radius: 6px;
+    border-radius: var(--r-sm);
     background: var(--info-soft);
     color: var(--on-info-soft);
     font-size: var(--fs-sm);

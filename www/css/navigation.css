@@ -8,7 +8,7 @@
   background: var(--card-bg);
   box-shadow: var(--shadow-xl);
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1001;
+  z-index: calc(var(--z-drawer) + 1);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -326,7 +326,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 950;
+  z-index: var(--z-appbar);
   display: flex;
   background: var(--bar-bg);
   border-top: 1px solid var(--bar-border);
@@ -390,7 +390,7 @@ body.typing .bottom-nav {
   top: var(--tab-top);
   left: 50%;
   transform: translate(-50%, 0);
-  z-index: 960;
+  z-index: calc(var(--z-appbar) + 10);
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);

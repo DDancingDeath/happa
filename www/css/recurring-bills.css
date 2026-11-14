@@ -5,7 +5,7 @@
 .rb-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
 .recurring-page .row-title, .recurring-page .row-meta { display: block; }
 /* The open bill is marked with a bar: on the soft accent fill some themes' tags and meta text lose contrast */
-.rb-list .row.selected { background: none; box-shadow: inset 3px 0 0 var(--accent); }
+.rb-list .row.selected { background: none; box-shadow: var(--stripe-sm) var(--accent); }
 .rb-list .row-trail { display: grid; justify-items: end; gap: var(--sp-1); }
 .rb-list .row-trail .row-meta, .rb-detail .row-meta { white-space: normal; }
 .rb-form, .rb-detail { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }

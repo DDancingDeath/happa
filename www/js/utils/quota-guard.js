@@ -170,8 +170,8 @@ export function createQuotaGuard(env = {}) {
         const el = doc.createElement('div');
         el.id = BANNER_ID;
         el.setAttribute('role', 'alert');
-        el.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:99998;background:#fff3cd;color:#664d03;' +
-            'border-bottom:2px solid #f0ad4e;padding:10px 40px 10px 12px;font:14px/1.4 Arial,sans-serif;box-shadow:0 2px 6px rgba(0,0,0,.15);';
+        el.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:calc(var(--z-toast, 100000) - 2);background:#fff3cd;color:#664d03;' +
+            'border-bottom:2px solid #f0ad4e;padding:10px 40px 10px 12px;font:14px/1.4 Arial,sans-serif;box-shadow:var(--e2);';
         if (doc.getElementById('env-indicator')) el.style.paddingTop = '20px';
         const text = doc.createElement('div');
         text.textContent = `⚠️ ${quotaBannerText()}`;

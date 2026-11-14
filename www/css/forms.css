@@ -111,7 +111,7 @@
   height: 14px;
   border: 2px solid currentColor;
   border-right-color: transparent;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   animation: btn-spin 0.8s linear infinite;
 }
 
@@ -289,7 +289,7 @@ input[type="checkbox"].switch:focus-visible,
   display: flex;
   gap: 2px;
   padding: 3px;
-  border-radius: calc(var(--radius) + 2px);
+  border-radius: var(--r-md);
   background: var(--seg-track);
 }
 

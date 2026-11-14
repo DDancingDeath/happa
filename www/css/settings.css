@@ -240,7 +240,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 }
 /* "Bluetooth permission needed" notice (#77): a .notice.float */
 .printer-perm-notice {
-  z-index: 9000;
+  z-index: var(--z-sheet);
 }
 
 /* Theme gallery (redesign 2.6): each preview is real DOM scoped with data-theme / data-mode */
@@ -397,7 +397,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
   position: fixed;
   left: 50%;
   bottom: calc(76px + env(safe-area-inset-bottom, 0px));
-  z-index: 9000;
+  z-index: var(--z-sheet);
   display: flex;
   align-items: center;
   gap: var(--sp-2);

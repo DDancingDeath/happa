@@ -286,7 +286,7 @@
 :is(#billing, .bill-page) .payment-row > .pay-fill > input {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: var(--z-base);
   width: 100%;
   height: 100%;
   margin: 0;
@@ -527,7 +527,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 940;
+    z-index: calc(var(--z-appbar) - 10);
     margin: 0;
     padding: 10px max(var(--sp-4), calc((100vw - 480px) / 2 + var(--sp-4)));
     padding-bottom: calc(10px + 56px + env(safe-area-inset-bottom, 0px));
