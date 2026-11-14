@@ -149,12 +149,13 @@ export function moneyText(amount, opts) {
 }
 
 /**
- * A rate (₹ per kg, labour rate): always with paise, "₹1,234.50" (MONEY-TEXT).
+ * A rate (₹ per kg, labour rate) on screen: paise only when it has them, "₹2,400", "₹24.50" (MONEY-TEXT,
+ * preset `rate`). Receipts and share text keep the paise: formatRupees(rate, 'ratePaise').
  * @param {*} rate
  * @returns {string}
  */
 export function formatRate(rate) {
-    return formatRupees(rate, 'ratePaise');
+    return formatRupees(rate, 'rate');
 }
 
 /**

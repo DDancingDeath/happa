@@ -159,11 +159,11 @@ describe('purchase form', () => {
         ]);
         expect($('weightBreakdownSection').textContent.replace(/\s+/g, ' ').trim()).toBe('Rice (2 packets, 60.3 kg) 40 20.3');
         expect([text('totalWeights'), text('totalPackets')]).toEqual(['0', '0']);
-        expect(text('billTotal')).toBe('1953');
+        expect(text('billTotal')).toBe('1,953');
         expect(text('totalPacketsInBill')).toBe('3');
         expect($('manualLaborCharges').value).toBe('6');
         expect(text('laborCalculation')).toBe('6 × 1');
-        expect(text('amountPayable')).toBe('1947');
+        expect(text('amountPayable')).toBe('1,947');
         expect(text('totalPayment')).toBe('0');
         expect(text('purchaseSplitRemaining')).toBe('₹1,947 left');
         expect(PurchaseManager.computeTotals()).toEqual({ billTotal: 1953, laborCharges: 6, grandTotal: 1947, totalPackets: 3, heavyPackets: 1 });
@@ -177,11 +177,11 @@ describe('purchase form', () => {
         PurchaseManager.updateTotals();
         expect($('manualLaborCharges').value).toBe('12.50');
         // #129: was 1941 (1953 − 12.50 = 1940.50 shown half-up) while 1940.50 was saved
-        expect(text('amountPayable')).toBe('1940');
+        expect(text('amountPayable')).toBe('1,940');
         tick('cashCheckbox');
         PurchaseManager.fillPayableAmount('cash');
         expect([$('cashPayment').value, $('onlinePayment').value, $('dueAmount').value]).toEqual(['1940', '0', '0']);
-        expect(text('totalPayment')).toBe('1940');
+        expect(text('totalPayment')).toBe('1,940');
         expect(text('purchaseSplitRemaining')).toBe('✓ ₹0');
 
         const bill = await PurchaseManager.saveBillToHistory();
@@ -205,10 +205,10 @@ describe('purchase form', () => {
         setVal('billRate', 20);
         PurchaseManager.setWeights([31, 45.5, 30]);
         await PurchaseManager.addToBill();
-        expect(text('billTotal')).toBe('2130');
+        expect(text('billTotal')).toBe('2,130');
         expect($('manualLaborCharges').value).toBe('13');
         expect(text('laborCalculation')).toBe('6.25 × 2');
-        expect(text('amountPayable')).toBe('2117');
+        expect(text('amountPayable')).toBe('2,117');
         setVal('cashPayment', 2000);
         setVal('customerName', 'Ramesh');
         PurchaseManager.putRestInDue();
@@ -237,7 +237,7 @@ describe('purchase form', () => {
         setVal('manualLaborCharges', '7.25');
         $('manualLaborCharges').dataset.manuallySet = 'true';
         PurchaseManager.updateTotals();
-        expect(text('amountPayable')).toBe('1946');
+        expect(text('amountPayable')).toBe('1,946');
         setVal('cashPayment', 1000.4);
         setVal('onlinePayment', 500.35);
         setVal('dueAmount', '');
@@ -245,7 +245,7 @@ describe('purchase form', () => {
         // #129: cash ₹1,000.40 → ₹1,000 and online ₹500.35 → ₹500 as saved, labour ₹7.25 → ₹7,
         // so the rest is 1946 − 1500 = 446 (was 445 in paise) and paid shows 1500 (was 1501)
         expect([$('dueAmount').value, $('dueCheckbox').checked]).toEqual(['446', true]);
-        expect(text('totalPayment')).toBe('1500');
+        expect(text('totalPayment')).toBe('1,500');
         expect(text('purchaseSplitRemaining')).toBe('✓ ₹0');
 
         setVal('customerName', 'Ramesh');
@@ -268,7 +268,7 @@ describe('purchase form', () => {
         $('autoLaborCharge').checked = false;
         await buildBill();
         expect([$('manualLaborCharges').value, $('manualLaborCharges').disabled, text('laborCalculation')]).toEqual(['0', true, '']);
-        expect(text('amountPayable')).toBe('1953');
+        expect(text('amountPayable')).toBe('1,953');
         expect(PurchaseManager.computeTotals()).toMatchObject({ laborCharges: 0, grandTotal: 1953 });
     });
 
@@ -317,8 +317,8 @@ describe('retail sale form', () => {
             ['Wheat', '₹33.33', '7 kg', '₹233']
         ]);
         expect($('saleWeightBreakdownSection').textContent.replace(/\s+/g, ' ').trim()).toBe('Rice (3 packets, 60.35 kg) 25.5 24.7 10.15');
-        expect(text('saleTotal')).toBe('2753');
-        expect(text('amountReceivable')).toBe('2753');
+        expect(text('saleTotal')).toBe('2,753');
+        expect(text('amountReceivable')).toBe('2,753');
         expect(text('totalSalePacketsInBill')).toBe('4');
         expect([text('saleRunningTotal'), text('salePacketCount')]).toEqual(['0', '0']);
         RetailSaleManager.renderSalesBill();
@@ -333,7 +333,7 @@ describe('retail sale form', () => {
         tick('saleOnlineCheckbox');
         RetailSaleManager.fillReceivableAmount('online');
         expect([$('saleOnlinePayment').value, $('saleCashPayment').value, $('saleDueAmount').value]).toEqual(['2753', '0', '0']);
-        expect(text('totalReceived')).toBe('2753');
+        expect(text('totalReceived')).toBe('2,753');
         tick('saleCashCheckbox');
         RetailSaleManager.fillReceivableAmount('cash');
         expect([$('saleOnlinePayment').value, $('saleCashPayment').value, $('saleOnlineCheckbox').checked]).toEqual(['0', '2753', false]);
@@ -347,7 +347,7 @@ describe('retail sale form', () => {
         RetailSaleManager.putRestInDue();
         // #129: cash ₹1,000.50 → ₹1,001, online ₹999.25 → ₹999, rest 753 (was 753.25)
         expect([$('saleDueAmount').value, $('saleDueCheckbox').checked]).toEqual(['753', true]);
-        expect(text('totalReceived')).toBe('2000');
+        expect(text('totalReceived')).toBe('2,000');
         expect(text('saleSplitRemaining')).toBe('✓ ₹0');
         setVal('saleCustomerName', 'Sita');
 

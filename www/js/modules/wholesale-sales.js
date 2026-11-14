@@ -173,7 +173,7 @@ export class WholesaleSalesManager {
             return;
         } else {
             availableStockEl.textContent = formatKg(stockData.quantity);
-            avgRateEl.textContent = formatAmount(stockData.rate, { decimals: 2 });
+            avgRateEl.textContent = formatAmount(stockData.rate, 'rate');
         }
         
         // Check if item has predefined wholesale rates
@@ -293,7 +293,7 @@ export class WholesaleSalesManager {
             `;
         }).join('');
         
-        totalEl.textContent = shownAmount(this.computeTotals().total);
+        totalEl.textContent = formatAmount(shownAmount(this.computeTotals().total), 'exact');
         this.showBarTotal();
         
         this.updateProfitCalculation();
@@ -326,7 +326,7 @@ export class WholesaleSalesManager {
         const live = wholesaleLiveProfit(wholesaleSaleItems, this.costStock(), Helpers.getInputNumber('salesExpensesAmount'), AppState.items);
         
         // Cost of a line not known (#102): profit is not known either, never counted at cost ₹0
-        if (profitEl) profitEl.textContent = live.shownProfit === null ? '—' : live.shownProfit;
+        if (profitEl) profitEl.textContent = live.shownProfit === null ? '—' : formatAmount(live.shownProfit, 'exact');
         shownProfit = profitEl ? live.shownProfit : 0;
         if (profitPercentEl) profitPercentEl.textContent = live.profitPercent === null ? '—' : live.profitPercent.toFixed(1);
         this.updatePaymentTotal();
@@ -348,7 +348,7 @@ export class WholesaleSalesManager {
     static updatePaymentTotal() {
         const split = this.readPaymentSplit();
         const receivedEl = document.getElementById('wholesaleTotalReceived');
-        if (receivedEl) receivedEl.textContent = paidOnScreen(split);
+        if (receivedEl) receivedEl.textContent = formatAmount(paidOnScreen(split), 'exact');
         Helpers.showSplitRemaining('wholesaleSplitRemaining', validatePaymentSplit(this.computeTotals().total, split));
         BillChecksUI.schedule('wholesale');
     }

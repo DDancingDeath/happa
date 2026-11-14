@@ -192,12 +192,12 @@ test('owner: Lah till today answers at once from the item stats (ASK-7); the bil
     }
 });
 const SALES = [
-    { lang: 'en', question: 'lah kisko becha pichle mahine se ab tak', traders: 'Ask Traders: 50 kg · average ₹240.00/kg · ₹12,000 (1 bill)',
-        ramesh: 'Ask Ramesh: 10 kg · average ₹250.00/kg · ₹2,500 (1 bill)', all: 'All parties: 64 kg · average ₹239.06/kg · ₹15,300 (3 bills)',
+    { lang: 'en', question: 'lah kisko becha pichle mahine se ab tak', traders: 'Ask Traders: 50 kg · average ₹240/kg · ₹12,000 (1 bill)',
+        ramesh: 'Ask Ramesh: 10 kg · average ₹250/kg · ₹2,500 (1 bill)', all: 'All parties: 64 kg · average ₹239.06/kg · ₹15,300 (3 bills)',
         withoutRangeeni: 'All parties: 60 kg', sheets: ['Summary', 'Ask Traders', 'Ask Ramesh', 'Ask Suresh'],
         head: ['Bill no.', 'Date', 'Bill type', 'Item', 'Weight (kg)', 'Rate (₹/kg)', 'Amount (₹)'], wholesale: 'Wholesale' },
-    { lang: 'hi', question: 'लाह किसको बेची पिछले महीने से अब तक', traders: 'Ask Traders: 50 kg · औसत ₹240.00/kg · ₹12,000 (1 बिल)',
-        ramesh: 'Ask Ramesh: 10 kg · औसत ₹250.00/kg · ₹2,500 (1 बिल)', all: 'सभी पार्टियाँ: 64 kg · औसत ₹239.06/kg · ₹15,300 (3 बिल)',
+    { lang: 'hi', question: 'लाह किसको बेची पिछले महीने से अब तक', traders: 'Ask Traders: 50 kg · औसत ₹240/kg · ₹12,000 (1 बिल)',
+        ramesh: 'Ask Ramesh: 10 kg · औसत ₹250/kg · ₹2,500 (1 बिल)', all: 'सभी पार्टियाँ: 64 kg · औसत ₹239.06/kg · ₹15,300 (3 बिल)',
         withoutRangeeni: 'सभी पार्टियाँ: 60 kg', sheets: ['सार', 'Ask Traders', 'Ask Ramesh', 'Ask Suresh'],
         head: ['बिल नं.', 'तारीख', 'बिल का प्रकार', 'माल', 'वज़न (kg)', 'भाव (₹/kg)', 'रकम (₹)'], wholesale: 'थोक' }
 ];

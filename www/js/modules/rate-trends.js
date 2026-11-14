@@ -775,11 +775,11 @@ export const RateTrendsManager = {
         const body = periods.slice().reverse().map(p => {
             const r = byPeriod.get(p);
             const fromItems = cut && p > cut;
-            const rate = (k) => moneyText(fromItems ? items[k][p] : bills[k][p], 'ratePaise');
+            const rate = (k) => moneyText(fromItems ? items[k][p] : bills[k][p], 'rate');
             if (!r && !fromItems) return '';
             return `<tr><td>${esc(this.periodLabel(p))}</td><td>${rate('purchase')}</td><td>${rate('wholesale')}</td><td>${rate('retail')}</td>
                 <td class="rt-src">${esc(t(fromItems ? 'ui.trends.src_items' : 'ui.trends.src_bills'))}</td>
-                <td class="${r?.margin < 0 ? 'rt-neg' : ''}">${moneyText(r ? r.margin : null, 'ratePaise')}</td>
+                <td class="${r?.margin < 0 ? 'rt-neg' : ''}">${moneyText(r ? r.margin : null, 'rate')}</td>
                 <td>${kgText(r?.kgBought)}</td><td>${kgText(r?.kgSold)}</td><td>${r ? r.bills : 0}</td></tr>`;
         }).join('');
         el.innerHTML = `<table class="rt-table"><thead><tr>
@@ -798,7 +798,7 @@ export const RateTrendsManager = {
             return;
         }
         const rows = rateChangeRows(this.series);
-        const current = ITEM_RATE_KINDS.map(k => `${esc(t(KIND_KEYS[k]))}: ${moneyText(this.series?.[k]?.current ?? null, 'ratePaise')}`).join(' · ');
+        const current = ITEM_RATE_KINDS.map(k => `${esc(t(KIND_KEYS[k]))}: ${moneyText(this.series?.[k]?.current ?? null, 'rate')}`).join(' · ');
         const head = `<div class="rt-muted">${esc(t('ui.trends.current_items_rate'))} ${current}</div>`;
         if (!rows.length) {
             el.innerHTML = `${head}<div class="rt-empty">${esc(t('ui.trends.no_items_changes', { date: dateText(cutoff) }))}</div>`;
@@ -806,7 +806,7 @@ export const RateTrendsManager = {
         }
         el.innerHTML = `${head}<table class="rt-table"><thead><tr><th>${esc(t('ui.trends.th_date'))}</th><th>${esc(t('ui.trends.th_rate'))}</th>
             <th>${esc(t('ui.trends.th_change'))}</th></tr></thead><tbody>
-            ${rows.map(r => `<tr><td>${esc(dateText(r.at))}</td><td>${esc(t(KIND_KEYS[r.kind]))}</td><td>${moneyText(r.from, 'ratePaise')} → ${moneyText(r.to, 'ratePaise')}</td></tr>`).join('')}
+            ${rows.map(r => `<tr><td>${esc(dateText(r.at))}</td><td>${esc(t(KIND_KEYS[r.kind]))}</td><td>${moneyText(r.from, 'rate')} → ${moneyText(r.to, 'rate')}</td></tr>`).join('')}
             </tbody></table>`;
     },
 

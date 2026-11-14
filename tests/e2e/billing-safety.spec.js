@@ -39,7 +39,7 @@ test('Save with a typed retail line asks; "Add this line and save" bills it (S-1
     await clickAfterTyping(page, '#saveSaleBtn');
     const dialog = page.locator('.pending-line-dialog');
     await expect(dialog).toBeVisible();
-    await expect(dialog.locator('#pendingLineMessage')).toHaveText('Rice 4 kg × ₹36.00 = ₹144 is typed but not on the bill.');
+    await expect(dialog.locator('#pendingLineMessage')).toHaveText('Rice 4 kg × ₹36 = ₹144 is typed but not on the bill.');
     await expect(dialog.locator('[data-choice="add"]')).toHaveText('Add this line and save');
     await expect(dialog.locator('[data-choice="discard"]')).toHaveText('Discard line and save');
     await shot(page, testInfo, 'S1-after-prompt');
@@ -76,7 +76,7 @@ test('"Discard line and save" saves the added lines only; Cancel saves nothing (
 
     await clickAfterTyping(page, '#saveBillBtn');
     const dialog = page.locator('.pending-line-dialog');
-    await expect(dialog.locator('#pendingLineMessage')).toHaveText('Rice 5 kg × ₹30.00 = ₹150 is typed but not on the bill.');
+    await expect(dialog.locator('#pendingLineMessage')).toHaveText('Rice 5 kg × ₹30 = ₹150 is typed but not on the bill.');
     await dialog.locator('[data-choice="cancel"]').click();
     await expect(dialog).toHaveCount(0);
     await expect(page.locator('#newWeight')).toHaveValue('5');

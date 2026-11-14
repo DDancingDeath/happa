@@ -10,7 +10,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { PrinterService } from '../services/printer.js';
 import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
-import { KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, formatRate, formatRupees, formatKg } from '../utils/money.js';
+import { KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, formatRate, formatRupees, formatKg, formatAmount } from '../utils/money.js';
 import {
     bagChecks, buildPaymentSplit, computeLine, computeRetailTotals, editSplitFor, paidOnScreen, paymentSplit, pendingLine, prefillPayment, restInDue,
     shownAmount, sumWeights, validatePaymentSplit, weightsForEdit
@@ -329,7 +329,7 @@ const RetailSaleManager = {
         // Update totals
         const { screenTotal, packetsShown } = computeRetailTotals(saleItems);
         
-        if (saleTotalSpan) saleTotalSpan.textContent = shownAmount(screenTotal);
+        if (saleTotalSpan) saleTotalSpan.textContent = formatAmount(shownAmount(screenTotal), 'exact');
         if (totalSalePacketsSpan) totalSalePacketsSpan.textContent = packetsShown;
         
         this.updateSaleTotals();
@@ -395,7 +395,7 @@ const RetailSaleManager = {
      * Update sale totals display
      */
     updateSaleTotals() {
-        const shown = shownAmount(computeRetailTotals(saleItems).screenTotal);
+        const shown = formatAmount(shownAmount(computeRetailTotals(saleItems).screenTotal), 'exact');
         
         const saleTotalEl = document.getElementById('saleTotal');
         const amountReceivableEl = document.getElementById('amountReceivable');
@@ -428,7 +428,7 @@ const RetailSaleManager = {
         const split = this.readPaymentSplit();
         
         const totalReceivedEl = document.getElementById('totalReceived');
-        if (totalReceivedEl) totalReceivedEl.textContent = paidOnScreen(split);
+        if (totalReceivedEl) totalReceivedEl.textContent = formatAmount(paidOnScreen(split), 'exact');
         Helpers.showSplitRemaining('saleSplitRemaining', validatePaymentSplit(computeRetailTotals(saleItems).total, split));
         BillChecksUI.schedule('retail');
     },

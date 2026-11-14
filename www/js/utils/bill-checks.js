@@ -16,7 +16,7 @@
  */
 
 import {
-    billTotal, dueNeedsName, NAME_REQUIRED_FOR_DUE_KEY, paymentSplitMessage, readLineItem, round2, toMoney, formatKg, formatRate, moneyText
+    billTotal, dueNeedsName, NAME_REQUIRED_FOR_DUE_KEY, paymentSplitMessage, readLineItem, round2, toMoney, formatKg, formatRupees
 } from './money.js';
 import { rateConfirmed, validatePaymentSplit, wholesaleCostRate } from './calc/billing.js';
 import { parseAnyBillDate, startOfLocalDay } from './dates.js';
@@ -196,12 +196,12 @@ function rateIssues(line, field, ctx, rates, extra) {
         const ratio = rate / usual;
         if (ratio > m + 1e-9) {
             out.push(issue('rate-high', field, 'warn',
-                `Rate ${formatRate(rate)} is ${ratio.toFixed(1)}× the usual ${formatRate(usual)}`,
-                `रेट ${formatRate(rate)} सामान्य ${formatRate(usual)} का ${ratio.toFixed(1)} गुना है`, extra));
+                `Rate ${formatRupees(rate, 'ratePaise')} is ${ratio.toFixed(1)}× the usual ${formatRupees(usual, 'ratePaise')}`,
+                `रेट ${formatRupees(rate, 'ratePaise')} सामान्य ${formatRupees(usual, 'ratePaise')} का ${ratio.toFixed(1)} गुना है`, extra));
         } else if (ratio < 1 / m - 1e-9) {
             out.push(issue('rate-low', field, 'warn',
-                `Rate ${formatRate(rate)} is less than 1/${m} of the usual ${formatRate(usual)}`,
-                `रेट ${formatRate(rate)} सामान्य ${formatRate(usual)} के 1/${m} से कम है`, extra));
+                `Rate ${formatRupees(rate, 'ratePaise')} is less than 1/${m} of the usual ${formatRupees(usual, 'ratePaise')}`,
+                `रेट ${formatRupees(rate, 'ratePaise')} सामान्य ${formatRupees(usual, 'ratePaise')} के 1/${m} से कम है`, extra));
         }
     }
     if (ctx.kind !== 'purchase') {
@@ -209,8 +209,8 @@ function rateIssues(line, field, ctx, rates, extra) {
         if (cost && rate < cost - 1e-9) {
             // Cost figures are shown to owner/manager only (#84 is still open).
             out.push(issue('below-cost', field, 'warn',
-                ctx.showCost ? `Selling below average cost ${formatRate(cost)}` : 'Selling below cost — check the rate',
-                ctx.showCost ? `औसत लागत ${formatRate(cost)} से कम में बिक्री` : 'लागत से कम में बिक्री — रेट जाँचें', extra));
+                ctx.showCost ? `Selling below average cost ${formatRupees(cost, 'ratePaise')}` : 'Selling below cost — check the rate',
+                ctx.showCost ? `औसत लागत ${formatRupees(cost, 'ratePaise')} से कम में बिक्री` : 'लागत से कम में बिक्री — रेट जाँचें', extra));
         }
     }
     return out;
@@ -581,8 +581,8 @@ export function evaluateCashCount({ expected, counted }, thresholds) {
     const exp = round2(expected);
     if (exp < 0) {
         out.push(issue('cash-expected-negative', 'expected', 'warn',
-            `Expected cash is ${moneyText(exp, 'exact')} — the drawer cannot be below ₹0; check today's entries`,
-            `अपेक्षित नकद ${moneyText(exp, 'exact')} है — गल्ला ₹0 से कम नहीं हो सकता; आज की एंट्री जाँचें`));
+            `Expected cash is ${formatRupees(exp, 'exact')} — the drawer cannot be below ₹0; check today's entries`,
+            `अपेक्षित नकद ${formatRupees(exp, 'exact')} है — गल्ला ₹0 से कम नहीं हो सकता; आज की एंट्री जाँचें`));
     }
     const diff = round2(round2(counted) - exp);
     const gap = Math.abs(diff);
@@ -591,8 +591,8 @@ export function evaluateCashCount({ expected, counted }, thresholds) {
         const word = diff < 0 ? 'short' : 'extra';
         const wordHi = diff < 0 ? 'कम' : 'ज़्यादा';
         out.push(issue(high ? 'cash-mismatch-high' : 'cash-mismatch', 'counted', 'warn',
-            `Cash is ${moneyText(gap, 'exact')} ${word}${high ? ' — big difference, count again' : ''}`,
-            `नकद ${moneyText(gap, 'exact')} ${wordHi} है${high ? ' — बड़ा अंतर, दोबारा गिनें' : ''}`));
+            `Cash is ${formatRupees(gap, 'exact')} ${word}${high ? ' — big difference, count again' : ''}`,
+            `नकद ${formatRupees(gap, 'exact')} ${wordHi} है${high ? ' — बड़ा अंतर, दोबारा गिनें' : ''}`));
     }
     return out;
 }

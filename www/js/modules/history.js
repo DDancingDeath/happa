@@ -532,7 +532,7 @@ export class HistoryManager {
         const itemsHTML = bill.items.map(item => `
             <tr>
                 <td>${Helpers.escapeHtml(item.name)}</td>
-                <td class="num">${toMoney(item.rate) === null ? '—' : formatAmount(item.rate, { decimals: 2 })}</td>
+                <td class="num">${toMoney(item.rate) === null ? '—' : formatAmount(item.rate, 'rate')}</td>
                 <td class="num">${formatKg(item.qty || item.quantity)}</td>
                 <td class="num"><strong>${(toMoney(item.total) ?? toMoney(item.amount)) === null ? '—' : formatAmount(toMoney(item.total) ?? toMoney(item.amount), { exact: true })}</strong></td>
             </tr>

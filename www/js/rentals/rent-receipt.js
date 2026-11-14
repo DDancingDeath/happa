@@ -15,7 +15,7 @@ import { PrinterService } from '../services/printer.js';
 import { AuditService } from '../services/audit.js';
 import { openExternal } from '../utils/open-external.js';
 import { cleanText, whatsAppReminderUrl } from '../utils/due-reminder.js';
-import { formatRate, formatRupees } from '../utils/money.js';
+import { formatRupees } from '../utils/money.js';
 import { monthLabel, dateLabel, PAYMENT_MODES } from './rent-math.js';
 import { receiptReceived, paidEarlier } from './rent-math-ledger.js';
 import { typedPlace, UNIT_TYPES } from './rent-views.js';
@@ -50,7 +50,7 @@ export function receiptRows(r, lang = getLang()) {
     if (e && typeof e === 'object') {
         rows.push(
             [tr('ui.rcpt.reading'), tr('ui.rcpt.reading_value', { prev: e.prev, curr: e.curr })],
-            [tr('ui.rcpt.units'), tr('ui.rcpt.units_value', { units: e.units, rate: formatRate(e.rate) })],
+            [tr('ui.rcpt.units'), tr('ui.rcpt.units_value', { units: e.units, rate: formatRupees(e.rate, 'ratePaise') })],
             [tr('ui.rcpt.electricity'), formatRupees(e.amount, 'exact')]
         );
     }

@@ -90,7 +90,7 @@ test('English: no Hindi text anywhere on the page (history built and not yet bui
     const text = await renderPage('en', built());
     expect(text).toMatch(/Rate changes on the Rates page/);
     expect(text).toMatch(/Items moved in the month/);
-    expect(text).toContain('₹25.00 → ₹26.00');
+    expect(text).toContain('₹25 → ₹26');
     expect(text).toMatch(/Week of \d+ [A-Z][a-z]{2} 20\d\d/);
     expect(text).toMatch(/Usually|Not enough history/);
     expect(text).not.toMatch(DEVANAGARI);
@@ -104,7 +104,7 @@ test('English: no Hindi text anywhere on the page (history built and not yet bui
 test('Hindi: no English sentences from the catalogue on the page', async () => {
     const text = await renderPage('hi', built());
     expect(text).toMatch(/रेट पेज पर रेट में बदलाव/);
-    expect(text).toContain('₹25.00 → ₹26.00');
+    expect(text).toContain('₹25 → ₹26');
     expect(text).toMatch(/वाला हफ़्ता/);
     for (const en of ['Trends', 'Rates page', 'Items page', 'Estimated from bills', 'Purchase', 'Wholesale', 'Retail', 'Weekly',
         'Month', 'Week', 'Bills', 'Not enough history', 'Day by day', 'Product traffic', 'History built']) {

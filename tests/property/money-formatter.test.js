@@ -40,11 +40,12 @@ const WRAPPERS = [
     ['money.js money', (v) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : oldRupees(v, { trueMinus: true })), (v) => moneyText(v, 'signed')],
     ['period-compare rupees', (v) => (v === null ? '—' : oldRupees(v, { trueMinus: true })), (v) => moneyText(v, 'signed')],
     ['period-compare textRupees', (v) => (v === null ? '—' : oldRupees(v)), (v) => moneyText(v, 'plain')],
-    ['rate-trends rupees', (n) => (n === null || n === undefined ? '—' : oldRupees(n, { decimals: 2 })), (n) => moneyText(n, 'ratePaise')],
     ['rate-trends wholeRupees', (n) => (n === null || n === undefined ? '—' : oldRupees(n)), (n) => moneyText(n)],
     ['finance-breakdown rupees', (n) => (n === null || n === undefined || !Number.isFinite(n) ? '—' : oldRupees(n, { exact: false, trueMinus: true })), (n) => moneyText(n, 'signed')],
     ['finance-breakdown rupees (paise)', (n) => (n === null || n === undefined || !Number.isFinite(n) ? '—' : oldRupees(n, { exact: true, trueMinus: true })), (n) => moneyText(n, { exact: true, trueMinus: true })],
-    ['anomalies money / inr, bill-checks fmtRs', (n) => oldRupees(n, { exact: true }), (n) => moneyText(n, 'exact')],
+    ['Anomalies page money', (n) => oldRupees(n, { exact: true }), (n) => moneyText(n, 'exact')],
+    ['stored check / anomaly text: bill-checks fmtRs, anomalies inr', (n) => oldRupees(n, { exact: true }), (n) => formatRupees(n, 'exact')],
+    ['stored check / anomaly text: formatRate', (n) => oldRupees(n, { decimals: 2 }), (n) => formatRupees(n, 'ratePaise')],
     ['recurring-bills / workers money', (n) => oldRupees(n), (n) => moneyText(n)],
     ['history / wholesale / rentals money', (n) => (oldMissing(n) ? oldRupees(n) : textOf(moneyHtml(n))), (n) => textOf(moneyHtml(n))]
 ];
@@ -87,7 +88,15 @@ describe('F0: replaced money wrappers keep their text', () => {
         expect(moneyHtml(null)).toBe(UNKNOWN_AMOUNT);
     });
 
-    test('formatRate keeps its paise for now', () => {
-        fc.assert(fc.property(amounts, (n) => formatRate(n) === oldRupees(n, { decimals: 2 })), { numRuns: RUNS });
+    test('rates on screen (preset rate) show paise only when they have them: ₹2,400.00 → ₹2,400, ₹24.50 stays', () => {
+        const before = (n) => oldRupees(n, { decimals: 2 });
+        const rateTrends = (n) => moneyText(n, 'rate');
+        fc.assert(fc.property(amounts, (n) => {
+            const old = before(n);
+            const want = old.endsWith('.00') ? old.slice(0, -3) : old;
+            return formatRate(n) === want && rateTrends(n) === want && formatRupees(n, 'rate') === want;
+        }), { numRuns: RUNS });
+        expect([formatRate(2400), formatRate(24.5), formatRate(0), formatRate(2400.004)]).toEqual(['₹2,400', '₹24.50', '₹0', '₹2,400']);
+        expect(moneyText(null, 'rate')).toBe(UNKNOWN_AMOUNT);
     });
 });

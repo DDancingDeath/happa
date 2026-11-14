@@ -230,7 +230,7 @@ describe('save gate', () => {
 
         const fixed = BillChecksUI.confirmSave('test');
         await Promise.resolve();
-        expect(dialog().querySelector('#rateCheckMessage').textContent).toBe('Rice 10 kg × ₹400.00 = ₹4,000. Today\'s rate ₹40.00 would give ₹400.');
+        expect(dialog().querySelector('#rateCheckMessage').textContent).toBe('Rice 10 kg × ₹400 = ₹4,000. Today\'s rate ₹40 would give ₹400.');
         expect(document.activeElement.dataset.choice).toBe('fix');
         dialog().querySelector('[data-choice="fix"]').click();
         expect((await fixed).ok).toBe(false);

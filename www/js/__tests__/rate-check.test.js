@@ -230,9 +230,9 @@ describe('the confirm dialog', () => {
         await settle();
         expect(document.activeElement.dataset.choice).toBe('fix');
         expect(dialog().querySelector('[data-choice="fix"]').textContent).toBe('Fix rate');
-        expect(dialog().querySelector('[data-choice="confirm"]').textContent).toBe('Yes, ₹260.00 is right');
+        expect(dialog().querySelector('[data-choice="confirm"]').textContent).toBe('Yes, ₹260 is right');
         expect(dialog().querySelector('[data-choice="fix"]').hasAttribute('data-dismiss')).toBe(true);
-        expect(await answer('fix')).toBe('Wheat 15 kg × ₹260.00 = ₹3,900. Today\'s rate ₹26.00 would give ₹390.');
+        expect(await answer('fix')).toBe('Wheat 15 kg × ₹260 = ₹3,900. Today\'s rate ₹26 would give ₹390.');
         expect(await result).toEqual({ ok: false, rateCheck: null });
         expect(document.activeElement.id).toBe('rate');
         expect(dialog()).toBeNull();
@@ -259,7 +259,7 @@ describe('the confirm dialog', () => {
     test('Hindi: one language, "kg" for the weight', async () => {
         setLang('hi');
         const result = askRateCheck({ label: 'गेहूं', qty: 15, rate: 260, todayRate: 26, amount: 3900, todayAmount: 390 });
-        expect(await answer('fix')).toBe('गेहूं 15 kg × ₹260.00 = ₹3,900। आज के रेट ₹26.00 से ₹390 होता।');
+        expect(await answer('fix')).toBe('गेहूं 15 kg × ₹260 = ₹3,900। आज के रेट ₹26 से ₹390 होता।');
         expect(await result).toBe('fix');
     });
 });
@@ -323,7 +323,7 @@ describe('Add to bill on the three forms (OD-02)', () => {
         setVal('billRate', 240);
         setVal('newWeight', 15);
         const adding = PurchaseManager.addToBill();
-        expect(await answer('fix')).toBe('Wheat 15 kg × ₹240.00 = ₹3,600. Today\'s rate ₹24.00 would give ₹360.');
+        expect(await answer('fix')).toBe('Wheat 15 kg × ₹240 = ₹3,600. Today\'s rate ₹24 would give ₹360.');
         await adding;
         expect(PurchaseManager.getBillItems()).toEqual([]);
         expect(PurchaseManager.getWeights()).toEqual([15]);
@@ -341,7 +341,7 @@ describe('Add to bill on the three forms (OD-02)', () => {
         setVal('saleRate', 280);
         setVal('saleWeight', 15);
         const adding = RetailSaleManager.addToSalesBill();
-        expect(await answer('confirm')).toBe('Wheat 15 kg × ₹280.00 = ₹4,200. Today\'s rate ₹28.00 would give ₹420.');
+        expect(await answer('confirm')).toBe('Wheat 15 kg × ₹280 = ₹4,200. Today\'s rate ₹28 would give ₹420.');
         await adding;
         const [line] = RetailSaleManager.getSaleItems();
         expect(line).toMatchObject({ name: 'Wheat', rate: 280, qty: 15, total: 4200, rateCheck: { rate: 280, todayRate: 28, by: 'u2', byName: 'Staff One' } });
@@ -353,7 +353,7 @@ describe('Add to bill on the three forms (OD-02)', () => {
         setVal('sellRate', 5.4);
         setVal('sellQuantity', 10);
         const adding = WholesaleSalesManager.addToWholesaleBill();
-        expect(await answer('confirm')).toBe('Wheat 10 kg × ₹5.40 = ₹54. Today\'s rate ₹27.00 would give ₹270.');
+        expect(await answer('confirm')).toBe('Wheat 10 kg × ₹5.40 = ₹54. Today\'s rate ₹27 would give ₹270.');
         await adding;
         expect(WholesaleSalesManager.getItems()).toEqual([expect.objectContaining({ rate: 5.4, qty: 10, total: 54, rateCheck: expect.objectContaining({ rate: 5.4, todayRate: 27 }) })]);
     });
@@ -442,7 +442,7 @@ describe('Add to bill on the three forms (OD-02)', () => {
         setVal('saleWeight', 485);
         const first = RetailSaleManager.addToSalesBill();
         expect(await answer('confirm')).toMatch(/^Packet weight 485 kg/);
-        expect(await answer('fix')).toMatch(/^Wheat 505 kg × ₹280\.00/);
+        expect(await answer('fix')).toMatch(/^Wheat 505 kg × ₹280/);
         await first;
         expect(RetailSaleManager.getSaleItems()).toEqual([]);
         setVal('saleRate', 28);

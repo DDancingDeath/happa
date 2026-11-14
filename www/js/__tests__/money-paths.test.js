@@ -105,11 +105,11 @@ describe('new purchase save', () => {
 
     test('items × rate, auto labour and grand total are computed from the lines', async () => {
         await buildBill();
-        expect(document.getElementById('billTotal').textContent).toBe('2580');
+        expect(document.getElementById('billTotal').textContent).toBe('2,580');
         expect(document.getElementById('totalPacketsInBill').textContent).toBe('3');
         expect(document.getElementById('manualLaborCharges').value).toBe('12');
         expect(document.getElementById('laborCalculation').textContent).toBe('6 × 2');
-        expect(document.getElementById('amountPayable').textContent).toBe('2568');
+        expect(document.getElementById('amountPayable').textContent).toBe('2,568');
     });
 
     test('saves a split payment with payment.due equal to dueAmount', async () => {
@@ -152,7 +152,7 @@ describe('new purchase save', () => {
         await buildBill();
         expect(document.getElementById('manualLaborCharges').value).toBe('16');
         expect(document.getElementById('laborCalculation').textContent).toBe('8 × 2');
-        expect(document.getElementById('amountPayable').textContent).toBe('2564');
+        expect(document.getElementById('amountPayable').textContent).toBe('2,564');
 
         for (const bad of ['', 'abc', 0, -3, null]) {
             AppState.settings.laborRate = bad;
@@ -166,7 +166,7 @@ describe('new purchase save', () => {
         document.getElementById('autoLaborCharge').checked = false;
         await buildBill();
         expect(document.getElementById('manualLaborCharges').value).toBe('0');
-        expect(document.getElementById('amountPayable').textContent).toBe('2580');
+        expect(document.getElementById('amountPayable').textContent).toBe('2,580');
     });
 
     test('refuses a purchase with Due but no supplier name; fully paid saves without one (#68)', async () => {

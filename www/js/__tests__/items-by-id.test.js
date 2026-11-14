@@ -322,7 +322,7 @@ describe('rate / name history on save (#82)', () => {
         await ItemsManager.saveItemFromModal();
         const dlg = document.createElement('div');
         dlg.innerHTML = UIManager.showModalWithHtml.mock.calls[0][0];
-        expect(dlg.textContent).toMatch(/₹50\.00 → ₹500\.00/);
+        expect(dlg.textContent).toMatch(/₹50 → ₹500/);
         expect(FirebaseService.saveItem).not.toHaveBeenCalled();
         expect(FirebaseService.addRateHistoryEntries).not.toHaveBeenCalled();
     });
