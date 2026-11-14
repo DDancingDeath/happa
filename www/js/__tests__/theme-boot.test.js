@@ -28,7 +28,7 @@ function boot(keys = {}, { systemDark = false } = {}) {
         theme: root.getAttribute('data-theme'),
         appearance: root.getAttribute('data-appearance'),
         mode: root.getAttribute('data-mode'),
-        darkClass: document.body.classList.contains('dark-mode'),
+        bodyClass: document.body.className,
     };
 }
 
@@ -54,28 +54,28 @@ describe('theme boot script (#102)', () => {
     });
 
     test('a new device follows the system appearance with the default theme', () => {
-        expect(boot({}, { systemDark: false })).toEqual({ theme: 'modern', appearance: 'system', mode: 'light', darkClass: false });
-        expect(boot({}, { systemDark: true })).toEqual({ theme: 'modern', appearance: 'system', mode: 'dark', darkClass: true });
+        expect(boot({}, { systemDark: false })).toEqual({ theme: 'modern', appearance: 'system', mode: 'light', bodyClass: '' });
+        expect(boot({}, { systemDark: true })).toEqual({ theme: 'modern', appearance: 'system', mode: 'dark', bodyClass: '' });
     });
 
     test('an install from before the theme engine keeps Light until the user picks', () => {
-        expect(boot({ 'aadhat.itemNamesFollowLang': '1' }, { systemDark: true })).toMatchObject({ appearance: 'light', mode: 'light', darkClass: false });
+        expect(boot({ 'aadhat.itemNamesFollowLang': '1' }, { systemDark: true })).toMatchObject({ appearance: 'light', mode: 'light', bodyClass: '' });
         expect(boot({ 'aadhat.itemNamesFollowLang': '1', 'happa.appearance': 'system' }, { systemDark: true })).toMatchObject({ mode: 'dark' });
     });
 
     test('the old darkMode setting keeps its look: true is Dark, false is Light, whatever the system says', () => {
-        expect(boot({ darkMode: 'true' }, { systemDark: false })).toMatchObject({ appearance: 'dark', mode: 'dark', darkClass: true });
-        expect(boot({ darkMode: 'false' }, { systemDark: true })).toMatchObject({ appearance: 'light', mode: 'light', darkClass: false });
+        expect(boot({ darkMode: 'true' }, { systemDark: false })).toMatchObject({ appearance: 'dark', mode: 'dark', bodyClass: '' });
+        expect(boot({ darkMode: 'false' }, { systemDark: true })).toMatchObject({ appearance: 'light', mode: 'light', bodyClass: '' });
     });
 
     test('a saved appearance wins over the old darkMode setting', () => {
         expect(boot({ darkMode: 'true', 'happa.appearance': 'light' })).toMatchObject({ appearance: 'light', mode: 'light' });
-        expect(boot({ 'happa.appearance': 'system' }, { systemDark: true })).toMatchObject({ mode: 'dark', darkClass: true });
+        expect(boot({ 'happa.appearance': 'system' }, { systemDark: true })).toMatchObject({ mode: 'dark', bodyClass: '' });
     });
 
     test('an always-dark theme stays dark under Light and System, and keeps the choice', () => {
         const keys = { 'happa.theme': 'midnight', 'happa.themeKind': 'dark', 'happa.appearance': 'light' };
-        expect(boot(keys)).toEqual({ theme: 'midnight', appearance: 'light', mode: 'dark', darkClass: true });
+        expect(boot(keys)).toEqual({ theme: 'midnight', appearance: 'light', mode: 'dark', bodyClass: '' });
     });
 
     test('sets the cached browser bar colour of the mode, only when it is a #rrggbb colour', () => {
@@ -91,7 +91,6 @@ describe('theme boot script (#102)', () => {
         try {
             expect(() => boot()).not.toThrow();
             expect(root.getAttribute('data-mode')).toBeNull();
-            expect(document.body.classList.contains('dark-mode')).toBe(false);
         } finally {
             spy.mockRestore();
         }

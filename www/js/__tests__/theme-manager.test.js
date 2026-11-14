@@ -51,12 +51,11 @@ test('init uses the choice read when the module loaded (before main.js wrote its
     expect(localStorage.getItem(THEME_KEYS.appearance)).toBe('system');
 });
 
-test('System follows the device live, with body.dark-mode', () => {
+test('System follows the device live', () => {
     ThemeManager.init();
     systemDark = true;
     listeners.forEach((fn) => fn());
     expect(attrs()[2]).toBe('dark');
-    expect(document.body.classList.contains('dark-mode')).toBe(true);
 });
 
 test('a fixed choice ignores the device', () => {
@@ -75,7 +74,6 @@ test('apply saves the new keys, drops the old darkMode and fires aadhat:themecha
     window.addEventListener('aadhat:themechange', (e) => seen.push(e.detail.mode), { once: true });
     ThemeManager.apply({ appearance: 'light' });
     expect(attrs()).toEqual(['modern', 'light', 'light']);
-    expect(document.body.classList.contains('dark-mode')).toBe(false);
     expect(seen).toEqual(['light']);
     expect(localStorage.getItem(THEME_KEYS.appearance)).toBe('light');
     expect(localStorage.getItem(THEME_KEYS.theme)).toBe('modern');
@@ -120,7 +118,6 @@ describe('preview (Settings › Appearance gallery)', () => {
         ThemeManager.apply({ theme: 'modern', appearance: 'light' });
         ThemeManager.preview('midnight');
         expect(attrs()).toEqual(['midnight', 'light', 'dark']);
-        expect(document.body.classList.contains('dark-mode')).toBe(true);
         const state = ThemeManager.apply({ theme: 'midnight' });
         expect(state).toMatchObject({ theme: 'midnight', appearance: 'light', mode: 'dark', previewing: null });
         expect([localStorage.getItem(THEME_KEYS.theme), localStorage.getItem(THEME_KEYS.kind)]).toEqual(['midnight', 'dark']);

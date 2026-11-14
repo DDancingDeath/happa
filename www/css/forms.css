@@ -168,6 +168,14 @@ input[type="text"] {
   transition: border-color var(--transition), box-shadow var(--transition);
 }
 
+/* Other text-like fields keep their own size but take the field colours in every theme and mode (no specificity: page rules win) */
+:where(textarea, input:not([type]), input[type="date"], input[type="month"], input[type="time"],
+  input[type="tel"], input[type="email"], input[type="password"], input[type="search"]) {
+  border-color: var(--input-border);
+  background-color: var(--input-bg);
+  color: var(--ink);
+}
+
 .input:focus,
 select:focus,
 input:focus {
