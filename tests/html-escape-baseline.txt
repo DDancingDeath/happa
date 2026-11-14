@@ -399,7 +399,7 @@ www/js/rentals/rentals.js: lazyMods.pages.renderProperties(unitCtx(), d) (sink)
 www/js/rentals/rentals.js: lazyMods.pages.renderProperty(unitCtx(), d, state.detail) (sink)
 www/js/rentals/rentals.js: lazyMods.pages.renderTenant(unitCtx(), d, state.detail) (sink)
 www/js/rentals/rentals.js: lazyMods.pages.renderTenants(unitCtx(), d) (sink)
-www/js/services/exporter.js: html
+www/js/services/exporter.js: printMinus(html)
 www/js/ui/bill-highlight.js: ICON.block ← ICON = { block: '⛔', warn: '⚠️' }
 www/js/ui/bill-row.js: link ← onclick
 www/js/ui/bill-row.js: onclick
