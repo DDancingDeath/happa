@@ -121,4 +121,20 @@ describe('Esc closes dialogs in Hindi', () => {
         document.body.dispatchEvent(evt);
         expect(closed).toHaveBeenCalledTimes(1);
     });
+
+    test('Escape closes the Rentals form sheet through its Cancel', () => {
+        jest.spyOn(Element.prototype, 'getClientRects').mockReturnValue([{}]);
+        window.matchMedia = () => ({ matches: true });
+        jest.isolateModules(() => { require('../utils/keyboard-shortcuts.js'); });
+        const html = fs.readFileSync(path.join(__dirname, '..', '..', 'templates', 'rentals.html'), 'utf8');
+        document.body.innerHTML = `<div id="appContent">${html}</div>`;
+        document.getElementById('rentals').classList.add('active');
+        document.getElementById('rentDialog').hidden = false;
+        const cancel = document.getElementById('rentDialogCancel');
+        expect(findCloseControl(document.getElementById('rentDialog'))).toBe(cancel);
+        const closed = jest.fn();
+        cancel.addEventListener('click', closed);
+        document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+        expect(closed).toHaveBeenCalledTimes(1);
+    });
 });

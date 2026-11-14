@@ -245,7 +245,7 @@ export function showReceipt(env, rcpt) {
     const lang = getLang();
     const h = headLines(r, lang);
     const rows = receiptRows(r, lang).map(([k, v, bold]) => `<div class="rent-rcpt-row${bold ? ' rent-rcpt-bold' : ''}"><span>${esc(k)}</span><span>${esc(v)}</span></div>`).join('');
-    const act = (a, cls, label) => `<button type="button" class="rent-btn${cls}" data-onclick="rentals.receiptAction('${a}')">${esc(t(label))}</button>`;
+    const act = (a, cls, label) => `<button type="button" class="btn${cls}" data-onclick="rentals.receiptAction('${a}')">${esc(t(label))}</button>`;
     return env.dialog(`<h3>🧾 ${esc(h.title)}</h3>
         ${r.void ? `<p class="rent-rcpt-void">${esc(t('ui.rcpt.void_mark'))}${r.voidReason ? ` · ${esc(r.voidReason)}` : ''}</p>` : ''}
         <div class="rent-rcpt">
@@ -255,10 +255,10 @@ export function showReceipt(env, rcpt) {
             ${rows}
             <div class="rent-sub">${esc(h.by)}</div>
         </div>
-        <div class="rent-actions">${act('wa', ' rent-btn-primary', 'ui.rcpt.send_whatsapp')}</div>
+        <div class="rent-actions">${act('wa', ' btn-primary', 'ui.rcpt.send_whatsapp')}</div>
         <details class="rent-more"><summary>${esc(t('ui.rcpt.more'))}</summary><div class="rent-actions">
             ${act('print', '', 'ui.rcpt.print')}${act('image', '', 'ui.rcpt.image')}${act('pdf', '', 'ui.rcpt.pdf')}
-            ${env.canVoid && !r.void ? act('void', ' rent-btn-danger', 'ui.rcpt.void') : ''}
+            ${env.canVoid && !r.void ? act('void', ' btn-ghost tone-neg', 'ui.rcpt.void') : ''}
         </div></details>`, { info: true });
 }
 
@@ -275,18 +275,18 @@ export async function showHistory(env, tenantId) {
     }
     const lang = getLang();
     const rows = list.map(r => `<div class="rent-rcpt-item">
-            <div><div class="rent-name">${esc(r.no)}${r.void ? ` <span class="rent-badge rent-badge-late">${esc(t('ui.rcpt.void_mark'))}</span>` : ''}</div>
+            <div><div class="rent-name">${esc(r.no)}${r.void ? ` <span class="tag neg">${esc(t('ui.rcpt.void_mark'))}</span>` : ''}</div>
                 <div class="rent-sub">${esc(dateLabel(r.date))} · ${esc((r.months || []).map(m => monthLabel(m, lang)).join(', '))} · ${esc(inr(r.paid))}</div></div>
-            <button type="button" class="rent-btn rent-btn-small" data-onclick="rentals.receiptAction('open', '${js(r.id)}')">${esc(t('ui.rcpt.open'))}</button>
+            <button type="button" class="btn btn-sm" data-onclick="rentals.receiptAction('open', '${js(r.id)}')">${esc(t('ui.rcpt.open'))}</button>
         </div>`).join('');
     const unpaid = missing.map((x, i) => `<div class="rent-rcpt-item">
             <div class="rent-sub">${esc(dateLabel(x.entry.date))} · ${esc(monthLabel(x.charge.month, lang))} · ${esc(inr(x.entry.amount))}</div>
-            <button type="button" class="rent-btn rent-btn-small rent-btn-primary" data-onclick="rentals.receiptAction('issue', '${i}')">${esc(t('ui.rcpt.issue'))}</button>
+            <button type="button" class="btn btn-sm btn-primary" data-onclick="rentals.receiptAction('issue', '${i}')">${esc(t('ui.rcpt.issue'))}</button>
         </div>`).join('');
     current = { env, r: null };
     return env.dialog(`<h3>🧾 ${esc(t('ui.rcpt.history_title', { name: cleanText(name) }))}</h3>
         ${unpaid ? `<p class="rent-label">${esc(t('ui.rcpt.without'))}</p>${unpaid}` : ''}
-        ${rows || `<p class="rent-empty">${esc(t('ui.rcpt.none'))}</p>`}
+        ${rows || `<p class="empty">${esc(t('ui.rcpt.none'))}</p>`}
         <p class="rent-help">${esc(t('ui.rcpt.history_note'))}</p>`, { info: true });
 }
 
@@ -307,10 +307,10 @@ async function issue(env, x) {
 async function voidReceipt(env, r) {
     const asked = env.dialog(`<h3>${esc(t('ui.rcpt.void_title', { no: r.no }))}</h3>
         <p class="rent-help">${esc(t('ui.rcpt.void_help'))}</p>
-        <label class="rent-label">${esc(t('ui.rcpt.void_reason'))}<input id="rentVoidReason" type="text" maxlength="200"></label>`);
+        <label class="field rent-label">${esc(t('ui.rcpt.void_reason'))}<input class="input" id="rentVoidReason" type="text" maxlength="200"></label>`);
     // Save stays off until there is a reason (the rules refuse a cancel without one).
     const input = document.getElementById('rentVoidReason');
-    const save = document.querySelector('#rentDialog .rent-dialog-actions .rent-btn-primary');
+    const save = document.getElementById('rentDialogSave');
     const sync = () => { if (save) save.disabled = !input?.value.trim(); };
     input?.addEventListener('input', sync);
     sync();

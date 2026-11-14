@@ -67,24 +67,17 @@ button.rent-tap { cursor: pointer; }
 .rent-occupied { font-weight: var(--w-strong); }
 .rent-tenant-section { margin-top: var(--sp-3); padding-top: var(--sp-1); border-top: 1px solid var(--line); }
 
-/* Until 5.9b: the form dialog and the deposit, expense, report, meter and link dialogs */
-.rent-dialog { position: fixed; inset: 0; z-index: var(--z-dialog); display: flex; align-items: center; justify-content: center; padding: var(--sp-4); background: var(--scrim); }
-.rent-dialog[hidden] { display: none; }
-.rent-dialog-box { width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; padding: var(--sp-4); border-radius: var(--r-panel); background: var(--panel-bg); color: inherit; }
-.rent-dialog-box h3 { margin: 0 0 var(--sp-1); font-size: var(--fs-lead); }
-.rent-dialog-actions { display: flex; justify-content: flex-end; gap: var(--sp-2); margin-top: var(--sp-4); }
-.rent-dialog-box input[readonly] { width: 100%; margin: var(--sp-2) 0; }
-.rent-btn { padding: var(--sp-2) var(--sp-3); border: 1px solid var(--line-strong); border-radius: var(--r-control); background: var(--surface-2); color: inherit; font-size: var(--fs-sm); cursor: pointer; }
-.rent-btn-primary { border-color: var(--btn-primary-bg); background: var(--btn-primary-bg); color: var(--btn-primary-ink); }
-.rent-btn-wa { border-color: var(--positive-soft); background: var(--positive-soft); color: var(--positive); }
-.rent-btn-small { padding: var(--sp-1) var(--sp-2); font-size: var(--fs-caption); }
-.rent-btn-danger { border-color: var(--negative-line); background: transparent; color: var(--negative); }
-.rent-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-2); margin-bottom: var(--sp-4); }
-.rent-card { padding: var(--sp-3); border-radius: var(--r-panel); background: var(--surface-2); }
-.rent-card-label { color: var(--ink-3); font-size: var(--fs-sm); }
-.rent-card-value { margin-top: var(--sp-1); font-size: var(--fs-title); font-weight: var(--w-strong); }
+/* The form sheet (.sheet over .scrim): its own layer above the page; Cancel on the left, one primary on the right */
+.rent-scrim { position: fixed; inset: 0; z-index: var(--z-dialog); }
+.rent-sheet { z-index: var(--z-dialog); }
+.rent-scrim[hidden], .rent-sheet[hidden] { display: none; }
+.rent-sheet h3 { margin: 0 0 var(--sp-1); font-family: var(--font-display); font-size: var(--fs-lead); font-weight: var(--w-strong); }
+.rent-sheet-actions { display: flex; justify-content: space-between; gap: var(--sp-2); margin-top: var(--sp-4); }
+.rent-sheet-actions > .btn-primary { margin-left: auto; }
+.rent-sheet .rent-metrics { margin: var(--sp-3) 0; }
+.rent-scroll { overflow-x: auto; }
+.rent-results { margin: var(--sp-2) 0 0; padding: 0; list-style: none; }
+.rent-results > li { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1) 0; }
+
+/* Receipts list (rent-receipt.js; the receipt itself is styled by rent-receipt.css) */
 .rent-name { font-weight: var(--w-strong); }
-.rent-empty { color: var(--ink-3); font-size: var(--fs-sm); }
-.rent-list-row { padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
-.rent-badge { display: inline-block; padding: 0 var(--sp-2); border-radius: var(--r-sm); background: var(--surface-2); font-size: var(--fs-caption); font-weight: var(--w-strong); }
-.rent-badge-late { background: var(--negative-soft); color: var(--negative); }

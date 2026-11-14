@@ -174,7 +174,7 @@ beforeAll(() => {
     AppState.currentUser = { uid: 'owner1' };
     AppState.userName = 'Owner';
     document.body.innerHTML = `<div id="rentals" class="tab active"><div id="rentalsNotice"></div><div id="rentalsBody"></div>
-        <div id="rentDialog" hidden><div id="rentDialogBody"></div><div class="rent-dialog-actions"><button class="rent-btn rent-btn-primary">Save</button></div></div></div>`;
+        <div id="rentDialog" hidden><div id="rentDialogBody"></div><div><button id="rentDialogCancel" class="btn btn-ghost">Cancel</button><button id="rentDialogSave" class="btn btn-primary">Save</button></div></div></div>`;
     window.app = { rentals: { ...RentalsModule.api } };
     _test.state.month = M;
 });

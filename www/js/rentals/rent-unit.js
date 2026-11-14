@@ -26,7 +26,7 @@ export function unitPickHtml(c, id, d, { current = '', none = true, attrs = '' }
         const now = u.id === current;
         return `<option value="${c.esc(u.id)}" data-rent="${c.esc(u.rent || 0)}"${now ? ' selected' : ''}>${c.esc(typedPlace(type ? c.typeWord(type) : '', u.label, ''))}${now ? ` ${c.esc(t('ui.rent.unit_now'))}` : ''}</option>`;
     }).join('')}</optgroup>`).join('');
-    return `<label class="rent-label">${c.esc(t('ui.rent.unit'))}<select id="${id}"${attrs}>${none ? `<option value="">${c.esc(t('ui.rent.unit_none'))}</option>` : ''}${groups}</select></label>`;
+    return `<label class="field rent-label">${c.esc(t('ui.rent.unit'))}<select class="input" id="${id}"${attrs}>${none ? `<option value="">${c.esc(t('ui.rent.unit_none'))}</option>` : ''}${groups}</select></label>`;
 }
 
 /** Tenants page, Add tenant: the picker in its box. */
@@ -36,12 +36,12 @@ export function fillPicker(c, boxId, id) {
 }
 
 const splitHtml = (c, mgr) => {
-    const input = (id) => `<input id="${id}" type="number" inputmode="decimal" min="0" step="1"${mgr ? '' : ' readonly'}>`;
+    const input = (id) => `<input class="input" id="${id}" type="number" inputmode="decimal" min="0" step="1"${mgr ? '' : ' readonly'}>`;
     return `<div class="rent-tenant-section">
         <label class="rent-check"><input id="rentSplitOn" type="checkbox" checked> ${c.esc(t('ui.rent.prorate_move'))}</label>
         <div id="rentSplitBox">
-            <label class="rent-label" id="rentSplitOldL"><span></span>${input('rentSplitOld')}</label>
-            <label class="rent-label" id="rentSplitNewL"><span></span>${input('rentSplitNew')}</label>
+            <label class="field rent-label" id="rentSplitOldL"><span></span>${input('rentSplitOld')}</label>
+            <label class="field rent-label" id="rentSplitNewL"><span></span>${input('rentSplitNew')}</label>
             <p class="rent-help" id="rentSplitHelp"></p>
         </div></div>`;
 };

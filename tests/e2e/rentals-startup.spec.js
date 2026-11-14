@@ -57,14 +57,14 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await page.fill('#rentUnitLabel', `G${stamp}`);
     await page.selectOption('#rentUnitType', 'commercial');
     await page.fill('#rentUnitRent', '5000');
-    await page.click('#rentDialog .rent-btn-primary');
+    await page.click('#rentDialogSave');
     await expect(card).toContainText(`G${stamp}`);
 
     await page.evaluate(() => window.app.rentals.page('tenants'));
     await page.locator('#rentalsBody button', { hasText: 'Add tenant' }).click();
     await page.fill('#rentTenantName', `Ram ${stamp}`);
     await page.fill('#rentTenantPhone', '9876543210');
-    await page.click('#rentDialog .rent-btn-primary');
+    await page.click('#rentDialogSave');
     // Tenants › the tenant's own screen holds the tenancy and its actions.
     const openRam = async () => {
         await page.locator('#rentalsBody [data-tenant]', { hasText: `Ram ${stamp}` }).click();
@@ -82,7 +82,7 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await expect(page.locator('#rentTDate')).toHaveValue(/\d{4}-\d{2}-\d{2}/);
     await tenancyMore(page);
     await page.selectOption('#rentTElec', 'meter');
-    await page.click('#rentDialog .rent-btn-primary');
+    await page.click('#rentDialogSave');
     await expect(row).toContainText(`G${stamp}`);
 
     await page.evaluate(() => window.app.rentals.page('rent'));
@@ -100,21 +100,21 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await expect(rent).toContainText('5,000');
     await rent.locator('button', { hasText: 'Record payment' }).click();
     await page.fill('#rentPayAmount', '2000');
-    await page.click('#rentDialog .rent-btn-primary');
+    await page.click('#rentDialogSave');
     await expect(rent).toContainText('3,000');
     await expect(rent).toContainText('Part paid');
     // A payment opens its receipt (rent receipts, #47): it has a number; close it before the next step.
     const receipt = page.locator('#rentDialog');
     await expect(receipt.locator('.rent-rcpt')).toBeVisible({ timeout: 15000 });
     await expect(receipt.locator('#rentDialogBody h3')).toHaveText(/Rent receipt R-\d{4}-\d{4}/);
-    await receipt.locator('.rent-dialog-actions .rent-btn:not(.rent-btn-primary)').click();
+    await page.click('#rentDialogCancel');
     await expect(receipt).toBeHidden();
 
     await rent.locator('button', { hasText: 'Meter reading' }).click();
     await page.fill('#rentMeterPrev', '100');
     await page.fill('#rentMeterCurr', '150');
     await page.fill('#rentMeterRate', '8');
-    await page.click('#rentDialog .rent-btn-primary');
+    await page.click('#rentDialogSave');
     await expect(rent).toContainText('3,400');
 
     // Tenant rent-history link: read-only page for this tenant only, no login.
@@ -124,7 +124,7 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await page.locator('#rentDialog button', { hasText: 'Make tenant link' }).click();
     const url = await page.locator('#rentLinkUrl').inputValue({ timeout: 15000 });
     expect(url).toMatch(/\/r\/[A-Za-z0-9_-]{24}\?d=1&emulator=1$/);
-    await page.click('#rentDialog .rent-btn-primary');
+    await page.click('#rentDialogSave');
     const tenantCtx = await page.context().browser().newContext();
     const tenantPage = await tenantCtx.newPage();
     const tenantReads = [];
@@ -135,7 +135,7 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     expect(tenantReads).toHaveLength(1);
 
     await row.locator('button', { hasText: 'Move out' }).click();
-    await page.click('#rentDialog .rent-btn-primary');
+    await page.click('#rentDialogSave');
     await expect(row).toContainText('Not living in a unit');
     await tenantPage.reload();
     await expect(tenantPage.locator('#rh')).toContainText('Moved out');

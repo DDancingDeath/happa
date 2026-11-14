@@ -38,7 +38,7 @@ const RECEIPT = { id: `L1_${MONTH}_0`, no: 'R-2026-0001', leaseId: 'L1', tenantI
 beforeEach(() => {
     jest.clearAllMocks();
     document.body.innerHTML = `<div id="rentals" class="tab active"><div id="rentalsNotice"></div><div id="rentalsBody"></div>
-        <div id="rentDialog" hidden><div id="rentDialogBody"></div><div class="rent-dialog-actions"><button class="rent-btn rent-btn-primary">Save</button></div></div></div>`;
+        <div id="rentDialog" hidden><div id="rentDialogBody"></div><div><button id="rentDialogCancel" class="btn btn-ghost">Cancel</button><button id="rentDialogSave" class="btn btn-primary">Save</button></div></div></div>`;
     store.snapshot.mockReturnValue(SNAP);
     store.loadSettings.mockResolvedValue(normalizeRentSettings({ receiptHeader: 'Sharma Rentals', receiptAddress: 'Main Road, Kanpur' }));
     store.recordPayment.mockResolvedValue({ amount: 2000, paid: 2000, open: true, receipt: RECEIPT });
@@ -96,9 +96,9 @@ test('Receipts on a tenant opens their payment history; managers may cancel', as
 test('the receipt dialog has no Save button; form dialogs keep it', async () => {
     const env = (await (async () => { await RentalsModule.api.receipts('T1'); return receipt.showHistory.mock.calls[0][0]; })());
     env.dialog('<p>x</p>', { info: true });
-    expect(document.querySelector('#rentDialog .rent-btn-primary').hidden).toBe(true);
+    expect(document.getElementById('rentDialogSave').hidden).toBe(true);
     env.dialog('<input id="a">');
-    expect(document.querySelector('#rentDialog .rent-btn-primary').hidden).toBe(false);
+    expect(document.getElementById('rentDialogSave').hidden).toBe(false);
     RentalsModule.api.dialogClose(false);
 });
 

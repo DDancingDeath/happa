@@ -184,6 +184,13 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   as the characterisation snapshot pins them). Hooks for tests: `data-lease`, `data-unit`, `data-tenant`, `data-property`,
   `.rent-entry`. `rentals.css` loads after `app.css`, so its desktop rules in `desktop.css` are one step more specific
   (`.tab .rent-head`).
+- **Rentals dialogs (5.9b)**: the form dialog is a `.sheet` (`#rentDialog`, with a grabber) over a `.scrim`
+  (`#rentDialogScrim`), a centred dialog on desktop; Cancel (`#rentDialogCancel`, ghost, `data-dismiss`) on the left and
+  Save (`#rentDialogSave`, primary) on the right. Esc and Back close it like any modal `.sheet[aria-modal="true"]`
+  (`closeTopDialog`), Tab stays inside, and focus returns to the opener. Deposit, expense, yearly report, meter, link,
+  unit and receipt-list dialogs use `.metrics`, `.table`, `.field`s, `.btn`s, `.tag` and `.notice`, with `moneyHtml()`
+  figures; the receipt itself, its title and its share text are unchanged. The tenant's `/r/<token>` page is standalone
+  like `/download`: `www/r/rent-history.css` copies the tokens it uses into `:root` (same test).
 - **Feedback** `.notice` (`.pos/.neg/.warn/.info`), `.empty`, `.skel`, `.toast` (near-black; light in the
   Dark theme), `.dialog` / `.sheet` / `.scrim` (old `.modal-overlay > .modal-box`), `.spinner` (blocking
   saves only). Dialog buttons: Cancel (ghost) on the left, one primary on the right, labelled with a verb; a destructive

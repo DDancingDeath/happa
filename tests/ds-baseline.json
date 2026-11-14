@@ -11,7 +11,7 @@
     "inlineStyle": 36,
     "emoji": 12,
     "titleCase": 17,
-    "legacyClass": 368
+    "legacyClass": 329
   },
   "strict": [
     "www/css/admin.css",
@@ -35,9 +35,15 @@
     "www/js/modules/roles-access.js",
     "www/js/modules/settings.js",
     "www/js/rentals/rent-advanced.js",
+    "www/js/rentals/rent-deposit.js",
+    "www/js/rentals/rent-expense.js",
+    "www/js/rentals/rent-link.js",
+    "www/js/rentals/rent-meter.js",
     "www/js/rentals/rent-pages.js",
+    "www/js/rentals/rent-report.js",
     "www/js/rentals/rent-settings.js",
     "www/js/rentals/rent-tenants.js",
+    "www/js/rentals/rent-unit.js",
     "www/js/rentals/rentals.js",
     "www/js/ui/bill-date-input.js",
     "www/js/ui/components.js",
@@ -52,6 +58,7 @@
     "www/templates/history.html",
     "www/templates/items.html",
     "www/templates/recurring.html",
+    "www/templates/rentals.html",
     "www/templates/settings.html",
     "www/templates/statements.html",
     "www/templates/stock.html",
@@ -201,11 +208,6 @@
       "www/js/modules/voice-billing.js": 1,
       "www/js/modules/wholesale-sales.js": 1,
       "www/js/modules/workers.js": 1,
-      "www/js/rentals/rent-deposit.js": 18,
-      "www/js/rentals/rent-expense.js": 6,
-      "www/js/rentals/rent-link.js": 1,
-      "www/js/rentals/rent-meter.js": 1,
-      "www/js/rentals/rent-report.js": 7,
       "www/js/ui/bill-highlight.js": 6,
       "www/js/ui/bill-row.js": 5,
       "www/js/ui/bill-status.js": 7,
@@ -226,7 +228,6 @@
       "www/templates/money.html": 5,
       "www/templates/navigation.html": 5,
       "www/templates/rate-trends.html": 29,
-      "www/templates/rentals.html": 6,
       "www/templates/wholesale-sales.html": 31
     }
   }

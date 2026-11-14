@@ -180,7 +180,7 @@ describe('dialogs: receipt, reprint from the list, cancel', () => {
         await showReceipt(e, base());
         expect(document.body.innerHTML).toContain("receiptAction('void')");
         // WhatsApp is the one filled button; print, image, PDF and Cancel receipt sit under More options (#157 UX redesign).
-        expect([...document.querySelectorAll('.rent-btn-primary')].map(b => b.getAttribute('data-onclick'))).toEqual(["rentals.receiptAction('wa')"]);
+        expect([...document.querySelectorAll('.btn-primary[data-onclick^="rentals.receiptAction"]')].map(b => b.getAttribute('data-onclick'))).toEqual(["rentals.receiptAction('wa')"]);
         expect([...document.querySelectorAll('details.rent-more button')].map(b => b.getAttribute('data-onclick').match(/'(\w+)'/)[1])).toEqual(['print', 'image', 'pdf', 'void']);
         await action(e, 'void');
         expect(store.voidReceipt).toHaveBeenCalledWith('L1_2026-10_0', 'wrong month');
@@ -229,23 +229,23 @@ describe('reference, header and payments without a receipt', () => {
         let saveState = null;
         const e = env({ canVoid: true });
         e.dialog.mockImplementation((html) => {
-            document.body.innerHTML = `<div id="rentDialog"><div>${html}</div><div class="rent-dialog-actions"><button class="rent-btn-primary">Save</button></div></div>`;
-            return Promise.resolve(true).then(() => { saveState = document.querySelector('.rent-btn-primary').disabled; return true; });
+            document.body.innerHTML = `<div id="rentDialog"><div>${html}</div><div><button id="rentDialogSave" class="btn btn-primary">Save</button></div></div>`;
+            return Promise.resolve(true).then(() => { saveState = document.getElementById('rentDialogSave').disabled; return true; });
         });
         await showReceipt(e, base());
         await action(e, 'void');
         expect(saveState).toBe(true);
         expect(store.voidReceipt).not.toHaveBeenCalled();
-        expect(document.querySelector('.rent-btn-primary').disabled).toBe(false);
+        expect(document.getElementById('rentDialogSave').disabled).toBe(false);
 
         e.dialog.mockImplementation((html) => {
-            document.body.innerHTML = `<div id="rentDialog"><div>${html}</div><div class="rent-dialog-actions"><button class="rent-btn-primary">Save</button></div></div>`;
+            document.body.innerHTML = `<div id="rentDialog"><div>${html}</div><div><button id="rentDialogSave" class="btn btn-primary">Save</button></div></div>`;
             const input = document.getElementById('rentVoidReason');
             if (input) {
                 input.value = '  wrong tenant ';
                 input.dispatchEvent(new Event('input'));
             }
-            return Promise.resolve(true).then(() => { saveState = document.querySelector('.rent-btn-primary').disabled; return true; });
+            return Promise.resolve(true).then(() => { saveState = document.getElementById('rentDialogSave').disabled; return true; });
         });
         await showReceipt(e, base());
         await action(e, 'void');

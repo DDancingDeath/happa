@@ -5,7 +5,7 @@
  * @module rentals/rentals
  */
 
-import { NavigationManager } from '../ui/navigation.js';
+import { NavigationManager, trapFocus } from '../ui/navigation.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { TemplateLoader } from '../utils/template-loader.js';
 import { Helpers } from '../utils/helpers.js';
@@ -700,21 +700,27 @@ const expUi = (fn, ...args) => lazyUi('./rent-expense.js', fn, ...args);
 // ---------- shared ----------
 
 let dialogResolve = null;
+let dialogOpener = null;
 
 /**
- * Rentals form dialog (template #rentDialog); resolves true on Save. Inputs stay readable after it closes.
- * `info`: no Save button; `check`: on Save, false keeps it open (it shows the error at the field).
+ * Rentals form sheet (template #rentDialog over #rentDialogScrim); resolves true on Save. Inputs stay readable after it
+ * closes. `info`: no Save button; `check`: on Save, false keeps it open (it shows the error at the field).
+ * Esc and Back close it through its [data-dismiss] Cancel (keyboard-shortcuts.js closeTopDialog).
  */
 function dialog(html, { info = false, check: canSave = null } = {}) {
     dialogResolve?.(false);
     const box = byId('rentDialog');
     const body = byId('rentDialogBody');
     if (!box || !body) return Promise.resolve(false);
+    if (box.hidden) dialogOpener = document.activeElement;
     body.innerHTML = html;
-    const save = box.querySelector('.rent-dialog-actions .rent-btn-primary');
+    const save = byId('rentDialogSave');
     if (save) save.hidden = info;
-    const close = box.querySelector('.rent-dialog-actions .rent-btn:not(.rent-btn-primary)');
+    const close = byId('rentDialogCancel');
     if (close) close.textContent = t(info ? 'ui.common.close' : 'ui.modals.cancel');
+    if (!box.onkeydown) box.onkeydown = (e) => { if (e.key === 'Tab') trapFocus(e, box); };
+    const scrim = byId('rentDialogScrim');
+    if (scrim) scrim.hidden = false;
     box.hidden = false;
     body.querySelector('input, select')?.focus();
     return new Promise((resolve) => {
@@ -722,7 +728,10 @@ function dialog(html, { info = false, check: canSave = null } = {}) {
             if (v === true && canSave && !canSave()) return;
             dialogClosedAt = Date.now();
             box.hidden = true;
+            if (scrim) scrim.hidden = true;
             dialogResolve = null;
+            if (dialogOpener?.isConnected) dialogOpener.focus?.({ preventScroll: true });
+            dialogOpener = null;
             resolve(v === true);
         };
     });
