@@ -316,6 +316,11 @@ a.row:active {
   box-shadow: var(--e2);
 }
 
+/* Wrong phone clock notice (#115): a .notice.float */
+.clock-notice {
+  z-index: calc(var(--z-sheet) + 1);
+}
+
 /* ---------- Empty and skeleton ---------- */
 .empty {
   padding: var(--sp-6) var(--sp-4);
@@ -450,8 +455,236 @@ a.row:active {
   background: var(--line-strong);
 }
 
+/* The side menu's scrim on the phone (desktop has a permanent sidebar) */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: calc(var(--z-drawer) - 1);
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition-slow);
+}
+
+.overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+@media (min-width: 1024px) {
+  .overlay {
+    display: none;
+  }
+}
+
+/* The app dialog and the older dialogs: .modal-overlay > .modal-box, .modal > .modal-content */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  padding: var(--sp-5);
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-box {
+  max-width: 450px;
+  width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+  transform: scale(0.9);
+  transition: transform var(--transition-slow);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-overlay.active .modal-box {
+  transform: scale(1);
+}
+
+/* The app dialog (ui-manager.js): a .dialog from 600 px, a bottom .sheet below; title, message, then ghost Cancel + one primary on the right */
+.modal-overlay.scrim.active {
+  transition: opacity var(--transition-slow), visibility 0s;
+}
+
+.app-dialog {
+  width: min(480px, 100%);
+  min-width: min(320px, 100%);
+  max-width: none;
+  gap: var(--sp-3);
+  padding: var(--sp-5);
+  outline: none;
+}
+
+.app-dialog > .grabber,
+.app-dialog [hidden],
+.app-dialog .modal-header[hidden] {
+  display: none;
+}
+
+.app-dialog .modal-header {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+.app-dialog .modal-header h3 {
+  font-family: var(--font-display);
+  font-size: var(--fs-lead);
+  color: var(--ink);
+}
+
+.app-dialog .modal-body {
+  padding: 0;
+  color: var(--ink-2);
+}
+
+.app-dialog .modal-footer {
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: var(--sp-1) 0 0;
+  border: 0;
+  background: none;
+}
+
+.app-dialog.sheet {
+  width: auto;
+  min-width: 0;
+  max-height: 90vh;
+  padding: var(--sp-3) var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
+  border-bottom: 0;
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  transform: translateY(100%);
+}
+
+.modal-overlay.active > .app-dialog.sheet {
+  transform: none;
+}
+
+.app-dialog.sheet > .grabber {
+  display: block;
+  margin-bottom: 0;
+}
+
+.app-dialog.sheet .modal-footer > .btn {
+  flex: 1 1 0;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: var(--fs-lead);
+  font-weight: var(--w-strong);
+}
+
+.modal-body {
+  padding: var(--sp-5);
+  text-align: left;
+  color: var(--text-primary);
+  line-height: 1.5;
+  font-size: var(--fs-sm);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-footer {
+  display: flex;
+  gap: var(--sp-3);
+  justify-content: flex-end;
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--card-bg);
+  border-top: 1px solid var(--border-color);
+}
+
+.modal-footer > .btn {
+  min-width: 80px;
+}
+
+/* Retail sale open: the dialog's primary takes the sale colour */
+body:has(.tab.sale-theme.active) .modal-footer > .btn-primary {
+  background-color: var(--btn-sale-bg);
+  color: var(--btn-sale-ink);
+}
+
+/* The older dialog (.modal > .modal-content) */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-drawer);
+  padding: var(--sp-5);
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 400px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--light-bg);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  font-size: var(--fs-lead);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+}
+
+.modal-close:hover {
+  background: var(--btn-danger);
+  color: var(--btn-danger-ink);
+}
+
+@media (min-width: 1024px) {
+  .modal-box {
+    max-width: 520px;
+  }
+}
+
 /* ---------- Toast: near-black in every theme; the type shows as a coloured bar ---------- */
 .toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  z-index: var(--z-toast);
+  max-width: 85%;
   padding: 12px 16px;
   border: none;
   border-radius: var(--r-md);
@@ -462,11 +695,15 @@ a.row:active {
   box-shadow: var(--e3);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
   transform: translateX(-50%) translateY(16px);
   transition: opacity var(--dur-2) var(--ease), transform var(--dur-2) var(--ease);
 }
 
 .toast.show {
+  opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
 
@@ -477,9 +714,22 @@ a.row:active {
 
 /* ---------- Loading: the full-screen spinner is for blocking saves only ---------- */
 .loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: calc(var(--z-dialog) + 1);
   background: var(--scrim);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+}
+
+.loading-overlay.active {
+  display: flex;
 }
 
 .spinner {
@@ -487,7 +737,18 @@ a.row:active {
   height: 40px;
   border: 3px solid var(--line-strong);
   border-top-color: var(--accent);
+  border-radius: var(--radius-full);
   box-shadow: none;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* ---------- Text for screen readers only ---------- */

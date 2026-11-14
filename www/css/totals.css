@@ -50,6 +50,7 @@
   height: 20px;
   cursor: pointer;
   accent-color: var(--primary-color);
+  border-radius: var(--radius-sm);
 }
 
 .labor-input-row input[type="number"] {
@@ -93,8 +94,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 0;
+  padding: var(--sp-3) 0;
   gap: 12px;
+  border-bottom: 1px var(--rule-style) var(--border-color);
+}
+
+.payment-row:last-child {
+  border-bottom: none;
 }
 
 .payment-row label {
@@ -153,6 +159,16 @@
 .payment-row.payment-total strong {
   font-size: var(--fs-lead);
   color: var(--info-dark);
+}
+
+/* Cash + Online + Due must add up to the bill total (#23) */
+.payment-row.split-remaining-row {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.payment-row.split-remaining-row strong {
+  font-size: var(--fs-body);
 }
 
 /* ---------- Billing totals and payment (redesign 3.1b): colon-less labels, ₹ in the field ---------- */
@@ -562,19 +578,15 @@
   to { opacity: 1; }
 }
 
-/* Payment rows (from reports.css; keep after the rules above) */
-.payment-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--sp-3) 0;
-  border-bottom: 1px var(--rule-style) var(--border-color);
-}
-
-.payment-row:last-child {
-  border-bottom: none;
-}
-
-.payment-row span {
-  color: var(--text-secondary);
+/* Payment checkbox styling */
+.payment-row input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  border: 2px solid var(--border-color);
+  margin: 0;
+  accent-color: var(--primary-color);
 }

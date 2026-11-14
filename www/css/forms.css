@@ -402,3 +402,37 @@ input[type="checkbox"].switch:focus-visible,
 .tag.neg { background: var(--negative-soft); color: var(--negative); }
 .tag.warn { background: var(--warning-soft); color: var(--warning); }
 .tag.info { background: var(--info-soft); color: var(--info); }
+
+/* -------------------- UTILITIES -------------------- */
+button, a, input[type="checkbox"] {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* -------------------- ENHANCED TOUCH INTERACTIONS -------------------- */
+button, .btn, input[type="submit"], input[type="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+button:active, .btn:active {
+  transform: scale(0.98);
+}
+
+input, textarea, select {
+  -webkit-tap-highlight-color: transparent;
+  font-size: var(--fs-input); /* Prevents zoom on iOS */
+}
+
+/* Better focus states for accessibility */
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+  outline: 3px solid var(--primary-color);
+  outline-offset: 2px;
+}
