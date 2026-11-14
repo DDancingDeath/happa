@@ -132,7 +132,7 @@ describe('history list escapes record values', () => {
         HistoryManager.renderHistory('purchase');
         const list = document.getElementById('historyList');
         assertNoInjection(list);
-        expect(list.textContent).toContain('× ₹0.00');
+        expect(list.textContent).toContain('× ₹0');
         const row = list.querySelector('tr[data-onclick]');
         expect(runHandler(handlerAttr(row))).toEqual([[`id:${QUOTE_ID}`, 'purchase']]);
     });

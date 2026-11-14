@@ -10,7 +10,7 @@ import { ExpensesManager } from '../modules/miscellaneous.js';
 import { DayManager } from '../modules/day.js';
 import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
-import { readPayment } from '../utils/money.js';
+import { readPayment, formatRupees } from '../utils/money.js';
 import { dueEvents, sumDueEvents, saleTimePayment, entryParts, legParts, sameParty } from '../utils/due-payments.js';
 import { validateDuePayment } from '../utils/calc/billing.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
@@ -78,7 +78,7 @@ describe('#69 session totals', () => {
         CashManagementManager.updateUI();
         const text = (id) => document.getElementById(id).textContent;
         expect([text('statusOthers'), text('statusExpected'), text('statusActual'), text('statusDiff')])
-            .toEqual(['₹330', '₹2,220', '₹2,000', '-₹220.00']);
+            .toEqual(['₹330', '₹2,220', '₹2,000', '−₹220.00']);
     });
 });
 
@@ -464,7 +464,7 @@ describe('#107 Outstanding: cash + online split', () => {
 describe('#95 Today shows dues and the hero equals the breakdown (fixture tests/fixtures/today-dues.json)', () => {
     const FIX = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../tests/fixtures/today-dues.json'), 'utf8'));
     const DAY_TEMPLATE = fs.readFileSync(path.join(__dirname, '../../templates/day.html'), 'utf8');
-    const money = (n) => Helpers.formatCurrency(n);
+    const money = (n) => formatRupees(n);
     const val = (id) => document.getElementById(id).textContent;
     const amount = (id) => Number(val(id).replace(/[^0-9.-]/g, ''));
 

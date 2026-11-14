@@ -343,15 +343,16 @@ export const StatementsManager = {
         const rateOf = (r) => (r.kind === 'purchase' && !perms.purchaseRates ? '' : r.rate);
         const body = l.rows.map(r => {
             const below = r.belowCost && perms.profit;
-            return `<tr${below || r.beforeBought ? ' class="st-flag"' : ''}><td>${esc(r.t ? formatDay(r.t, { lang }) : '')}</td><td>${esc([this.kindLabel(r.kind), r.billNo, r.party].filter(Boolean).join(' · '))}${below ? ` <span class="tone-warn" data-perm="profit">${icon('triangle', 'i-sm')}<span class="sr-only">⚠ </span>${esc(t('ui.statements.below_cost'))}</span>` : ''}${r.beforeBought ? ` <span class="tone-warn">${icon('triangle', 'i-sm')}<span class="sr-only">⚠ </span>${esc(t('ui.statements.before_bought'))}</span>` : ''}</td><td class="num">${r.qty > 0 ? '+' : ''}${formatKg(r.qty)}</td><td class="num">${formatKg(r.balanceQty)}</td>${showCost ? `<td class="num" data-perm="purchaseRates">${formatAmount(r.avgCost, { decimals: 2 })}</td>` : ''}</tr>`;
+            return `<tr${below || r.beforeBought ? ' class="st-flag"' : ''}><td>${esc(r.t ? formatDay(r.t, { lang }) : '')}</td><td>${esc([this.kindLabel(r.kind), r.billNo, r.party].filter(Boolean).join(' · '))}${below ? ` <span class="tone-warn" data-perm="profit">${icon('triangle', 'i-sm')}<span class="sr-only">⚠ </span>${esc(t('ui.statements.below_cost'))}</span>` : ''}${r.beforeBought ? ` <span class="tone-warn">${icon('triangle', 'i-sm')}<span class="sr-only">⚠ </span>${esc(t('ui.statements.before_bought'))}</span>` : ''}</td><td class="num">${r.qty > 0 ? '+' : ''}${formatKg(r.qty)}</td><td class="num">${formatKg(r.balanceQty)}</td>${showCost ? `<td class="num" data-perm="purchaseRates">${formatAmount(r.avgCost, 'rate')}</td>` : ''}</tr>`;
         }).join('');
-        const closing = perms.stockValue && perms.purchaseRates
-            ? t('ui.statements.kg_at', { kg: formatKg(l.closing.qty), rate: formatAmount(l.closing.rate, { decimals: 2 }), value: formatRupees(l.closing.value) })
-            : t('ui.statements.kg_left', { kg: formatKg(l.closing.qty) });
+        const closingText = (rate) => (perms.stockValue && perms.purchaseRates
+            ? t('ui.statements.kg_at', { kg: formatKg(l.closing.qty), rate: formatAmount(l.closing.rate, rate), value: formatRupees(l.closing.value) })
+            : t('ui.statements.kg_left', { kg: formatKg(l.closing.qty) }));
+        const closing = closingText('rate');
         const html = `<h3 class="st-title">${esc(title)}</h3>`
             + `<div class="ins-row ins-total"><span>${esc(t('ui.statements.closing_stock'))}</span><span data-metric-export="S4"${perms.stockValue ? ' data-perm="stockValue"' : ''}>${esc(closing)}</span></div>`
             + `<div class="ins-scroll"><table class="table"><thead><tr><th>${esc(t('ui.statements.date'))}</th><th>${esc(t('ui.statements.what'))}</th><th class="num">${esc(t('ui.insights.kg'))}</th><th class="num">${esc(t('ui.statements.stock_kg'))}</th>${showCost ? `<th class="num" data-perm="purchaseRates">${esc(t('ui.statements.avg_cost'))}</th>` : ''}</tr></thead><tbody>${body || `<tr><td colspan="5">${esc(t('ui.statements.nothing'))}</td></tr>`}</tbody></table></div>`;
-        const share = [title, closing].join('\n');
+        const share = [title, closingText('ratePaise')].join('\n');
         const csvHeader = [tc('ui.statements.date'), tc('ui.statements.what'), tc('ui.statements.bill_no'), tc('ui.insights.party'), tc('ui.insights.kg'), tc('ui.statements.rate'), tc('ui.statements.stock_kg'), ...(showCost ? [tc('ui.statements.avg_cost')] : [])];
         const csvRows = l.rows.map(r => [r.t ? toLocalISODate(new Date(r.t)) : '', this.kindLabel(r.kind, cl), r.billNo, r.party, r.qty, rateOf(r), r.balanceQty, ...(showCost ? [r.avgCost] : [])]);
         return { title, html, share, csvHeader, csvRows };

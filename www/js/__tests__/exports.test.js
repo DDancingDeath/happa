@@ -9,6 +9,8 @@ import { buildErrorReport, errorReportPeriod, nameScrubber } from '../utils/erro
 import * as UsersRepo from '../firebase/repos/users.js';
 import { Exporter } from '../services/exporter.js';
 import { icon } from '../ui/icons.js';
+import { moneyHtml } from '../ui/components.js';
+import { moneyText } from '../utils/money.js';
 import { AuditService } from '../services/audit.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { DiagnosticsManager } from '../modules/diagnostics.js';
@@ -276,6 +278,22 @@ describe('Exporter.printPage: a statement printed in its own window (#444)', () 
         for (const sr of doc.querySelectorAll('.sr-only')) expect(w.getComputedStyle(sr).position).toBe('static');
         expect(doc.body.textContent).toContain('⚠ Cost not known');
         expect(doc.body.textContent).toContain('✓ Matches Outstanding');
+        frame.remove();
+    });
+
+    test('money prints with the plain hyphen (MONEY-TEXT): no true minus before ₹; a "−" label stays', () => {
+        const frame = document.createElement('iframe');
+        document.body.appendChild(frame);
+        const w = frame.contentWindow;
+        w.print = jest.fn();
+        jest.spyOn(window, 'open').mockReturnValue(w);
+        const html = `<div class="ins-row"><span>= Profit</span>${moneyHtml(-12741)}</div><p>${moneyText(-500)} · − Cost of what was sold</p>`;
+        expect(html).toContain('−');
+        Exporter.printPage({ title: 'Month statement', html, stampText: 'Shop', lang: 'en' });
+        const text = w.document.body.textContent;
+        expect(text).toContain('= Profit-₹12,741');
+        expect(text).toContain('-₹500 · − Cost of what was sold');
+        expect(text).not.toMatch(/−₹/);
         frame.remove();
     });
 });

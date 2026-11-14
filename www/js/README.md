@@ -60,7 +60,7 @@ www/js/
 |--------|-------------|
 | `constants.js` | Time constants, ESC/POS printer commands |
 | `state.js` | Central AppState object for all global data |
-| `helpers.js` | `escapeHtml()`, `debounce()`, `formatDate()`, `formatCurrency()`, `generateId()`, `pickContact()` |
+| `helpers.js` | `escapeHtml()`, `debounce()`, `formatDate()`, `generateId()`, `pickContact()` |
 | `template-loader.js` | Dynamically loads HTML templates |
 
 ### UI

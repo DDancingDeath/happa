@@ -9,7 +9,7 @@
  * Static utility helper class
  */
 import { t, getLang } from '../i18n/index.js';
-import { formatRupees, formatAmount } from './money.js';
+import { formatAmount } from './money.js';
 import { formatDay, formatDayTime, formatTimeOfDay } from './dates.js';
 import { dayCounter } from '../firebase/repos/counters.js';
 
@@ -159,16 +159,6 @@ export class Helpers {
         const parsed = new Date(dateValue);
         if (!isNaN(parsed.getTime())) return parsed;
         return null;
-    }
-
-    /**
-     * Format amount as Indian Rupee currency
-     * @param {number} amount - Amount to format
-     * @param {{decimals?: number, small?: boolean}} [opts]
-     * @returns {string} Formatted currency string
-     */
-    static formatCurrency(amount, opts) {
-        return formatRupees(amount, opts);
     }
 
     // -------------------- GENERATORS --------------------

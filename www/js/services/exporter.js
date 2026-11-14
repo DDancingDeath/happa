@@ -14,6 +14,7 @@ import { APP_IDENTITY } from '../config/app-identity.js';
 import { SITE_HOST } from '../utils/release-info.js';
 import { exportStamp, exportAuditDetails } from '../utils/export-stamp.js';
 import { ensureXLSXWriter } from '../utils/lazy-scripts.js';
+import { printMinus } from '../utils/money.js';
 
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -159,7 +160,7 @@ export const Exporter = {
     },
 
     /**
-     * A printable page (Print / Save as PDF) with the stamp under the title.
+     * A printable page (Print / Save as PDF) with the stamp under the title; figures keep the hyphen (printMinus).
      * @param {{title: string, html: string, stampText: string, lang: string}} page
      * @returns {boolean} false when the browser blocked the window
      */
@@ -172,7 +173,7 @@ export const Exporter = {
         const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         w.document.write(`<!doctype html><html lang="${esc(lang)}"><head><meta charset="utf-8"><title>${esc(title)}</title>`
             + '<style>body{font-family:system-ui,sans-serif;margin:24px;color:#111}table{width:100%;border-collapse:collapse;font-size:13px}th,td{border-bottom:1px solid #ddd;padding:6px;text-align:left;vertical-align:top}td.num,th.num{text-align:right}.ins-row{display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding:6px 0}.ins-total{font-weight:700}.hero{border:1px solid #ccc;padding:10px;border-radius:8px;margin:8px 0}.hero-value{font-size:22px;font-weight:700}.export-stamp{color:#555;font-size:12px;margin:0 0 12px}button,.ins-hint,svg.i{display:none}.sr-only{position:static;width:auto;height:auto;overflow:visible;clip-path:none;white-space:normal}@page{size:A4;margin:14mm}</style>'
-            + `</head><body><p class="export-stamp">${esc(stampText)}</p>${html}</body></html>`);
+            + `</head><body><p class="export-stamp">${esc(stampText)}</p>${printMinus(html)}</body></html>`);
         w.document.close();
         w.onload = () => w.print();
         return true;

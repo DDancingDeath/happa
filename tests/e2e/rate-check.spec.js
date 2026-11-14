@@ -36,9 +36,9 @@ test('extreme rate and heavy bag: Fix first, confirmed cases saved with who, the
     // ---- ₹260 typed for ₹26: "Fix rate" is the default and adds nothing ----
     await retailLine(page, 260);
     const rate = page.locator('.rate-check-dialog');
-    await expect(rate.locator('#rateCheckMessage')).toHaveText('Wheat 15 kg × ₹260.00 = ₹3,900. Today\'s rate ₹26.00 would give ₹390.');
+    await expect(rate.locator('#rateCheckMessage')).toHaveText('Wheat 15 kg × ₹260 = ₹3,900. Today\'s rate ₹26 would give ₹390.');
     await expect(rate.locator('[data-choice="fix"]')).toBeFocused();
-    await expect(rate.locator('[data-choice="confirm"]')).toHaveText('Yes, ₹260.00 is right');
+    await expect(rate.locator('[data-choice="confirm"]')).toHaveText('Yes, ₹260 is right');
     await shot(page, testInfo, 'rate-check-en');
     await page.keyboard.press('Enter'); // the focused default: Fix rate
     await expect(rate).toHaveCount(0);
@@ -54,7 +54,7 @@ test('extreme rate and heavy bag: Fix first, confirmed cases saved with who, the
     // ---- "Yes, ₹260 is right": added, and saved with who confirmed it ----
     await retailLine(page, 260);
     await rate.locator('[data-choice="confirm"]').click();
-    await expect(page.locator('#saleTotal')).toHaveText('4290');
+    await expect(page.locator('#saleTotal')).toHaveText('4,290');
     await page.fill('#saleCustomerName', customer);
     await page.fill('#saleCashPayment', '4290');
     await clickAfterTyping(page, '#saveSaleBtn');
@@ -95,7 +95,7 @@ test('extreme rate and heavy bag: Fix first, confirmed cases saved with who, the
     await bag.locator('[data-choice="confirm"]').click();
     await page.click('#purchaseSection .add-to-bill-btn');
     await expect(bag).toHaveCount(0); // asked once
-    await expect(page.locator('#billTotal')).toHaveText('13937');
+    await expect(page.locator('#billTotal')).toHaveText('13,937');
     await page.fill('#customerName', supplier);
     await page.check('#cashCheckbox');
     await clickAfterTyping(page, '#saveBillBtn');
@@ -133,7 +133,7 @@ test('Hindi: both confirms in one language, "kg" for the weight', async ({ page,
     await page.click('#saleModeBtn');
     await retailLine(page, 260);
     const rate = page.locator('.rate-check-dialog');
-    await expect(rate.locator('#rateCheckMessage')).toHaveText(/^(Wheat|गेहूं) 15 kg × ₹260\.00 = ₹3,900। आज के रेट ₹26\.00 से ₹390 होता।$/);
+    await expect(rate.locator('#rateCheckMessage')).toHaveText(/^(Wheat|गेहूं) 15 kg × ₹260 = ₹3,900। आज के रेट ₹26 से ₹390 होता।$/);
     await expect(rate.locator('[data-choice="fix"]')).toHaveText('रेट ठीक करें');
     await shot(page, testInfo, 'rate-check-hi');
     await rate.locator('[data-choice="fix"]').click();

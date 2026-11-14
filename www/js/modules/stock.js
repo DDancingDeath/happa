@@ -156,7 +156,7 @@ export class StockManager {
             const displayName = (AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name;
             const div = document.createElement("div");
             div.className = "stock-item row";
-            const rateLine = txMoney('ui.stock.rate_per_kg', { rate: formatAmount(item.rate, { decimals: 2 }) }, item.rate, { decimals: 2 });
+            const rateLine = txMoney('ui.stock.rate_per_kg', { rate: formatAmount(item.rate, 'rate') }, item.rate, 'rate');
 
             if (item.isOrphan) {
                 // Orphan rows: highlight in red so the user can spot the
@@ -626,7 +626,7 @@ export class StockManager {
                         <div class="row-trail">
                             <div class="row-amt tone-neg">${e(stockKg(r.quantity))} kg</div>
                             <div class="row-meta">≈ ${figHtml(r.value)}</div>
-                            <div class="row-meta">${txMoney('ui.deadstock.avg_rate', { rate: formatRate(r.rate) }, r.rate, { decimals: 2 })}</div>
+                            <div class="row-meta">${txMoney('ui.deadstock.avg_rate', { rate: formatRate(r.rate) }, r.rate, 'rate')}</div>
                         </div>
                 </div>`;
             }).join('')}</div>` + (rows.some(r => r.uncertain)
@@ -701,7 +701,7 @@ export class StockManager {
         // Average rate (S2)
         if (avgRateDisplay && avgRateValue) {
             if (avgRate !== null) {
-                avgRateValue.innerHTML = `${figHtml(avgRate, { decimals: 2 })}/kg`;
+                avgRateValue.innerHTML = `${figHtml(avgRate, 'rate')}/kg`;
                 showAvgRate(avgRateDisplay, true);
             } else {
                 showAvgRate(avgRateDisplay, false);
@@ -923,7 +923,7 @@ export class StockManager {
                     </div>
                     <div class="history-date">${Helpers.escapeHtml(adj.date || t('ui.stock.unknown_date'))}${adj.createdByName ? ` • ${tx('ui.stock.by', { name: adj.createdByName })}` : ''}</div>
                     <div class="stock-adj-body">
-                        ${displayRate > 0 ? `<div>${txMoney('ui.stock.rate_per_kg', { rate: formatAmount(displayRate, { decimals: 2 }) }, displayRate, { decimals: 2 })}${valueImpact ? ` • ${txMoney('ui.stock.value', { amount: formatAmount(valueShown) }, valueShown)}` : ''}</div>` : ''}
+                        ${displayRate > 0 ? `<div>${txMoney('ui.stock.rate_per_kg', { rate: formatAmount(displayRate, 'rate') }, displayRate, 'rate')}${valueImpact ? ` • ${txMoney('ui.stock.value', { amount: formatAmount(valueShown) }, valueShown)}` : ''}</div>` : ''}
                         <div>
                             ${formatKg(adj.previousStock)} kg → ${formatKg(adj.newStock)} kg
                             ${Number(adj.rawQuantity) > Number(adj.quantity) ? ` ${tx('ui.stock.capped', { qty: formatKg(adj.rawQuantity) })}` : ''}

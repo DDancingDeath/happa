@@ -11,7 +11,7 @@ import { Helpers } from '../utils/helpers.js';
 import { AppState } from '../utils/state.js';
 import { t, getLang } from '../i18n/index.js';
 import { emptyState } from '../ui/components.js';
-import { formatRupees } from '../utils/money.js';
+import { formatRupees, moneyText } from '../utils/money.js';
 import { formatMonth, formatDay, todayLocalISO } from '../utils/dates.js';
 import * as repo from '../firebase/repos/recurring-bills.js';
 import {
@@ -23,7 +23,6 @@ import { saveBillsDue } from '../utils/pay-reminder.js';
 const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const js = (v) => Helpers.escapeJsAttr(v);
 const et = (key, p) => esc(t(key, p));
-const money = (n) => esc(formatRupees(n));
 const byId = (id) => document.getElementById(id);
 const val = (id) => (byId(id)?.value ?? '').trim();
 const monthName = (key) => formatMonth(`${key}-01`, { lang: getLang() });
@@ -64,7 +63,7 @@ function balanceLine(balance) {
     return `<span class="tone-muted">${et('ui.rbills.nothing_left')}</span>`;
 }
 
-const metric = (id, key, amount) => `<div class="metric"><div class="metric-label">${et(key)}</div><div class="metric-value" data-rb="${esc(id)}">${money(amount)}</div></div>`;
+const metric = (id, key, amount) => `<div class="metric"><div class="metric-label">${et(key)}</div><div class="metric-value" data-rb="${esc(id)}">${moneyText(amount)}</div></div>`;
 
 function renderSummary(sum) {
     return `<div class="panel metrics rb-metrics">
@@ -174,9 +173,9 @@ function renderPeriods(v) {
     const rows = shown.map(r => `<tr data-period="${esc(r.period)}">
             <td>${esc(monthName(r.period))}</td>
             <td>${esc(dayName(r.due))}</td>
-            <td class="num">${r.bill === null ? '—' : money(r.bill)}${r.source === 'expected' ? ` <span class="tone-muted">${et('ui.rbills.expected_mark')}</span>` : ''}</td>
-            <td class="num">${money(r.paid)}</td>
-            <td class="num">${r.opening ? money(r.opening) : ''}</td>
+            <td class="num">${r.bill === null ? '—' : moneyText(r.bill)}${r.source === 'expected' ? ` <span class="tone-muted">${et('ui.rbills.expected_mark')}</span>` : ''}</td>
+            <td class="num">${moneyText(r.paid)}</td>
+            <td class="num">${r.opening ? moneyText(r.opening) : ''}</td>
             <td>${stateTag(r)}</td>
             <td>${balanceLine(r.closing)}</td>
         </tr>`).join('');

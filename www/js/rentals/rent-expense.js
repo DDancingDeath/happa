@@ -11,13 +11,13 @@ import { t, getLang } from '../i18n/index.js';
 import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
 import { todayLocalISO } from '../utils/dates.js';
-import { formatINR } from '../utils/due-reminder.js';
 import { moneyHtml, emptyState } from '../ui/components.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import * as store from './rent-store.js';
 import * as es from './rent-expense-store.js';
 import { PAYMENT_MODES, expenseTotals, dateLabel, monthLabel } from './rent-math.js';
 import { EXPENSE_CATEGORIES, expenseError } from './rent-math-ledger.js';
+import { formatRupees } from '../utils/money.js';
 
 const auditWarn = (e) => console.warn('Rentals audit entry not written:', e?.code || e);
 const fail = (key) => UIManager.showToast(t(key), 'error');
@@ -96,7 +96,7 @@ async function save(c, pid, fn, audit, details, amount = null) {
     await Helpers.runExclusive('rent-exp', '[data-rent-exp]', async () => {
         try {
             await fn();
-            UIManager.showToast(amount === null ? t('msg.rent.saved') : t('msg.rent.exp_saved', { amount: formatINR(amount) }), 'success');
+            UIManager.showToast(amount === null ? t('msg.rent.saved') : t('msg.rent.exp_saved', { amount: formatRupees(amount) }), 'success');
             AuditService.log(audit, details).catch(auditWarn);
             setTimeout(() => showExpenses(c, pid), 300);
         } catch (e) {

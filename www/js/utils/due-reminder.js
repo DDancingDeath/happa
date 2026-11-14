@@ -16,15 +16,6 @@ const pad2 = (/** @type {number} */ n) => String(n).padStart(2, '0');
 export const REMINDER_MAX_BILLS = 20;
 
 /**
- * ₹ with Indian digit grouping, whole rupees (same as Helpers.formatCurrency).
- * @param {number} amount
- * @returns {string}
- */
-export function formatINR(amount) {
-    return formatRupees(amount);
-}
-
-/**
  * DD/MM/YYYY in local time, '' for no date.
  * @param {*} date
  * @returns {string}
@@ -96,12 +87,12 @@ export function buildReminderText(party, { shopName = '', upiId = '' } = {}) {
         if (b.billNumber) parts.push(`#${cleanText(b.billNumber)}`);
         const d = formatDMY(b.date);
         if (d) parts.push(d);
-        parts.push(formatINR(b.due));
+        parts.push(formatRupees(b.due));
         lines.push(`${i + 1}. ${parts.join(' · ')}`);
     });
     const more = bills.length - REMINDER_MAX_BILLS;
     if (more > 0) lines.push(t(more === 1 ? 'ui.remind.more_bill' : 'ui.remind.more_bills', { n: more }));
-    lines.push('', `*${t('ui.remind.total_due')}: ${formatINR(total)}*`, '');
+    lines.push('', `*${t('ui.remind.total_due')}: ${formatRupees(total)}*`, '');
     lines.push(t('ui.remind.please_pay'));
     if (upi) lines.push(`UPI: ${upi}`);
     lines.push('', t('ui.remind.thank_you'));

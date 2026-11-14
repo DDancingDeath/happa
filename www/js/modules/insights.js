@@ -10,7 +10,7 @@ import { AppState } from '../utils/state.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { t, tn, getLang } from '../i18n/index.js';
-import { formatRupees, formatAmount, formatKg } from '../utils/money.js';
+import { formatRupees, formatAmount, formatKg, moneyText, screenMinus } from '../utils/money.js';
 import { formatMonth, formatDay, monthStart, latestMonthStart } from '../utils/dates.js';
 import { pickReplayBase } from '../utils/finance-calc.js';
 import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom } from '../utils/history-window.js';
@@ -268,7 +268,7 @@ export const InsightsManager = {
                 `<button type="button" class="btn btn-sm" data-item="${esc(b.itemKey)}">${esc(t('ui.insights.see_trend'))} ›</button>`)).join(''));
             const low = showProfit ? lowProfitItems(itemSummary(m), cfg).slice(0, 3) : [];
             this.html('insightsActionsLow', low.map(x => this.actionCard(icon('coins'),
-                t(x.per100 < 0 ? 'ui.insights.act_loss_item' : 'ui.insights.act_low_profit', { item: nameOf(x), value: roundTo(x.per100, 1), sales: formatRupees(x.sales) }),
+                screenMinus(t(x.per100 < 0 ? 'ui.insights.act_loss_item' : 'ui.insights.act_low_profit', { item: nameOf(x), value: formatAmount(roundTo(x.per100, 1), 'rate'), sales: formatRupees(x.sales) })),
                 'insights-items', t('ui.insights.see_items'))).join(''));
             if (this.maySeasons()) this.renderStockUp();
             else this.html('insightsActionsStock', '');
@@ -352,7 +352,7 @@ export const InsightsManager = {
             const cmp = arrow(change(x.sales, lyByKey.get(x.itemKey)?.sales ?? null));
             const cmpB = target ? arrow(bItems ? change(x.sales, bByKey.get(x.itemKey)?.sales ?? null) : null) : null;
             return `<tr data-item="${esc(x.itemKey)}"><td>${esc(nameOf(x))}</td><td class="num">${moneyHtml(x.sales, TM)}</td>`
-                + `${profitKnown ? `<td class="num" data-perm="profit">${moneyHtml(x.profit, TM)}</td><td class="num" data-perm="profit">${x.per100 === null ? '—' : roundTo(x.per100, 1)}</td>` : ''}`
+                + `${profitKnown ? `<td class="num" data-perm="profit">${moneyHtml(x.profit, TM)}</td><td class="num" data-perm="profit">${moneyHtml(x.per100 === null ? null : roundTo(x.per100, 1), 'rate')}</td>` : ''}`
                 + `<td class="num">${esc(cmp)}</td>`
                 + (cmpB === null ? '' : `<td class="num">${esc(cmpB)}</td>`) + '</tr>';
         }).join('');
@@ -361,12 +361,12 @@ export const InsightsManager = {
         const best = known.slice().sort((a, b) => b.profit - a.profit)[0];
         const weak = known.filter(x => x.sales >= this.cfg().lowMarginMinSales).sort((a, b) => a.per100 - b.per100)[0];
         let tk = '';
-        if (best) tk += `<p data-perm="profit">${esc(t('ui.insights.tk_best_item', { item: nameOf(best), amount: formatRupees(best.profit) }))}</p>`;
-        if (weak && weak !== best) tk += `<p data-perm="profit">${esc(t('ui.insights.tk_weak_item', { item: nameOf(weak), value: roundTo(weak.per100, 1) }))}</p>`;
+        if (best) tk += `<p data-perm="profit">${esc(t('ui.insights.tk_best_item', { item: nameOf(best), amount: moneyText(best.profit) }))}</p>`;
+        if (weak && weak !== best) tk += `<p data-perm="profit">${esc(screenMinus(t('ui.insights.tk_weak_item', { item: nameOf(weak), value: formatAmount(roundTo(weak.per100, 1), 'rate') })))}</p>`;
         if (!profitKnown) tk += `<p>${esc(t('ui.tk.profit_unknown'))}</p>`;
         this.html('insightsItemsTakeaway', tk);
         const unc = m.caveats.find(c => c.key === 'uncosted');
-        this.html('insightsItemsCaveats', unc ? `<div class="notice warn ins-caveat">${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>${esc(t('ui.money.caveat_uncosted', { qty: unc.qty, amount: formatAmount(unc.estimate) }))}</span></div>` : '');
+        this.html('insightsItemsCaveats', unc ? `<div class="notice warn ins-caveat">${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>${esc(screenMinus(t('ui.money.caveat_uncosted', { qty: unc.qty, amount: formatAmount(unc.estimate) })))}</span></div>` : '');
         const total = m.M1.total || 0;
         const pct = (v) => sharePct(v, total);
         this.html('insightsSplit', `<div class="row ins-row"><span class="row-main">${esc(t('ui.insights.retail'))}</span><span class="row-amt">${esc(formatRupees(m.M1.retail.total, TM))} · ${pct(m.M1.retail.total)}%</span></div>`

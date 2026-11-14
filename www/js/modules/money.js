@@ -16,7 +16,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { SyncStatus } from '../ui/sync-status.js';
 import { FinanceBreakdownSheet } from '../ui/finance-breakdown-sheet.js';
 import { t, tn, getLang } from '../i18n/index.js';
-import { formatRupees, formatAmount, normalizeLabourSettings } from '../utils/money.js';
+import { formatRupees, formatAmount, normalizeLabourSettings, moneyText, screenMinus } from '../utils/money.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import { labourSummary, labourToPayByDay, labourCalcText, periodLabourGap, labourPaidGap } from '../utils/labour.js';
 import { formatMonth, formatDay, toLocalISODate, parseAnyBillDate, monthStart, addLocalDays, periodBounds, localDayKeys, endUpToNow, daysInMonth } from '../utils/dates.js';
@@ -49,7 +49,6 @@ import {
 } from '../ui/period-compare.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
-const money = (v) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : formatRupees(v, { trueMinus: true }));
 /** Money's on-screen minus is the true minus (−₹500). */
 const TM = { trueMinus: true };
 const SECTIONS = ['profit', 'cash', 'spending', 'worth'];
@@ -82,7 +81,7 @@ export function takeawayParams(params) {
 /** Renders takeaways as escaped sentences; a link becomes a small button. */
 export function takeawayHtml(list) {
     return (list || []).map(x => {
-        const text = esc(t(x.key, takeawayParams(x.params)));
+        const text = esc(screenMinus(t(x.key, takeawayParams(x.params))));
         const link = x.link && routeAvailable(x.link) ? ` <button type="button" class="btn btn-ghost btn-sm" data-go="${esc(x.link)}">${esc(t('ui.money.open'))} ›</button>` : '';
         return `<p>${text}${link}</p>`;
     }).join('');
@@ -566,7 +565,7 @@ export const MoneyManager = {
         const list = (m.caveats || []).filter(c => c.ids.some(id => ids.includes(id)));
         return list.map(c => {
             const params = { qty: c.qty, amount: formatAmount(c.estimate ?? c.amount ?? c.gap ?? 0) };
-            return `<div class="notice warn ins-caveat">${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>${esc(t(`ui.money.caveat_${c.key}`, params))}</span></div>`;
+            return `<div class="notice warn ins-caveat">${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>${esc(screenMinus(t(`ui.money.caveat_${c.key}`, params)))}</span></div>`;
         }).join('');
     },
 
@@ -596,7 +595,7 @@ export const MoneyManager = {
             ? ` <button type="button" class="btn btn-ghost btn-sm" data-go="insights-items" data-metric-ref="I2">${esc(t('ui.money.split_link'))} ›</button>` : '';
         this.html('moneySalesSplit', `<span data-metric-ref="M1">${esc(tn('ui.money.bills', m.M1.count))}</span>${splitLink}`);
         this.html('moneyCogs', moneyHtml(m.M2, TM));
-        this.html('moneyGross', m.M3.total === null ? '—' : `${moneyHtml(m.M3.total, TM)}${m.M3.per100 !== null ? esc(` · ${t('ui.money.per100', { value: roundTo(m.M3.per100, 1) })}`) : ''}`);
+        this.html('moneyGross', m.M3.total === null ? '—' : `${moneyHtml(m.M3.total, TM)}${m.M3.per100 !== null ? esc(` · ${screenMinus(t('ui.money.per100', { value: formatAmount(roundTo(m.M3.per100, 1), 'rate') }))}`) : ''}`);
         this.html('moneyBusinessTerm', moneyHtml(m.M4.total, TM));
         this.html('moneyBadDebts', moneyHtml(m.M5, TM));
         this.html('moneyProfitTerm', moneyHtml(m.M6.total, TM));
@@ -620,13 +619,13 @@ export const MoneyManager = {
     renderStockMovement(m) {
         const s = m.M17;
         if (!s) { this.html('moneyStockMovement', `<p class="empty">${esc(t('ui.money.caveat_history'))}</p>`); return; }
-        const row = (k, v, card) => `<div class="row ins-row ins-tap" data-breakdown="${card}" role="button" tabindex="0"><span class="row-main">${esc(t(k))}</span><span class="row-amt">${esc(money(v))}</span></div>`;
+        const row = (k, v, card) => `<div class="row ins-row ins-tap" data-breakdown="${card}" role="button" tabindex="0"><span class="row-main">${esc(t(k))}</span><span class="row-amt">${esc(moneyText(v, 'signed'))}</span></div>`;
         this.html('moneyStockMovement', row('ui.money.opening_stock', s.opening, 'stockOpening')
             + row('ui.money.plus_bought', s.purchases, 'stockPurchases')
             + row('ui.money.cogs_minus', s.cogs, 'cogs')
             + row('ui.money.corrections', s.adjustments, 'stockAdjustments')
             + row('ui.money.closing_stock', s.closing, 'stockClosing')
-            + (Math.abs(s.gap) > 1 ? `<div class="notice warn ins-caveat ins-stock-note ins-tap" data-breakdown="stockCheck" role="button" tabindex="0">${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>${esc(t('ui.money.caveat_gap', { amount: formatAmount(s.gap) }))}</span></div>` : `<div class="notice pos ins-stock-note">${icon('check', 'i-sm')}<span class="grow"><span class="sr-only">✓ </span>${esc(t('ui.money.check_ok'))}</span></div>`));
+            + (Math.abs(s.gap) > 1 ? `<div class="notice warn ins-caveat ins-stock-note ins-tap" data-breakdown="stockCheck" role="button" tabindex="0">${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>${esc(screenMinus(t('ui.money.caveat_gap', { amount: formatAmount(s.gap) })))}</span></div>` : `<div class="notice pos ins-stock-note">${icon('check', 'i-sm')}<span class="grow"><span class="sr-only">✓ </span>${esc(t('ui.money.check_ok'))}</span></div>`));
     },
 
     /** M11: 13 months of profit, last year as a faint line. */
@@ -643,7 +642,7 @@ export const MoneyManager = {
         const vals = keys.map(valueOf);
         const lyKey = (k) => { const [y, mo] = k.split('-').map(Number); return `${y - 1}-${String(mo).padStart(2, '0')}`; };
         const lyVals = keys.map(k => figuresFromSnapshot(this.snapshots[lyKey(k)])?.M6 ?? null);
-        const labels = keys.map((k, i) => ({ key: k, tick: i % 3 === 0 || i === keys.length - 1 ? formatMonth(monthBounds(k).from, { lang, year: false }) : '', title: `${formatMonth(monthBounds(k).from, { lang })}: ${money(vals[i])}` }));
+        const labels = keys.map((k, i) => ({ key: k, tick: i % 3 === 0 || i === keys.length - 1 ? formatMonth(monthBounds(k).from, { lang, year: false }) : '', title: `${formatMonth(monthBounds(k).from, { lang })}: ${moneyText(vals[i], 'signed')}` }));
         this.html('moneyProfitChart', barsSvg(vals.map(v => (v === null ? NaN : v)), { faint: lyVals.map(v => (v === null ? NaN : v)), labels, onTap: 'data-month' }));
         this.html('moneyProfitLegend', `<span class="ins-key ins-key-bar"></span> ${esc(t('ui.money.this_year'))} <span class="ins-key ins-key-line"></span> ${esc(t('ui.money.last_year'))}`);
         const missing = keys.some((k, i) => vals[i] === null) || lyVals.every(v => v === null);
@@ -670,7 +669,7 @@ export const MoneyManager = {
         const keys = localDayKeys(r.from, Math.min(r.to, Date.now()));
         const net = netMoneyByDay(m.detail, keys);
         const lang = getLang();
-        const labelsD = keys.map((k, i) => ({ key: k, tick: i % 7 === 0 ? String(Number(k.slice(8))) : '', title: `${formatDay(k, { lang, year: false })}: ${money(net[i])}` }));
+        const labelsD = keys.map((k, i) => ({ key: k, tick: i % 7 === 0 ? String(Number(k.slice(8))) : '', title: `${formatDay(k, { lang, year: false })}: ${moneyText(net[i], 'signed')}` }));
         this.html('moneyCashChart', barsSvg(net, { labels: labelsD, onTap: 'data-day' }));
     },
 

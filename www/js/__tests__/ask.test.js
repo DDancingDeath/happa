@@ -189,7 +189,7 @@ describe('Ask page: item reports (ASK-5)', () => {
     test('inside the loaded window: the figures at once, with Excel and CSV', async () => {
         jest.spyOn(FirebaseService, 'isFullHistoryLoaded').mockReturnValue(true);
         await AskManager.ask('is mahine lah kitna kharida');
-        expect(answers()).toContain('Lah Kusmi: 50 kg · average ₹220.00/kg · ₹11,000 (1 bill)');
+        expect(answers()).toContain('Lah Kusmi: 50 kg · average ₹220/kg · ₹11,000 (1 bill)');
         expect(answers()).toContain('Not counted (the name only starts the same): Garlic');
         expect(document.querySelectorAll('#askAnswers .ask-xlsx, #askAnswers .ask-csv')).toHaveLength(2);
         expect([...document.querySelectorAll('#askAnswers .ask-kind')].map(b => [b.textContent, b.getAttribute('aria-pressed')])).toEqual([['Lah Kusmi', 'true'], ['Garlic', 'false']]);
@@ -203,7 +203,7 @@ describe('Ask page: item reports (ASK-5)', () => {
         await AskManager.ask('is mahine lah kitna kharida');
         const id = AskManager.answers[0].id;
         await AskManager.toggleKind(id, 'g');
-        expect(answers()).toContain('Garlic: 10 kg · average ₹90.00/kg · ₹900 (1 bill)');
+        expect(answers()).toContain('Garlic: 10 kg · average ₹90/kg · ₹900 (1 bill)');
         expect(answers()).not.toContain('Not counted');
         await AskManager.changeReport(id, 'groupBy', 'month');
         expect(answers()).toContain('Nov 2026: 60 kg');
@@ -221,7 +221,7 @@ describe('Ask page: item reports (ASK-5)', () => {
         await AskManager.ask('is mahine lahs kitna kharida');
         expect(answers()).toContain('Which one? Garlic');
         await AskManager.toggleKind(AskManager.answers[0].id, 'g');
-        expect(answers()).toContain('Garlic: 10 kg · average ₹90.00/kg · ₹900 (1 bill)');
+        expect(answers()).toContain('Garlic: 10 kg · average ₹90/kg · ₹900 (1 bill)');
         await AskManager.ask('help');
         expect(answers()).toContain('I can tell you');
     });

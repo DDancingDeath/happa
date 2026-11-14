@@ -5,9 +5,9 @@
  * @module rentals/rent-math
  */
 
-import { round2 } from '../utils/money.js';
+import { round2, formatRupees } from '../utils/money.js';
 import { meterAmount, validateDuePayment, entryAmount } from '../utils/calc/billing.js';
-import { cleanText, formatINR } from '../utils/due-reminder.js';
+import { cleanText } from '../utils/due-reminder.js';
 
 /** Oldest start month allowed (months back) and most months charged per visit. */
 export const MAX_BACKFILL_MONTHS = 24;
@@ -476,8 +476,8 @@ export function buildRentReminderText({ tenantName, place = '', charges = [], la
     if (where) lines.push(`🏠 ${where}`);
     if (isDate(since)) lines.push(L.since(dateLabel(since)));
     lines.push('', L.heading);
-    rows.forEach((c, i) => lines.push(`${i + 1}. ${monthLabel(c.month, lang)} · ${formatINR(chargeDue(c))}`));
-    lines.push('', L.total(formatINR(total)), '', L.pay);
+    rows.forEach((c, i) => lines.push(`${i + 1}. ${monthLabel(c.month, lang)} · ${formatRupees(chargeDue(c))}`));
+    lines.push('', L.total(formatRupees(total)), '', L.pay);
     const upi = cleanText(upiId);
     if (upi) lines.push(`${L.upi}: ${upi}`);
     if (link) lines.push('', L.link(link));

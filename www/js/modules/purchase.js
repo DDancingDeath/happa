@@ -10,7 +10,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { PrinterService } from '../services/printer.js';
 import { Helpers } from '../utils/helpers.js';
-import { KEPT_SERVER_PAYMENT_KEY, normalizeLabourSettings, paymentSplitMessage, formatRate, formatRupees, formatKg } from '../utils/money.js';
+import { KEPT_SERVER_PAYMENT_KEY, normalizeLabourSettings, paymentSplitMessage, formatRate, formatRupees, formatKg, formatAmount } from '../utils/money.js';
 import {
     autoLabour, bagChecks, buildPaymentSplit, computeLine, computePurchaseTotals, draftLineSum, editSplitFor, paidOnScreen, payableOnScreen,
     paymentSplit, pendingLine, prefillPayment, restInDue, shownAmount, sumWeights, validatePaymentSplit
@@ -331,7 +331,7 @@ const PurchaseManager = {
         // Update totals
         const { billTotal, totalPackets } = this.computeTotals(0);
         
-        if (billTotalSpan) billTotalSpan.textContent = shownAmount(billTotal);
+        if (billTotalSpan) billTotalSpan.textContent = formatAmount(shownAmount(billTotal), 'exact');
         if (totalPacketsInBillSpan) totalPacketsInBillSpan.textContent = totalPackets;
         
         // Don't clear manually set flag when in edit mode
@@ -450,7 +450,7 @@ const PurchaseManager = {
             laborCharges = 0;
         }
         
-        const payableShown = payableOnScreen(billTotal, laborCharges);
+        const payableShown = formatAmount(payableOnScreen(billTotal, laborCharges), 'exact');
         const grandTotalElement = document.getElementById('amountPayable');
         if (grandTotalElement) {
             grandTotalElement.textContent = payableShown;
@@ -470,7 +470,7 @@ const PurchaseManager = {
         
         const totalPaymentElement = document.getElementById('totalPayment');
         if (totalPaymentElement) {
-            totalPaymentElement.textContent = paidOnScreen(split);
+            totalPaymentElement.textContent = formatAmount(paidOnScreen(split), 'exact');
         }
         Helpers.showSplitRemaining('purchaseSplitRemaining', validatePaymentSplit(this.computeTotals().grandTotal, split));
         BillChecksUI.schedule('purchase');

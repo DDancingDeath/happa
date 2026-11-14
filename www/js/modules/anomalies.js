@@ -23,7 +23,7 @@ import {
 } from '../utils/anomalies.js';
 import { firstStockTimes } from '../utils/stock-check.js';
 import { auditScanCap } from '../utils/security-flags.js';
-import { formatRupees } from '../utils/money.js';
+import { moneyText } from '../utils/money.js';
 import { numberCheckFlags } from '../utils/number-check-flags.js';
 import { safeSetItem } from '../utils/storage-full.js';
 import { icon } from '../ui/icons.js';
@@ -58,7 +58,6 @@ const TYPE_COLORS = ['#dc2626', '#2563eb', '#d97706', '#059669', '#7c3aed', '#db
 const canSee = () => AppState.userRole === 'owner' || AppState.userRole === 'manager';
 const todayKey = () => istDayKey(Date.now());
 const loc = (o) => esc(pickLang(o));
-const money = (n) => formatRupees(n, { exact: true });
 
 function loadedBills() {
     return {
@@ -467,7 +466,7 @@ export const AnomaliesManager = {
         if (s.counted === false) return t('ui.anom.cash_not_counted');
         const diff = Number(s.difference) || 0;
         if (Math.abs(diff) < 1) return t('ui.anom.cash_matches');
-        return t(diff < 0 ? 'ui.anom.cash_short' : 'ui.anom.cash_extra', { amount: money(Math.abs(diff)) });
+        return t(diff < 0 ? 'ui.anom.cash_short' : 'ui.anom.cash_extra', { amount: moneyText(Math.abs(diff), 'exact') });
     },
 
     /** One line for the cash-close screen (owner/manager only). */

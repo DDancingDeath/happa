@@ -122,7 +122,9 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   `ink-3`; plain in print): `<strong class="money"><span class="cur">₹</span><span id="…">0</span></strong>`.
   Billing's totals and action bar use it; the digits keep their own id. Scripts write a figure with
   `moneyHtml(amount, opts)` (`www/js/ui/components.js`, on the `check:html-escape` allow list): `<span class="money">`,
-  the minus outside `.cur`, `—` when missing; its text is exactly `formatRupees(amount, opts)`.
+  the true minus outside `.cur` (−₹500), `—` when missing; its text is exactly `moneyText(amount, opts)`. `opts` is a
+  named preset (`MONEY_PRESETS` in `utils/money.js`: `exact`, `rate`, `signed`, …), and plain screen text uses
+  `moneyText(amount, preset)`; no page defines its own money formatter (F0). Billing's totals are grouped (₹6,28,782).
 - **Page head** `<header class="page-head"><h2>…</h2></header>` (optionally with `<div class="page-head-actions">` for the page's mode and actions): the page's title, in every page template, with the app bar's key (`pageTitleKey()` in `ui/bottom-nav.js`, or the page's own `title` key) and no emoji. It is the only page-title pattern. Below 1024 px it is not drawn (the app bar is the title); on desktop (4.2) the h2 is for screen readers, since the header bar shows the same title, and the row shows only when it has actions (an h2-only head takes no space). It is not a second banner landmark. `.sr-only` hides any other text that only screen readers need (Money keeps
   its ⚠ / ✓ status words that way beside the sprite icon).
 - **Money, Insights, Statements (5.7)**: plain hero figures (`.hero-num`), section titles above panels of `.row`s,
@@ -149,7 +151,7 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   soft, ink text). Sales | History | Outstanding is a `.seg`; stock and average rate are `.metrics`; Outstanding bills are
   Outstanding's `.due-bill` panels; a bill opened from a list is panels of `.row`s and a `.table`.
   `moneyInText(text, amounts, opts)` (`components.js`) draws the figure (or an array of figures, found in order) inside a
-  translated sentence with `moneyHtml` (`opts` as `formatRupees`, e.g. `{ decimals: 2 }` for a rate; a missing amount
+  translated sentence with `moneyHtml` (`opts` as `formatRupees`, e.g. the preset `'rate'`; a missing amount
   leaves its text as it is).
 - **Rates and Stock (5.6)**: Rates is a `.table` in a panel (purchase / retail / wholesale headers carry their `.mode-dot`,
   rates in ink), Export / Import / Add item as buttons (Add item primary), a `.search-field`, archived items a `.tag`.

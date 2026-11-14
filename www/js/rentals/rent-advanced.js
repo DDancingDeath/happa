@@ -5,17 +5,16 @@
  */
 
 import { Helpers } from '../utils/helpers.js';
-import { formatINR } from '../utils/due-reminder.js';
 import { moneyHtml, moneyInText, emptyState } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import { t, getLang } from '../i18n/index.js';
 import * as store from './rent-store.js';
 import { UNIT_TYPES, unitRows, summarize, propertySummaries, groupByType, filterRows, typedPlace, tenantRows } from './rent-views.js';
 import { monthLabel, chargeStatus, chargeDue, leaseDues, increaseDue, elecMode, expenseTotals, netOf } from './rent-math.js';
+import { formatRupees } from '../utils/money.js';
 
 const esc = (v) => Helpers.escapeHtml(v);
 const js = (v) => Helpers.escapeJsAttr(v);
-const money = (n) => { const h = moneyHtml(n); return h === '—' ? esc(formatINR(n)) : h; };
 const et = (key, p) => esc(t(key, p));
 const btn = (cls, fn, args, key, icon = '', attrs = '') => `<button type="button" class="btn${cls}"${attrs} data-onclick="rentals.${fn}(${args})">${icon}${et(key)}</button>`;
 
@@ -33,8 +32,8 @@ function statusBadges(charge) {
 
 function monthLine(ch, lang) {
     const e = ch.electricity;
-    const power = e ? ` <span class="rent-sub">${moneyInText(t('ui.rent.incl_electricity', { amount: formatINR(e.amount), units: e.units }), e.amount)}</span>` : '';
-    return `<li>${esc(monthLabel(ch.month, lang))}: ${money(chargeDue(ch))} ${statusBadges(ch)}${power}</li>`;
+    const power = e ? ` <span class="rent-sub">${moneyInText(t('ui.rent.incl_electricity', { amount: formatRupees(e.amount), units: e.units }), e.amount)}</span>` : '';
+    return `<li>${esc(monthLabel(ch.month, lang))}: ${moneyHtml(chargeDue(ch))} ${statusBadges(ch)}${power}</li>`;
 }
 
 /** Paid / Part paid / Due / Late / Vacant for a unit row (RENT-10). */
@@ -55,7 +54,7 @@ function totalsCards(sum, exp, rec) {
         ['ui.rent.pending_month', sum.pending],
         ['ui.rent.outstanding', sum.due],
         ...(exp === undefined ? [] : [['ui.rent.exp_month', exp], ['ui.rent.net_month', netOf(sum.collected, exp)]])
-    ].map(([k, v]) => `<div class="metric"><div class="metric-label">${et(k)}</div><div class="metric-value">${v === null ? '—' : money(v)}</div></div>`).join('');
+    ].map(([k, v]) => `<div class="metric"><div class="metric-label">${et(k)}</div><div class="metric-value">${v === null ? '—' : moneyHtml(v)}</div></div>`).join('');
 }
 
 /** "6 flats · 3 commercial" in the chosen language. */
@@ -89,9 +88,9 @@ function renderPropertyView(d, ix, rows) {
                 <div class="row-main"><div class="row-title">${esc(p.name)}</div>
                     <div class="row-meta">${esc(typeCounts(s.byType) || t('ui.rent.no_units'))}</div>
                     <div class="row-meta">${et('ui.rent.occupancy', { occupied: s.occupied, vacant: s.vacant })}${s.late ? ` · ${et('ui.rent.late_count', { n: s.late })}` : ''}</div></div>
-                <div class="row-trail"><div class="row-amt">${money(s.pending)}</div><div class="row-meta">${et('ui.rent.pending_month')}</div></div>
+                <div class="row-trail"><div class="row-amt">${moneyHtml(s.pending)}</div><div class="row-meta">${et('ui.rent.pending_month')}</div></div>
             </div>
-            <div class="row-meta">${moneyInText(t('ui.rent.prop_month_line', { expected: formatINR(s.expected), collected: formatINR(s.collected) }), [s.expected, s.collected])}${ex.byProperty[p.id] ? ` · ${moneyInText(t('ui.rent.exp_line', { amount: formatINR(ex.byProperty[p.id]) }), ex.byProperty[p.id])}` : ''}</div>
+            <div class="row-meta">${moneyInText(t('ui.rent.prop_month_line', { expected: formatRupees(s.expected), collected: formatRupees(s.collected) }), [s.expected, s.collected])}${ex.byProperty[p.id] ? ` · ${moneyInText(t('ui.rent.exp_line', { amount: formatRupees(ex.byProperty[p.id]) }), ex.byProperty[p.id])}` : ''}</div>
         </button>`).join('');
     const empty = emptyState({ icon: 'building', title: t('ui.rent.no_properties') })
         + (c.canWrite ? btn(' btn-primary', 'page', `'properties'`, 'ui.rent.add_property', icon('plus', 'i-sm')) : '');
@@ -125,12 +124,12 @@ function unitRowHtml(r, d, { showProperty = true } = {}) {
     const extra = [r.floor ? t('ui.rent.floor_value', { floor: r.floor }) : '', r.area ? t('ui.rent.area_value', { area: r.area }) : '']
         .filter(Boolean).map(esc).join(' · ');
     const who = lease
-        ? `${esc(r.tenantName || t('ui.rent.no_name'))} · ${moneyInText(t('ui.rent.rent_terms', { amount: formatINR(lease.rent), day: lease.dueDay }), lease.rent)} ${c.elecTag(lease)}${lease.startDate ? ` · ${esc(c.sinceText(lease))}` : ''}`
-        : `${et('ui.rent.vacant')} · ${money(r.rent)}`;
+        ? `${esc(r.tenantName || t('ui.rent.no_name'))} · ${moneyInText(t('ui.rent.rent_terms', { amount: formatRupees(lease.rent), day: lease.dueDay }), lease.rent)} ${c.elecTag(lease)}${lease.startDate ? ` · ${esc(c.sinceText(lease))}` : ''}`
+        : `${et('ui.rent.vacant')} · ${moneyHtml(r.rent)}`;
     const months = dues.charges.map(x => monthLine(x, lang)).join('');
     const inc = lease ? increaseDue(lease, c.state.month) : { due: false };
     const increase = inc.due
-        ? `<div class="notice info rent-increase">${icon('trend', 'i-sm')}<span class="grow">${moneyInText(t('ui.rent.increase_due', { pct: inc.pct, amount: formatINR(inc.newRent) }), inc.newRent)}</span>
+        ? `<div class="notice info rent-increase">${icon('trend', 'i-sm')}<span class="grow">${moneyInText(t('ui.rent.increase_due', { pct: inc.pct, amount: formatRupees(inc.newRent) }), inc.newRent)}</span>
             ${btn(' btn-sm', 'editLease', `'${js(lease.id)}'`, 'ui.rent.update_rent')}</div>`
         : '';
     const actions = lease ? ((dues.total > 0
@@ -144,10 +143,10 @@ function unitRowHtml(r, d, { showProperty = true } = {}) {
         <div class="rent-entry-head">
             <div class="row-main"><div class="row-title">${head}</div>
                 <div class="row-meta">${who}</div>${extra ? `<div class="row-meta">${extra}</div>` : ''}</div>
-            <div class="row-trail">${rowBadge(r)}<div class="row-amt">${money(r.due)}</div></div>
+            <div class="row-trail">${rowBadge(r)}<div class="row-amt">${moneyHtml(r.due)}</div></div>
         </div>
         ${months ? `<ul class="rent-months">${months}</ul>` : ''}
-        ${current?.adv > 0 ? `<div class="row-meta">${moneyInText(t('ui.rent.adv_next', { amount: formatINR(current.adv) }), current.adv)}</div>` : ''}
+        ${current?.adv > 0 ? `<div class="row-meta">${moneyInText(t('ui.rent.adv_next', { amount: formatRupees(current.adv) }), current.adv)}</div>` : ''}
         ${increase}
         ${actions ? `<div class="rent-actions">${actions}</div>` : ''}
     </div>`;
@@ -184,7 +183,7 @@ function renderMovedOut(d, ix) {
     return `<h3 class="rent-month-title">${et('ui.rent.moved_out_due')}</h3><div class="panel">${gone.map(a => `<div class="row rent-entry" data-lease="${esc(a.leaseId)}">
         <div class="rent-entry-head"><div class="row-main"><div class="row-title">${esc(a.name || t('ui.rent.no_name'))}</div>
             <div class="row-meta">${esc(c.placeOf(ix, a.unitId, a.unitLabel))} · ${et('ui.rent.moved_out')}</div></div>
-            <div class="row-trail"><div class="row-amt">${money(a.dues.total)}</div></div></div>
+            <div class="row-trail"><div class="row-amt">${moneyHtml(a.dues.total)}</div></div></div>
         <ul class="rent-months">${a.dues.charges.map(x => monthLine(x, getLang())).join('')}</ul>
         <div class="rent-actions">
             ${c.payBtns(a.leaseId)}

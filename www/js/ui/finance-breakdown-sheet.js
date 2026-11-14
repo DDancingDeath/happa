@@ -12,15 +12,11 @@ import { emptyState } from './components.js';
 import {
     CARDS, buildBreakdown, searchRows, sortRows, groupRows, groupOptions, sumRows, billsOfLines, PAGE_SIZE
 } from '../utils/finance-breakdown.js';
-import { formatKg, formatRupees, formatAmount } from '../utils/money.js';
+import { formatKg, formatAmount, moneyText } from '../utils/money.js';
 
 const esc = (v) => Helpers.escapeHtml(String(v ?? ''));
 const SHEET_ID = 'financeBreakdownSheet';
 
-const rupees = (n, { paise = false } = {}) => {
-    if (n === null || n === undefined || !Number.isFinite(n)) return '—';
-    return formatRupees(n, { exact: paise, trueMinus: true });
-};
 const qtyText = (q) => formatKg(q);
 const dateText = (ms) => (ms == null ? '' : Helpers.formatDate(ms));
 
@@ -43,10 +39,10 @@ export function describeRow(r, showTerm = false) {
         if (r.rest) sub = t('ui.finance.bill_difference');
         else if (r.writeOff) sub = t('ui.finance.written_off');
         else if (r.labour) sub = t('ui.finance.labour_on_bill');
-        else if (r.term === 'uncosted') sub = t('ui.finance.uncosted_line', { item, qty: qtyText(r.qty), rate: formatAmount(r.rate, { decimals: 2 }) });
+        else if (r.term === 'uncosted') sub = t('ui.finance.uncosted_line', { item, qty: qtyText(r.qty), rate: formatAmount(r.rate, 'rate') });
         else if (r.cash !== undefined) sub = t('ui.finance.cash_online', { cash: formatAmount(r.cash, { exact: true }), online: formatAmount(r.online, { exact: true }) });
-        else if (r.term === 'cogs') sub = t('ui.finance.line_avg_cost', { item, qty: qtyText(r.qty), rate: formatAmount(r.rate, { decimals: 2 }) });
-        else sub = t('ui.finance.line_rate', { item, qty: qtyText(r.qty), rate: formatAmount(r.rate, { decimals: 2 }) });
+        else if (r.term === 'cogs') sub = t('ui.finance.line_avg_cost', { item, qty: qtyText(r.qty), rate: formatAmount(r.rate, 'rate') });
+        else sub = t('ui.finance.line_rate', { item, qty: qtyText(r.qty), rate: formatAmount(r.rate, 'rate') });
     } else if (r.category !== undefined) {
         const cat = r.category === 'personal' ? t('ui.finance.personal_expenses')
             : r.category === 'business' ? t('ui.finance.business_expenses') : t('ui.finance.no_type');
@@ -63,7 +59,7 @@ export function describeRow(r, showTerm = false) {
         sub = t('ui.finance.gap_hint');
     } else {
         title = item;
-        sub = t('ui.finance.qty_avg_cost', { qty: qtyText(r.qty), rate: formatAmount(r.rate, { decimals: 2 }) });
+        sub = t('ui.finance.qty_avg_cost', { qty: qtyText(r.qty), rate: formatAmount(r.rate, 'rate') });
     }
     if (showTerm && r.term) sub = `${t(CARDS[r.term]?.label || '')} · ${sub}`;
     return { title, sub };
@@ -185,8 +181,8 @@ export const FinanceBreakdownSheet = {
         if (!b) return this.close();
         const formula = b.formula ? b.formula.map((term, i) => {
             const op = i === 0 ? (term.sign < 0 ? '− ' : '') : (term.sign < 0 ? ' − ' : ' + ');
-            return `${op}<button type="button" class="fin-term" data-action="drill" data-card="${esc(term.cardId)}">${esc(t(term.label))} <strong>${esc(rupees(term.value))}</strong></button>`;
-        }).join('') + ` = <strong>${esc(rupees(b.value))}</strong>` : '';
+            return `${op}<button type="button" class="fin-term" data-action="drill" data-card="${esc(term.cardId)}">${esc(t(term.label))} <strong>${esc(moneyText(term.value, 'signed'))}</strong></button>`;
+        }).join('') + ` = <strong>${esc(moneyText(b.value, 'signed'))}</strong>` : '';
 
         root.innerHTML = `
             <div class="fin-sheet" role="document">
@@ -198,9 +194,9 @@ export const FinanceBreakdownSheet = {
                     </div>
                     <button type="button" class="fin-sheet-btn" data-action="close" aria-label="${esc(t('ui.common.close'))}">✕</button>
                 </div>
-                <div class="fin-sheet-value">${esc(rupees(b.value))}</div>
+                <div class="fin-sheet-value">${esc(moneyText(b.value, 'signed'))}</div>
                 ${formula ? `<div class="fin-sheet-formula">${formula}</div>` : ''}
-                ${b.notes.length ? `<div class="fin-sheet-notes">${b.notes.map(note => `<button type="button" class="fin-term fin-note" data-action="drill" data-card="${esc(note.cardId)}">${esc(t(note.label))} <strong>${esc(rupees(note.value))}</strong> · ${esc(t('ui.finance.not_included'))}</button>`).join('')}</div>` : ''}
+                ${b.notes.length ? `<div class="fin-sheet-notes">${b.notes.map(note => `<button type="button" class="fin-term fin-note" data-action="drill" data-card="${esc(note.cardId)}">${esc(t(note.label))} <strong>${esc(moneyText(note.value, 'signed'))}</strong> · ${esc(t('ui.finance.not_included'))}</button>`).join('')}</div>` : ''}
                 <div class="fin-sheet-tools"></div>
                 <div class="fin-sheet-list"></div>
                 <div class="fin-sheet-total"></div>
@@ -243,7 +239,7 @@ export const FinanceBreakdownSheet = {
                 <div class="fin-row-title">${esc(title)}</div>
                 ${sub ? `<div class="fin-row-sub">${esc(sub)}</div>` : ''}
             </div>
-            <div class="fin-row-amt ${r.amount < 0 ? 'amount-negative' : 'amount-positive'}">${esc(rupees(r.amount, { paise: true }))}</div>
+            <div class="fin-row-amt ${r.amount < 0 ? 'amount-negative' : 'amount-positive'}">${esc(moneyText(r.amount, { exact: true, trueMinus: true }))}</div>
         </div>`;
     },
 
@@ -282,7 +278,7 @@ export const FinanceBreakdownSheet = {
                 return `<div class="fin-group">
                     <button type="button" class="fin-group-head" data-action="open-group" data-key="${esc(g.key)}" aria-expanded="${open}">
                         <span>${open ? '▾' : '▸'} ${esc(label)} <small>(${esc(tn('ui.finance.entries_count', g.count))})</small></span>
-                        <strong class="${g.subtotal < 0 ? 'amount-negative' : 'amount-positive'}">${esc(rupees(g.subtotal))}</strong>
+                        <strong class="${g.subtotal < 0 ? 'amount-negative' : 'amount-positive'}">${esc(moneyText(g.subtotal, 'signed'))}</strong>
                     </button>${body}
                 </div>`;
             }).join('');
@@ -293,7 +289,7 @@ export const FinanceBreakdownSheet = {
         if (bills === 1) countText = tn('ui.finance.total_lines_one_bill', rows.length);
         else if (bills !== null) countText = t('ui.finance.total_lines_bills', { count: rows.length, bills });
         totalEl.innerHTML = this.state.query.trim()
-            ? `<span>${esc(t('ui.finance.matching_total', { count: rows.length, total: rupees(b.total) }))}</span><strong>${esc(rupees(shownTotal))}</strong>`
-            : `<span>${esc(countText)}</span><strong>${esc(rupees(b.total))}</strong>`;
+            ? `<span>${esc(t('ui.finance.matching_total', { count: rows.length, total: moneyText(b.total, 'signed') }))}</span><strong>${esc(moneyText(shownTotal, 'signed'))}</strong>`
+            : `<span>${esc(countText)}</span><strong>${esc(moneyText(b.total, 'signed'))}</strong>`;
     }
 };

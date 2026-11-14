@@ -11,7 +11,7 @@ import { TemplateLoader } from '../utils/template-loader.js';
 import { Helpers } from '../utils/helpers.js';
 import { todayLocalISO, formatMonth } from '../utils/dates.js';
 import { openExternal } from '../utils/open-external.js';
-import { formatINR, whatsAppReminderUrl } from '../utils/due-reminder.js';
+import { whatsAppReminderUrl } from '../utils/due-reminder.js';
 import { t, getLang, applyTranslations, LANG_CHANGE_EVENT } from '../i18n/index.js';
 import { AuditService } from '../services/audit.js';
 import { TelemetryService } from '../services/telemetry.js';
@@ -30,12 +30,11 @@ import {
     PAYMENT_MODES, normalizeRentSettings, monthKey, monthLabel, monthsToCharge, chargeDue, leaseDues,
     buildRentReminderText, elecMode, dateLabel, payOldestFirst, payAmount, applyPayment, expenseTotals, receivedIn, monthState
 } from './rent-math.js';
+import { formatRupees } from '../utils/money.js';
 
 const PAGES = ['rent', 'tenants', 'properties', 'reports'];
 const esc = (v) => Helpers.escapeHtml(v);
 const js = (v) => Helpers.escapeJsAttr(v);
-/** A figure as moneyHtml(); a missing amount keeps formatINR's text. */
-const money = (n) => { const h = moneyHtml(n); return h === '—' ? esc(formatINR(n)) : h; };
 const et = (key, p) => esc(t(key, p));
 const byId = (id) => document.getElementById(id);
 const fail = (key, p) => UIManager.showToast(t(key, p), 'error');
@@ -243,7 +242,7 @@ function render() {
 /** Advanced › Reports: the yearly report (owner, managers), deposits held and this month's expenses per property (as before). */
 function renderReports(d) {
     const lead = (kind) => (kind === 'year' ? `<span class="lead-icon">${icon('calendar')}</span>` : kind === 'deposits' ? `<span class="lead-icon">${icon('coins')}</span>` : '');
-    const tile = (fn, args, kind, title, sub, amount = null) => `<button type="button" class="row" data-onclick="rentals.${fn}(${args})">${lead(kind)}<span class="row-main"><span class="row-title">${esc(title)}</span>${sub ? `<span class="row-meta">${esc(sub)}</span>` : ''}</span>${amount === null ? '' : `<span class="row-trail row-amt">${money(amount)}</span>`}</button>`;
+    const tile = (fn, args, kind, title, sub, amount = null) => `<button type="button" class="row" data-onclick="rentals.${fn}(${args})">${lead(kind)}<span class="row-main"><span class="row-title">${esc(title)}</span>${sub ? `<span class="row-meta">${esc(sub)}</span>` : ''}</span>${amount === null ? '' : `<span class="row-trail row-amt">${moneyHtml(amount)}</span>`}</button>`;
     const ex = expenseTotals(d.expenses, state.month).byProperty;
     const props = [...d.properties].sort((a, b) => a.name.localeCompare(b.name));
     return `<div class="panel">${isManager() ? tile('yearReport', '', 'year', t('ui.rent.yr_btn'), t('ui.rent.rep_yearly_sub')) : ''}
@@ -298,10 +297,10 @@ function renderMonth(d, ix, rows) {
             + (canWrite() ? btn(' btn-primary', 'page', `'properties'`, 'ui.rent.add_property', icon('plus', 'i-sm')) : '');
     }
     const summary = `<div class="panel panel-pad rent-collect">
-        <div class="rent-collect-line">${moneyInText(t('ui.rent.collected_of', { collected: formatINR(sum.collected), expected: formatINR(sum.expected) }), [sum.collected, sum.expected])}</div>
+        <div class="rent-collect-line">${moneyInText(t('ui.rent.collected_of', { collected: formatRupees(sum.collected), expected: formatRupees(sum.expected) }), [sum.collected, sum.expected])}</div>
         ${sum.expected > 0 ? `<progress class="rent-progress" max="${esc(sum.expected)}" value="${esc(sum.collected)}" aria-label="${et('ui.rent.collected')}"></progress>` : ''}
         <div class="rent-sub" data-rent-received>${et('ui.rent.received_month')}: ${receivedText(d)}</div>
-        <div class="rent-sub">${et('ui.rent.outstanding')}: ${money(sum.due)}</div>
+        <div class="rent-sub">${et('ui.rent.outstanding')}: ${moneyHtml(sum.due)}</div>
     </div>`;
     const list = shown.map(a => collectRow(a, ix, lang)).join('')
         || emptyState({ icon: 'check', tone: 'pos', title: t(owe.length ? 'ui.rent.none_late' : 'ui.rent.all_paid', { month: monthLabel(state.month, lang) }) });
@@ -320,15 +319,15 @@ function received(d) {
     return state.loaded.has('monthPaid') && !state.paidError && !store.paidTruncated?.() ? receivedIn(d.paidCharges, state.month) : null;
 }
 
-const receivedText = (d) => { const r = received(d); return r === null ? '—' : money(r); };
+const receivedText = (d) => { const r = received(d); return r === null ? '—' : moneyHtml(r); };
 
 /** RENT-21: this month's rent of one tenant: paid, part paid (₹X of ₹Y) or due. */
 function monthStateLine(a) {
     const m = a.ended ? null : monthState(a.current);
     if (!m) return '';
     const text = m.status === 'paid' ? t('ui.rent.month_paid')
-        : m.status === 'partial' ? t('ui.rent.month_part', { paid: formatINR(m.paid), amount: formatINR(m.amount) })
-            : t('ui.rent.month_due', { amount: formatINR(m.due) });
+        : m.status === 'partial' ? t('ui.rent.month_part', { paid: formatRupees(m.paid), amount: formatRupees(m.amount) })
+            : t('ui.rent.month_due', { amount: formatRupees(m.due) });
     const figures = m.status === 'paid' ? [] : m.status === 'partial' ? [m.paid, m.amount] : [m.due];
     return `<div class="row-meta" data-rent-month-state="${esc(m.status)}">${moneyInText(text, figures)}</div>`;
 }
@@ -340,7 +339,7 @@ function attentionHtml(d, ix) {
     const notes = leaseReminder(localStorage, uid, state.month);
     const rows = [];
     if (rem?.late) {
-        rows.push(`<button type="button" class="row" data-onclick="rentals.onlyLate(true)"><span class="row-main">${et('ui.today.reminder_rent_units', { count: rem.dueUnits, late: rem.late })}</span><strong class="row-trail row-amt">${money(rem.due)}</strong></button>`);
+        rows.push(`<button type="button" class="row" data-onclick="rentals.onlyLate(true)"><span class="row-main">${et('ui.today.reminder_rent_units', { count: rem.dueUnits, late: rem.late })}</span><strong class="row-trail row-amt">${moneyHtml(rem.due)}</strong></button>`);
     }
     const meters = meterPending(d, state.month).length;
     if (meters) rows.push(`<button type="button" class="row" data-onclick="rentals.meters()"><span class="lead-icon warn">${icon('bolt', 'i-sm')}</span><span class="row-main">${et('ui.rent.meter_pending', { n: meters })}</span></button>`);
@@ -371,10 +370,10 @@ function collectRow(a, ix, lang) {
     return `<div class="row rent-entry" data-lease="${esc(a.leaseId)}">
         <div class="rent-entry-head"><div class="row-main"><div class="row-title">${esc(a.name || t('ui.rent.no_name'))}</div>
             <div class="row-meta">${esc(placeOf(ix, a.unitId, a.unitLabel || ''))}</div></div>
-            <div class="row-trail">${a.dues.total > 0 ? `<div class="row-amt">${money(a.dues.total)}</div>` : ''}</div></div>
+            <div class="row-trail">${a.dues.total > 0 ? `<div class="row-amt">${moneyHtml(a.dues.total)}</div>` : ''}</div></div>
         <div class="row-meta">${months ? `${esc(months)} · ` : ''}${status}</div>
         ${monthStateLine(a)}
-        ${a.current?.adv > 0 ? `<div class="row-meta">${moneyInText(t('ui.rent.adv_next', { amount: formatINR(a.current.adv) }), a.current.adv)}</div>` : ''}
+        ${a.current?.adv > 0 ? `<div class="row-meta">${moneyInText(t('ui.rent.adv_next', { amount: formatRupees(a.current.adv) }), a.current.adv)}</div>` : ''}
         ${acts || meter ? `<div class="rent-actions">${acts}${meter}</div>` : ''}
     </div>`;
 }
@@ -384,7 +383,7 @@ async function payAny() {
     const ix = index(store.snapshot());
     const owe = tenantRows(store.snapshot(), state.month).filter(a => a.dues.total > 0);
     if (owe.length < 2) return owe[0] ? pay(owe[0].leaseId) : undefined;
-    const ok = await dialog(`<h3>${et('ui.rent.record_payment')}</h3>${lbl('ui.rent.tenant_pick', `<select class="input" id="rentPayWho">${owe.map(a => `<option value="${esc(a.leaseId)}">${esc(a.name)} · ${esc(placeOf(ix, a.unitId, a.unitLabel || ''))} · ${esc(formatINR(a.dues.total))}</option>`).join('')}</select>`)}`);
+    const ok = await dialog(`<h3>${et('ui.rent.record_payment')}</h3>${lbl('ui.rent.tenant_pick', `<select class="input" id="rentPayWho">${owe.map(a => `<option value="${esc(a.leaseId)}">${esc(a.name)} · ${esc(placeOf(ix, a.unitId, a.unitLabel || ''))} · ${esc(formatRupees(a.dues.total))}</option>`).join('')}</select>`)}`);
     if (ok && val('rentPayWho')) await pay(val('rentPayWho'));
 }
 
@@ -470,8 +469,8 @@ async function pay(leaseId, typed = null) {
     const today = todayLocalISO();
     const v = typed || { id: first.id, amount: chargeDue(first), mode: 'cash', ref: '', date: today, error: '' };
     const due = (id) => chargeDue(dues.charges.find(c => c.id === id) || first);
-    const options = dues.charges.map(c => `<option value="${esc(c.id)}" data-due="${esc(chargeDue(c))}"${c.id === v.id ? ' selected' : ''}>${esc(monthLabel(c.month, lang))} · ${esc(formatINR(chargeDue(c)))}</option>`).join('');
-    const chip = (key, n) => `<button type="button" class="chip" data-amount="${esc(n)}" data-charge="${esc(first.id)}" data-onclick="rentals.fillAmount(this)">${et(key, { amount: formatINR(n) })}</button>`;
+    const options = dues.charges.map(c => `<option value="${esc(c.id)}" data-due="${esc(chargeDue(c))}"${c.id === v.id ? ' selected' : ''}>${esc(monthLabel(c.month, lang))} · ${esc(formatRupees(chargeDue(c)))}</option>`).join('');
+    const chip = (key, n) => `<button type="button" class="chip" data-amount="${esc(n)}" data-charge="${esc(first.id)}" data-onclick="rentals.fillAmount(this)">${et(key, { amount: formatRupees(n) })}</button>`;
     const modes = PAYMENT_MODES.map(m => `<button type="button"${m === v.mode ? ' class="active"' : ''} aria-pressed="${m === v.mode ? 'true' : 'false'}" data-pay-mode="${esc(m)}" data-onclick="rentals.payMode(this)">${esc(modeLabel(m))}</button>`).join('');
     const name = snap.tenants.find(x => x.id === first.tenantId)?.name || first.tenantName || '';
     const html = `<h3>${et('ui.rent.record_payment')}${name ? ` · ${esc(name)}` : ''}</h3>
@@ -510,7 +509,7 @@ async function pay(leaseId, typed = null) {
             return again(e.message === 'over' ? 'msg.rent.more_than_due' : 'msg.rent.bad_amount');
         }
         const adv = parts[parts.length - 1].adv;
-        const lines = parts.map(p => `${monthLabel(p.month, lang)}: ${formatINR(p.amount)}`).concat(adv ? [t('ui.rent.adv_next', { amount: formatINR(adv) })] : []).join(' · ');
+        const lines = parts.map(p => `${monthLabel(p.month, lang)}: ${formatRupees(p.amount)}`).concat(adv ? [t('ui.rent.adv_next', { amount: formatRupees(adv) })] : []).join(' · ');
         if (!await UIManager.showModal(t('msg.rent.pay_split', { lines }), t('ui.rent.record_payment'), true)) return;
     } else if (charge) {
         // The same check the save runs (applyPayment), before the form closes.
@@ -537,8 +536,8 @@ async function savePayment(parts, charges, { mode, ref, date }) {
                 chargeId: p.id, month: ch(p.id)?.month || '', amount: res.amount, adv: res.adv || 0, mode, tenant: ch(p.id)?.tenantName || '', receipt: res.receipt?.no || ''
             }).catch(auditWarn);
         }
-        UIManager.showToast(t(`msg.rent.${n > 1 ? 'payments' : 'payment'}_saved${no ? '_no_receipt' : ''}`, { amount: formatINR(res.amount), n })
-            + (adv ? ` ${t('msg.rent.adv_carried', { amount: formatINR(adv) })}` : ''), no ? 'warning' : 'success');
+        UIManager.showToast(t(`msg.rent.${n > 1 ? 'payments' : 'payment'}_saved${no ? '_no_receipt' : ''}`, { amount: formatRupees(res.amount), n })
+            + (adv ? ` ${t('msg.rent.adv_carried', { amount: formatRupees(adv) })}` : ''), no ? 'warning' : 'success');
     } catch (e) {
         fail(n ? 'msg.rent.payments_part_saved' : `msg.rent.${{ amount: 'bad_amount', over: 'more_than_due', too_many: 'too_many_payments' }[e?.message] || 'payment_failed'}`, { n });
     }

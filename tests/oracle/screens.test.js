@@ -309,7 +309,7 @@ describe('Stock screen == oracle (S1, S2, S3, S5)', () => {
         expect(shownRows).toHaveLength(held.length);
         held.forEach(([id, v]) => {
             const row = shownRows.find(r => r.includes(itemOf(id).name));
-            expect(row).toContain(`₹${v.rate.toFixed(2)}/kg`);
+            expect(row).toContain(`₹${v.rate.toFixed(2).replace(/\.00$/, '')}/kg`);
             expect(row).toContain(`${v.qty.toLocaleString('en-IN', { maximumFractionDigits: 3 })} kg`);
             expect(row).toContain(`≈ ₹${rupee(v.value).toLocaleString('en-IN')}`);
         });

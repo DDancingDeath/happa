@@ -12,7 +12,7 @@
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
-import { formatRupees } from '../utils/money.js';
+import { formatRupees, moneyText } from '../utils/money.js';
 import { t, getLang, tn } from '../i18n/index.js';
 import { emptyState } from '../ui/components.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
@@ -56,8 +56,6 @@ const STOP_KEYS = { quota: 'ui.trends.stop_quota', budget: 'ui.trends.stop_budge
 const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const canSee = () => AppState.userRole === 'owner' || AppState.userRole === 'manager';
 const isOwner = () => AppState.userRole === 'owner';
-const rupees = (n) => (n === null || n === undefined ? '—' : formatRupees(n, { decimals: 2 }));
-const wholeRupees = (n) => (n === null || n === undefined ? '—' : formatRupees(n));
 const num = (n) => Math.round(Number(n) || 0).toLocaleString('en-IN');
 const kgText = (n) => `${num(n)} kg`;
 const pctText = (p) => (p === null || p === undefined ? '—' : `${p > 0 ? '+' : ''}${Math.round(p)}%`);
@@ -778,11 +776,11 @@ export const RateTrendsManager = {
         const body = periods.slice().reverse().map(p => {
             const r = byPeriod.get(p);
             const fromItems = cut && p > cut;
-            const rate = (k) => rupees(fromItems ? items[k][p] : bills[k][p]);
+            const rate = (k) => moneyText(fromItems ? items[k][p] : bills[k][p], 'rate');
             if (!r && !fromItems) return '';
             return `<tr><td>${esc(this.periodLabel(p))}</td><td>${rate('purchase')}</td><td>${rate('wholesale')}</td><td>${rate('retail')}</td>
                 <td class="rt-src">${esc(t(fromItems ? 'ui.trends.src_items' : 'ui.trends.src_bills'))}</td>
-                <td class="${r?.margin < 0 ? 'rt-neg' : ''}">${rupees(r ? r.margin : null)}</td>
+                <td class="${r?.margin < 0 ? 'rt-neg' : ''}">${moneyText(r ? r.margin : null, 'rate')}</td>
                 <td>${kgText(r?.kgBought)}</td><td>${kgText(r?.kgSold)}</td><td>${r ? r.bills : 0}</td></tr>`;
         }).join('');
         el.innerHTML = `<table class="table rt-table"><thead><tr>
@@ -801,7 +799,7 @@ export const RateTrendsManager = {
             return;
         }
         const rows = rateChangeRows(this.series);
-        const current = ITEM_RATE_KINDS.map(k => `${esc(t(KIND_KEYS[k]))}: ${rupees(this.series?.[k]?.current ?? null)}`).join(' · ');
+        const current = ITEM_RATE_KINDS.map(k => `${esc(t(KIND_KEYS[k]))}: ${moneyText(this.series?.[k]?.current ?? null, 'rate')}`).join(' · ');
         const head = `<div class="rt-muted">${esc(t('ui.trends.current_items_rate'))} ${current}</div>`;
         if (!rows.length) {
             el.innerHTML = `${head}${emptyState({ icon: 'trend', title: t('ui.trends.no_items_changes', { date: dateText(cutoff) }) })}`;
@@ -809,7 +807,7 @@ export const RateTrendsManager = {
         }
         el.innerHTML = `${head}<table class="table rt-table"><thead><tr><th>${esc(t('ui.trends.th_date'))}</th><th>${esc(t('ui.trends.th_rate'))}</th>
             <th>${esc(t('ui.trends.th_change'))}</th></tr></thead><tbody>
-            ${rows.map(r => `<tr><td>${esc(dateText(r.at))}</td><td>${esc(t(KIND_KEYS[r.kind]))}</td><td>${rupees(r.from)} → ${rupees(r.to)}</td></tr>`).join('')}
+            ${rows.map(r => `<tr><td>${esc(dateText(r.at))}</td><td>${esc(t(KIND_KEYS[r.kind]))}</td><td>${moneyText(r.from, 'rate')} → ${moneyText(r.to, 'rate')}</td></tr>`).join('')}
             </tbody></table>`;
     },
 
@@ -1159,7 +1157,7 @@ export const RateTrendsManager = {
                 data-onclick="rateTrends.setTrafficItem('${Helpers.escapeJsAttr(r.itemId)}')">
                 <td>${esc(itemName(r.itemId))}</td><td><strong>${kgText(r.kg)}</strong></td>
                 ${TRAFFIC_KINDS.map(k => `<td>${cell(r[k])}</td>`).join('')}
-                <td>${r.bills}</td><td>${esc(wholeRupees(r.amount))}</td>
+                <td>${r.bills}</td><td>${esc(moneyText(r.amount))}</td>
                 <td class="${r.vsPrev < 0 ? 'rt-neg' : ''}">${pctText(r.vsPrev)}</td>
                 <td class="${r.vsLastYear < 0 ? 'rt-neg' : ''}">${pctText(r.vsLastYear)}</td></tr>`).join('');
             el.innerHTML = `<table class="table rt-table"><thead><tr><th>${esc(t('ui.trends.th_item'))}</th><th>${esc(t('ui.trends.th_total_kg'))}</th>

@@ -44,7 +44,7 @@ import {
 import { partyNameKey } from '../utils/parties.js';
 import { can } from '../utils/role-access.js';
 import {
-    buildReminderText, buildStatement, formatINR, normalizePhone, whatsAppReminderUrl
+    buildReminderText, buildStatement, normalizePhone, whatsAppReminderUrl
 } from '../utils/due-reminder.js';
 
 const PAYMENT_TOLERANCE = 0.01;
@@ -328,7 +328,7 @@ export class OutstandingManager {
             <div class="aging-chase">
                 <h3 class="aging-subtitle">${tt('ui.outstanding.who_to_chase')}</h3>
                 ${chase.length ? `<ol class="panel">${chase.map(p => `
-                    <li class="row aging-b${p.bucket}"><span class="row-main"><strong>${partyName(p)}</strong> — ${moneyHtml(p.total)} · ${withMoney(t('ui.outstanding.party_overdue', { amount: formatINR(p.overdue) }), p.overdue)}</span>
+                    <li class="row aging-b${p.bucket}"><span class="row-main"><strong>${partyName(p)}</strong> — ${moneyHtml(p.total)} · ${withMoney(t('ui.outstanding.party_overdue', { amount: formatRupees(p.overdue) }), p.overdue)}</span>
                         <span class="aging-age tag${esc(AGE_TONE[p.bucket])} aging-b${p.bucket}">${tt('ui.outstanding.oldest', { age: daysText(p.oldestDays) })}</span></li>`).join('')}</ol>`
                     : emptyState({ icon: 'check', tone: 'pos', title: t('ui.outstanding.no_one_owes') })}
             </div>`;
@@ -340,7 +340,7 @@ export class OutstandingManager {
                 <span class="lead-icon aging-avatar" data-initials="${esc(initials(p.name))}" aria-hidden="true">${p.name ? '' : icon('user')}</span>
                 <div class="aging-party-main">
                     <div class="aging-party-name">${partyName(p)}${p.longOverdue ? ` <span class="aging-badge tag neg">${tt('ui.outstanding.long_overdue')}</span>` : ''}</div>
-                    <div class="aging-party-meta">${esc(billsText(p.bills.length))} · <span class="aging-oldest${esc(AGE_TEXT_TONE[p.bucket])}">${tt('ui.outstanding.oldest', { age: daysText(p.oldestDays) })}</span>${p.overdue > 0 ? ` · ${withMoney(t('ui.outstanding.party_overdue', { amount: formatINR(p.overdue) }), p.overdue)}` : ''}</div>
+                    <div class="aging-party-meta">${esc(billsText(p.bills.length))} · <span class="aging-oldest${esc(AGE_TEXT_TONE[p.bucket])}">${tt('ui.outstanding.oldest', { age: daysText(p.oldestDays) })}</span>${p.overdue > 0 ? ` · ${withMoney(t('ui.outstanding.party_overdue', { amount: formatRupees(p.overdue) }), p.overdue)}` : ''}</div>
                 </div>
                 <strong class="aging-party-total row-amt">${moneyHtml(p.total)}</strong>
                 <div class="aging-party-actions">

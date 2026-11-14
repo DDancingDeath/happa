@@ -42,7 +42,7 @@ describe('F08 / F27: one ₹ format with Indian grouping', () => {
         expect(formatRupees(-500)).toBe('-₹500');
         expect(formatRupees(-0.2)).toBe('₹0');
         expect(formatRupees('x')).toBe('₹0');
-        expect(Helpers.formatCurrency(1234567.89)).toBe('₹12,34,568');
+        expect(formatRupees(1234567.89)).toBe('₹12,34,568');
     });
     test('small: paise below ₹100 so ₹0.40 is not ₹0; whole amounts stay whole', () => {
         expect(formatRupees(10 / 25, { small: true })).toBe('₹0.40');

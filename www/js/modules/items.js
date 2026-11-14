@@ -39,7 +39,7 @@ const SORT_KEY = 'happa.itemsSort';
 
 /** A rate as a money figure; its text is exactly formatRate(rate). */
 const rateHtml = (rate) => {
-    const html = moneyHtml(rate, { decimals: 2 });
+    const html = moneyHtml(rate, 'rate');
     return html === '—' ? Helpers.escapeHtml(formatRate(rate)) : html;
 };
 

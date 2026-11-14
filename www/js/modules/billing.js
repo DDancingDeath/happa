@@ -13,7 +13,7 @@ import * as BillDrafts from '../firebase/repos/bill-drafts.js';
 import { PrinterService } from '../services/printer.js';
 import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
-import { billLabour, isActiveBill, readPayment, sumMoney } from '../utils/money.js';
+import { billLabour, isActiveBill, readPayment, sumMoney, formatRupees } from '../utils/money.js';
 import { buildPaymentSplit, computeRetailTotals, editKeepsMoney } from '../utils/calc/billing.js';
 import { BillChecksUI } from '../ui/bill-highlight.js';
 import { bindPartySuggest } from '../ui/party-suggest.js';
@@ -1118,7 +1118,7 @@ const BillingManager = {
         text.textContent = t(mode === 'purchase' ? 'ui.billing.recover_purchase' : 'ui.billing.recover_sale', {
             when: formatDateTimeIN(data.lastSaved, undefined, t('msg.billing.recover_earlier')),
             lines,
-            total: Helpers.formatCurrency(total)
+            total: formatRupees(total)
         });
     },
 
@@ -1317,9 +1317,9 @@ const BillingManager = {
         const figures = restoreFigures(form, billType === 'retail' ? 'sale' : 'purchase', bill);
         const number = bill.billNumber || '—';
         const text = figures.saved === figures.unsaved
-            ? t('msg.billing.restore_already_saved', { number, total: Helpers.formatCurrency(figures.payable) })
+            ? t('msg.billing.restore_already_saved', { number, total: formatRupees(figures.payable) })
             : t('msg.billing.restore_already_saved_differs', {
-                number, saved: Helpers.formatCurrency(figures.saved), unsaved: Helpers.formatCurrency(figures.unsaved)
+                number, saved: formatRupees(figures.saved), unsaved: formatRupees(figures.unsaved)
             });
         return !!(await UIManager.showModal(text, t('ui.billing.already_saved_title'), true));
     },
@@ -1329,7 +1329,7 @@ const BillingManager = {
         if (!bill?.id) return;
         const { saved, unsaved } = restoreFigures(form, billType === 'retail' ? 'sale' : 'purchase', bill);
         const open = await UIManager.showModal(t('msg.billing.saved_on_other_phone', {
-            number: bill.billNumber || '—', saved: Helpers.formatCurrency(saved), unsaved: Helpers.formatCurrency(unsaved)
+            number: bill.billNumber || '—', saved: formatRupees(saved), unsaved: formatRupees(unsaved)
         }), t('ui.billing.already_saved_title'), true);
         if (open) this.openSavedBill({ bill, billType });
     },
@@ -1393,7 +1393,7 @@ const BillingManager = {
         if (target.base && FirebaseService.billVersion(bill) === target.base) return { bill, billType: target.billType };
         const { saved, unsaved } = restoreFigures(form, target.mode, bill);
         const apply = await UIManager.showModal(
-            t('msg.billing.restore_edit_changed', { saved: Helpers.formatCurrency(saved), unsaved: Helpers.formatCurrency(unsaved) }),
+            t('msg.billing.restore_edit_changed', { saved: formatRupees(saved), unsaved: formatRupees(unsaved) }),
             t('ui.billing.restore_changed_title'), true);
         return apply ? { bill, billType: target.billType } : false;
     },

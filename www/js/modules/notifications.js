@@ -18,13 +18,13 @@ import { APP_IDENTITY } from '../config/app-identity.js';
 import { AppState } from '../utils/state.js';
 import { rentRoleOf } from '../utils/settings-sections.js';
 import { toLocalISODate, formatDayTime } from '../utils/dates.js';
-import { formatINR } from '../utils/due-reminder.js';
 import { on, REMINDERS_CHANGED } from '../utils/events.js';
 import { rentBellItems, bellSeen, markBellSeen, leaseReminderText } from '../utils/reminders.js';
 import {
     UNREAD_LIMIT, PAGE_SIZE, describeNotification, notificationText, formatWhen,
     badgeText, idsToMarkRead, prepareList, newArrivals, notificationTime, retentionCutoff
 } from '../utils/notification-format.js';
+import { formatRupees } from '../utils/money.js';
 
 const SYSTEM_PREF_KEY = 'aadhat.notifications.system';
 const CLEANUP_KEY = 'aadhat.notifications.cleanupAt';
@@ -337,7 +337,7 @@ const NotificationsManager = {
         const asOf = (at) => t('ui.today.reminder_as_of', { time: formatDayTime(at, { lang: getLang() }) });
         const rows = items.map(x => {
             const rent = x.kind === 'rent';
-            const title = rent ? `${t('ui.today.reminder_rent')} ${formatINR(x.rent.due)}`
+            const title = rent ? `${t('ui.today.reminder_rent')} ${formatRupees(x.rent.due)}`
                 : `${[x.lease.place, x.lease.tenant].filter(Boolean).join(' · ')}: ${leaseReminderText(x.lease)}`;
             const meta = rent ? `${t('ui.today.reminder_rent_units', { count: x.rent.dueUnits, late: x.rent.late })} · ${asOf(x.at)}` : asOf(x.at);
             return `

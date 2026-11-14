@@ -18,6 +18,8 @@ import { AppState } from '../../www/js/utils/state.js';
 import { sampleItems } from '../fixtures/sample-items.js';
 
 const text = (id) => document.getElementById(id).textContent;
+/** A total as the forms show it: Indian grouping, a loss with the true minus (MONEY-TEXT). */
+const shown = (n) => n.toLocaleString('en-IN').replace('-', '−');
 const setVal = (id, v) => { document.getElementById(id).value = String(v); };
 const lineAmounts = (selector) => [...document.querySelectorAll(`${selector} tbody tr`)].map(tr => Number(tr.children[3].textContent.replace(/[₹,]/g, '')));
 const RUNS = Number(process.env.FC_RUNS) || 200;
@@ -56,18 +58,18 @@ describe('the forms show the oracle\'s figures', () => {
         }
         const want = O.billForm('purchase', entries, { laborRate: 6.5 });
         expect(lineAmounts('#billTable')).toEqual(want.BF_LINE);
-        expect(Number(text('billTotal'))).toBe(want.BF_TOTAL_shown);
+        expect(text('billTotal')).toBe(shown(want.BF_TOTAL_shown));
         expect(Number(document.getElementById('manualLaborCharges').value)).toBe(want.BF_LAB);
-        expect(Number(text('amountPayable'))).toBe(want.BF_PAYABLE_shown);
-        expect(Number(text('barPayable'))).toBe(want.BF_PAYABLE_shown);
+        expect(text('amountPayable')).toBe(shown(want.BF_PAYABLE_shown));
+        expect(text('barPayable')).toBe(shown(want.BF_PAYABLE_shown));
         expect(PurchaseManager.computeTotals().grandTotal).toBe(want.BF_PAYABLE);
 
         setVal('manualLaborCharges', 12.5);
         document.getElementById('manualLaborCharges').dataset.manuallySet = 'true';
         PurchaseManager.updateTotals();
         const typed = O.billForm('purchase', entries, { laborRate: 6.5, labour: 12.5 });
-        expect(Number(text('amountPayable'))).toBe(typed.BF_PAYABLE_shown);
-        expect(Number(text('barPayable'))).toBe(typed.BF_PAYABLE_shown);
+        expect(text('amountPayable')).toBe(shown(typed.BF_PAYABLE_shown));
+        expect(text('barPayable')).toBe(shown(typed.BF_PAYABLE_shown));
         expect(PurchaseManager.computeTotals().grandTotal).toBe(typed.BF_PAYABLE);
     });
 
@@ -82,7 +84,7 @@ describe('the forms show the oracle\'s figures', () => {
         PurchaseManager.updateTotals();
         const want = O.billForm('purchase', [{ rate: 25, weights: [40] }], { laborRate: 6.5, labour: 12.5 });
         expect([want.BF_LAB_saved, want.BF_PAYABLE, want.BF_PAYABLE_shown]).toEqual([13, 987, 987]);
-        expect(Number(text('amountPayable'))).toBe(987);
+        expect(text('amountPayable')).toBe(shown(987));
         document.getElementById('cashCheckbox').checked = true;
         PurchaseManager.fillPayableAmount('cash');
         expect(document.getElementById('cashPayment').value).toBe('987');
@@ -103,9 +105,9 @@ describe('the forms show the oracle\'s figures', () => {
         }
         const want = O.billForm('retail', entries);
         expect(lineAmounts('#saleTable')).toEqual(want.BF_LINE);
-        expect(Number(text('saleTotal'))).toBe(want.BF_TOTAL_shown);
-        expect(Number(text('amountReceivable'))).toBe(want.BF_TOTAL_shown);
-        expect(Number(text('barReceivable'))).toBe(want.BF_TOTAL_shown);
+        expect(text('saleTotal')).toBe(shown(want.BF_TOTAL_shown));
+        expect(text('amountReceivable')).toBe(shown(want.BF_TOTAL_shown));
+        expect(text('barReceivable')).toBe(shown(want.BF_TOTAL_shown));
         expect(RetailSaleManager.getCheckDraft().total).toBe(want.BF_TOTAL);
     });
 
@@ -126,7 +128,7 @@ describe('the forms show the oracle\'s figures', () => {
         WholesaleSalesManager.updateProfitCalculation();
         const want = O.billForm('wholesale', entries, { stock: AppState.stock, expenses: 20.5 });
         expect(lineAmounts('#salesTable')).toEqual(want.BF_LINE);
-        expect(Number(text('salesTotalAmount'))).toBe(want.BF_TOTAL_shown);
+        expect(text('salesTotalAmount')).toBe(shown(want.BF_TOTAL_shown));
         expect(want.WS_PROFIT).toBeNull();
         expect([text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['—', '—']);
         expect(WholesaleSalesManager.computeTotals()).toMatchObject({ total: want.BF_TOTAL, profit: null, profitPercent: null });
@@ -134,7 +136,7 @@ describe('the forms show the oracle\'s figures', () => {
         AppState.stock['item-wheat'].rate = 30;
         WholesaleSalesManager.updateProfitCalculation();
         const known = O.billForm('wholesale', entries, { stock: AppState.stock, expenses: 20.5 });
-        expect(Number(text('salesProfitAmount'))).toBe(known.WS_PROFIT_shown);
+        expect(text('salesProfitAmount')).toBe(shown(known.WS_PROFIT_shown));
         expect(Number(text('salesProfitPercent'))).toBe(known.WS_MARGIN);
         expect(WholesaleSalesManager.computeTotals()).toMatchObject({ total: known.BF_TOTAL, profit: known.WS_PROFIT, profitPercent: known.WS_MARGIN });
     });
@@ -347,7 +349,7 @@ describe('BF-RATECHECK, BF-BAGCHECK: the billing confirms (OD-02; bag weight, 8 
         for (let i = 0; i < 20 && !document.querySelector('.rate-check-dialog'); i++) await Promise.resolve();
         const dialog = document.querySelector('.rate-check-dialog');
         expect(dialog.querySelector('#rateCheckMessage').textContent)
-            .toBe(`Wheat 12.4 kg × ₹140.00 = ₹${want.amount.toLocaleString('en-IN')}. Today's rate ₹28.00 would give ₹${want.todayAmount}.`);
+            .toBe(`Wheat 12.4 kg × ₹140 = ₹${want.amount.toLocaleString('en-IN')}. Today's rate ₹28 would give ₹${want.todayAmount}.`);
         dialog.querySelector('[data-choice="fix"]').click();
         await adding;
         expect(RetailSaleManager.getSaleItems()).toEqual([]);

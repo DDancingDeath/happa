@@ -36,7 +36,7 @@ www/js/modules/history.js: (toMoney(item.total) ?? toMoney(item.amount)) === nul
 www/js/modules/history.js: billTableHtml(bills, { openings: this.pageOpenings, voided: this.pageVoided, typeTags: type === 'sale', onclickFor: (bill) => `history.viewB (sink)
 www/js/modules/history.js: editsRowHtml(bill, 'history.showEdits()')
 www/js/modules/history.js: shownDate.bad ? badDateBadgeHtml() : '' ← badDateBadgeHtml()
-www/js/modules/history.js: toMoney(item.rate) === null ? '—' : formatAmount(item.rate, { decimals: 2 }) ← formatAmount(item.rate, { decimals: 2 })
+www/js/modules/history.js: toMoney(item.rate) === null ? '—' : formatAmount(item.rate, 'rate') ← formatAmount(item.rate, 'rate')
 www/js/modules/history.js: voidedBannerHtml(bill)
 www/js/modules/insights.js: extra
 www/js/modules/insights.js: i
@@ -47,7 +47,6 @@ www/js/modules/insights.js: partySummary(src, kind, r) (markup via table)
 www/js/modules/insights.js: pct(m.M1.retail.total) ← sharePct(v, total)
 www/js/modules/insights.js: pct(m.M1.wholesale.total) ← sharePct(v, total)
 www/js/modules/insights.js: value (sink)
-www/js/modules/insights.js: x.per100 === null ? '—' : roundTo(x.per100, 1) ← roundTo(x.per100, 1)
 www/js/modules/items.js: idx
 www/js/modules/items.js: idx
 www/js/modules/items.js: idx
@@ -110,7 +109,7 @@ www/js/modules/money.js: labels.prev (markup via vsItem)
 www/js/modules/money.js: labels.prev (markup via vsItem)
 www/js/modules/money.js: labels.prev (markup via vsItem)
 www/js/modules/money.js: lastMonthKeys(now.getTime(), 13) (markup via map((k, i) => ({ key: k, tick: i % 3 === 0 || i === keys.length - 1 ? formatMonth(monthBounds(k).from, { lang, year: false }) : '', title: `${fo))
-www/js/modules/money.js: localDayKeys(r.from, Math.min(r.to, Date.now())) (markup via map((k, i) => ({ key: k, tick: i % 7 === 0 ? String(Number(k.slice(8))) : '', title: `${formatDay(k, { lang, year: false })}: ${money(net[i])}` ))
+www/js/modules/money.js: localDayKeys(r.from, Math.min(r.to, Date.now())) (markup via map((k, i) => ({ key: k, tick: i % 7 === 0 ? String(Number(k.slice(8))) : '', title: `${formatDay(k, { lang, year: false })}: ${moneyText(net[i]))
 www/js/modules/money.js: m.M1.total ← m = this.summary(r) (markup via this.renderCash .ly)
 www/js/modules/money.js: m.M1.total ← m = this.summary(r) (markup via this.renderCash .prev)
 www/js/modules/money.js: m.M1.total ← m = this.summary(r) (markup via this.renderCash)
@@ -268,7 +267,7 @@ www/js/modules/statements.js: Number.isFinite(from) ? from : 'null' ← from
 www/js/modules/statements.js: b.from ← b = monthBounds(this.month) (markup via this.notLoaded)
 www/js/modules/statements.js: c !== undefined ? ` (${c})` : '' ← c
 www/js/modules/statements.js: d.getTime() (markup via this.notLoaded)
-www/js/modules/statements.js: formatAmount(r.avgCost, { decimals: 2 })
+www/js/modules/statements.js: formatAmount(r.avgCost, 'rate')
 www/js/modules/statements.js: id ? ` data-metric-export="${id}"` : '' ← id
 www/js/modules/statements.js: k
 www/js/modules/statements.js: m.M1.total ← m = moneySummary({ ...this.src(), items: AppState.items || [], base, sessions: sessi (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
@@ -400,7 +399,7 @@ www/js/rentals/rentals.js: lazyMods.pages.renderProperties(unitCtx(), d) (sink)
 www/js/rentals/rentals.js: lazyMods.pages.renderProperty(unitCtx(), d, state.detail) (sink)
 www/js/rentals/rentals.js: lazyMods.pages.renderTenant(unitCtx(), d, state.detail) (sink)
 www/js/rentals/rentals.js: lazyMods.pages.renderTenants(unitCtx(), d) (sink)
-www/js/services/exporter.js: html
+www/js/services/exporter.js: printMinus(html)
 www/js/ui/bill-highlight.js: ICON.block ← ICON = { block: '⛔', warn: '⚠️' }
 www/js/ui/bill-row.js: link ← onclick
 www/js/ui/bill-row.js: onclick
@@ -437,8 +436,8 @@ www/js/ui/period-compare.js: page (markup via datesHtml)
 www/js/ui/period-compare.js: page (markup via datesHtml)
 www/js/ui/period-compare.js: r.c?.dir || 'none' ← r.c?.dir
 www/js/ui/period-compare.js: r.id
-www/js/ui/period-compare.js: rows (markup via map(r => `<tr data-cmp-row="${r.id}"${r.id === 'M6' ? ' data-perm="profit"' : ''}><td>${esc(t(ROW_KEYS[r.id]))}</td>` + `<td class="num">${rupee) .c)
-www/js/ui/period-compare.js: rows (markup via map(r => `<tr data-cmp-row="${r.id}"${r.id === 'M6' ? ' data-perm="profit"' : ''}><td>${esc(t(ROW_KEYS[r.id]))}</td>` + `<td class="num">${rupee) .id)
+www/js/ui/period-compare.js: rows (markup via map(r => `<tr data-cmp-row="${r.id}"${r.id === 'M6' ? ' data-perm="profit"' : ''}><td>${esc(t(ROW_KEYS[r.id]))}</td>` + `<td class="num">${money) .c)
+www/js/ui/period-compare.js: rows (markup via map(r => `<tr data-cmp-row="${r.id}"${r.id === 'M6' ? ' data-perm="profit"' : ''}><td>${esc(t(ROW_KEYS[r.id]))}</td>` + `<td class="num">${money) .id)
 www/js/ui/period-compare.js: today ← toLocalISODate(new Date())
 www/js/ui/period-compare.js: today ← toLocalISODate(new Date())
 www/js/ui/period-compare.js: v

@@ -10,7 +10,7 @@ import { AppState } from '../utils/state.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { t, tn, getLang } from '../i18n/index.js';
-import { formatKg, formatRate, formatRupees } from '../utils/money.js';
+import { formatKg, formatRate, formatRupees, moneyText } from '../utils/money.js';
 import { can } from '../utils/role-access.js';
 import { parseQuestion, answerQuestion } from '../utils/ask.js';
 import { approxStockNote } from '../utils/stock-check.js';
@@ -385,7 +385,7 @@ export const AskManager = {
             if (shown.length > 1) html += kg(t(totalLabelKey(r)), r.totals);
             return html + controls;
         }
-        const figures = (x) => ({ kg: formatKg(x.kg), rate: x.avgRate === null ? '—' : formatRate(x.avgRate), amount: formatRupees(x.amount), net: formatRupees(x.net), bills: bills(x.bills) });
+        const figures = (x) => ({ kg: formatKg(x.kg), rate: x.avgRate === null ? '—' : formatRate(x.avgRate), amount: formatRupees(x.amount), net: moneyText(x.net), bills: bills(x.bills) });
         html += shown.map(g => line(t('ui.ask.report_kind', { name: label(g), ...figures(g.totals) }))).join('');
         if (shown.length > 1) html += line(t('ui.ask.report_kind', { name: t(totalLabelKey(r)), ...figures(r.totals) }));
         if (r.billType === 'purchase') html += line(t('ui.ask.report_after_labour', figures(r.totals)));

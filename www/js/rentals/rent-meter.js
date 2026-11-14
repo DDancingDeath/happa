@@ -7,10 +7,9 @@
 
 import { UIManager } from '../ui/ui-manager.js';
 import { t, getLang } from '../i18n/index.js';
-import { formatINR } from '../utils/due-reminder.js';
 import { moneyInText } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
-import { sumMoney } from '../utils/money.js';
+import { sumMoney, formatRupees } from '../utils/money.js';
 import { AuditService } from '../services/audit.js';
 import * as store from './rent-store.js';
 import { meterBill, monthLabel } from './rent-math.js';
@@ -66,7 +65,7 @@ export function preview() {
         if (!out) return;
         try {
             const b = billOf(i);
-            out.textContent = b ? t('ui.rent.meter_preview', { units: b.units, rate: b.rate, amount: formatINR(b.amount) }) : '';
+            out.textContent = b ? t('ui.rent.meter_preview', { units: b.units, rate: b.rate, amount: formatRupees(b.amount) }) : '';
             out.classList.remove('rent-field-error');
         } catch (_) {
             out.textContent = t('msg.rent.bad_reading');
@@ -123,10 +122,10 @@ export async function showMeters(c) {
     const saved = results.filter(x => !x.error);
     const total = sumMoney(saved, x => x.bill.amount);
     if (saved.length === results.length) {
-        UIManager.showToast(t('msg.rent.meters_saved', { n: saved.length, amount: formatINR(total) }), 'success');
+        UIManager.showToast(t('msg.rent.meters_saved', { n: saved.length, amount: formatRupees(total) }), 'success');
         return;
     }
     UIManager.showToast(t('msg.rent.meters_partly', { saved: saved.length, failed: results.length - saved.length }), 'error');
     await c.dialog(`<h3>${c.esc(t('ui.rent.meter_readings'))}</h3>
-        <ul class="rent-results">${results.map(x => `<li class="${x.error ? 'tone-neg' : 'tone-pos'}" data-meter-result="${x.error ? 'error' : 'saved'}">${x.error ? icon('x', 'i-sm') : icon('check', 'i-sm')} ${x.error ? `${c.esc(x.r.place)}: ${c.esc(t(x.error))}` : moneyInText(`${x.r.place}: ${formatINR(x.bill.amount)}`, x.bill.amount)}</li>`).join('')}</ul>`, { info: true });
+        <ul class="rent-results">${results.map(x => `<li class="${x.error ? 'tone-neg' : 'tone-pos'}" data-meter-result="${x.error ? 'error' : 'saved'}">${x.error ? icon('x', 'i-sm') : icon('check', 'i-sm')} ${x.error ? `${c.esc(x.r.place)}: ${c.esc(t(x.error))}` : moneyInText(`${x.r.place}: ${formatRupees(x.bill.amount)}`, x.bill.amount)}</li>`).join('')}</ul>`, { info: true });
 }

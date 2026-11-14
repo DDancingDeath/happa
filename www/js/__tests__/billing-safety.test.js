@@ -126,7 +126,7 @@ describe('purchase: a line typed but not added (S-1, BF-PENDING)', () => {
 
     test('"Add this line and save" saves both lines', async () => {
         const saving = PurchaseManager.saveBillToHistory();
-        expect(await answer('add')).toBe('Wheat 4 kg × ₹30.00 = ₹120 is typed but not on the bill.');
+        expect(await answer('add')).toBe('Wheat 4 kg × ₹30 = ₹120 is typed but not on the bill.');
         const bill = await saving;
         expect(bill.items.map(i => [i.name, i.qty, i.total])).toEqual([['Rice', 10, 250], ['Wheat', 4, 120]]);
         expect(bill.billTotal).toBe(370);
@@ -198,7 +198,7 @@ describe('retail sale: a line typed but not added (S-1)', () => {
         setVal('saleRate', 36);
         setVal('saleWeight', 4);
         const saving = RetailSaleManager.completeSale();
-        expect(await answer('add')).toBe('Rice 4 kg × ₹36.00 = ₹144 is typed but not on the bill.');
+        expect(await answer('add')).toBe('Rice 4 kg × ₹36 = ₹144 is typed but not on the bill.');
         const sale = await saving;
         expect(sale.items.map(i => [i.name, i.qty])).toEqual([['Wheat', 2], ['Rice', 4]]);
         expect(sale.total).toBe(200);
@@ -244,7 +244,7 @@ describe('wholesale: a quantity typed but not added (S-1)', () => {
 
     test('"Add this line and save" adds the 5 kg', async () => {
         const saving = WholesaleSalesManager.completeSale();
-        expect(await answer('add')).toBe('Rice 5 kg × ₹34.00 = ₹170 is typed but not on the bill.');
+        expect(await answer('add')).toBe('Rice 5 kg × ₹34 = ₹170 is typed but not on the bill.');
         expect((await saving).items.map(i => i.quantity)).toEqual([10, 5]);
     });
 

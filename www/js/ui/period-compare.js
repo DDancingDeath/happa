@@ -19,7 +19,7 @@ import {
 import { saveOwnSavedRanges, updateOwnSavedRanges } from '../firebase/repos/users.js';
 import { AppState } from '../utils/state.js';
 import { icon } from './icons.js';
-import { formatRupees } from '../utils/money.js';
+import { formatRupees, moneyText } from '../utils/money.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
 
@@ -240,8 +240,6 @@ export function resetPeriodCompareForTests() {
 }
 
 const pctText = (c) => (!c ? '' : c.dir === 'same' ? '＝' : `${c.dir === 'up' ? '▲' : '▼'} ${Math.abs(c.pct)}%`);
-const rupees = (v) => (v === null ? '—' : formatRupees(v, { trueMinus: true }));
-const textRupees = (v) => (v === null ? '—' : formatRupees(v));
 const signed = (v) => (v === null ? '—' : `${v > 0 ? '+' : ''}${formatRupees(v, { trueMinus: true })}`);
 
 /**
@@ -253,7 +251,7 @@ export function compareTableHtml(rows, labels) {
     const head = `<thead><tr><th></th><th class="num">${esc(labels.a)}</th><th class="num">${esc(labels.b)}</th>`
         + `<th class="num">${esc(t('ui.cmp.change'))}</th><th class="num">%</th></tr></thead>`;
     const body = rows.map(r => `<tr data-cmp-row="${r.id}"${r.id === 'M6' ? ' data-perm="profit"' : ''}><td>${esc(t(ROW_KEYS[r.id]))}</td>`
-        + `<td class="num">${rupees(r.a)}</td><td class="num">${rupees(r.b)}</td><td class="num">${signed(r.diff)}</td>`
+        + `<td class="num">${moneyText(r.a, 'signed')}</td><td class="num">${moneyText(r.b, 'signed')}</td><td class="num">${signed(r.diff)}</td>`
         + `<td class="num ins-cmp-${r.c?.dir || 'none'}">${esc(pctText(r.c) || '—')}</td></tr>`).join('');
     return `<table class="table ins-table ins-ab-table">${head}<tbody>${body}</tbody></table>`;
 }
@@ -271,8 +269,8 @@ export function summaryLines(rows, labels) {
     lines.push({ text: t('ui.cmp.summary_title', { period: labels.a }) });
     if (labels.b) lines.push({ text: t('ui.cmp.vs', { period: labels.b }) });
     rows.forEach(r => {
-        lines.push({ left: t(ROW_KEYS[r.id]), right: textRupees(r.a) });
-        if (labels.b) lines.push({ left: `  ${labels.b}`, right: r.c ? `${textRupees(r.b)}  ${pctText(r.c)}` : textRupees(r.b) });
+        lines.push({ left: t(ROW_KEYS[r.id]), right: moneyText(r.a, 'plain') });
+        if (labels.b) lines.push({ left: `  ${labels.b}`, right: r.c ? `${moneyText(r.b, 'plain')}  ${pctText(r.c)}` : moneyText(r.b, 'plain') });
     });
     return lines;
 }

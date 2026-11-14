@@ -21,6 +21,7 @@ import { Helpers } from '../utils/helpers.js';
 import { AppState } from '../utils/state.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 import { SAMPLE_ITEMS, sampleItems } from '../../../tests/fixtures/sample-items.js';
+import { formatRupees } from '../utils/money.js';
 
 let toast;
 beforeEach(() => {
@@ -251,7 +252,7 @@ describe('Stock', () => {
         const text = rows().map(r => r.textContent.replace(/\s+/g, ' ').trim());
         expect(text).toHaveLength(3);
         expect(text[0]).toContain('Rice');
-        expect(text[0]).toContain('Rate: ₹32.00/kg');   // (100×30 + 50×36) / 150
+        expect(text[0]).toContain('Rate: ₹32/kg');   // (100×30 + 50×36) / 150
         expect(text[0]).toContain('150 kg');
         expect(text[0]).toContain('≈ ₹4,800');
         expect(text[1]).toContain('Wheat');
@@ -358,7 +359,7 @@ describe('Today (day.js)', () => {
         'todayCashFlowLabel', 'todayCashReceived', 'todayOnlineReceived', 'todayCashPaid', 'todayOnlinePaid',
         'todayDueReceived', 'todayDuePaid', 'todayDueToReceive', 'todayDueToPay', 'todayPurchaseItems', 'todaySaleItems'];
     const val = (id) => document.getElementById(id).textContent;
-    const money = (n) => Helpers.formatCurrency(n);
+    const money = (n) => formatRupees(n);
 
     beforeEach(() => {
         jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });

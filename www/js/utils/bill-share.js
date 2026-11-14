@@ -6,7 +6,7 @@
  * @module utils/bill-share
  */
 
-import { billLabour, billLineTotal, billTotal, outstandingDue, readPayment, readLineItem, formatKg, formatRate, formatRupees } from './money.js';
+import { billLabour, billLineTotal, billTotal, outstandingDue, readPayment, readLineItem, formatKg, formatRupees } from './money.js';
 import { billDateOf } from './history-filters.js';
 import { t } from '../i18n/index.js';
 
@@ -111,7 +111,6 @@ const TITLES = {
     wholesale: 'ui.bill.title_wholesale'
 };
 
-const money = (/** @type {number} */ n) => formatRupees(n);
 
 /**
  * WhatsApp text for a saved bill, in the app language, dated with the bill's own date.
@@ -133,7 +132,7 @@ export function buildBillShareText(bill, type, { copy = true } = {}) {
     lines.push('', `*${t('ui.bill.items')}:*`);
     p.items.forEach((/** @type {{name: string, rate: number, qty: number, total: number}} */ item) => {
         lines.push(item.name);
-        lines.push(`  ${formatRate(item.rate)} × ${formatKg(item.qty)}kg = ${money(item.total)}`);
+        lines.push(`  ${formatRupees(item.rate, 'ratePaise')} × ${formatKg(item.qty)}kg = ${formatRupees(item.total)}`);
     });
     lines.push('');
 
@@ -141,17 +140,17 @@ export function buildBillShareText(bill, type, { copy = true } = {}) {
         const subtotal = billLineTotal(p, true);
         const labor = billLabour(p);
         const payable = billTotal(p);
-        lines.push(`*${t('ui.bill.total')}: ${money(subtotal)}*`);
+        lines.push(`*${t('ui.bill.total')}: ${formatRupees(subtotal)}*`);
         if (labor > 0) {
-            lines.push(`${t('ui.bill.labour')}: ${money(labor)}`);
-            lines.push(`*${t('ui.bill.payable')}: ${money(payable)}*`);
+            lines.push(`${t('ui.bill.labour')}: ${formatRupees(labor)}`);
+            lines.push(`*${t('ui.bill.payable')}: ${formatRupees(payable)}*`);
         }
     } else {
-        lines.push(`*${t('ui.bill.total')}: ${money(billTotal(p))}*`);
+        lines.push(`*${t('ui.bill.total')}: ${formatRupees(billTotal(p))}*`);
     }
     const paid = p.payment.cash + p.payment.online;
-    if (paid > 0) lines.push(`${t(kind === 'purchase' ? 'ui.bill.paid' : 'ui.bill.received')}: ${money(paid)}`);
-    if (p.payment.due > 0) lines.push(`${t('ui.bill.due')}: ${money(p.payment.due)}`);
+    if (paid > 0) lines.push(`${t(kind === 'purchase' ? 'ui.bill.paid' : 'ui.bill.received')}: ${formatRupees(paid)}`);
+    if (p.payment.due > 0) lines.push(`${t('ui.bill.due')}: ${formatRupees(p.payment.due)}`);
     return lines.join('\n');
 }
 
@@ -179,14 +178,14 @@ export function buildDraftShareText({ kind, customer, date = new Date(), note, i
     lines.push('', `*${t('ui.bill.items')}:*`);
     items.forEach(item => {
         lines.push(item.name);
-        lines.push(`  ${t('ui.bill.rate')}: ${formatRate(item.rate)} × ${formatKg(item.qty)}kg = ${formatRupees(item.total, { exact: true })}`);
+        lines.push(`  ${t('ui.bill.rate')}: ${formatRupees(item.rate, 'ratePaise')} × ${formatKg(item.qty)}kg = ${formatRupees(item.total, { exact: true })}`);
     });
-    lines.push('', `*${t('ui.bill.total')}: ${money(total)}*`);
+    lines.push('', `*${t('ui.bill.total')}: ${formatRupees(total)}*`);
     if (kind === 'purchase' && labour > 0) {
-        lines.push(`${t('ui.bill.labour')}: ${money(labour)}`);
-        lines.push(`*${t('ui.bill.payable')}: ${money(total - labour)}*`);
+        lines.push(`${t('ui.bill.labour')}: ${formatRupees(labour)}`);
+        lines.push(`*${t('ui.bill.payable')}: ${formatRupees(total - labour)}*`);
     }
-    if (kind === 'wholesale' && expenses > 0) lines.push(`${t('ui.bill.expenses')}: ${money(expenses)}`);
-    if (kind === 'wholesale' && Number.isFinite(profit) && profit !== 0) lines.push(`${t('ui.bill.profit')}: ${money(profit)}`);
+    if (kind === 'wholesale' && expenses > 0) lines.push(`${t('ui.bill.expenses')}: ${formatRupees(expenses)}`);
+    if (kind === 'wholesale' && Number.isFinite(profit) && profit !== 0) lines.push(`${t('ui.bill.profit')}: ${formatRupees(profit)}`);
     return lines.join('\n');
 }
