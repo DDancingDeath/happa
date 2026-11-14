@@ -8,7 +8,7 @@
  * @module utils/history-filters
  */
 
-import { toJsDate, parseLocalDate, toLocalISODate } from './dates.js';
+import { toJsDate, parseLocalDate, formatDate } from './dates.js';
 import { t } from '../i18n/index.js';
 import { billTotal, hasBillAmount, sumMoney } from './money.js';
 
@@ -269,13 +269,13 @@ export function normalizeHistoryFilter(value) {
 }
 
 /**
- * Short label for the active range, e.g. "01/10/2026 – 22/10/2026".
+ * Short label for the active range, e.g. "1 Oct 2026 – 22 Oct 2026" (DATE-TEXT).
  * @param {{from: number|null, to: number|null}} range
  * @returns {string}
  */
 export function formatHistoryRange(range) {
     if (!range || (range.from === null && range.to === null)) return '';
-    const fmt = (/** @type {number} */ ms) => toLocalISODate(new Date(ms)).split('-').reverse().join('/');
+    const fmt = (/** @type {number} */ ms) => formatDate(ms);
     const from = range.from !== null ? fmt(range.from) : '…';
     const to = range.to !== null ? fmt(range.to - 1) : '…';
     return from === to ? from : `${from} – ${to}`;

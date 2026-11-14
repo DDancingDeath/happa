@@ -10,12 +10,12 @@ import { UIManager } from '../ui/ui-manager.js';
 import { t, getLang } from '../i18n/index.js';
 import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
-import { todayLocalISO } from '../utils/dates.js';
+import { todayLocalISO, formatDate } from '../utils/dates.js';
 import { moneyHtml, emptyState } from '../ui/components.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import * as store from './rent-store.js';
 import * as es from './rent-expense-store.js';
-import { PAYMENT_MODES, expenseTotals, dateLabel, monthLabel } from './rent-math.js';
+import { PAYMENT_MODES, expenseTotals, monthLabel } from './rent-math.js';
 import { EXPENSE_CATEGORIES, expenseError } from './rent-math-ledger.js';
 import { formatRupees } from '../utils/money.js';
 
@@ -42,7 +42,7 @@ export async function showExpenses(c, pid) {
     }
     const unitName = new Map(units.map(u => [u.id, u.label]));
     const lang = getLang();
-    const rows = list.map(e => `<li>${c.esc([dateLabel(e.date), t(`ui.rent.exp_cat_${e.category}`), e.unitId ? unitName.get(e.unitId) || t('ui.rent.exp_unit_removed') : t('ui.rent.exp_unit_all'), t(`ui.rent.mode_${e.mode}`)].filter(Boolean).join(' · '))}:
+    const rows = list.map(e => `<li>${c.esc([formatDate(e.date), t(`ui.rent.exp_cat_${e.category}`), e.unitId ? unitName.get(e.unitId) || t('ui.rent.exp_unit_removed') : t('ui.rent.exp_unit_all'), t(`ui.rent.mode_${e.mode}`)].filter(Boolean).join(' · '))}:
         <strong>${moneyHtml(e.amount)}</strong>${e.note ? ` · ${c.esc(e.note)}` : ''} <span class="rent-sub">${c.esc(e.byName || '')}</span>
         ${c.isOwner ? `${act(c, 'edit', pid, 'ui.rent.edit', ' btn-sm', e.id)}${act(c, 'delete', pid, 'ui.rent.remove', ' btn-sm', e.id)}` : ''}</li>`).join('');
     await c.dialog(`<h3>${c.esc(t('ui.rent.exp_title', { name: property.name }))}</h3>

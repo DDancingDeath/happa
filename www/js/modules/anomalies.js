@@ -17,7 +17,7 @@ import { t } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 import {
     ANOMALY_DEFAULTS, ANOMALY_TYPES, DETECTION_FIELDS, SEVERITIES, SEVERITY_LABELS, STATUS_LABELS,
-    addDaysToKey, anomalyPatterns, billTime, buildDayReportText, detectAnomalies, filterAnomalies, formatDayKey,
+    addDaysToKey, anomalyPatterns, billTime, buildDayReportText, detectAnomalies, filterAnomalies,
     istDayKey, istDayStartMs, mergeAnomalies, planAnomalyWrites, presetRange, sortAnomalies, summarizeAnomalies, summaryLine, typeLabel,
     voidedByOthers, withoutStoredVoidTwins, withoutUnstockedOversell
 } from '../utils/anomalies.js';
@@ -28,6 +28,7 @@ import { numberCheckFlags } from '../utils/number-check-flags.js';
 import { safeSetItem } from '../utils/storage-full.js';
 import { icon } from '../ui/icons.js';
 import { moneyHtml, emptyState } from '../ui/components.js';
+import { formatDate } from '../utils/dates.js';
 
 const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const jsAttr = (v) => Helpers.escapeJsAttr(String(v ?? ''));
@@ -444,7 +445,7 @@ export const AnomaliesManager = {
                 <span class="anom-card-tools"><button type="button" class="btn btn-ghost btn-icon btn-sm" title="${esc(t('ui.anom.refresh'))}" aria-label="${esc(t('ui.anom.refresh'))}" data-onclick="anomalies.refreshNow()">${icon('refresh')}</button>
                 <span class="tag ${s.total ? 'neg' : 'pos'} anomaly-count-badge">${esc(s.total)}</span></span>
             </div>
-            <div class="tone-muted anom-card-sub">${esc(formatDayKey(today))} · ${esc(this.cashStatusLine())}</div>
+            <div class="tone-muted anom-card-sub">${esc(formatDate(today))} · ${esc(this.cashStatusLine())}</div>
             <div class="anom-chips">${chips}</div>
             ${s.total ? `<ul class="anom-types">${types}</ul>${tops}` : emptyState({ icon: 'check', tone: 'pos', title: t('ui.anom.none_today') })}
             <div class="anom-queue">
@@ -555,8 +556,8 @@ export const AnomaliesManager = {
         const label = typeLabel(a.type);
         const status = a.status || 'open';
         const when = Number.isFinite(Number(a.at)) && Number(a.at) > 0
-            ? Helpers.formatDateTime(Number(a.at))
-            : formatDayKey(a.dayKey);
+            ? formatDate(Number(a.at), 'datetime')
+            : formatDate(a.dayKey);
         const meta = [
             a.billNumber ? `#${esc(a.billNumber)}` : '',
             a.party ? esc(a.party) : '',
@@ -827,7 +828,7 @@ export const AnomaliesManager = {
             const range = this.page.range;
             summary.innerHTML = this.page.loading && !list.length
                 ? esc(t('ui.anom.loading'))
-                : `${esc(t('ui.anom.shown', { n: s.total }))}${range ? ` · ${esc(formatDayKey(range.from))} – ${esc(formatDayKey(range.to))}` : ''} · `
+                : `${esc(t('ui.anom.shown', { n: s.total }))}${range ? ` · ${esc(formatDate(range.from))} – ${esc(formatDate(range.to))}` : ''} · `
                 + SEVERITIES.map(sev => `<span class="${esc(SEV_TONES[sev])}">${loc(SEVERITY_LABELS[sev])} ${esc(s.bySeverity[sev])}</span>`).join(' · ');
         }
         if (this.page.view === 'list') {

@@ -658,13 +658,7 @@ const DiagnosticsManager = {
      * @returns {string} HTML string
      */
     renderAuditCard(log) {
-        const formattedDate = formatDateTimeIN(log.timestamp, {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        const formattedDate = formatDateTimeIN(log.timestamp);
 
         const tone = this.getActionTone(log.action);
         const details = this.formatDetails(log.details, log.action);

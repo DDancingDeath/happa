@@ -26,7 +26,8 @@ import {
     formatDay,
     formatMonth,
     formatTimeOfDay,
-    formatDayTime
+    formatDayTime,
+    formatDate
 } from '../utils/dates.js';
 import { setLang, resetLangForTests } from '../i18n/index.js';
 
@@ -278,5 +279,33 @@ describe('formatters and parse edge cases (#160: mutation score of dates.js)', (
         expect(localDayKeys(from, new Date(2026, 9, 23).getTime())).toEqual(['2026-10-21', '2026-10-22']);
         expect(localDayKeys(from, new Date(2026, 9, 23).getTime() + 1)).toEqual(['2026-10-21', '2026-10-22', '2026-10-23']);
         expect(localDayKeys(from, from + 1)).toEqual(['2026-10-21']);
+    });
+});
+
+describe('formatDate (DATE-TEXT, F0b): one on-screen date and time format', () => {
+    afterEach(() => { setLang('en'); resetLangForTests(); });
+    const at = new Date(2026, 10, 14, 0, 11, 32);
+    const now = new Date(2026, 10, 14, 12);
+
+    test('presets: short, full, time (12-hour, no seconds), datetime, month', () => {
+        expect(['short', 'full', 'time', 'datetime', 'month'].map(p => formatDate(at, p, { now })))
+            .toEqual(['14 Nov', '14 Nov 2026', '12:11 am', '14 Nov, 12:11 am', 'Nov 2026']);
+        expect(formatDate(at)).toBe('14 Nov 2026');
+        expect(formatDate(at, 'datetime', { now: new Date(2027, 0, 1) })).toBe('14 Nov 2026, 12:11 am');
+    });
+
+    test('stored shapes: en-IN text with seconds, ISO, a day key and DD/MM/YYYY (the day alone), nothing usable', () => {
+        expect(formatDate('14/11/2026, 12:10:32 am', 'datetime', { now })).toBe('14 Nov, 12:10 am');
+        expect(formatDate('2025-10-21T21:02:41', 'datetime', { now })).toBe('21 Oct 2025, 9:02 pm');
+        expect(formatDate('2026-11-14', 'datetime', { now })).toBe('14 Nov');
+        expect(formatDate('08/11/2026', 'datetime', { now })).toBe('8 Nov');
+        expect(formatDate('2026-11-08')).toBe('8 Nov 2026');
+        expect([formatDate(null), formatDate('not a date', 'datetime')]).toEqual(['', '']);
+    });
+
+    test('follows the app language', () => {
+        setLang('hi');
+        expect(formatDate(at, 'datetime', { now })).toBe('14 नव॰, 12:11 पूर्वाह्न');
+        expect(formatDate(at, 'full', { lang: 'en' })).toBe('14 Nov 2026');
     });
 });
