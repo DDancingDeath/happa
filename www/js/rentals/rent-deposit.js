@@ -13,6 +13,7 @@ import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
 import { todayLocalISO } from '../utils/dates.js';
 import { formatINR } from '../utils/due-reminder.js';
+import { moneyHtml } from '../ui/components.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import * as store from './rent-store.js';
 import * as ds from './rent-deposit-store.js';
@@ -32,14 +33,14 @@ function tenantOf(tenantId) {
     return { tenant, lease, dues };
 }
 
-const act = (c, action, tenantId, key, cls = '', i = '') => `<button type="button" class="rent-btn${cls}" data-rent-dep data-onclick="rentals.depositAction('${action}', '${c.js(tenantId)}'${i !== '' ? `, ${i}` : ''})">${c.esc(t(key))}</button>`;
+const act = (c, action, tenantId, key, cls = '', i = '') => `<button type="button" class="btn${cls}" data-rent-dep data-onclick="rentals.depositAction('${action}', '${c.js(tenantId)}'${i !== '' ? `, ${i}` : ''})">${c.esc(t(key))}</button>`;
 
 function entryLine(c, e, i, tenantId, owner) {
     const what = [dateLabel(e.date), t(`ui.rent.dep_${e.kind}`), e.month ? monthLabel(e.month, getLang()) : '', e.mode ? t(e.mode === 'advance' ? 'ui.rent.dep_from_advance' : `ui.rent.mode_${e.mode}`) : '']
         .filter(Boolean).join(' · ');
     const edit = owner && e.kind !== 'adjust' && e.mode !== 'advance'
-        ? ` ${act(c, 'edit', tenantId, 'ui.rent.edit', ' rent-btn-small', i)}${act(c, 'remove', tenantId, 'ui.rent.remove', ' rent-btn-small', i)}` : '';
-    return `<li>${c.esc(what)}: <strong>${c.esc(formatINR(e.amount))}</strong>${e.note ? ` · ${c.esc(e.note)}` : ''}
+        ? ` ${act(c, 'edit', tenantId, 'ui.rent.edit', ' btn-sm', i)}${act(c, 'remove', tenantId, 'ui.rent.remove', ' btn-sm', i)}` : '';
+    return `<li>${c.esc(what)}: <strong>${moneyHtml(e.amount)}</strong>${e.note ? ` · ${c.esc(e.note)}` : ''}
         <span class="rent-sub">${c.esc(e.byName || '')}</span>${edit}</li>`;
 }
 
@@ -58,16 +59,16 @@ export async function showDeposit(c, tenantId, dep) {
     const entries = dep?.entries || [];
     const held = depositHeld(entries);
     const rows = entries.map((e, i) => entryLine(c, e, i, tenantId, c.isOwner)).reverse().join('');
-    const add = [act(c, 'received', tenantId, 'ui.rent.dep_add_received', ' rent-btn-primary'),
+    const add = [act(c, 'received', tenantId, 'ui.rent.dep_add_received', ' btn-primary'),
         held > 0 && dues.length ? act(c, 'adjust', tenantId, 'ui.rent.dep_add_adjust') : '',
         held > 0 ? act(c, 'refund', tenantId, 'ui.rent.dep_add_refund') : ''].join('');
-    await c.dialog(`<h3>💰 ${c.esc(t('ui.rent.dep_title'))}: ${c.esc(name)}</h3>
-        <div class="rent-cards">
-            ${lease ? `<div class="rent-card"><div class="rent-card-label">${c.esc(t('ui.rent.dep_agreed'))}</div><div class="rent-card-value">${c.esc(formatINR(lease.deposit || 0))}</div></div>` : ''}
-            <div class="rent-card"><div class="rent-card-label">${c.esc(t('ui.rent.dep_held'))}</div><div class="rent-card-value">${c.esc(formatINR(held))}</div></div>
+    await c.dialog(`<h3>${c.esc(t('ui.rent.dep_title'))}: ${c.esc(name)}</h3>
+        <div class="panel metrics rent-metrics">
+            ${lease ? `<div class="metric"><div class="metric-label">${c.esc(t('ui.rent.dep_agreed'))}</div><div class="metric-value">${moneyHtml(lease.deposit || 0)}</div></div>` : ''}
+            <div class="metric"><div class="metric-label">${c.esc(t('ui.rent.dep_held'))}</div><div class="metric-value">${moneyHtml(held)}</div></div>
         </div>
         <p class="rent-help">${c.esc(t('ui.rent.dep_help'))}</p>
-        ${rows ? `<ul class="rent-months">${rows}</ul>` : `<p class="rent-empty">${c.esc(t('ui.rent.dep_none'))}</p>`}
+        ${rows ? `<ul class="rent-months">${rows}</ul>` : `<p class="empty">${c.esc(t('ui.rent.dep_none'))}</p>`}
         <div class="rent-actions">${add}</div>`, { info: true });
 }
 
@@ -101,7 +102,7 @@ export async function advanceAction(c, chId) {
     setTimeout(() => showHeld(c), 300);
 }
 
-const lbl = (c, key, field) => `<label class="rent-label">${c.esc(t(key))}${field}</label>`;
+const lbl = (c, key, field) => `<label class="field rent-label">${c.esc(t(key))}${field}</label>`;
 
 /** Received / adjust / refund form, or the owner's edit / remove of entry `i`. */
 export async function action(c, kind, tenantId, i) {
@@ -119,13 +120,13 @@ export async function action(c, kind, tenantId, i) {
     const lang = getLang();
     const months = kind === 'adjust' ? dues.map(ch => `<option value="${c.esc(ch.id)}" data-due="${c.esc(depositFill('adjust', held, chargeDue(ch)))}">${c.esc(monthLabel(ch.month, lang))} · ${c.esc(formatINR(chargeDue(ch)))}</option>`).join('') : '';
     const fill = depositFill(kind, held, dues[0] ? chargeDue(dues[0]) : 0, lease?.deposit || 0);
-    const ok = await c.dialog(`<h3>💰 ${c.esc(t(`ui.rent.dep_add_${kind}`))}</h3>
-        <p class="rent-help">${c.esc(t('ui.rent.dep_held'))}: ${c.esc(formatINR(held))}</p>
-        ${months ? lbl(c, 'ui.rent.month', `<select id="rentDepCharge" data-onchange="rentals.fillDue(this)">${months}</select>`) : ''}
-        ${lbl(c, 'ui.rent.amount', `<input id="rentPayAmount" type="number" inputmode="decimal" min="0" step="1" value="${c.esc(fill)}">`)}
-        ${kind === 'adjust' ? '' : lbl(c, 'ui.rent.mode', `<select id="rentDepMode">${PAYMENT_MODES.map(m => `<option value="${m}">${c.esc(t(`ui.rent.mode_${m}`))}</option>`).join('')}</select>`)}
-        ${lbl(c, 'ui.rent.date', `<input id="rentDepDate" type="date" value="${c.esc(todayLocalISO())}">`)}
-        ${lbl(c, 'ui.rent.notes', `<input id="rentDepNote" type="text" maxlength="200">`)}`);
+    const ok = await c.dialog(`<h3>${c.esc(t(`ui.rent.dep_add_${kind}`))}</h3>
+        <p class="rent-help">${c.esc(t('ui.rent.dep_held'))}: ${moneyHtml(held)}</p>
+        ${months ? lbl(c, 'ui.rent.month', `<select class="input" id="rentDepCharge" data-onchange="rentals.fillDue(this)">${months}</select>`) : ''}
+        ${lbl(c, 'ui.rent.amount', `<input class="input" id="rentPayAmount" type="number" inputmode="decimal" min="0" step="1" value="${c.esc(fill)}">`)}
+        ${kind === 'adjust' ? '' : lbl(c, 'ui.rent.mode', `<select class="input" id="rentDepMode">${PAYMENT_MODES.map(m => `<option value="${m}">${c.esc(t(`ui.rent.mode_${m}`))}</option>`).join('')}</select>`)}
+        ${lbl(c, 'ui.rent.date', `<input class="input" id="rentDepDate" type="date" value="${c.esc(todayLocalISO())}">`)}
+        ${lbl(c, 'ui.rent.notes', `<input class="input" id="rentDepNote" type="text" maxlength="200">`)}`);
     if (!ok) return;
     const mode = c.val('rentDepMode');
     const p = {
@@ -153,10 +154,10 @@ async function ownerChange(c, kind, tenantId, lease, entries, i) {
     if (kind === 'remove') {
         if (!await UIManager.showModal(t('msg.rent.confirm_remove'), t('ui.rent.remove'), true)) return;
     } else {
-        const ok = await c.dialog(`<h3>💰 ${c.esc(t('ui.rent.edit'))}: ${c.esc(t(`ui.rent.dep_${e.kind}`))}</h3>
-            ${lbl(c, 'ui.rent.amount', `<input id="rentPayAmount" type="number" inputmode="decimal" min="0" step="1" value="${c.esc(e.amount)}">`)}
-            ${lbl(c, 'ui.rent.date', `<input id="rentDepDate" type="date" value="${c.esc(e.date)}">`)}
-            ${lbl(c, 'ui.rent.notes', `<input id="rentDepNote" type="text" maxlength="200" value="${c.esc(e.note || '')}">`)}`);
+        const ok = await c.dialog(`<h3>${c.esc(t('ui.rent.edit'))}: ${c.esc(t(`ui.rent.dep_${e.kind}`))}</h3>
+            ${lbl(c, 'ui.rent.amount', `<input class="input" id="rentPayAmount" type="number" inputmode="decimal" min="0" step="1" value="${c.esc(e.amount)}">`)}
+            ${lbl(c, 'ui.rent.date', `<input class="input" id="rentDepDate" type="date" value="${c.esc(e.date)}">`)}
+            ${lbl(c, 'ui.rent.notes', `<input class="input" id="rentDepNote" type="text" maxlength="200" value="${c.esc(e.note || '')}">`)}`);
         if (!ok) return;
         const amount = entryAmount(c.val('rentPayAmount'));
         if (!(amount > 0)) { fail({ message: 'amount' }); return; }
@@ -185,12 +186,12 @@ export async function showHeld(c) {
         UIManager.showToast(t('msg.rent.could_not_load'), 'error');
         return;
     }
-    const rows = list.sort((a, b) => String(a.tenantName).localeCompare(String(b.tenantName))).map(l => `<li>${c.esc(l.tenantName || t('ui.rent.no_name'))}: <strong>${c.esc(formatINR(l.held))}</strong>
-        <button type="button" class="rent-btn rent-btn-small" data-onclick="rentals.deposit('${c.js(l.tenantId)}')">${c.esc(t('ui.rent.dep_btn'))}</button></li>`).join('');
-    await c.dialog(`<h3>💰 ${c.esc(t('ui.rent.dep_held_list'))}</h3>
-        <div class="rent-cards"><div class="rent-card"><div class="rent-card-label">${c.esc(t('ui.rent.dep_total'))}</div><div class="rent-card-value">${c.esc(formatINR(depositsTotal(list)))}</div></div></div>
+    const rows = list.sort((a, b) => String(a.tenantName).localeCompare(String(b.tenantName))).map(l => `<li>${c.esc(l.tenantName || t('ui.rent.no_name'))}: <strong>${moneyHtml(l.held)}</strong>
+        <button type="button" class="btn btn-sm" data-onclick="rentals.deposit('${c.js(l.tenantId)}')">${c.esc(t('ui.rent.dep_btn'))}</button></li>`).join('');
+    await c.dialog(`<h3>${c.esc(t('ui.rent.dep_held_list'))}</h3>
+        <div class="panel metrics rent-metrics"><div class="metric"><div class="metric-label">${c.esc(t('ui.rent.dep_total'))}</div><div class="metric-value">${moneyHtml(depositsTotal(list))}</div></div></div>
         <p class="rent-help">${c.esc(t('ui.rent.dep_help'))}</p>
-        ${rows ? `<ul class="rent-months">${rows}</ul>` : `<p class="rent-empty">${c.esc(t('ui.rent.dep_none_held'))}</p>`}
+        ${rows ? `<ul class="rent-months">${rows}</ul>` : `<p class="empty">${c.esc(t('ui.rent.dep_none_held'))}</p>`}
         ${advLeftHtml(c, left)}`, { info: true });
 }
 
@@ -198,7 +199,7 @@ export async function showHeld(c) {
 function advLeftHtml(c, left) {
     // A tenant still renting (a change of unit) gets the advance on the new unit's first month instead.
     const active = new Set(store.snapshot().leases.map(l => l.tenantId));
-    const rows = left.filter(ch => !active.has(ch.tenantId)).map(ch => `<li>${c.esc(ch.tenantName || t('ui.rent.no_name'))} · ${c.esc(monthLabel(ch.month, getLang()))}: <strong>${c.esc(formatINR(ch.adv))}</strong>
-        <button type="button" class="rent-btn rent-btn-small" data-onclick="rentals.advanceToDeposit('${c.js(ch.id)}')">${c.esc(t('ui.rent.adv_to_deposit'))}</button></li>`).join('');
+    const rows = left.filter(ch => !active.has(ch.tenantId)).map(ch => `<li>${c.esc(ch.tenantName || t('ui.rent.no_name'))} · ${c.esc(monthLabel(ch.month, getLang()))}: <strong>${moneyHtml(ch.adv)}</strong>
+        <button type="button" class="btn btn-sm" data-onclick="rentals.advanceToDeposit('${c.js(ch.id)}')">${c.esc(t('ui.rent.adv_to_deposit'))}</button></li>`).join('');
     return rows ? `<p class="rent-label">${c.esc(t('ui.rent.adv_left'))}</p><ul class="rent-months">${rows}</ul>` : '';
 }

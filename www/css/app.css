@@ -12188,6 +12188,23 @@ div.ins-wide,
     grid-template-columns: repeat(5, auto);
   }
 
+  /* The Rentals form sheet is a centred dialog on desktop */
+  .tab .rent-sheet {
+    top: 50%;
+    right: auto;
+    bottom: auto;
+    left: 50%;
+    width: min(480px, 100% - 64px);
+    max-height: 85vh;
+    padding: var(--sp-5);
+    border-radius: var(--r-panel);
+    transform: translate(-50%, -50%);
+  }
+
+  .tab .rent-sheet > .grabber {
+    display: none;
+  }
+
   /* ---------- Billing: mode and the drafts toolbar share one row under the page header (4.2) ---------- */
   .tab > .filter-buttons:has(+ .bill-toolbar) {
     float: left;
