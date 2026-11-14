@@ -216,7 +216,7 @@ www/js/modules/rate-trends.js: kgText(r?.kgSold) ← Math.round(Number(n) || 0).
 www/js/modules/rate-trends.js: kgText(s.kg) ← Math.round(Number(n) || 0).toLocaleString('en-IN')
 www/js/modules/rate-trends.js: kgText(s.kg) ← Math.round(Number(n) || 0).toLocaleString('en-IN')
 www/js/modules/rate-trends.js: n
-www/js/modules/rate-trends.js: new Set(Object.keys(series).map(m => Number(m.slice(0, 4)))) (markup via map((y, i) => `<span><i style="background:${YEAR_COLORS[i]}"></i>${y}</span>`))
+www/js/modules/rate-trends.js: new Set(Object.keys(series).map(m => Number(m.slice(0, 4)))) (markup via map((y, i) => `<span><i class="rt-sw-year" style="--c:${YEAR_COLORS[i]}"></i>${y}</span>`))
 www/js/modules/rate-trends.js: o.confidence ← o = this.outlookFor(kind)
 www/js/modules/rate-trends.js: o.direction ← o = this.outlookFor(kind)
 www/js/modules/rate-trends.js: r ? r.bills : 0 ← r.bills {r = byPeriod.get(p)}
