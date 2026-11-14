@@ -50,7 +50,7 @@ export function moneyInText(text, amounts, opts) {
 
 /**
  * An empty state (`.empty`): the icon in a tile, a title, an optional line and an optional action.
- * @param {{icon?: string, title: *, text?: *, tone?: ''|'pos'|'neg'|'warn'|'accent', action?: {label: *, onclick: string}}} o
+ * @param {{icon?: string, title: *, text?: *, tone?: ''|'pos'|'neg'|'warn'|'accent', action?: ?{label: *, onclick: string}}} o
  *   icon: a sprite name ('receipt'; icon-sprite.test.js checks it); title, text and the action: plain text, escaped here
  * @returns {string}
  */
