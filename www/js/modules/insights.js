@@ -26,7 +26,7 @@ import { OVERDUE_DAYS } from '../utils/aging.js';
 import { getInsightsContext, setInsightsContext, contextMonth } from '../utils/insights-context.js';
 import { figuresFromSnapshot, monthKeyOf, monthKeysBetween, snapshotCustomers as customersOfSnapshot, snapshotItemSales } from '../utils/month-snapshots.js';
 import { MoneyManager } from './money.js';
-import { moneyHtml } from '../ui/components.js';
+import { moneyHtml, emptyState } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { STORAGE_FULL_KEY } from '../utils/storage-full.js';
@@ -438,7 +438,7 @@ export const InsightsManager = {
                 ? t('ui.insights.last_on', { date: formatDay(p.last, { lang }) })
                 : t('ui.insights.last_before', { date: formatDay(historyLoadedFrom(), { lang }) }))}</span></div>`).join('');
         } else {
-            stoppedHtml = `<p class="empty">${esc(t('ui.insights.none_stopped'))}</p>`;
+            stoppedHtml = emptyState({ icon: 'users', title: t('ui.insights.none_stopped') });
         }
         this.html('insightsStopped', stoppedHtml);
     },

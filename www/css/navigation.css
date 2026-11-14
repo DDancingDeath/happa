@@ -419,7 +419,7 @@ body.typing .bottom-nav {
 
 /* The Android update banner sits above the bar, not on it */
 @media (max-width: 1023.98px) {
-  body:not(.biz-rentals) .app-update-banner {
+  body:not(.biz-rentals) .app-update {
     bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
 }

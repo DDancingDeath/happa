@@ -238,49 +238,9 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .settings-biz-bar h2.settings-section-title {
   margin: 0;
 }
-/* "Bluetooth permission needed" banner (#77) */
-.printer-perm-banner {
-  position: fixed;
-  top: calc(var(--sp-2) + env(safe-area-inset-top, 0px));
-  left: 50%;
-  transform: translateX(-50%);
+/* "Bluetooth permission needed" notice (#77): a .notice.float */
+.printer-perm-notice {
   z-index: 9000;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  width: min(92vw, 520px);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: calc(var(--r-control) * 1.25);
-  background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--card-bg);
-  border: 1px solid var(--warning-border);
-  color: var(--on-warning-soft);
-  box-shadow: var(--e2);
-  font-size: var(--fs-sm);
-}
-
-.printer-perm-banner__text {
-  flex: 1;
-}
-
-.printer-perm-banner__allow {
-  min-height: 40px;
-  padding: var(--sp-1) var(--sp-3);
-  border: none;
-  border-radius: var(--r-control);
-  background: var(--btn-primary-bg);
-  color: var(--btn-primary-ink);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-}
-
-.printer-perm-banner__close {
-  min-width: 40px;
-  min-height: 40px;
-  border: none;
-  background: none;
-  color: inherit;
-  font-size: var(--fs-title);
-  cursor: pointer;
 }
 
 /* Theme gallery (redesign 2.6): each preview is real DOM scoped with data-theme / data-mode */

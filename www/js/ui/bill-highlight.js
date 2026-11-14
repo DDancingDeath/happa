@@ -40,6 +40,7 @@ export { AUTO_ROLLBACK_REASON };
 
 const ICON = { block: '⛔', warn: '⚠️' };
 const CLASS = { block: 'bill-check-block', warn: 'bill-check-warn' };
+const TONE = { block: 'neg', warn: 'warn' };
 
 /** @type {Object<string, Object>} kind -> registered form config */
 const forms = {};
@@ -73,7 +74,7 @@ function bind(kind) {
     if (!section || section.dataset.billChecksBound) return section;
     section.dataset.billChecksBound = '1';
     const onEdit = (e) => {
-        if (e.target?.closest?.('.bill-check-banner')) return;
+        if (e.target?.closest?.('.bill-check-notice')) return;
         BillChecksUI.schedule(kind);
     };
     section.addEventListener('input', onEdit);
@@ -162,10 +163,10 @@ function placeLineIssue(cfg, issue, n) {
 }
 
 function ensureBanner(section) {
-    let banner = section.querySelector(':scope > .bill-check-banner');
+    let banner = section.querySelector(':scope > .bill-check-notice');
     if (!banner) {
         banner = document.createElement('div');
-        banner.className = 'bill-check-banner';
+        banner.className = 'notice solid bill-check-notice';
         banner.setAttribute('role', 'status');
         banner.setAttribute('aria-live', 'polite');
         banner.hidden = true;
@@ -178,7 +179,7 @@ function renderBanner(cfg, section, issues, unplaced, firstTarget) {
     const banner = ensureBanner(section);
     if (issues.length === 0) {
         banner.hidden = true;
-        banner.className = 'bill-check-banner';
+        banner.className = 'notice solid bill-check-notice';
         banner.replaceChildren();
         return;
     }
@@ -186,10 +187,10 @@ function renderBanner(cfg, section, issues, unplaced, firstTarget) {
     // The rate still in the entry box can repeat a line's warning: count each problem once
     const { en, hi } = bannerText(new Set(issues.map(i => `${i.id}|${i.en}`)).size);
     banner.hidden = false;
-    banner.className = `bill-check-banner ${CLASS[severity]}`;
+    banner.className = `notice solid ${TONE[severity]} bill-check-notice ${CLASS[severity]}`;
     const head = document.createElement('button');
     head.type = 'button';
-    head.className = 'bill-check-banner-head';
+    head.className = 'bill-check-notice-head';
     head.textContent = `${ICON[severity]} ${getLang() === 'hi' ? hi : en}`;
     head.onclick = () => {
         if (!firstTarget) return;

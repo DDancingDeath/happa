@@ -17,11 +17,11 @@
             <button type="button" data-onclick="billing.clearBill()" class="draft-btn draft-clear-btn" data-i18n="ui.billing.clear">Clear</button>
         </div>
 
-        <div id="autoSaveBanner" class="autosave-banner" role="status" hidden>
-            <span id="autoSaveBannerText"></span>
-            <div class="autosave-banner-actions">
-                <button type="button" class="autosave-restore" data-onclick="billing.resolveRecovery(true)" data-i18n="ui.billing.restore">Restore</button>
-                <button type="button" class="autosave-discard" data-onclick="billing.resolveRecovery(false)" data-i18n="ui.billing.discard">Discard</button>
+        <div id="autoSaveBanner" class="notice warn autosave-notice" role="status" hidden>
+            <span id="autoSaveBannerText" class="grow"></span>
+            <div class="notice-actions">
+                <button type="button" class="btn btn-sm btn-primary" data-onclick="billing.resolveRecovery(true)" data-i18n="ui.billing.restore">Restore</button>
+                <button type="button" class="btn btn-sm btn-ghost" data-onclick="billing.resolveRecovery(false)" data-i18n="ui.billing.discard">Discard</button>
             </div>
         </div>
 

@@ -12,7 +12,7 @@ import { t, getLang } from '../i18n/index.js';
 import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
 import { todayLocalISO } from '../utils/dates.js';
-import { moneyHtml } from '../ui/components.js';
+import { moneyHtml, emptyState } from '../ui/components.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import * as store from './rent-store.js';
 import * as ds from './rent-deposit-store.js';
@@ -68,7 +68,7 @@ export async function showDeposit(c, tenantId, dep) {
             <div class="metric"><div class="metric-label">${c.esc(t('ui.rent.dep_held'))}</div><div class="metric-value">${moneyHtml(held)}</div></div>
         </div>
         <p class="rent-help">${c.esc(t('ui.rent.dep_help'))}</p>
-        ${rows ? `<ul class="rent-months">${rows}</ul>` : `<p class="empty">${c.esc(t('ui.rent.dep_none'))}</p>`}
+        ${rows ? `<ul class="rent-months">${rows}</ul>` : emptyState({ icon: 'coins', title: t('ui.rent.dep_none') })}
         <div class="rent-actions">${add}</div>`, { info: true });
 }
 
@@ -191,7 +191,7 @@ export async function showHeld(c) {
     await c.dialog(`<h3>${c.esc(t('ui.rent.dep_held_list'))}</h3>
         <div class="panel metrics rent-metrics"><div class="metric"><div class="metric-label">${c.esc(t('ui.rent.dep_total'))}</div><div class="metric-value">${moneyHtml(depositsTotal(list))}</div></div></div>
         <p class="rent-help">${c.esc(t('ui.rent.dep_help'))}</p>
-        ${rows ? `<ul class="rent-months">${rows}</ul>` : `<p class="empty">${c.esc(t('ui.rent.dep_none_held'))}</p>`}
+        ${rows ? `<ul class="rent-months">${rows}</ul>` : emptyState({ icon: 'coins', title: t('ui.rent.dep_none_held') })}
         ${advLeftHtml(c, left)}`, { info: true });
 }
 

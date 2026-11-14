@@ -103,7 +103,7 @@ describe('voided bills in History (#75)', () => {
 
     test('the details of a voided bill: banner with reason, who and when; no Edit, Void, Reprint or Share; the owner may delete it for good', async () => {
         await HistoryManager.viewBill('id:P-void', 'purchase');
-        const banner = document.querySelector('.bill-voided-banner');
+        const banner = document.querySelector('.bill-voided-notice');
         expect(banner.textContent).toContain('Reason: Entered twice');
         expect(banner.textContent).toContain('Voided by Ravi');
         expect(['billEditBtn', 'billVoidBtn', 'billReprintBtn', 'billShareBtn', 'billDeleteBtn'].map(shown)).toEqual([false, false, false, false, true]);

@@ -31,7 +31,7 @@ import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity, isArchivedItem } from '../utils/item-catalog.js';
 import { billTimeFor, validateBillDay } from '../utils/bill-date.js';
 import { allowBackdatedCash, billDateWho, lockBillDate, pickedBillDay, prepareBillDate, resetBillDate } from '../ui/bill-date-input.js';
-import { moneyHtml, moneyInText } from '../ui/components.js';
+import { moneyHtml, moneyInText, emptyState } from '../ui/components.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 
@@ -931,7 +931,7 @@ export class WholesaleSalesManager {
             </div>` : '';
 
         if (outstandingSales.length === 0) {
-            container.innerHTML = `${partyNote}<p class="empty">${L(party ? 'ui.outstanding.nothing_for_party' : 'ui.wholesale.no_outstanding_payments')}</p>`;
+            container.innerHTML = `${partyNote}${emptyState({ icon: 'wallet', title: t(party ? 'ui.outstanding.nothing_for_party' : 'ui.wholesale.no_outstanding_payments') })}`;
             return;
         }
 
@@ -1020,7 +1020,7 @@ export class WholesaleSalesManager {
         const recent = filterHistoryBills(this.wholesaleBills().filter(b => isActiveBill(b) && !isOpeningRecord(b)), {}).slice(0, RECENT_SALES);
         if (recent.length === 0) {
             const message = isFullHistoryLoaded() ? t('ui.wholesale.no_sales_yet') : t('ui.wholesale.no_sales_since', { date: formatWindowDate(historyLoadedFrom()) });
-            container.innerHTML = `<p class="empty">${Helpers.escapeHtml(message)}</p>`;
+            container.innerHTML = emptyState({ icon: 'receipt', title: message });
             return;
         }
         container.innerHTML = '';
@@ -1099,7 +1099,7 @@ export class WholesaleSalesManager {
             if (this.historySearch) message = t('ui.history.no_results_for', { searchTerm: this.historySearch });
             else if (ranged) message = t('ui.history.none_in_period', { noun: t('ui.history.noun_wholesale') });
             else message = isFullHistoryLoaded() ? t('ui.wholesale.no_sales_yet') : t('ui.wholesale.no_sales_since', { date: formatWindowDate(historyLoadedFrom()) });
-            container.innerHTML = `<p class="empty">${Helpers.escapeHtml(message)}</p>`;
+            container.innerHTML = emptyState({ icon: 'receipt', title: message });
             placeToggle();
             return;
         }

@@ -27,7 +27,7 @@ import { moneyText } from '../utils/money.js';
 import { numberCheckFlags } from '../utils/number-check-flags.js';
 import { safeSetItem } from '../utils/storage-full.js';
 import { icon } from '../ui/icons.js';
-import { moneyHtml } from '../ui/components.js';
+import { moneyHtml, emptyState } from '../ui/components.js';
 
 const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const jsAttr = (v) => Helpers.escapeJsAttr(String(v ?? ''));
@@ -446,10 +446,10 @@ export const AnomaliesManager = {
             </div>
             <div class="tone-muted anom-card-sub">${esc(formatDayKey(today))} · ${esc(this.cashStatusLine())}</div>
             <div class="anom-chips">${chips}</div>
-            ${s.total ? `<ul class="anom-types">${types}</ul>${tops}` : `<p class="empty">${esc(t('ui.anom.none_today'))}</p>`}
+            ${s.total ? `<ul class="anom-types">${types}</ul>${tops}` : emptyState({ icon: 'check', tone: 'pos', title: t('ui.anom.none_today') })}
             <div class="anom-queue">
                 <div class="anom-queue-title">${esc(t('ui.anom.needs_review', { n: queue.length }))}</div>
-                ${queue.length ? bySev : `<p class="empty">${esc(t('ui.anom.nothing_to_review'))}</p>`}
+                ${queue.length ? bySev : emptyState({ icon: 'check', tone: 'pos', title: t('ui.anom.nothing_to_review') })}
             </div>
             <div class="anom-card-actions">
                 <button type="button" class="btn" data-onclick="anomalies.shareDayReport()">${icon('wa')} WhatsApp</button>
@@ -833,7 +833,7 @@ export const AnomaliesManager = {
         if (this.page.view === 'list') {
             listEl.innerHTML = this.page.loading && !list.length
                 ? `<p class="empty">${esc(t('ui.anom.loading'))}</p>`
-                : list.length ? list.map(a => this.rowHtml(a)).join('') : `<p class="empty">${esc(t('ui.anom.none_for_filters'))}</p>`;
+                : list.length ? list.map(a => this.rowHtml(a)).join('') : emptyState({ icon: 'search', title: t('ui.anom.none_for_filters') });
         } else {
             this.renderPatterns(list);
         }
@@ -854,7 +854,7 @@ export const AnomaliesManager = {
         const heat = document.getElementById('anomalyHeat');
         if (heat) {
             if (!p.heat.items.length) {
-                heat.innerHTML = `<p class="empty">${esc(t('ui.anom.no_item_data'))}</p>`;
+                heat.innerHTML = emptyState({ icon: 'box', title: t('ui.anom.no_item_data') });
             } else {
                 const max = Math.max(1, ...p.heat.items.flatMap(i => p.heat.types.map(ty => p.heat.cells[i][ty] || 0)));
                 heat.innerHTML = `<div class="anom-scroll"><table class="table anom-heat"><thead><tr><th>${esc(t('ui.anom.th_item'))}</th>${p.heat.types.map(ty => `<th title="${loc(typeLabel(ty))}">${loc(typeLabel(ty))}</th>`).join('')}</tr></thead><tbody>${p.heat.items.map(i => `<tr><td>${esc(i)}</td>${p.heat.types.map(ty => {
@@ -871,7 +871,7 @@ export const AnomaliesManager = {
                     const top = Object.entries(u.byType).sort((a, b) => b[1] - a[1])[0];
                     return `<tr><td>${esc(u.name)}</td><td>${esc(u.count)}</td><td>${esc(u.high)}</td><td>${top ? `${loc(typeLabel(top[0]))} (${esc(top[1])})` : ''}</td></tr>`;
                 }).join('')}</tbody></table></div>`
-                : `<p class="empty">${esc(t('ui.anom.no_user_data'))}</p>`;
+                : emptyState({ icon: 'user', title: t('ui.anom.no_user_data') });
         }
 
         const hours = document.getElementById('anomalyByHour');

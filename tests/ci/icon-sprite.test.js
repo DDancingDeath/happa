@@ -56,6 +56,17 @@ test('every icon() call names a symbol, as a constant', () => {
     expect(missing).toEqual([]);
 });
 
+test('every emptyState() icon names a symbol, as a constant', () => {
+    const bad = [];
+    for (const f of walk('www/js', '.js')) {
+        for (const m of read(f).matchAll(/\bemptyState\(\{\s*icon:\s*([^,}]*)/g)) {
+            const name = /^'(\w+)'$/.exec(m[1].trim());
+            if (!name || !ids.includes(`i-${name[1]}`)) bad.push(`${f}: ${m[1]}`);
+        }
+    }
+    expect(bad).toEqual([]);
+});
+
 test('icons are decorative and the menu, tab bar and bell use them', () => {
     const uses = [...NAV.replace(sprite, '').matchAll(/<svg class="i[^"]*"[^>]*>/g)].map((m) => m[0]);
     expect(uses.length).toBeGreaterThan(0);

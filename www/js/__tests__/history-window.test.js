@@ -217,20 +217,20 @@ describe('applyRangeState', () => {
 
         hw.applyRangeState([a, b], 'loading', { loadingText: 'Loading full history…' });
         const notice = a.previousElementSibling;
-        expect(notice.classList.contains('history-range-notice')).toBe(true);
+        expect(notice.classList.contains('history-range-note')).toBe(true);
         expect(notice.textContent).toContain('Loading full history…');
         expect(a.classList.contains('history-range-loading')).toBe(true);
         expect(b.classList.contains('history-range-loading')).toBe(true);
 
         const onRetry = jest.fn();
         hw.applyRangeState([a, b], 'error', { onRetry });
-        expect(document.querySelectorAll('.history-range-notice')).toHaveLength(1);
+        expect(document.querySelectorAll('.history-range-note')).toHaveLength(1);
         expect(a.classList.contains('history-range-loading')).toBe(false);
         notice.querySelector('button').click();
         expect(onRetry).toHaveBeenCalled();
 
         hw.applyRangeState([a, b], 'ready');
-        expect(document.querySelector('.history-range-notice')).toBeNull();
+        expect(document.querySelector('.history-range-note')).toBeNull();
     });
 });
 

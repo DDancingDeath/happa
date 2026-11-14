@@ -70,7 +70,7 @@ afterEach(() => {
 });
 
 const $ = (id) => document.getElementById(id);
-const banner = () => document.querySelector('#testSection > .bill-check-banner');
+const banner = () => document.querySelector('#testSection > .bill-check-notice');
 
 describe('live marks', () => {
     test('a payment problem marks cash + due red with aria and one reason under the split row', () => {
