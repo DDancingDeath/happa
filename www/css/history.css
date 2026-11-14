@@ -2,7 +2,7 @@
 .history-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--sp-3);
   font-weight: var(--w-strong);
   font-size: var(--fs-body);
   color: var(--ink);
@@ -11,21 +11,21 @@
 .history-date {
   color: var(--ink-2);
   font-size: var(--fs-sm);
-  margin-bottom: 8px;
+  margin-bottom: var(--sp-2);
 }
 
 .bill-row__items {
   font-size: var(--fs-sm);
   color: var(--ink-2);
-  margin-bottom: 8px;
+  margin-bottom: var(--sp-2);
   font-weight: var(--w-strong);
 }
 
 .history-payment {
   font-size: var(--fs-sm);
-  margin: 8px 0;
+  margin: var(--sp-2) 0;
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
   flex-wrap: wrap;
 }
 
@@ -164,7 +164,7 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  margin: 8px 0 12px;
+  margin: var(--sp-2) 0 var(--sp-3);
 }
 
 .history-range-loading {
@@ -275,7 +275,7 @@
     "meta meta meta";
   align-items: baseline;
   column-gap: 10px;
-  row-gap: 4px;
+  row-gap: var(--sp-1);
   border: 1px solid var(--panel-border);
   border-radius: var(--r-panel);
   background: var(--panel-bg);
@@ -382,7 +382,7 @@
   min-width: 0;
   max-width: 100%;
   margin: 0;
-  gap: 4px;
+  gap: var(--sp-1);
   font-size: var(--fs-caption);
 }
 
@@ -408,7 +408,7 @@
 }
 
 .bill-group__title {
-  margin: 0 12px 8px;
+  margin: 0 var(--sp-3) var(--sp-2);
   font-size: var(--fs-caption);
   font-weight: var(--w-strong);
   color: var(--accent-text);
@@ -418,7 +418,7 @@
 .history-stale-hint {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   margin: 2px 0 8px;
   font-size: var(--fs-sm);
   color: var(--ink-2);
@@ -474,7 +474,7 @@
 }
 
 .bill-table__chips .payment-badge {
-  margin: 0 4px 4px 0;
+  margin: 0 var(--sp-1) var(--sp-1) 0;
 }
 
 .bill-table__group th {
@@ -491,7 +491,7 @@
 
 /* Wholesale › History controls */
 .wholesale-history-controls {
-  margin-bottom: 4px;
+  margin-bottom: var(--sp-1);
 }
 
 @media (max-width: 480px) {
@@ -544,7 +544,7 @@
 .bill-voided-notice {
   flex-direction: column;
   gap: var(--sp-1);
-  margin: 0 0 12px;
+  margin: 0 0 var(--sp-3);
   color: var(--ink);
 }
 
@@ -554,7 +554,7 @@
 }
 
 .bill-edits {
-  margin-top: 12px;
+  margin-top: var(--sp-3);
   font-size: var(--fs-sm);
   color: var(--ink-2);
 }
@@ -570,11 +570,11 @@
 }
 
 .bill-edits__list {
-  margin-top: 8px;
+  margin-top: var(--sp-2);
 }
 
 .bill-edit {
-  margin-bottom: 8px;
+  margin-bottom: var(--sp-2);
   padding: 8px 10px;
   border-radius: var(--r-control);
   background: var(--surface-2);
@@ -591,7 +591,7 @@
 }
 
 .bill-edit__changes {
-  margin: 4px 0 0;
+  margin: var(--sp-1) 0 0;
   padding-left: 18px;
 }
 
@@ -748,7 +748,7 @@
 /* A bill date that can't be read (#80) */
 .bad-date-badge {
   display: inline-block;
-  margin-left: 4px;
+  margin-left: var(--sp-1);
   padding: 1px 6px;
   border-radius: var(--r-sm);
   font-size: var(--fs-caption);

@@ -453,7 +453,7 @@ export const DayManager = {
         const label = (key) => Helpers.escapeHtml(t(key));
         const countKey = type === 'purchase' ? 'ui.today.purchases_label' : 'ui.today.sales_label';
         container.innerHTML = itemsArray.map(item => `
-                <div class="row today-item">
+                <div class="row day-item">
                     <div class="row-main">
                         <div class="row-title">${Helpers.escapeHtml(item.name)}</div>
                         <div class="row-meta">${label(countKey)} <strong>${item.count}x</strong> · ${label('ui.today.qty_label')} <strong>${formatKg(item.quantity)} kg</strong> · ${label('ui.billing.total_colon')} <strong class="row-amt">${moneyText(item.totalValue)}</strong> · ${label('ui.today.avg_rate_label')} <strong>${formatRate(item.avgRate ?? 0)}/kg</strong></div>
@@ -516,7 +516,7 @@ export const DayManager = {
             return `<tr><td>${esc(name || t('ui.reports.unknown'))}</td><td>${esc(formatKg(kg))}</td><td>${esc(packets)}</td><td>${esc(moneyText(amount))}</td></tr>`;
         }).join('') : `<tr><td colspan="4">${esc(t('ui.today.no_purchases_today'))}</td></tr>`;
         const html = `
-            <table class="table labour-breakdown-table">
+            <table class="table labour-breakdown">
                 <thead><tr><th>${esc(t('ui.today.labour_col_bill'))}</th><th>${esc(t('ui.today.labour_col_kg'))}</th><th>${esc(t('ui.today.labour_col_packets'))}</th><th>${esc(t('ui.today.labour_col_deducted'))}</th></tr></thead>
                 <tbody>${body}</tbody>
                 <tfoot><tr><th>${esc(t('ui.today.labour_total'))}</th><th>${esc(formatKg(toPay.kg))}</th><th>${esc(packets)}</th><th>${esc(moneyText(deducted.amount))}</th></tr></tfoot>

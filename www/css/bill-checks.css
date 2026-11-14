@@ -19,7 +19,7 @@
     z-index: var(--z-sticky);
     flex-direction: column;
     gap: var(--sp-1);
-    margin: 0 0 12px;
+    margin: 0 0 var(--sp-3);
     border: 1px solid var(--negative-line);
     border-radius: var(--r-panel);
 }
@@ -43,7 +43,7 @@
 
 .bill-check-notice ul {
     margin: 0;
-    padding-left: 4px;
+    padding-left: var(--sp-1);
     list-style: none;
 }
 
@@ -94,7 +94,7 @@ tr.bill-check-line > td {
 }
 
 tr.bill-check-line .bill-check-msg {
-    margin: 0 0 4px;
+    margin: 0 0 var(--sp-1);
 }
 
 .bill-check-save-blocked {
@@ -108,8 +108,8 @@ tr.bill-check-line .bill-check-msg {
 }
 
 .bill-check-list {
-    margin: 0 0 12px;
-    padding-left: 4px;
+    margin: 0 0 var(--sp-3);
+    padding-left: var(--sp-1);
     list-style: none;
     text-align: left;
 }
@@ -117,7 +117,7 @@ tr.bill-check-line .bill-check-msg {
 .bill-check-reason {
     width: 100%;
     margin-top: 6px;
-    padding: 8px;
+    padding: var(--sp-2);
     box-sizing: border-box;
 }
 
