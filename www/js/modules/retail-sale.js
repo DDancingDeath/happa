@@ -254,6 +254,7 @@ const RetailSaleManager = {
         
         itemSelect.selectedIndex = 0;
         rateInput.value = '';
+        clearFieldError('saleRate');
         if (weightInput) weightInput.value = '';
         
         itemSelect.focus();
@@ -378,6 +379,7 @@ const RetailSaleManager = {
             
             setTimeout(() => {
                 document.getElementById('saleRate').value = item.rate;
+                clearFieldError('saleRate');
             }, 50);
         }
         
@@ -750,6 +752,7 @@ const RetailSaleManager = {
         const totalReceivedEl = document.getElementById('totalReceived');
         if (totalReceivedEl) totalReceivedEl.textContent = '0';
         resetBillDate('saleDate');
+        clearFieldError('saleRate');
         this.billingManager?.focusFirstItem?.();
     },
 

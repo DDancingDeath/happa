@@ -318,4 +318,19 @@ describe('field error (Field pattern)', () => {
         clearFieldError('rate');
         expect(showFieldError('missing', 'x')).toBe(false);
     });
+
+    test('live checks keep aria-invalid on an input while its field error is shown', () => {
+        jest.useFakeTimers();
+        const rate = document.getElementById('rate');
+        rate.dataset.billCheck = 'warn';
+        rate.setAttribute('aria-invalid', 'true');
+        showFieldError('rate', 'Please enter a valid rate');
+        document.getElementById('party').dispatchEvent(new Event('input', { bubbles: true }));
+        jest.advanceTimersByTime(CHECK_DEBOUNCE_MS + 10);
+        expect(rate.dataset.billCheck).toBeUndefined();
+        expect(rate.getAttribute('aria-invalid')).toBe('true');
+        expect(rate.getAttribute('aria-describedby')).toBe('rate-error');
+        clearFieldError('rate');
+        expect(rate.hasAttribute('aria-invalid')).toBe(false);
+    });
 });

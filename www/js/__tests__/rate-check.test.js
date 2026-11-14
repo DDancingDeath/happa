@@ -389,6 +389,26 @@ describe('Add to bill on the three forms (OD-02)', () => {
         expect(WholesaleSalesManager.getItems()).toEqual([expect.objectContaining({ rate: 5.4, qty: 10, total: 54, rateCheck: expect.objectContaining({ rate: 5.4, todayRate: 27 }) })]);
     });
 
+    test('purchase: the rate error shows under Rate, and taking a line back to edit removes it', async () => {
+        document.body.innerHTML = PURCHASE_DOM;
+        setVal('billItem', 1);
+        setVal('newWeight', 15);
+        await PurchaseManager.addToBill();
+        const rate = document.getElementById('billRate');
+        expect(document.getElementById('billRate-error').textContent).toBe('Please enter a valid rate');
+        expect(rate.getAttribute('aria-invalid')).toBe('true');
+        expect(UIManager.showToast).not.toHaveBeenCalledWith('Please enter a valid rate');
+
+        PurchaseManager.setWeights([]);
+        PurchaseManager.setBillItems([{ itemId: 'item-wheat', name: 'Wheat', rate: 24, qty: 15, total: 360, weights: [15] }]);
+        await PurchaseManager.editBillItem(0);
+        await new Promise(r => setTimeout(r, 60)); // editBillItem puts the rate back after 50 ms
+        expect(rate.value).toBe('24');
+        expect(document.getElementById('billRate-error')).toBeNull();
+        expect(rate.hasAttribute('aria-invalid')).toBe(false);
+        expect(rate.hasAttribute('aria-describedby')).toBe(false);
+    });
+
     test('purchase bag: 485 kg asks; Fix weight keeps it in the box; confirmed it goes on the line', async () => {
         document.body.innerHTML = PURCHASE_DOM;
         setVal('billItem', 1);

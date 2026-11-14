@@ -137,6 +137,7 @@ export class WholesaleSalesManager {
         const sellRateEl = document.getElementById("sellRate");
         
         if (!availableStockEl || !avgRateEl || !sellRateEl) return;
+        clearFieldError('sellRate');
 
         const approxEl = document.getElementById("availableStockApprox");
         if (approxEl) {
@@ -567,6 +568,7 @@ export class WholesaleSalesManager {
             document.getElementById('wholesaleCustomerName').value = '';
             document.getElementById('sellQuantity').value = '';
             document.getElementById('sellRate').value = '';
+            clearFieldError('sellRate');
             document.getElementById('salesComments').value = '';
             document.getElementById('salesExpensesAmount').value = '0';
             this.resetPaymentFields();

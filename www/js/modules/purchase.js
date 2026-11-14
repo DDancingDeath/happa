@@ -384,6 +384,7 @@ const PurchaseManager = {
             
             setTimeout(() => {
                 document.getElementById('billRate').value = item.rate;
+                clearFieldError('billRate');
             }, 50);
         }
         
@@ -839,6 +840,7 @@ const PurchaseManager = {
         });
         
         resetBillDate('billDate');
+        clearFieldError('billRate');
         this.updateTotals();
         this.billingManager?.focusFirstItem?.();
     },

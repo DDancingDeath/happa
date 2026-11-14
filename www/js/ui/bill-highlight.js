@@ -135,7 +135,7 @@ function clearMarks(section) {
     section.querySelectorAll('.bill-check-msg:not([data-field-error]), .bill-check-line').forEach(el => el.remove());
     section.querySelectorAll('[data-bill-check]').forEach(el => {
         el.classList.remove(CLASS.block, CLASS.warn);
-        el.removeAttribute('aria-invalid');
+        if (!(el.id && byId(`${el.id}-error`)?.hasAttribute('data-field-error'))) el.removeAttribute('aria-invalid');
         const describedBy = (el.getAttribute('aria-describedby') || '').split(' ')
             .filter(id => id && !id.startsWith('billcheck-')).join(' ');
         if (describedBy) el.setAttribute('aria-describedby', describedBy);
