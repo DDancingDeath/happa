@@ -190,10 +190,10 @@ describe('Today Labour card (single language)', () => {
 
     test('English: deducted, to pay with its working, and the difference', () => {
         const card = render('en');
-        expect(card).toContain('Deducted from farmers: ₹72 (1 bill)');
-        expect(card).toContain('Paid to labourers: ₹0 (0 expenses)');
+        expect(card).toContain('Deducted from farmers ₹72 (1 bill)');
+        expect(card).toContain('Paid to labourers ₹0 (0 expenses)');
         expect(card).toContain('₹72 less paid than deducted');
-        expect(card).toContain('To pay labour (estimate): ₹174 (1,000 kg ÷ 35 kg = 29 packages × ₹6)');
+        expect(card).toContain('To pay labour (estimate) ₹174 (1,000 kg ÷ 35 kg = 29 packages × ₹6)');
         expect(card).toContain('The estimate is ₹102 more than deducted');
         expect(card).toContain('A part package counts as a full one.');
         expect(card).not.toMatch(DEVANAGARI);
@@ -201,10 +201,10 @@ describe('Today Labour card (single language)', () => {
 
     test('Hindi: the same numbers with no English words', () => {
         const card = render('hi');
-        expect(card).toContain('किसानों से काटी गई: ₹72 (1 बिल)');
-        expect(card).toContain('मज़दूरों को दिया: ₹0 (0 खर्च)');
+        expect(card).toContain('किसानों से काटी गई ₹72 (1 बिल)');
+        expect(card).toContain('मज़दूरों को दिया ₹0 (0 खर्च)');
         expect(card).toContain('काटी गई से ₹72 कम दिया');
-        expect(card).toContain('मज़दूरों को देनी है (अनुमान): ₹174 (1,000 kg ÷ 35 kg = 29 बोरी × ₹6)');
+        expect(card).toContain('मज़दूरों को देनी है (अनुमान) ₹174 (1,000 kg ÷ 35 kg = 29 बोरी × ₹6)');
         expect(card).toContain('₹102 ज़्यादा');
         expect(card).not.toMatch(LATIN_WORD);
     });

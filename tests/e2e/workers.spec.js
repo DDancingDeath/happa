@@ -58,7 +58,7 @@ test('the owner records an advance and the rest; the month goes part-paid, then 
     await expect(row(page, name).locator('[data-wp-state]')).toHaveText('Paid');
 
     await page.evaluate(() => window.app.i18n.setLang('hi'));
-    await expect(page.locator('#workers h2')).toHaveText('कर्मचारी / वेतन');
+    await expect(page.locator('#workers h2')).toHaveText('कर्मचारी');
     await expect(row(page, name).locator('[data-wp-state]')).toHaveText('चुकाया');
     await expect(row(page, name)).toContainText('एडवांस ₹2,000 अगले महीने में गया');
     await page.evaluate(() => window.app.i18n.setLang('en'));

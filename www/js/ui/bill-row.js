@@ -67,6 +67,12 @@ export function billRowDate(bill) {
 }
 
 /** "Date?" badge for a date that can't be read (title says why). */
+/** "By {name}" with the name escaped (and in <strong> unless strong is false). */
+export function byNameHtml(name, strong = true) {
+    const who = Helpers.escapeHtml(name);
+    return L('ui.outstanding.by_name').replace('{name}', () => (strong ? `<strong>${who}</strong>` : who));
+}
+
 export function badDateBadgeHtml() {
     return ` <span class="bad-date-badge" title="${L('ui.history.bad_date_title')}">${L('ui.history.bad_date')}</span>`;
 }
@@ -139,7 +145,7 @@ export function buildBillRow(bill, { onclick, kind, rowTap = false, typeTag = fa
         <span class="bill-row__party" title="${Helpers.escapeHtml(party)}">${party ? `<strong>${Helpers.escapeHtml(party)}</strong>` : '—'}</span>
         <span class="bill-row__amount">${Helpers.escapeHtml(billListAmountText(bill))}</span>
         <span class="bill-row__meta">
-            <span class="bill-row__date">${Helpers.escapeHtml(date.text)}${date.bad ? badDateBadgeHtml() : ''}${by ? `<span class="bill-row__by"> • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(by)}</strong></span>` : ''}</span>
+            <span class="bill-row__date">${Helpers.escapeHtml(date.text)}${date.bad ? badDateBadgeHtml() : ''}${by ? `<span class="bill-row__by"> • ${byNameHtml(by)}</span>` : ''}</span>
             <span class="bill-row__items history-summary" title="${Helpers.escapeHtml(items)}">${Helpers.escapeHtml(items)}</span>
             <span class="bill-row__chips history-payment">${tag}${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${opening ? '' : SyncStatus.chipHtml(bill?.id)}${voidedChipHtml(bill)}${printStatusChipHtml(bill)}${paymentChipsHtml(bill)}</span>
         </span>
@@ -298,7 +304,7 @@ export function billTableHtml(bills, { onclickFor, openings = [], voided = [], t
                 <td class="bill-table__no" title="#${Helpers.escapeHtml(number)}">#${Helpers.escapeHtml(number)}</td>
                 <td class="bill-table__party">${Helpers.escapeHtml(bill?.customerName || '—')}</td>
                 <td class="bill-table__amount">${Helpers.escapeHtml(billListAmountText(bill))}</td>
-                <td class="bill-table__date">${Helpers.escapeHtml(date.text)}${date.bad ? badDateBadgeHtml() : ''}${by ? `<div class="bill-table__by">${L('ui.outstanding.by')} ${Helpers.escapeHtml(by)}</div>` : ''}</td>
+                <td class="bill-table__date">${Helpers.escapeHtml(date.text)}${date.bad ? badDateBadgeHtml() : ''}${by ? `<div class="bill-table__by">${byNameHtml(by, false)}</div>` : ''}</td>
                 <td class="bill-table__items">${tableItemsHtml(bill)}</td>
                 <td class="bill-table__chips">${typeTags ? typeTagHtml(bill?.type) : ''}${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${opening ? '' : SyncStatus.chipHtml(bill?.id)}${voidedChipHtml(bill)}${printStatusChipHtml(bill)}${paymentChipsHtml(bill)}</td>
             </tr>`;
