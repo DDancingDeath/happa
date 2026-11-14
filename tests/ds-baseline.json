@@ -10,7 +10,7 @@
     "themeSelector": 6,
     "inlineStyle": 36,
     "emoji": 12,
-    "titleCase": 17,
+    "titleCase": 15,
     "legacyClass": 232
   },
   "strict": [
@@ -183,11 +183,9 @@
       "www/js/i18n/en.js#ui.billing": 1,
       "www/js/i18n/en.js#ui.history": 1,
       "www/js/i18n/en.js#ui.insights": 5,
-      "www/js/i18n/en.js#ui.nav": 1,
       "www/js/i18n/en.js#ui.settings": 1,
       "www/js/i18n/en.js#ui.statements": 1,
-      "www/js/i18n/en.js#ui.today": 3,
-      "www/js/i18n/en.js#ui.workers": 1
+      "www/js/i18n/en.js#ui.today": 3
     },
     "legacyClass": {
       "www/js/modules/day.js": 3,

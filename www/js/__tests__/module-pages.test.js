@@ -403,7 +403,7 @@ describe('Today (day.js)', () => {
         expect(val('todayCashPaid')).toBe(money(1000 + 230));
         expect(val('todayTotalIn')).toBe(money(3300));
         expect(val('todayTotalOut')).toBe(money(1730));
-        expect(val('todayCashFlowLabel')).toBe('Net inflow:');
+        expect(val('todayCashFlowLabel')).toBe('Net inflow');
         expect(val('todayNetCashFlow')).toBe(money(1570));
         expect(val('todayDueToReceive')).toBe(money(2495));
         expect(val('todayDueToPay')).toBe(money(1068));

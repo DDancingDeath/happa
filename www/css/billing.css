@@ -328,6 +328,7 @@ input[type="number"] {
   background-color: transparent;
   box-shadow: none;
   color: var(--ink-2);
+  font-weight: var(--w-label);
 }
 
 #billing .bill-toolbar .draft-clear-btn {

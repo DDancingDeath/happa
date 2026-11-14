@@ -16,6 +16,12 @@
     /* Desktop density (DIRECTION §5): 36 px controls, 44 px rows */
     --control-h: 36px;
     --row-h: 44px;
+    /* Desktop type scale (DIRECTION §3.2); html[lang="hi"] keeps its larger --fs-sm / --fs-body */
+    --fs-body: 14px;
+    --fs-lead: 16px;
+    --fs-title: 18px;
+    --fs-display: 26px;
+    --fs-hero: 30px;
   }
 
   /* ---------- App shell (redesign 4.2): page header, permanent sidebar, no menu button or overlay ---------- */
@@ -639,6 +645,20 @@
   .anom-actions {
     flex: 0 0 auto;
     justify-content: flex-end;
+  }
+
+  /* Today's side column is too narrow for one line: the review buttons go under the reason */
+  .day-report-card .anom-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .day-report-card .anom-row-body {
+    flex-basis: 100%;
+  }
+
+  .day-report-card .anom-actions {
+    justify-content: flex-start;
   }
 
   /* Rate trends page (#65): pickers in one row, outlooks side by side */
