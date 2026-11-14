@@ -245,7 +245,7 @@ const AdminManager = {
                         <option value="staff">${Helpers.escapeHtml(Helpers.roleLabel('staff'))}</option>
                         <option value="manager">${Helpers.escapeHtml(Helpers.roleLabel('manager'))}</option>
                     </select>
-                    <button type="button" class="btn btn-sm btn-primary btn-approve" data-onclick="admin.approveUser('${id}')">
+                    <button type="button" class="btn btn-sm btn-tonal btn-approve" data-onclick="admin.approveUser('${id}')">
                         ${icon('check', 'i-sm')} ${tx('ui.admin.approve')}
                     </button>
                     <button type="button" class="btn btn-sm btn-reject" data-onclick="admin.rejectUser('${id}')">

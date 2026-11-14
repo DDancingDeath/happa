@@ -9,6 +9,7 @@
 import { Helpers } from '../utils/helpers.js';
 import { t, getLang, tn } from '../i18n/index.js';
 import { emptyState } from './components.js';
+import { icon } from './icons.js';
 import {
     CARDS, buildBreakdown, searchRows, sortRows, groupRows, groupOptions, sumRows, billsOfLines, PAGE_SIZE
 } from '../utils/finance-breakdown.js';
@@ -187,12 +188,12 @@ export const FinanceBreakdownSheet = {
         root.innerHTML = `
             <div class="fin-sheet" role="document">
                 <div class="fin-sheet-header">
-                    ${this.stack.length > 1 ? `<button type="button" class="fin-sheet-btn" data-action="back" aria-label="${esc(t('ui.finance.back'))}">←</button>` : ''}
+                    ${this.stack.length > 1 ? `<button type="button" class="btn btn-ghost btn-icon" data-action="back" aria-label="${esc(t('ui.finance.back'))}">${icon('chevL')}</button>` : ''}
                     <div class="fin-sheet-title">
                         <h3>${esc(t(b.label))}</h3>
                         <span>${esc(this.period)}</span>
                     </div>
-                    <button type="button" class="fin-sheet-btn" data-action="close" aria-label="${esc(t('ui.common.close'))}">✕</button>
+                    <button type="button" class="btn btn-ghost btn-icon" data-action="close" aria-label="${esc(t('ui.common.close'))}">${icon('x')}</button>
                 </div>
                 <div class="fin-sheet-value">${esc(moneyText(b.value, 'signed'))}</div>
                 ${formula ? `<div class="fin-sheet-formula">${formula}</div>` : ''}
@@ -245,7 +246,7 @@ export const FinanceBreakdownSheet = {
 
     moreHtml(left) {
         return left > 0
-            ? `<button type="button" class="history-search-older-btn fin-more" data-action="more">${esc(t('ui.finance.show_more', { count: Math.min(left, PAGE_SIZE) }))}</button>`
+            ? `<button type="button" class="btn btn-tonal btn-sm fin-more" data-action="more">${esc(t('ui.finance.show_more', { count: Math.min(left, PAGE_SIZE) }))}</button>`
             : '';
     },
 

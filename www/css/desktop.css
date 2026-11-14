@@ -554,9 +554,13 @@
     justify-content: flex-end;
   }
 
-  .bill-details-footer .bill-action-btn {
+  .bill-details-footer > .btn {
     flex: 0 0 auto;
     min-width: 120px;
+  }
+
+  .bill-details-footer > [data-dismiss] {
+    margin-right: auto;
   }
 
   /* ---------- Android update banner: keep clear of the permanent sidebar ---------- */

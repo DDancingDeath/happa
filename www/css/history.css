@@ -133,8 +133,7 @@
 }
 
 .infinite-scroll-more,
-.history-range-retry,
-.history-search-older-btn {
+.history-range-retry {
   margin-left: 6px;
   padding: 6px 14px;
   border: 1px solid var(--primary-border);
@@ -144,11 +143,6 @@
   font-weight: var(--w-strong);
   font-size: var(--fs-sm);
   cursor: pointer;
-}
-
-.history-search-older-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
 }
 
 .history-search-footer {
@@ -500,34 +494,9 @@
   margin-bottom: 4px;
 }
 
-/* ==================== REPRINT / SHARE (#136) ==================== */
-.bill-action-btn.btn-reprint {
-  background: var(--primary-soft);
-  color: var(--on-primary-soft);
-  box-shadow: inset 0 0 0 1px var(--primary-border);
-}
-
-.bill-action-btn.btn-reprint:hover {
-  background: var(--primary-soft);
-}
-
-.bill-action-btn.btn-share {
-  background: var(--btn-success);
-  color: var(--btn-sale-ink);
-}
-
-.bill-action-btn.btn-share:hover {
-  background-image: linear-gradient(var(--state-hover), var(--state-hover));
-}
-
 @media (max-width: 480px) {
   .history-apply-range {
     flex: 1 1 100%;
-  }
-
-  .bill-details-footer .bill-action-btn {
-    padding: 10px 4px;
-    font-size: var(--fs-sm);
   }
 }
 /* Voided bills (#75): hidden by default, greyed with a chip and the reason when shown */
@@ -647,16 +616,15 @@
 }
 
 /* #124: Edit / Void past the edit window: shown, greyed, with the reason */
-.bill-action-btn.bill-action-locked {
-    opacity: 0.55;
+.bill-action-locked {
     filter: grayscale(1);
 }
 
-.bill-action-btn.bill-action-locked::before {
+.bill-action-locked::before {
     content: '\1F512  ';
 }
 
-.bill-action-btn.bill-action-locked::after {
+.bill-action-locked::after {
     content: ' · ' attr(data-locked-label);
     font-size: 0.85em;
 }

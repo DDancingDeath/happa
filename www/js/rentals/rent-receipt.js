@@ -282,7 +282,7 @@ export async function showHistory(env, tenantId) {
         </div>`).join('');
     const unpaid = missing.map((x, i) => `<div class="rent-rcpt-item">
             <div class="rent-sub">${esc(formatDate(x.entry.date))} · ${esc(monthLabel(x.charge.month, lang))} · ${esc(formatRupees(x.entry.amount, 'exact'))}</div>
-            <button type="button" class="btn btn-sm btn-primary" data-onclick="rentals.receiptAction('issue', '${i}')">${esc(t('ui.rcpt.issue'))}</button>
+            <button type="button" class="btn btn-sm btn-tonal" data-onclick="rentals.receiptAction('issue', '${i}')">${esc(t('ui.rcpt.issue'))}</button>
         </div>`).join('');
     current = { env, r: null };
     return env.dialog(`<h3>🧾 ${esc(t('ui.rcpt.history_title', { name: cleanText(name) }))}</h3>

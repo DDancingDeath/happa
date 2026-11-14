@@ -259,27 +259,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   color: var(--dark-color);
 }
 
-.bill-details-close {
-  background: none;
-  border: none;
-  font-size: var(--fs-display);
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 0;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-}
-
-.bill-details-close:hover {
-  background: var(--bg-light);
-  color: var(--dark-color);
-}
-
 .bill-details-content {
   flex: 1;
   overflow-y: auto;
@@ -296,40 +275,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   background: var(--surface-muted);
 }
 
-.bill-action-btn {
+/* Close (ghost) on the left, Void (danger), Reprint and Share (tonal), Edit (the one primary) on the right */
+.bill-details-footer > .btn {
   flex: 1;
-  padding: 12px 16px;
-  font-size: var(--fs-body);
-  font-weight: var(--w-strong);
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: center;
   min-width: 0;
-}
-
-.bill-action-btn:active {
-  transform: scale(0.98);
-}
-
-.bill-action-btn.btn-close {
-  background: var(--seg-bg);
-  color: var(--text-primary);
-}
-
-.bill-action-btn.btn-close:hover {
-  background: var(--border-strong);
-}
-
-.bill-action-btn.btn-delete {
-  background: var(--danger-soft);
-  color: var(--on-danger-soft);
-  box-shadow: inset 0 0 0 1px var(--danger-border);
-}
-
-.bill-action-btn.btn-delete:hover {
-  background: var(--danger-soft);
+  padding: 0 var(--sp-3);
 }
 
 .item-modal-body {
@@ -361,39 +311,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border-top: 1px solid var(--border-color);
 }
 
-.item-delete-btn {
-  min-height: 40px;
-  padding: 8px 16px;
-  background: transparent;
-  color: var(--on-danger-soft);
-  border: 1px solid var(--danger-border);
-  border-radius: 10px;
-  font-size: var(--fs-sm);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-}
-
-.item-delete-btn:hover {
-  background: var(--danger-soft);
-}
-
-.bill-action-btn.btn-edit {
-  background: var(--btn-primary);
-  color: var(--btn-primary-ink);
-}
-
-.bill-action-btn.btn-edit:hover {
-  background: var(--primary-dark);
-}
-
 @media (max-width: 480px) {
   .bill-details-footer {
     gap: 6px;
     padding: 12px;
   }
   
-  .bill-action-btn {
-    padding: 10px 12px;
+  .bill-details-footer > .btn {
+    padding: 0 var(--sp-1);
     font-size: var(--fs-sm);
   }
 }

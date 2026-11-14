@@ -101,7 +101,10 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   look (C2): Billing and Wholesale use Save `-primary`, Print and Share (`-icon`) the default, Add to bill and
   Rest → due `-tonal`, the draft toolbar and the contact picker `-ghost`; inside `.bill-sale` (Retail sale) and
   `.ws-entry` (Wholesale) the primary and tonal buttons take the mode's colour. `.add-to-bill-btn` and
-  `.quick-add-btn-inline` stay as E2E hooks with no look of their own.
+  `.quick-add-btn-inline` stay as E2E hooks with no look of their own. Bill details' footer: Close (ghost, left), Void and
+  Delete permanently (danger), Reprint and Share (tonal), Edit (the one primary, right). Small × and + inside a row
+  (weight chips, bill lines, rate chips) are `-ghost -icon` / `-tonal -icon` with the sprite icon; period steppers are `-icon`.
+  Inline text links inside a sentence (`.due-bill-link`, `.bill-edits__view`) stay links.
 - **Fields** `.field > label + .input`, label above, `₹` / `kg` in `.adorn`; native `<select>`
   styled as an input; checkbox and switch; `.kbd` hints (desktop). **Search** `.search-field > .i + .input`: the
   sprite search icon inside the field (decorative, `aria-hidden`), the input keeps its own `aria-label`.

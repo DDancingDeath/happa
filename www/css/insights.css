@@ -35,19 +35,6 @@
     margin-top: var(--sp-2);
 }
 
-.ins-step {
-    min-width: 44px;
-    min-height: 44px;
-    border: 1px solid var(--input-border);
-    border-radius: var(--r-control);
-    background: var(--input-bg);
-    color: var(--ink);
-    font-size: var(--fs-title);
-    cursor: pointer;
-}
-
-.ins-step:focus-visible { outline: none; box-shadow: var(--focus); }
-
 .ins-period-label {
     flex: 1;
     color: var(--ink);

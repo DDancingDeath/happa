@@ -94,7 +94,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--sp-1);
-  padding: var(--sp-1) var(--sp-2);
+  padding: 0 0 0 var(--sp-2);
   border-radius: var(--r-control);
   border: 2px solid;
   transition: all var(--transition);
@@ -139,56 +139,9 @@
   outline: none;
 }
 
-.rates-container .delete-rate {
-  background: var(--btn-danger-bg);
-  color: var(--btn-danger-ink);
-  border: none;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--r-sm);
-  font-size: var(--fs-body);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  font-weight: var(--w-strong);
-  margin: 0;
-  padding: 0;
-  flex-shrink: 0;
-  transition: all var(--dur-1);
-}
-
-.rates-container .delete-rate:hover {
-  background: var(--danger-dark);
-  transform: scale(1.05);
-}
-
-.rates-container .delete-rate:active {
-  transform: scale(0.95);
-}
-
-.add-item-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  width: 100%;
-  background: var(--success-color);
-  color: var(--white);
-  border: none;
-  padding: var(--sp-4);
-  border-radius: var(--r-panel);
-  font-size: var(--fs-lead);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-  margin-top: var(--sp-4);
-  box-shadow: var(--shadow);
-  transition: transform var(--dur-1);
-}
-
-.add-item-btn:active {
-  transform: scale(0.98);
+/* Remove (ghost ×) inside a rate chip; Add (+) is a tonal icon button after the chips */
+.rate-group > .btn-icon {
+  color: var(--negative);
 }
 
 /* Item name suggested from the other language (#134), until the user takes it */

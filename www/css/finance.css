@@ -142,17 +142,6 @@
     color: var(--text-muted);
 }
 
-.fin-sheet-btn {
-    background: none;
-    border: none;
-    font-size: var(--fs-title);
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    cursor: pointer;
-    color: var(--text-muted);
-}
-
 .fin-sheet-value {
     font-size: 26px;
     font-weight: var(--w-strong);
@@ -249,8 +238,8 @@
 }
 
 .fin-more {
-    display: block;
-    margin: 10px auto;
+    display: flex;
+    margin: var(--sp-2) auto;
 }
 
 .fin-sheet-total {
