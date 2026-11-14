@@ -4,7 +4,7 @@
 /**
  * Billing's script output (redesign 3.3): bill lines, weights, the drafts sheet, the mode
  * buttons and the bill checks are drawn with classes and tones (.tone-neg …), so every theme
- * and mode restyles them without the dark-mode bridge in variables.css. No colour in these
+ * and mode restyles them. No colour in these
  * scripts: no hex / rgb() / hsl(), no colour in an inline style, no colour set through
  * `.style`. Print and receipts are drawn elsewhere (services/printer.js, receipt-drawing.js).
  */

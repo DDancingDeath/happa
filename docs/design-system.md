@@ -66,8 +66,8 @@ aliases are on `:root` only, so a scoped preview keeps the page's values for the
 ### Modes and themes
 
 - `<html>` carries `data-theme` (the theme id), `data-appearance` (the choice: light, dark or
-  system) and `data-mode` (the effective light or dark, which CSS keys on). `body.dark-mode`
-  mirrors `data-mode="dark"` for older selectors until they are converted.
+  system) and `data-mode` (the effective light or dark, which CSS keys on). There is no
+  `body.dark-mode` class and no `[style*=…]` bridge: inline colours don't follow the mode, so use a class or token.
 - The dark values live in `@media screen { [data-mode="dark"] { … } }`. **All theme colours are
   screen-only**, so printing from any theme or mode gives Modern light: black on white. Receipts
   are drawn on a canvas with their own colours and never read tokens.
@@ -321,7 +321,7 @@ counts toward the 1.5 KB. A look that tokens can't express needs a new token in 
 |---|---|
 | Use tokens for every colour, size, weight, radius and shadow | Write a hex, `rgb()` or colour name in `www/css`, a template `style=` / `<style>` or `www/js` (`colour-guard`) |
 | Put text on a fill in that fill's ink token | Put `color: white` / `#fff` on an accent, sale or wholesale fill (`themes.test.js` fails); only the danger fill and `--accent-strong` take white, through their ink tokens |
-| Keep theme differences in `css/themes/<id>.css` | Add `[data-theme=…]`, `[data-mode=…]` or `.dark-mode` selectors in page CSS: a token already switches with the mode (the older `.dark-mode` rules are removed screen by screen) |
+| Keep theme differences in `css/themes/<id>.css` | Add `[data-theme=…]`, `[data-mode=…]` or `.dark-mode` selectors in page CSS: a token already switches with the mode |
 | Use a new token in `variables.css` when nothing fits, with a value for light and dark | Add a page-local custom property holding a colour |
 | Use the type scale `--fs-*` and `--w-*` | Write a raw `font-size` / `font-weight` (`type-guard`), use 500, uppercase or letter-spacing on Hindi |
 | Use the component classes (§3) and keep the old classes and every id as hooks | Rename or drop a class or id that JS or E2E uses |
