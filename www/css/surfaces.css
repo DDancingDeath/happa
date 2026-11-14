@@ -404,10 +404,9 @@ a.row:active {
   text-align: right;
 }
 
-/* ---------- Scrim, dialog (old: .modal-overlay > .modal-box, .modal > .modal-content), sheet ---------- */
+/* ---------- Scrim, dialog (old: .modal > .modal-content), sheet ---------- */
 .scrim,
 .overlay,
-.modal-overlay,
 .modal {
   background: var(--scrim);
   -webkit-backdrop-filter: none;
@@ -415,7 +414,6 @@ a.row:active {
 }
 
 .dialog,
-.modal-box,
 .modal-content {
   border: 1px solid var(--line);
   border-radius: calc(var(--r-panel) + 2px);

@@ -153,7 +153,8 @@ input[type="number"] {
 }
 
 /* Unsaved-bill notice and bill number hint (#117) */
-.autosave-notice {
+.autosave-notice,
+.bill-edit-notice {
   flex-wrap: wrap;
   align-items: center;
   margin-bottom: var(--sp-4);
@@ -185,13 +186,8 @@ input[type="number"] {
 }
 
 /* Save with a line not added to the bill (BF-PENDING), extreme rate (BF-RATECHECK): choices wrap on a phone */
-.pending-line-dialog .modal-footer,
-.rate-check-dialog .modal-footer {
-  flex-wrap: wrap;
-}
-
-.pending-line-dialog .modal-footer .btn,
-.rate-check-dialog .modal-footer .btn {
+.pending-line-dialog .dialog-actions > .btn,
+.rate-check-dialog .dialog-actions > .btn {
   flex: 1 1 auto;
 }
 

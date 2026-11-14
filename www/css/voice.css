@@ -33,7 +33,9 @@
   gap: var(--sp-2);
 }
 
-.voice-dialog input[type="checkbox"] {
+.voice-customer input[type="checkbox"],
+.voice-readback input[type="checkbox"],
+.voice-lines input[type="checkbox"] {
   width: var(--sp-5);
   height: var(--sp-5);
   flex: none;

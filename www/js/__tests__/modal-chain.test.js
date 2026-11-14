@@ -132,6 +132,22 @@ describe('one dialog controller (C5a)', () => {
         expect(document.activeElement).toBe(opener);
     });
 
+    test('a dialog opened over another is the top one: Esc closes it first, and focus goes back to the one under it', async () => {
+        const { closeTopDialog } = await import('../utils/keyboard-shortcuts.js');
+        const { askPendingLine } = await import('../ui/pending-line.js');
+        const under = UIManager.showModal('under', 'Under', true);
+        const line = askPendingLine({ label: 'Wheat', line: { rate: 30, qty: 4, total: 120 } });
+        const top = document.querySelector('.pending-line-dialog');
+        expect(Number(top.style.getPropertyValue('--sheet-layer'))).toBeGreaterThan(Number(overlay().style.getPropertyValue('--sheet-layer') || 0));
+        expect(document.activeElement.dataset.choice).toBe('add');
+        expect(closeTopDialog()).toBe(true);
+        await expect(line).resolves.toBe('cancel');
+        expect(overlay().classList.contains('active')).toBe(true);
+        expect(document.activeElement).toBe(box());
+        expect(closeTopDialog()).toBe(true);
+        await expect(under).resolves.toBe(false);
+    });
+
     test('a sheet below 600 px, a dialog from 600 px', async () => {
         const original = window.matchMedia;
         try {
@@ -168,4 +184,33 @@ describe('one dialog controller (C5a)', () => {
         document.getElementById('modalConfirm').click();
         await expect(plain).resolves.toBe(true);
     });
+
+    test('with the desktop shortcuts on too, one Esc closes only the top dialog', async () => {
+        const original = window.matchMedia;
+        window.matchMedia = (q) => ({ matches: !q.includes('max-width'), media: q, addEventListener() {} });
+        try {
+            jest.isolateModules(() => { require('../utils/keyboard-shortcuts.js'); });
+            document.body.insertAdjacentHTML('afterbegin', '<div id="appContent"><div class="tab active" id="billing"></div></div>');
+            const { askPendingLine } = await import('../ui/pending-line.js');
+            const under = UIManager.showModal('under', 'Under', true);
+            const line = askPendingLine({ label: 'Wheat', line: { rate: 30, qty: 4, total: 120 } });
+            document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+            await expect(line).resolves.toBe('cancel');
+            expect(overlay().classList.contains('active')).toBe(true);
+            document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+            await expect(under).resolves.toBe(false);
+        } finally {
+            window.matchMedia = original;
+            delete window.__aadhatShortcutsInstalled;
+        }
+    });
+});
+
+test('layers: the saving spinner is above any stack of page dialogs and below the confirms', () => {
+    const css = (f) => fs.readFileSync(path.join(WWW, 'css', f), 'utf8');
+    const z = (name) => Number(new RegExp(`--z-${name}:\\s*(\\d+);`).exec(css('variables.css'))[1]);
+    expect(z('dialog') + 100).toBeLessThan(z('busy'));
+    expect(z('busy') + 100).toBeLessThan(z('modal'));
+    expect(css('loading.css')).toMatch(/\.loading-overlay \{[^}]*z-index: var\(--z-busy\);/);
+    expect(css('charts.css')).toMatch(/\.app-scrim \{[^}]*z-index: calc\(var\(--z-modal\) \+ var\(--sheet-layer, 0\)\);/);
 });

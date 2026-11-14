@@ -114,29 +114,58 @@ function isShown(el) {
 
 /** Topmost open dialog: { closer: () => void | null } or null when none is open. */
 function findOpenModal() {
-    const alertOverlay = document.getElementById('modalOverlay');
-    if (alertOverlay && alertOverlay.classList.contains('active')) {
+    const sheets = openSheets();
+    const top = sheets.filter(el => !el.classList.contains('page-sheet')).pop();
+    if (top) return sheetCloser(top);
+    // Popups built in JS (Users role change, Expense delete, ...) are full-screen fixed
+    // children of <body> with no shared class; appended last, they sit on top.
+    const generic = [...document.body.children].filter(isBodyOverlay);
+    const legacy = generic[generic.length - 1];
+    if (legacy) return legacyCloser(legacy);
+    const page = sheets.pop();
+    if (page) return sheetCloser(page);
+    const other = [...document.querySelectorAll('.bill-details-overlay, .modal, .sheet[aria-modal="true"]:not(.app-dialog)')].filter(isShown).pop();
+    return other ? legacyCloser(other) : null;
+}
+
+/**
+ * Open dialogs and sheets of the shared controller (ui-manager.js openSheet), the top one last:
+ * page sheets (.page-sheet) under dialogs, then in the order they opened.
+ * @returns {HTMLElement[]}
+ */
+function openSheets() {
+    const rank = (/** @type {HTMLElement} */ el) => (el.classList.contains('page-sheet') ? 0 : 1e12) + Number(el.dataset.sheetOpen || 0);
+    return /** @type {HTMLElement[]} */ ([...document.querySelectorAll('.app-scrim.active')]).sort((a, b) => rank(a) - rank(b));
+}
+
+/**
+ * @param {HTMLElement} overlay
+ * @returns {{closer: ?(() => void)}}
+ */
+function sheetCloser(overlay) {
+    if (overlay.id === 'modalOverlay') {
         const cancel = document.getElementById('modalCancel');
         const ok = document.getElementById('modalConfirm');
         if (cancel && isShown(cancel)) return { closer: () => cancel.click() };
         // Alert-only dialog: Esc acknowledges it. A custom modal closes only through its own [data-dismiss] button.
         if (ok && isShown(ok)) return { closer: () => ok.click() };
-        const own = /** @type {HTMLElement|null} */ (alertOverlay.querySelector('#modalFooter [data-dismiss]:not([hidden])'));
+        const own = /** @type {HTMLElement|null} */ (overlay.querySelector('#modalFooter [data-dismiss]:not([hidden])'));
         return { closer: own && isShown(own) ? () => own.click() : null };
     }
-    // Popups built in JS (Users role change, Expense delete, ...) are full-screen fixed
-    // children of <body> with no shared class; appended last, they sit on top.
-    const generic = [...document.body.children].filter(isBodyOverlay);
-    const top = generic[generic.length - 1] ||
-        [...document.querySelectorAll('.bill-details-overlay, .modal, .sheet[aria-modal="true"]')].filter(isShown).pop();
-    if (top) {
-        const btn = findCloseControl(top);
-        if (btn) return { closer: () => btn.click() };
-        // Backdrop-click-to-dismiss popups: simulate a click on the backdrop itself.
-        if (typeof /** @type {HTMLElement} */ (top).onclick === 'function') return { closer: () => /** @type {HTMLElement} */ (top).click() };
-        return { closer: null };
-    }
-    return null;
+    const own = /** @type {HTMLElement|null} */ (overlay.querySelector('[data-dismiss]:not([hidden])'));
+    return { closer: own ? () => own.click() : null };
+}
+
+/**
+ * @param {Element} top
+ * @returns {{closer: ?(() => void)}}
+ */
+function legacyCloser(top) {
+    const btn = findCloseControl(top);
+    if (btn) return { closer: () => btn.click() };
+    // Backdrop-click-to-dismiss popups: simulate a click on the backdrop itself.
+    if (typeof /** @type {HTMLElement} */ (top).onclick === 'function') return { closer: () => /** @type {HTMLElement} */ (top).click() };
+    return { closer: null };
 }
 
 /** Closes the topmost open dialog; true when one was closed. */
@@ -175,7 +204,7 @@ const NON_DIALOG_IDS = new Set(['appContent', 'toast', 'loadingOverlay', 'overla
  * @returns {boolean}
  */
 function isBodyOverlay(el) {
-    if (NON_DIALOG_IDS.has(el.id) || !isShown(el)) return false;
+    if (NON_DIALOG_IDS.has(el.id) || el.classList.contains('app-scrim') || !isShown(el)) return false;
     if (getComputedStyle(el).position !== 'fixed') return false;
     const r = el.getBoundingClientRect();
     return r.width >= window.innerWidth * 0.9 && r.height >= window.innerHeight * 0.9;

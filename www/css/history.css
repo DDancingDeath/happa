@@ -595,26 +595,6 @@
   padding-left: 18px;
 }
 
-.reason-dialog {
-  text-align: left;
-}
-
-.reason-dialog__explain {
-  margin: 0 0 10px;
-}
-
-.reason-dialog__label {
-  display: block;
-  margin-bottom: 4px;
-  font-weight: var(--w-label);
-}
-
-.reason-dialog__input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 6px;
-}
-
 /* #124: Edit / Void past the edit window: shown, greyed, with the reason */
 .bill-action-locked {
     filter: grayscale(1);
