@@ -779,7 +779,6 @@ const AuthManager = {
         deleteButtons.forEach(btn => {
             if (!isOwner) {
                 btn.disabled = true;
-                btn.style.opacity = '0.5';
                 btn.title = t('ui.auth.owner_only');
             }
         });
@@ -789,7 +788,6 @@ const AuthManager = {
         exportButtons.forEach(btn => {
             if (!isOwnerOrManager) {
                 btn.disabled = true;
-                btn.style.opacity = '0.5';
                 btn.title = t('ui.auth.manager_only_export');
             }
         });

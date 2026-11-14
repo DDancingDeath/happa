@@ -16,7 +16,7 @@ www/js/modules/cash-management.js: SyncStatus.chipHtml(session.id)
 www/js/modules/cash-management.js: date ← (parseAnyBillDate(session.date) || new Date(NaN)).toLocaleDateString(displayLoca
 www/js/modules/day.js: REMINDER_ICONS[kind] ← REMINDER_ICONS = { collect: icon('arrIn'), collect_wholesale: icon('truck'), pay: icon('arrOut'),
 www/js/modules/day.js: item.count
-www/js/modules/day.js: itemsArray (markup via map(item => ` <div class="row today-item"> <div class="row-main"> <div class="row-title">${Helpers.escapeHtml(item.name)}</div> <div class="row-) .count)
+www/js/modules/day.js: itemsArray (markup via map(item => ` <div class="row day-item"> <div class="row-main"> <div class="row-title">${Helpers.escapeHtml(item.name)}</div> <div class="row-me) .count)
 www/js/modules/day.js: kind
 www/js/modules/day.js: kind (markup via block)
 www/js/modules/day.js: kind (markup via reminderOpen)

@@ -52,8 +52,8 @@
 
 html[data-updating] .updating-note {
   display: block;
-  margin: 0 0 12px;
-  padding: 8px 12px;
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--r-panel);
   background: var(--info-soft);
   color: var(--info);

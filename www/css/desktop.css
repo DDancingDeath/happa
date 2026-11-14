@@ -367,7 +367,7 @@
   /* ---------- Billing: entry left, sticky bill summary right ---------- */
   #billRate,
   #saleRate {
-    padding-right: 40px;
+    padding-right: var(--sp-10);
     text-overflow: ellipsis;
   }
 
@@ -400,7 +400,7 @@
     max-height: calc(100vh - 48px);
     max-height: calc(100dvh - 48px);
     overflow-y: auto;
-    padding: 4px 4px 8px;
+    padding: var(--sp-1) var(--sp-1) var(--sp-2);
   }
 
   .bill-side > .bill-totals:first-child {
@@ -459,8 +459,8 @@
     grid-template-columns: 9.5rem minmax(7rem, 1.2fr) 7rem 12rem minmax(6rem, 1fr) 12rem;
     grid-template-areas: none;
     align-items: center;
-    column-gap: 12px;
-    padding: 8px 16px;
+    column-gap: var(--sp-3);
+    padding: var(--sp-2) var(--sp-4);
   }
 
   [data-history-item][data-bill-row] > *,
@@ -636,7 +636,7 @@
   #rtOutlook {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: var(--sp-2);
   }
 
   #rtOutlook .empty {
@@ -648,7 +648,7 @@
   /* Laptop heights (768/720): compact the bill summary column so the total and
      Save/Print stay visible without scrolling the page. */
   .bill-side .bill-totals {
-    padding: 8px 16px;
+    padding: var(--sp-2) var(--sp-4);
   }
 
   .bill-side .total-line,
@@ -661,8 +661,8 @@
   .bill-side .grand-total,
   .bill-side .pay-line.payment-total {
     padding: 9px 14px !important;
-    margin-top: 4px;
-    margin-bottom: 4px;
+    margin-top: var(--sp-1);
+    margin-bottom: var(--sp-1);
   }
 
   .bill-side input[type="number"],
@@ -697,7 +697,7 @@
   }
 
   :is(#billing, .bill-page) .bill-pay-title {
-    margin-top: 4px;
+    margin-top: var(--sp-1);
     padding-top: 6px;
   }
 
@@ -881,7 +881,7 @@
     display: grid;
     grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
     grid-template-rows: auto auto auto 1fr;
-    column-gap: 16px;
+    column-gap: var(--sp-4);
     align-items: start;
   }
 

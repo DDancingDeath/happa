@@ -1,9 +1,9 @@
 /* -------------------- BILL TOTALS -------------------- */
 .bill-totals {
   background: var(--panel-bg);
-  padding: 16px;
+  padding: var(--sp-4);
   border-radius: var(--r-panel);
-  margin: 16px 0;
+  margin: var(--sp-4) 0;
   box-shadow: var(--e1);
   border: 1px solid var(--line);
 }
@@ -32,7 +32,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 10px 0;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 
 .checkbox-label {
@@ -71,6 +71,11 @@
   box-shadow: var(--focus);
 }
 
+.bill-labour input[type="number"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .grand-total {
   padding: 14px !important;
   margin-top: 10px;
@@ -95,7 +100,7 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--sp-3) 0;
-  gap: 12px;
+  gap: var(--sp-3);
   border-bottom: 1px var(--rule-style) var(--line);
 }
 
@@ -164,11 +169,19 @@
 /* Cash + Online + Due must add up to the bill total (#23) */
 .pay-line.pay-rest {
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 
 .pay-line.pay-rest strong {
   font-size: var(--fs-body);
+}
+
+.pay-rest [data-split="ok"] {
+  color: var(--positive);
+}
+
+.pay-rest [data-split="off"] {
+  color: var(--negative);
 }
 
 /* ---------- Billing totals and payment (redesign 3.1b): colon-less labels, ₹ in the field ---------- */
@@ -339,7 +352,7 @@
 
 :is(#billing, .bill-page) .pay-line > .pay-fill > .pay-fill-on::after {
   content: "✓" / "";
-  margin-left: 4px;
+  margin-left: var(--sp-1);
 }
 
 :is(#billing, .bill-page) .pay-line > .pay-fill > .pay-fill-hint {
