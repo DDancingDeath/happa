@@ -91,7 +91,7 @@ function reportHtml(c) {
         .map(y => `<option value="${y}"${y === report.year ? ' selected' : ''}>${c.esc(yearLabel(y))}</option>`).join('')}</select>
         <button type="button" class="btn btn-sm" data-onclick="rentals.reportAction('kind')">${c.esc(t(report.fy ? 'ui.rent.yr_calendar' : 'ui.rent.yr_fy'))}</button>
         ${c.isOwner ? `<button type="button" class="btn btn-sm" data-onclick="rentals.reportAction('csv')">${icon('file', 'i-sm')}${c.esc(t('ui.rent.yr_csv'))}</button>` : ''}</div>`;
-    return `<h3>📊 ${c.esc(t('ui.rent.yr_title', { year: yearLabel(report.year) }))}</h3>${picker}
+    return `<h3>${c.esc(t('ui.rent.yr_title', { year: yearLabel(report.year) }))}</h3>${picker}
         <div class="panel metrics rent-metrics">${[['ui.rent.yr_collected', r.total.collected], ['ui.rent.yr_expenses', r.total.expenses], ['ui.rent.yr_net', r.total.net]]
         .map(([k, v]) => `<div class="metric"><div class="metric-label">${c.esc(t(k))}</div><div class="metric-value">${moneyHtml(v)}</div></div>`).join('')}</div>
         ${report.data.cut ? `<p class="notice warn">${icon('alert', 'i-sm')}<span class="grow">${c.esc(t('msg.rent.yr_cut', { count: REPORT_LIMIT }))}</span></p>` : ''}
