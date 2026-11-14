@@ -133,10 +133,10 @@ describe('normalizeHistoryFilter / formatHistoryRange', () => {
         expect(isWholesaleHistoryLink('not json')).toBe(false);
     });
 
-    test('label uses DD/MM/YYYY and the inclusive end day', () => {
+    test('label uses the app date (DATE-TEXT) and the inclusive end day', () => {
         const now = new Date(2026, 9, 22);
-        expect(formatHistoryRange(resolveHistoryRange('today', now))).toBe('22/10/2026');
-        expect(formatHistoryRange(resolveHistoryRange('lastMonth', now))).toBe('01/09/2026 – 30/09/2026');
+        expect(formatHistoryRange(resolveHistoryRange('today', now))).toBe('22 Oct 2026');
+        expect(formatHistoryRange(resolveHistoryRange('lastMonth', now))).toBe('1 Sep 2026 – 30 Sep 2026');
         expect(formatHistoryRange({ from: null, to: null })).toBe('');
     });
 });

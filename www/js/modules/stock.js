@@ -13,7 +13,7 @@ import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
 import { SAVED_ON_PHONE_KEY } from '../utils/storage-full.js';
 import { formatAmount, formatRupees, formatRate, formatKg } from '../utils/money.js';
-import { parseAnyBillDate } from '../utils/dates.js';
+import { parseAnyBillDate, formatDate } from '../utils/dates.js';
 import { stockRows, itemValue, stockValue, stockSummary, adjustItemStock, adjustmentValue, deadStockValue } from '../utils/calc/stock.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
@@ -921,7 +921,7 @@ export class StockManager {
                             ${Helpers.escapeHtml(typeLabel)} ${quantity !== 'Unknown' ? `${formatKg(quantity)} kg` : ''}
                         </span>
                     </div>
-                    <div class="history-date">${Helpers.escapeHtml(adj.date || t('ui.stock.unknown_date'))}${adj.createdByName ? ` • ${tx('ui.stock.by', { name: adj.createdByName })}` : ''}</div>
+                    <div class="history-date">${Helpers.escapeHtml(formatDate(adj.date, 'datetime') || adj.date || t('ui.stock.unknown_date'))}${adj.createdByName ? ` • ${tx('ui.stock.by', { name: adj.createdByName })}` : ''}</div>
                     <div class="stock-adj-body">
                         ${displayRate > 0 ? `<div>${txMoney('ui.stock.rate_per_kg', { rate: formatAmount(displayRate, 'rate') }, displayRate, 'rate')}${valueImpact ? ` • ${txMoney('ui.stock.value', { amount: formatAmount(valueShown) }, valueShown)}` : ''}</div>` : ''}
                         <div>

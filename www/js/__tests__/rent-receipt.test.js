@@ -262,7 +262,7 @@ describe('reference, header and payments without a receipt', () => {
         await showHistory(e, 'T1');
         expect(store.withoutReceipt).toHaveBeenCalledWith('T1', false);
         expect(document.body.textContent).toContain('Payments without a receipt');
-        expect(document.body.textContent).toContain('12/09/2026');
+        expect(document.body.textContent).toContain('12 Sep 2026');
         expect(document.body.innerHTML).toContain("receiptAction('issue', '0')");
         expect(document.body.textContent).not.toContain('before receipts');
 

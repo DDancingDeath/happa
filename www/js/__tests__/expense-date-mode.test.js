@@ -292,8 +292,8 @@ describe('Expenses form (#118)', () => {
         ];
         ExpensesManager.renderexpensesHistory();
         const text = document.getElementById('businessExpenseHistoryList').textContent;
-        expect(text).toMatch(/10:00:00 am • Online/);
-        expect(text).toMatch(/9:00:00 am • Cash/);
+        expect(text).toMatch(/31 Oct(?: 2026)?, 10:00 am • Online/);
+        expect(text).toMatch(/31 Oct(?: 2026)?, 9:00 am • Cash/);
     });
 });
 

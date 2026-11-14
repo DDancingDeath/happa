@@ -21,6 +21,7 @@ import { receiptReceived, paidEarlier } from './rent-math-ledger.js';
 import { typedPlace, UNIT_TYPES } from './rent-views.js';
 import * as store from './rent-store.js';
 import * as rs from './rent-receipt-store.js';
+import { formatDate } from '../utils/dates.js';
 
 const esc = (v) => Helpers.escapeHtml(v);
 const js = (v) => Helpers.escapeJsAttr(v);
@@ -275,11 +276,11 @@ export async function showHistory(env, tenantId) {
     const lang = getLang();
     const rows = list.map(r => `<div class="rent-rcpt-item">
             <div><div class="rent-name">${esc(r.no)}${r.void ? ` <span class="tag neg">${esc(t('ui.rcpt.void_mark'))}</span>` : ''}</div>
-                <div class="rent-sub">${esc(dateLabel(r.date))} · ${esc((r.months || []).map(m => monthLabel(m, lang)).join(', '))} · ${esc(formatRupees(r.paid, 'exact'))}</div></div>
+                <div class="rent-sub">${esc(formatDate(r.date))} · ${esc((r.months || []).map(m => monthLabel(m, lang)).join(', '))} · ${esc(formatRupees(r.paid, 'exact'))}</div></div>
             <button type="button" class="btn btn-sm" data-onclick="rentals.receiptAction('open', '${js(r.id)}')">${esc(t('ui.rcpt.open'))}</button>
         </div>`).join('');
     const unpaid = missing.map((x, i) => `<div class="rent-rcpt-item">
-            <div class="rent-sub">${esc(dateLabel(x.entry.date))} · ${esc(monthLabel(x.charge.month, lang))} · ${esc(formatRupees(x.entry.amount, 'exact'))}</div>
+            <div class="rent-sub">${esc(formatDate(x.entry.date))} · ${esc(monthLabel(x.charge.month, lang))} · ${esc(formatRupees(x.entry.amount, 'exact'))}</div>
             <button type="button" class="btn btn-sm btn-primary" data-onclick="rentals.receiptAction('issue', '${i}')">${esc(t('ui.rcpt.issue'))}</button>
         </div>`).join('');
     current = { env, r: null };

@@ -27,7 +27,7 @@ import { can, canVoidExpenseWith } from '../utils/role-access.js';
 import { expenseMode, formatAmount, isActiveExpense, isPersonalExpense } from '../utils/money.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import { DEFAULT_EXPENSE_MODE, expenseDateFields, expenseDayRange, validateExpenseEntry } from '../utils/expense-entry.js';
-import { toLocalISODate } from '../utils/dates.js';
+import { toLocalISODate, formatDate } from '../utils/dates.js';
 import { personalDayKey } from '../utils/personal-expenses.js';
 import { sessionForDate } from '../utils/cash-session.js';
 import { expenseTemplates, expenseTotals, expenseTypes, filterExpenses, isExpenseSearch, sameExpenseType } from '../utils/expense-list.js';
@@ -506,7 +506,7 @@ export class ExpensesManager {
                     ${payment.personName ? `<div class="row-title">${Helpers.escapeHtml(payment.personName)}</div>` : ''}
                     <div class="exp-row-type">${Helpers.escapeHtml(payment.type)}${voided ? ` <span class="tag">${tx('ui.void.chip')}</span>` : ''} ${SyncStatus.chipHtml(payment.id)}</div>
                     ${payment.remarks ? `<div class="row-meta exp-row-note">${icon('file', 'i-sm')} ${Helpers.escapeHtml(payment.remarks)}</div>` : ''}
-                    <div class="row-meta">${icon('calendar', 'i-sm')} ${Helpers.escapeHtml(payment.date)} • ${modeLabel(payment)}${payment.createdByName ? ` • ${tx('ui.stock.by', { name: payment.createdByName })}` : ''}</div>
+                    <div class="row-meta">${icon('calendar', 'i-sm')} ${Helpers.escapeHtml(formatDate(payment.date, 'datetime') || payment.date)} • ${modeLabel(payment)}${payment.createdByName ? ` • ${tx('ui.stock.by', { name: payment.createdByName })}` : ''}</div>
                 </div>
                 <div class="row-trail row-amt exp-row-amt">${moneyHtml(payment.amount, { exact: true })}</div>
             </div>`;
@@ -619,7 +619,7 @@ export class ExpensesManager {
             <div class="panel">
                 <div class="row exp-field"><span class="row-main exp-field-label">${icon('tag', 'i-sm')}${tx('ui.reports.pdf_type')}</span><span class="row-trail">${Helpers.escapeHtml(expense.type)}</span></div>
                 <div class="row exp-field"><span class="row-main exp-field-label">${icon('grid', 'i-sm')}${tx('ui.expenses.d_category')}</span><span class="row-trail">${tx(category === 'personal' ? 'ui.expenses.personal_expenses' : 'ui.expenses.business_expenses')}</span></div>
-                <div class="row exp-field"><span class="row-main exp-field-label">${icon('calendar', 'i-sm')}${tx('ui.history.date')}</span><span class="row-trail">${Helpers.escapeHtml(expense.date)}</span></div>
+                <div class="row exp-field"><span class="row-main exp-field-label">${icon('calendar', 'i-sm')}${tx('ui.history.date')}</span><span class="row-trail">${Helpers.escapeHtml(formatDate(expense.date, 'datetime') || expense.date)}</span></div>
                 <div class="row exp-field"><span class="row-main exp-field-label">${icon('card', 'i-sm')}${tx('ui.expenses.d_paid_by')}</span><span class="row-trail">${modeLabel(expense)}</span></div>
                 ${expense.personName ? `<div class="row exp-field"><span class="row-main exp-field-label">${icon('user', 'i-sm')}${tx('ui.expenses.d_person')}</span><span class="row-trail">${Helpers.escapeHtml(expense.personName)}</span></div>` : ''}
                 ${expense.createdByName ? `<div class="row exp-field"><span class="row-main exp-field-label">${icon('users', 'i-sm')}${tx('ui.expenses.d_created_by')}</span><span class="row-trail">${Helpers.escapeHtml(expense.createdByName)}</span></div>` : ''}

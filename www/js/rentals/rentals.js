@@ -9,7 +9,7 @@ import { NavigationManager, trapFocus } from '../ui/navigation.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { TemplateLoader } from '../utils/template-loader.js';
 import { Helpers } from '../utils/helpers.js';
-import { todayLocalISO, formatMonth } from '../utils/dates.js';
+import { todayLocalISO, formatMonth, formatDate } from '../utils/dates.js';
 import { openExternal } from '../utils/open-external.js';
 import { whatsAppReminderUrl } from '../utils/due-reminder.js';
 import { t, getLang, applyTranslations, LANG_CHANGE_EVENT } from '../i18n/index.js';
@@ -28,7 +28,7 @@ import {
 } from './rent-views.js';
 import {
     PAYMENT_MODES, normalizeRentSettings, monthKey, monthLabel, monthsToCharge, chargeDue, leaseDues,
-    buildRentReminderText, elecMode, dateLabel, payOldestFirst, payAmount, applyPayment, expenseTotals, receivedIn, monthState
+    buildRentReminderText, elecMode, payOldestFirst, payAmount, applyPayment, expenseTotals, receivedIn, monthState
 } from './rent-math.js';
 import { formatRupees } from '../utils/money.js';
 
@@ -154,7 +154,7 @@ const typeWord = (type) => t(`ui.rent.uword_${UNIT_TYPES.includes(type) ? type :
 
 /** "⚡ meter" / "⚡ included" / "⚡ own meter" tag for a lease. */
 const elecTag = (lease) => `<span class="tag warn">${et(`ui.rent.elec_tag_${elecMode(lease)}`)}</span>`;
-const sinceText = (lease) => (lease?.startDate ? t('ui.rent.since', { date: dateLabel(lease.startDate) }) : '');
+const sinceText = (lease) => (lease?.startDate ? t('ui.rent.since', { date: formatDate(lease.startDate) }) : '');
 
 /**
  * The unit's type when it is really known: its own type, else what the property

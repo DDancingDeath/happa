@@ -12,9 +12,10 @@ import { t, getLang } from '../i18n/index.js';
 import * as store from './rent-store.js';
 import { isShareToken, withLease, withMonth, PUBLIC_MONTHS } from './rent-public.js';
 import { vacantByProperty, typedPlace, moveTarget } from './rent-views.js';
-import { monthLabel, dateLabel, leaseDues, chargeId, isDate } from './rent-math.js';
+import { monthLabel, leaseDues, chargeId, isDate } from './rent-math.js';
 import { moveMonthRent, oldMonth, moveMonthSplit, changeUnitPlan, keptTerms, advanceLeft } from './rent-math-ledger.js';
 import { formatRupees } from '../utils/money.js';
+import { formatDate } from '../utils/dates.js';
 
 const el = (id) => document.getElementById(id);
 const toast = (key) => UIManager.showToast(t(key), 'error');
@@ -54,8 +55,8 @@ function fillSplit(from, d) {
     const month = monthLabel(s.month, getLang());
     el('rentSplitBox').hidden = !el('rentSplitOn').checked;
     el('rentSplitOldL').hidden = s.old === null;
-    el('rentSplitOldL').firstChild.textContent = s.old === null ? '' : t('ui.rent.split_old', { month, date: dateLabel(s.oldEnd) });
-    el('rentSplitNewL').firstChild.textContent = t('ui.rent.split_new', { month, date: dateLabel(date) });
+    el('rentSplitOldL').firstChild.textContent = s.old === null ? '' : t('ui.rent.split_old', { month, date: formatDate(s.oldEnd) });
+    el('rentSplitNewL').firstChild.textContent = t('ui.rent.split_new', { month, date: formatDate(date) });
     el('rentSplitOld').value = s.old ?? '';
     el('rentSplitNew').value = s.next;
     el('rentSplitHelp').textContent = s.old === null ? t('ui.rent.split_first', { month }) : t('ui.rent.split_help');
@@ -103,7 +104,7 @@ async function changeDialog(c, { d, ix, from, unit, occ, defs, mgr, on, typed })
     const to = c.placeOf(ix, unit.id);
     const month = monthLabel(s.month, lang);
     const ask = t('msg.rent.change_unit_confirm', {
-        name: ix.tenants.get(from.tenantId)?.name || '', from: place, to, date: dateLabel(lease.startDate),
+        name: ix.tenants.get(from.tenantId)?.name || '', from: place, to, date: formatDate(lease.startDate),
         month: monthLabel(s.endMonth, lang), dues: formatRupees(leaseDues(d.charges, from.id).total)
     }) + (s.endMonth !== s.month ? ''
         : ` ${!on ? t('msg.rent.change_unit_both', { month })

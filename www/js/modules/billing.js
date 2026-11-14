@@ -29,7 +29,7 @@ import { billEditChanges, hasEditChanges } from '../utils/bill-edits.js';
 import { askReason } from '../ui/bill-status.js';
 import { prepareBillDate } from '../ui/bill-date-input.js';
 import { autoSaveSummary, nextBillNumberHint, restoreFigures } from '../utils/calc/billing.js';
-import { formatDateTimeIN } from '../utils/dates.js';
+import { formatDateTimeIN, formatDate } from '../utils/dates.js';
 import { isArchivedItem } from '../utils/item-catalog.js';
 
 const EDIT_OFFLINE_KEY = 'msg.billing.edit_offline';
@@ -765,7 +765,7 @@ const BillingManager = {
                             <span class="draft-title"><span class="mode-dot${draft.mode === 'purchase' ? '' : ' sale'}" aria-hidden="true"></span>${Helpers.escapeHtml(t(draft.mode === 'purchase' ? 'ui.billing.purchase_draft' : 'ui.billing.sale_draft'))}</span>
                             <span class="draft-meta">${Helpers.escapeHtml(t(draft.weights?.length > 0 ? 'ui.billing.draft_items_weights' : 'ui.billing.draft_items', { items: draft.items?.length || 0, weights: draft.weights?.length || 0 }))}</span>
                         </div>
-                        <div class="draft-date">${Helpers.escapeHtml(draft.date)}</div>
+                        <div class="draft-date">${Helpers.escapeHtml(formatDate(draft.date, 'datetime') || draft.date)}</div>
                         ${draft.customerName ? `<div class="draft-customer">${Helpers.escapeHtml(t('ui.common.customer'))} ${Helpers.escapeHtml(draft.customerName)}</div>` : ''}
                         <div class="draft-actions">
                             <button type="button" class="btn btn-primary btn-sm" data-onclick="billing.loadDraft('${Helpers.escapeJsAttr(draft.id)}')">

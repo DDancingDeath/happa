@@ -11,12 +11,12 @@ import { UIManager } from '../ui/ui-manager.js';
 import { t, getLang } from '../i18n/index.js';
 import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
-import { todayLocalISO } from '../utils/dates.js';
+import { todayLocalISO, formatDate } from '../utils/dates.js';
 import { moneyHtml } from '../ui/components.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import * as store from './rent-store.js';
 import * as ds from './rent-deposit-store.js';
-import { PAYMENT_MODES, monthLabel, dateLabel, chargeDue, isDate } from './rent-math.js';
+import { PAYMENT_MODES, monthLabel, chargeDue, isDate } from './rent-math.js';
 import { DEPOSIT_KINDS, depositHeld, depositFill, depositsTotal } from './rent-math-ledger.js';
 import { formatRupees } from '../utils/money.js';
 
@@ -36,7 +36,7 @@ function tenantOf(tenantId) {
 const act = (c, action, tenantId, key, cls = '', i = '') => `<button type="button" class="btn${cls}" data-rent-dep data-onclick="rentals.depositAction('${action}', '${c.js(tenantId)}'${i !== '' ? `, ${i}` : ''})">${c.esc(t(key))}</button>`;
 
 function entryLine(c, e, i, tenantId, owner) {
-    const what = [dateLabel(e.date), t(`ui.rent.dep_${e.kind}`), e.month ? monthLabel(e.month, getLang()) : '', e.mode ? t(e.mode === 'advance' ? 'ui.rent.dep_from_advance' : `ui.rent.mode_${e.mode}`) : '']
+    const what = [formatDate(e.date), t(`ui.rent.dep_${e.kind}`), e.month ? monthLabel(e.month, getLang()) : '', e.mode ? t(e.mode === 'advance' ? 'ui.rent.dep_from_advance' : `ui.rent.mode_${e.mode}`) : '']
         .filter(Boolean).join(' · ');
     const edit = owner && e.kind !== 'adjust' && e.mode !== 'advance'
         ? ` ${act(c, 'edit', tenantId, 'ui.rent.edit', ' btn-sm', i)}${act(c, 'remove', tenantId, 'ui.rent.remove', ' btn-sm', i)}` : '';
