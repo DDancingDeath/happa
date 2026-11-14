@@ -116,7 +116,7 @@ const ROUTE_READY = {
     stock: '#currentStockSection',
     due: '#due .filter-purchase.active',
     anomalies: '#anomalies .sub-tab.active',
-    admin: '#adminTabsContainer .filter-btn.active',
+    admin: '#adminTabsContainer [aria-selected="true"]',
     diagnostics: '#diagnosticsTabsContainer .filter-btn.active'
 };
 

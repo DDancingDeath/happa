@@ -387,12 +387,10 @@ body.dark-mode .modal-box {
   background: var(--surface-muted) !important;
 }
 
-.dark-mode [style*="background: #fff3cd"],
-.dark-mode [style*="background: #fef3c7"] {
+.dark-mode [style*="background: #fff3cd"] {
   background: var(--warning-soft) !important;
 }
 
-.dark-mode [style*="background: #fee2e2"],
 .dark-mode [style*="background: #fef2f2"] {
   background: var(--danger-soft) !important;
 }
@@ -419,7 +417,6 @@ body.dark-mode .modal-box {
 .dark-mode [style^="color: #64748b"],
 .dark-mode [style*=" color: #64748b"],
 .dark-mode [style^="color: #666"],
-.dark-mode [style*=" color: #666"],
 .dark-mode [style^="color:#666"],
 .dark-mode [style^="color: #6c757d"],
 .dark-mode [style*=" color: #6c757d"],
@@ -446,7 +443,6 @@ body.dark-mode .modal-box {
 
 .dark-mode [style^="color: #ef4444"],
 .dark-mode [style*=" color: #ef4444"],
-.dark-mode [style*=" color: #991b1b"],
 .dark-mode [style*=" color:#b91c1c"],
 .dark-mode [style^="color: #b91c1c"],
 .dark-mode [style^="color:#b91c1c"],
@@ -455,7 +451,6 @@ body.dark-mode .modal-box {
 }
 
 .dark-mode [style^="color:#92400e"],
-.dark-mode [style*=" color: #92400e"],
 .dark-mode [style^="color: #b45309"],
 .dark-mode [style^="color:#b45309"] {
   color: var(--on-warning-soft) !important;

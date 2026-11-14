@@ -1,9 +1,6 @@
 # innerHTML audit baseline (#89): the lines scripts/html-escape-audit.js lists today, each checked by hand.
 # CI fails on a line not here. Fix it (escape / safeUrl) or, once checked, run: npm run check:html-escape -- --update-baseline
-www/js/modules/admin.js: ACTIVITY_RANGES (markup via map(r => `<button type="button" class="filter-btn" data-range="${r}" data-onclick="admin.showActivity('${r}')">${tx(`ui.admin.range_${r}`)}</but))
 www/js/modules/admin.js: col.id
-www/js/modules/admin.js: r
-www/js/modules/admin.js: r
 www/js/modules/admin.js: t('ui.admin.type_word_to_confirm', { word: `<strong>${Helpers.escapeHtml(DELETE_CONFIRM_WORD)}</strong>` })
 www/js/modules/anomalies.js: SEVERITIES (markup via map(sev => `<span class="anomaly-chip anomaly-sev-${sev}">${loc(SEVERITY_LABELS[sev])}: <strong>${s.bySeverity[sev]}</strong></span>`))
 www/js/modules/anomalies.js: SEV_COLORS[sev] ← SEV_COLORS = { high: '#b91c1c', medium: '#92400e', low: '#4b5563' }
