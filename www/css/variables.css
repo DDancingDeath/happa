@@ -289,6 +289,7 @@
   --z-notif-scrim: 1002;
   --z-notif: 1003;
   --z-dialog: 10000;
+  --z-busy: 15000;
   --z-modal: 20000;
   --z-auth: 10000;
 

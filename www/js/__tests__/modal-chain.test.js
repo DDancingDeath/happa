@@ -205,3 +205,12 @@ describe('one dialog controller (C5a)', () => {
         }
     });
 });
+
+test('layers: the saving spinner is above any stack of page dialogs and below the confirms', () => {
+    const css = (f) => fs.readFileSync(path.join(WWW, 'css', f), 'utf8');
+    const z = (name) => Number(new RegExp(`--z-${name}:\\s*(\\d+);`).exec(css('variables.css'))[1]);
+    expect(z('dialog') + 100).toBeLessThan(z('busy'));
+    expect(z('busy') + 100).toBeLessThan(z('modal'));
+    expect(css('loading.css')).toMatch(/\.loading-overlay \{[^}]*z-index: var\(--z-busy\);/);
+    expect(css('charts.css')).toMatch(/\.app-scrim \{[^}]*z-index: calc\(var\(--z-modal\) \+ var\(--sheet-layer, 0\)\);/);
+});
