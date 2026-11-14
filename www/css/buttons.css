@@ -79,7 +79,7 @@
   width: 120px;
   padding: 11px;
   text-align: right;
-  font-size: 16px;
+  font-size: var(--fs-input);
   font-weight: var(--w-strong);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
@@ -96,7 +96,7 @@
 .grand-total {
   padding: 14px !important;
   margin-top: 10px;
-  font-size: 16px !important;
+  font-size: var(--fs-body) !important;
   background: var(--success-soft);
   padding: 14px !important;
   border-radius: var(--radius);
@@ -136,7 +136,7 @@
 }
 
 .payment-row strong {
-  font-size: 18px;
+  font-size: var(--fs-lead);
   color: var(--primary-color);
   transition: color var(--transition);
 }
@@ -147,7 +147,7 @@
   max-width: 120px;
   padding: 11px;
   text-align: right;
-  font-size: 16px;
+  font-size: var(--fs-input);
   font-weight: var(--w-strong);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
@@ -179,7 +179,7 @@
 }
 
 .payment-row.payment-total strong {
-  font-size: 18px;
+  font-size: var(--fs-lead);
 }
 
 /* Cash + Online + Due must add up to the bill total (#23) */
@@ -271,6 +271,6 @@
   body input[type="date"],
   body select,
   body textarea {
-    font-size: 16px !important;
+    font-size: var(--fs-input) !important;
   }
 }

@@ -41,7 +41,7 @@
   display: table-cell;
   padding: 14px 8px;
   text-align: center;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   vertical-align: middle;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -86,7 +86,7 @@
   border: none;
   padding: 8px 12px;
   border-radius: var(--radius);
-  font-size: 16px;
+  font-size: var(--fs-body);
   font-weight: var(--w-strong);
   cursor: pointer;
   min-width: 40px;
@@ -264,7 +264,7 @@
   align-items: center;
   justify-content: flex-end;
   padding-right: 4px;
-  font-size: 22px;
+  font-size: var(--fs-title);
   font-weight: var(--w-strong);
   color: var(--text-secondary);
   background: linear-gradient(to right, transparent, var(--card-bg) 70%);
