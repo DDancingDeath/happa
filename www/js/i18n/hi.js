@@ -1133,7 +1133,7 @@ export default {
     'ui.settings.theme_material': "मटीरियल",
     'ui.settings.theme_material_desc': "हल्की रंगीन परतें और गोल बटन।",
     'ui.settings.theme_fluent': "फ़्लुएंट",
-    'ui.settings.theme_fluent_desc': "Windows 11 जैसा रूप: हल्का स्लेटी, साफ़ कोने, गहरा फ़ोकस घेरा।",
+    'ui.settings.theme_fluent_desc': "विंडोज़ 11 जैसा रूप: हल्का स्लेटी, साफ़ कोने, गहरा फ़ोकस घेरा।",
     'ui.settings.theme_cyberpunk': "साइबरपंक",
     'ui.settings.theme_cyberpunk_desc': "काले पर चमकीले नियॉन रंग, मोनो अंक, नुकीले कोने।",
     'ui.settings.available_devices': "मिले प्रिंटर",
