@@ -71,12 +71,13 @@ derived colour token goes in that block too.
 - The dark values live in `@media screen { [data-mode="dark"] { … } }`. **All theme colours are
   screen-only**, so printing from any theme or mode gives Modern light: black on white. Receipts
   are drawn on a canvas with their own colours and never read tokens.
-- A theme of `kind: 'dark'` (Dark, Midnight) is always dark, whatever the Appearance choice.
+- A theme of `kind: 'dark'` (Dark, Midnight, Cyberpunk) is always dark, whatever the Appearance choice.
 - **Type roles.** Page, section and sheet titles read `--font-display` (section titles also `--title-style`);
   Billing's total and the action-bar figure read `--font-hero` and `--w-display` (figures keep lining digits; only Vintage's hero total takes old-style, `--hero-nums`); bill-table rows, list rows
   and payment rows read `--rule-style`; table headers `--table-rule`. Vintage, Classic and Premium set a serif
   `--font-display` (Vintage italic section titles and dashed rules, Classic navy header rules, Premium a light
-  400 weight). Their stacks keep `"Nirmala UI", "Noto Sans Devanagari"` before the generic `serif`, so Hindi
+  400 weight). Material sets a Roboto-first `--font-ui`, Fluent a Segoe UI Variable Display `--font-display` and
+  Cyberpunk mono figures (`--font-num`, `--font-hero`). All these stacks keep `"Nirmala UI", "Noto Sans Devanagari"` before the generic `serif`, so Hindi
   text stays Devanagari sans; only Latin text and digits take the serif.
 - The choice is per device (`happa.theme`, `happa.appearance`, `happa.themeKind`,
   `happa.bar.light|dark` in localStorage). No Firestore reads or writes.

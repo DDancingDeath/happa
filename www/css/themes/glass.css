@@ -1,0 +1,93 @@
+/* Glassmorphism (redesign 4.6, DIRECTION 4.2): frosted white panels on a cool indigo canvas, pink wholesale,
+   large soft corners. Tokens only, so no backdrop-filter and no perf-lite fallback. Screen-only, so print stays Modern. */
+@media screen {
+  [data-theme="glass"] {
+    --r-control: 12px;
+    --r-panel: 18px;
+    --r-sheet: 24px;
+  }
+
+  [data-theme="glass"]:not([data-mode="dark"]) {
+    color-scheme: light;
+    --bg: #e6e8fa;
+    --surface: #fbfbff;
+    --surface-2: #efeefb;
+    --surface-3: #e4e3f6;
+    --line: #e3e3f1;
+    --line-strong: #c9cae4;
+    --ink: #141a2e;
+    --ink-2: #39415c;
+    --ink-3: #4f5873;
+    --ink-placeholder: #5c6580;
+    --accent: #4f46e5;
+    --accent-hover: #4338ca;
+    --accent-strong: #4338ca;
+    --accent-text: #3f37c9;
+    --accent-soft: #e9e8fd;
+    --accent-line: #c5c3f6;
+    --mode-sale: #047857;
+    --mode-sale-soft: #e3f4ee;
+    --mode-wholesale: #a3195b;
+    --mode-wholesale-soft: #fbe6ef;
+    --mode-rentals: #0e6f8a;
+    --positive: #046a4c;
+    --positive-soft: #e3f4ee;
+    --negative: #be123c;
+    --negative-soft: #fde9ee;
+    --warning: #8a4204;
+    --warning-soft: #fdf0dc;
+    --focus: 0 0 0 3px rgba(99, 102, 241, 0.3);
+    --e1: 0 1px 2px rgba(30, 40, 100, 0.08);
+    --panel-border: #ffffff;
+    --panel-shadow: 0 10px 30px -14px rgba(30, 40, 100, 0.25);
+    --input-bg: #fdfdff;
+    --input-border: #d6d6ec;
+    --bar-bg: #f6f6fe;
+    --seg-track: #e4e3f6;
+    --seg-on: #fbfbff;
+    --toast-bg: #1d2040;
+    --toast-ink: #eef0ff;
+    --btn-primary-shadow: 0 6px 16px -6px rgba(79, 70, 229, 0.55);
+  }
+
+  [data-theme="glass"][data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #0b0d1a;
+    --surface: #161935;
+    --surface-2: #1c1f40;
+    --surface-3: #262a50;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.16);
+    --ink: #eef0ff;
+    --ink-2: #bcc0dc;
+    --ink-3: #a6acce;
+    --ink-placeholder: #9ca2c4;
+    --accent: #5b54e8;
+    --accent-hover: #6a64ee;
+    --accent-strong: #4338ca;
+    --accent-text: #b3b5ff;
+    --accent-soft: rgba(124, 120, 248, 0.2);
+    --accent-line: rgba(124, 120, 248, 0.42);
+    --mode-sale: #057a55;
+    --mode-sale-soft: rgba(74, 222, 155, 0.14);
+    --mode-wholesale: #b0246a;
+    --mode-wholesale-soft: rgba(244, 114, 182, 0.14);
+    --mode-rentals: #38bdf8;
+    --positive: #5be3a6;
+    --positive-soft: rgba(74, 222, 155, 0.14);
+    --negative: #ff8aa0;
+    --negative-soft: rgba(251, 113, 133, 0.16);
+    --warning: #fcd34d;
+    --warning-soft: rgba(251, 191, 36, 0.14);
+    --panel-border: rgba(255, 255, 255, 0.12);
+    --panel-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.6);
+    --input-bg: #11132a;
+    --input-border: rgba(255, 255, 255, 0.16);
+    --bar-bg: #12142b;
+    --seg-track: #11132a;
+    --seg-on: #2c3058;
+    --toast-bg: #282a46;
+    --toast-ink: #eef0ff;
+    --btn-primary-shadow: 0 6px 18px -6px rgba(91, 84, 232, 0.7);
+  }
+}

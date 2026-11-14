@@ -298,59 +298,199 @@ body.no-perm-contacts [data-perm~="contacts"] {
 }
 
 .theme-tile-preview {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  height: 84px;
-  padding: var(--sp-2);
-  overflow: hidden;
   border-bottom: 1px solid var(--line);
-  background: var(--bg);
 }
 
-.tcp-bar {
-  height: 8px;
-  width: 40%;
-  border-radius: var(--r-full);
-  background: var(--ink-3);
+/* Mini Billing: drawn at the app's own sizes and tokens, then zoomed out */
+.tcp {
+  display: block;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  line-height: 1.3;
+}
+
+.tcp-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  zoom: 0.5;
+}
+
+.tcp-bar,
+.tcp-foot,
+.tcp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.tcp-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-style: var(--title-style);
+  font-weight: var(--w-display);
+  letter-spacing: var(--tracking-display);
+}
+
+.tcp-chip {
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-chip);
+  background: var(--surface-2);
+  color: var(--ink-3);
+  font-size: var(--fs-caption);
+}
+
+.tcp-seg {
+  display: flex;
+  gap: var(--sp-1);
+  padding: var(--sp-1);
+  border-radius: var(--r-md);
+  background: var(--seg-track);
+}
+
+.tcp-seg-on,
+.tcp-seg-off {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2);
+  border-radius: var(--r-control);
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
+}
+
+.tcp-seg-on {
+  background: var(--seg-on);
+  color: var(--ink);
+  box-shadow: var(--e1);
+}
+
+.tcp-dot {
+  width: var(--sp-2);
+  height: var(--sp-2);
+  border-radius: var(--r-round);
+  background: var(--mode-purchase);
+}
+
+.tcp-dot-sale {
+  background: var(--mode-sale);
 }
 
 .tcp-card {
   display: flex;
-  flex: 1;
   flex-direction: column;
-  gap: var(--sp-1);
-  padding: var(--sp-1) var(--sp-2);
   border: 1px solid var(--panel-border);
-  border-radius: calc(var(--r-control) * 0.75);
+  border-radius: var(--r-panel);
   background: var(--panel-bg);
+  box-shadow: var(--panel-shadow);
 }
 
-.tcp-line {
-  height: 5px;
-  width: 80%;
-  border-radius: var(--r-full);
-  background: var(--ink);
+.tcp-row {
+  padding: var(--sp-2) var(--sp-3);
 }
 
-.tcp-line-short {
-  width: 50%;
-  background: var(--ink-3);
+.tcp-row + .tcp-row {
+  border-top: 1px var(--rule-style) var(--line);
 }
 
-.tcp-dots {
-  height: 6px;
-  width: 34px;
-  border-radius: var(--r-full);
-  background: linear-gradient(90deg, var(--positive) 0 30%, transparent 30% 35%, var(--negative) 35% 65%, transparent 65% 70%, var(--warning-dot) 70%);
+.tcp-row-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tcp-item {
+  font-size: var(--fs-sm);
+  font-weight: var(--w-strong);
+}
+
+.tcp-meta {
+  color: var(--ink-3);
+  font-family: var(--font-num);
+  font-size: var(--fs-caption);
+  white-space: nowrap;
+}
+
+.tcp-amt {
+  font-family: var(--font-num);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.tcp-total {
+  font-family: var(--font-hero);
+  font-size: var(--fs-display);
+  font-weight: var(--w-display);
+  font-variant-numeric: tabular-nums var(--hero-nums);
 }
 
 .tcp-save {
-  height: 12px;
-  width: 55%;
-  align-self: flex-end;
-  border-radius: calc(var(--r-control) / 2);
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--r-control);
   background: var(--btn-primary-bg);
+  box-shadow: var(--btn-primary-shadow);
+  color: var(--btn-primary-ink);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-strong);
+}
+
+/* Desktop: a live preview pane beside the gallery, with its own Cancel / Apply */
+.theme-pane {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .theme-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+    align-items: start;
+    gap: var(--sp-4);
+  }
+
+  .theme-pane {
+    position: sticky;
+    top: var(--sp-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+  }
+
+  .theme-pane-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-2);
+  }
+
+  .theme-pane-title {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+    font-weight: var(--w-strong);
+  }
+
+  .theme-pane-preview .tcp {
+    border: 1px solid var(--line);
+    border-radius: var(--r-panel);
+  }
+
+  .theme-pane-preview .tcp-screen {
+    zoom: 0.85;
+  }
+
+  .theme-pane-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-2);
+  }
 }
 
 .theme-tile-check {

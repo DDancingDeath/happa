@@ -632,6 +632,311 @@ input[type="number"],
   }
 }
 
+/* ---- css/themes/glass.css ---- */
+/* Glassmorphism (redesign 4.6, DIRECTION 4.2): frosted white panels on a cool indigo canvas, pink wholesale,
+   large soft corners. Tokens only, so no backdrop-filter and no perf-lite fallback. Screen-only, so print stays Modern. */
+@media screen {
+  [data-theme="glass"] {
+    --r-control: 12px;
+    --r-panel: 18px;
+    --r-sheet: 24px;
+  }
+
+  [data-theme="glass"]:not([data-mode="dark"]) {
+    color-scheme: light;
+    --bg: #e6e8fa;
+    --surface: #fbfbff;
+    --surface-2: #efeefb;
+    --surface-3: #e4e3f6;
+    --line: #e3e3f1;
+    --line-strong: #c9cae4;
+    --ink: #141a2e;
+    --ink-2: #39415c;
+    --ink-3: #4f5873;
+    --ink-placeholder: #5c6580;
+    --accent: #4f46e5;
+    --accent-hover: #4338ca;
+    --accent-strong: #4338ca;
+    --accent-text: #3f37c9;
+    --accent-soft: #e9e8fd;
+    --accent-line: #c5c3f6;
+    --mode-sale: #047857;
+    --mode-sale-soft: #e3f4ee;
+    --mode-wholesale: #a3195b;
+    --mode-wholesale-soft: #fbe6ef;
+    --mode-rentals: #0e6f8a;
+    --positive: #046a4c;
+    --positive-soft: #e3f4ee;
+    --negative: #be123c;
+    --negative-soft: #fde9ee;
+    --warning: #8a4204;
+    --warning-soft: #fdf0dc;
+    --focus: 0 0 0 3px rgba(99, 102, 241, 0.3);
+    --e1: 0 1px 2px rgba(30, 40, 100, 0.08);
+    --panel-border: #ffffff;
+    --panel-shadow: 0 10px 30px -14px rgba(30, 40, 100, 0.25);
+    --input-bg: #fdfdff;
+    --input-border: #d6d6ec;
+    --bar-bg: #f6f6fe;
+    --seg-track: #e4e3f6;
+    --seg-on: #fbfbff;
+    --toast-bg: #1d2040;
+    --toast-ink: #eef0ff;
+    --btn-primary-shadow: 0 6px 16px -6px rgba(79, 70, 229, 0.55);
+  }
+
+  [data-theme="glass"][data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #0b0d1a;
+    --surface: #161935;
+    --surface-2: #1c1f40;
+    --surface-3: #262a50;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.16);
+    --ink: #eef0ff;
+    --ink-2: #bcc0dc;
+    --ink-3: #a6acce;
+    --ink-placeholder: #9ca2c4;
+    --accent: #5b54e8;
+    --accent-hover: #6a64ee;
+    --accent-strong: #4338ca;
+    --accent-text: #b3b5ff;
+    --accent-soft: rgba(124, 120, 248, 0.2);
+    --accent-line: rgba(124, 120, 248, 0.42);
+    --mode-sale: #057a55;
+    --mode-sale-soft: rgba(74, 222, 155, 0.14);
+    --mode-wholesale: #b0246a;
+    --mode-wholesale-soft: rgba(244, 114, 182, 0.14);
+    --mode-rentals: #38bdf8;
+    --positive: #5be3a6;
+    --positive-soft: rgba(74, 222, 155, 0.14);
+    --negative: #ff8aa0;
+    --negative-soft: rgba(251, 113, 133, 0.16);
+    --warning: #fcd34d;
+    --warning-soft: rgba(251, 191, 36, 0.14);
+    --panel-border: rgba(255, 255, 255, 0.12);
+    --panel-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.6);
+    --input-bg: #11132a;
+    --input-border: rgba(255, 255, 255, 0.16);
+    --bar-bg: #12142b;
+    --seg-track: #11132a;
+    --seg-on: #2c3058;
+    --toast-bg: #282a46;
+    --toast-ink: #eef0ff;
+    --btn-primary-shadow: 0 6px 18px -6px rgba(91, 84, 232, 0.7);
+  }
+}
+
+/* ---- css/themes/material.css ---- */
+/* Material (redesign 4.6, DIRECTION 4.2): Material 3 baseline tonal surfaces (seed #6750A4), Roboto first,
+   pill controls, borderless tonal panels. Screen-only, so print stays Modern. */
+@media screen {
+  [data-theme="material"] {
+    --r-control: 22px;
+    --r-panel: 16px;
+    --r-chip: 8px;
+    --r-sheet: 28px;
+    --font-ui: Roboto, "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Noto Sans", Arial, "Noto Sans Devanagari", "Nirmala UI", sans-serif;
+    --w-display: 400;
+    --tracking-display: 0;
+  }
+
+  [data-theme="material"]:not([data-mode="dark"]) {
+    color-scheme: light;
+    --bg: #fef7ff;
+    --surface: #f7f2fa;
+    --surface-2: #ece6f0;
+    --surface-3: #e6e0e9;
+    --line: #e2dce8;
+    --line-strong: #79747e;
+    --ink: #1d1b20;
+    --ink-2: #49454f;
+    --ink-3: #5f5b66;
+    --ink-placeholder: #5d5864;
+    --accent: #6750a4;
+    --accent-hover: #5b4692;
+    --accent-strong: #4f378b;
+    --accent-text: #6750a4;
+    --accent-soft: #e8def8;
+    --accent-line: #cbbdea;
+    --mode-sale: #386a20;
+    --mode-sale-soft: #d7f0c6;
+    --mode-wholesale: #7d5260;
+    --mode-wholesale-soft: #ffd8e4;
+    --mode-rentals: #006a6a;
+    --mode-rentals-soft: #cceeee;
+    --positive: #386a20;
+    --positive-soft: #d7f0c6;
+    --negative: #b3261e;
+    --negative-soft: #f9dedc;
+    --negative-fill: #b3261e;
+    --warning: #8f4a00;
+    --warning-soft: #ffdcc0;
+    --focus: 0 0 0 3px rgba(103, 80, 164, 0.3);
+    --e1: 0 1px 2px rgba(0, 0, 0, 0.12);
+    --panel-border: transparent;
+    --panel-shadow: none;
+    --input-bg: #fffbff;
+    --input-border: #79747e;
+    --bar-bg: #f3edf7;
+    --seg-track: #ece6f0;
+    --seg-on: #e8def8;
+    --toast-bg: #322f35;
+    --toast-ink: #f5eff7;
+    --btn-primary-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 2px 6px 1px rgba(0, 0, 0, 0.1);
+  }
+
+  [data-theme="material"][data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #141218;
+    --surface: #211f26;
+    --surface-2: #2b2930;
+    --surface-3: #36343b;
+    --line: #3b3840;
+    --line-strong: #938f99;
+    --ink: #e6e0e9;
+    --ink-2: #cac4d0;
+    --ink-3: #aea9b4;
+    --ink-placeholder: #aaa5b1;
+    --accent: #d0bcff;
+    --accent-hover: #dccbff;
+    --accent-strong: #4f378b;
+    --accent-text: #d0bcff;
+    --accent-soft: #4a4458;
+    --accent-line: rgba(208, 188, 255, 0.4);
+    --on-accent: #381e72;
+    --mode-sale: #9cd67d;
+    --on-mode-sale: #0c3900;
+    --mode-sale-soft: rgba(156, 214, 125, 0.16);
+    --mode-wholesale: #efb8c8;
+    --on-mode-wholesale: #492532;
+    --mode-wholesale-soft: rgba(239, 184, 200, 0.16);
+    --mode-rentals: #4cdada;
+    --positive: #9cd67d;
+    --positive-soft: rgba(156, 214, 125, 0.14);
+    --negative: #f2b8b5;
+    --negative-soft: rgba(242, 184, 181, 0.14);
+    --warning: #f0c36a;
+    --warning-soft: rgba(240, 195, 106, 0.14);
+    --panel-border: transparent;
+    --panel-shadow: none;
+    --input-bg: #36343b;
+    --input-border: #938f99;
+    --bar-bg: #211f26;
+    --seg-track: #2b2930;
+    --seg-on: #4a4458;
+    --toast-bg: #e6e0e9;
+    --toast-ink: #322f35;
+    --toast-pos: #386a20;
+    --toast-neg: #b3261e;
+    --toast-warn: #8f4a00;
+    --toast-info: #6750a4;
+    --preview-apply-line: #322f35;
+    --btn-primary-shadow: none;
+  }
+}
+
+/* ---- css/themes/fluent.css ---- */
+/* Fluent (redesign 4.6, DIRECTION 4.2): Windows 11 Mica canvas, Segoe UI Variable, 4/8 px corners,
+   high-contrast double focus ring; dark uses a light accent with dark text. Screen-only, so print stays Modern. */
+@media screen {
+  [data-theme="fluent"] {
+    --r-control: 4px;
+    --r-panel: 8px;
+    --r-chip: 4px;
+    --r-sheet: 8px;
+    --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, Roboto, "Noto Sans", Arial, "Noto Sans Devanagari", "Nirmala UI", sans-serif;
+    --tracking-display: 0;
+  }
+
+  [data-theme="fluent"]:not([data-mode="dark"]) {
+    color-scheme: light;
+    --bg: #f3f3f3;
+    --surface: #ffffff;
+    --surface-2: #f6f6f6;
+    --surface-3: #ececec;
+    --line: #e5e5e5;
+    --line-strong: #d1d1d1;
+    --ink: #1a1a1a;
+    --ink-2: #5d5d5d;
+    --ink-3: #616161;
+    --ink-placeholder: #6b6b6b;
+    --accent: #005fb8;
+    --accent-hover: #0067c0;
+    --accent-strong: #003e92;
+    --accent-text: #005fb8;
+    --accent-soft: #e5f0fa;
+    --accent-line: #a9cdee;
+    --mode-sale: #0f7b0f;
+    --mode-sale-soft: #dff6dd;
+    --mode-wholesale: #8251c2;
+    --mode-wholesale-soft: #efe9f7;
+    --mode-rentals: #00737a;
+    --positive: #0f7b0f;
+    --positive-soft: #dff6dd;
+    --negative: #c42b1c;
+    --negative-soft: #fde7e9;
+    --negative-fill: #c42b1c;
+    --warning: #9d5d00;
+    --warning-soft: #fff4ce;
+    --focus: 0 0 0 2px #ffffff, 0 0 0 4px #1a1a1a;
+    --e1: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --panel-border: #e5e5e5;
+    --panel-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --input-bg: #ffffff;
+    --input-border: #d1d1d1;
+    --bar-bg: #f3f3f3;
+    --seg-track: #ececec;
+    --seg-on: #ffffff;
+    --btn-primary-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  [data-theme="fluent"][data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #202020;
+    --surface: #2b2b2b;
+    --surface-2: #323232;
+    --surface-3: #3a3a3a;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.14);
+    --ink: #ffffff;
+    --ink-2: #cfcfcf;
+    --ink-3: #ababab;
+    --ink-placeholder: #a0a0a0;
+    --accent: #60cdff;
+    --accent-hover: #75d4ff;
+    --accent-strong: #005fb8;
+    --accent-text: #60cdff;
+    --accent-soft: rgba(96, 205, 255, 0.12);
+    --accent-line: rgba(96, 205, 255, 0.4);
+    --on-accent: #000000;
+    --mode-sale: #6ccb5f;
+    --on-mode-sale: #000000;
+    --mode-sale-soft: rgba(108, 203, 95, 0.14);
+    --mode-wholesale: #b69ce0;
+    --on-mode-wholesale: #000000;
+    --mode-wholesale-soft: rgba(182, 156, 224, 0.14);
+    --mode-rentals: #4fd1d9;
+    --positive: #6ccb5f;
+    --positive-soft: rgba(108, 203, 95, 0.14);
+    --negative: #ff99a4;
+    --negative-soft: rgba(255, 153, 164, 0.12);
+    --warning: #fce100;
+    --warning-soft: rgba(252, 225, 0, 0.1);
+    --focus: 0 0 0 2px #000000, 0 0 0 4px #ffffff;
+    --panel-border: rgba(255, 255, 255, 0.06);
+    --panel-shadow: none;
+    --input-bg: #2d2d2d;
+    --input-border: rgba(255, 255, 255, 0.14);
+    --bar-bg: #202020;
+    --seg-track: #323232;
+    --seg-on: #3a3a3a;
+    --toast-bg: #3a3a3a;
+    --toast-ink: #ffffff;
+    --btn-primary-shadow: none;
+  }
+}
+
 /* ---- css/themes/nature.css ---- */
 /* Nature (redesign 2.6, DIRECTION 4.2): oat paper, moss and clay, soft organic corners.
    Colours are screen-only, so printing from any theme uses the Modern light values (black on white). */
@@ -925,6 +1230,72 @@ input[type="number"],
     --seg-on: #1c2946;
     --toast-bg: #18233d;
     --toast-ink: #e6edf9;
+  }
+}
+
+/* ---- css/themes/cyberpunk.css ---- */
+/* Cyberpunk (redesign 4.6, DIRECTION 4.2): always dark. Near-black with neon magenta and cyan, yellow warning,
+   mono figures, sharp corners, neon hairlines and a restrained glow. Screen-only, so print stays Modern. */
+@media screen {
+  [data-theme="cyberpunk"] {
+    --r-control: 2px;
+    --r-panel: 4px;
+    --r-chip: 2px;
+    --r-sheet: 6px;
+    color-scheme: dark;
+    --font-num: "Cascadia Mono", Consolas, "Roboto Mono", "Droid Sans Mono", "Noto Sans Mono", "Nirmala UI", "Noto Sans Devanagari", monospace;
+    --font-hero: var(--font-num);
+    --tracking-display: -0.01em;
+    --bg: #07070d;
+    --surface: #0e0e1a;
+    --surface-2: #151527;
+    --surface-3: #1e1e36;
+    --line: rgba(0, 240, 255, 0.16);
+    --line-strong: rgba(0, 240, 255, 0.34);
+    --ink: #ecebff;
+    --ink-2: #b6b4e2;
+    --ink-3: #9390c6;
+    --ink-placeholder: #8582bb;
+    --scrim: rgba(4, 0, 12, 0.7);
+    --accent: #ff2bd6;
+    --accent-hover: #ff52df;
+    --accent-strong: #8a0f73;
+    --accent-text: #ff7ae6;
+    --accent-soft: rgba(255, 43, 214, 0.14);
+    --accent-line: rgba(255, 43, 214, 0.45);
+    --on-accent: #16000f;
+    --mode-sale: #00f5a0;
+    --on-mode-sale: #00170e;
+    --mode-sale-soft: rgba(0, 245, 160, 0.12);
+    --mode-wholesale: #9d8cff;
+    --on-mode-wholesale: #0b0620;
+    --mode-wholesale-soft: rgba(157, 140, 255, 0.14);
+    --mode-rentals: #00e5ff;
+    --mode-rentals-soft: rgba(0, 229, 255, 0.12);
+    --positive: #00f5a0;
+    --positive-soft: rgba(0, 245, 160, 0.1);
+    --negative: #ff4d6d;
+    --negative-soft: rgba(255, 77, 109, 0.14);
+    --warning: #ffd60a;
+    --warning-soft: rgba(255, 214, 10, 0.1);
+    --warning-dot: #ffd60a;
+    --info: #00e5ff;
+    --info-soft: rgba(0, 229, 255, 0.1);
+    --e1: 0 0 0 1px rgba(0, 240, 255, 0.12);
+    --e2: 0 0 0 1px rgba(0, 240, 255, 0.25), 0 12px 32px -8px rgba(0, 0, 0, 0.9);
+    --e3: 0 0 0 1px rgba(255, 43, 214, 0.3), 0 24px 56px -12px rgba(0, 0, 0, 0.9);
+    --highlight: 0 0 #0000;
+    --focus: 0 0 0 2px #07070d, 0 0 0 4px #00f0ff;
+    --panel-border: rgba(0, 240, 255, 0.18);
+    --panel-shadow: none;
+    --input-bg: #0a0a14;
+    --input-border: rgba(0, 240, 255, 0.3);
+    --bar-bg: #0a0a14;
+    --seg-track: #0a0a14;
+    --seg-on: #1e1e36;
+    --toast-bg: #151527;
+    --toast-ink: #ecebff;
+    --btn-primary-shadow: 0 0 18px -4px rgba(255, 43, 214, 0.7);
   }
 }
 
@@ -6851,59 +7222,199 @@ body.no-perm-contacts [data-perm~="contacts"] {
 }
 
 .theme-tile-preview {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  height: 84px;
-  padding: var(--sp-2);
-  overflow: hidden;
   border-bottom: 1px solid var(--line);
-  background: var(--bg);
 }
 
-.tcp-bar {
-  height: 8px;
-  width: 40%;
-  border-radius: var(--r-full);
-  background: var(--ink-3);
+/* Mini Billing: drawn at the app's own sizes and tokens, then zoomed out */
+.tcp {
+  display: block;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  line-height: 1.3;
+}
+
+.tcp-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  zoom: 0.5;
+}
+
+.tcp-bar,
+.tcp-foot,
+.tcp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.tcp-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-style: var(--title-style);
+  font-weight: var(--w-display);
+  letter-spacing: var(--tracking-display);
+}
+
+.tcp-chip {
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-chip);
+  background: var(--surface-2);
+  color: var(--ink-3);
+  font-size: var(--fs-caption);
+}
+
+.tcp-seg {
+  display: flex;
+  gap: var(--sp-1);
+  padding: var(--sp-1);
+  border-radius: var(--r-md);
+  background: var(--seg-track);
+}
+
+.tcp-seg-on,
+.tcp-seg-off {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2);
+  border-radius: var(--r-control);
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
+}
+
+.tcp-seg-on {
+  background: var(--seg-on);
+  color: var(--ink);
+  box-shadow: var(--e1);
+}
+
+.tcp-dot {
+  width: var(--sp-2);
+  height: var(--sp-2);
+  border-radius: var(--r-round);
+  background: var(--mode-purchase);
+}
+
+.tcp-dot-sale {
+  background: var(--mode-sale);
 }
 
 .tcp-card {
   display: flex;
-  flex: 1;
   flex-direction: column;
-  gap: var(--sp-1);
-  padding: var(--sp-1) var(--sp-2);
   border: 1px solid var(--panel-border);
-  border-radius: calc(var(--r-control) * 0.75);
+  border-radius: var(--r-panel);
   background: var(--panel-bg);
+  box-shadow: var(--panel-shadow);
 }
 
-.tcp-line {
-  height: 5px;
-  width: 80%;
-  border-radius: var(--r-full);
-  background: var(--ink);
+.tcp-row {
+  padding: var(--sp-2) var(--sp-3);
 }
 
-.tcp-line-short {
-  width: 50%;
-  background: var(--ink-3);
+.tcp-row + .tcp-row {
+  border-top: 1px var(--rule-style) var(--line);
 }
 
-.tcp-dots {
-  height: 6px;
-  width: 34px;
-  border-radius: var(--r-full);
-  background: linear-gradient(90deg, var(--positive) 0 30%, transparent 30% 35%, var(--negative) 35% 65%, transparent 65% 70%, var(--warning-dot) 70%);
+.tcp-row-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tcp-item {
+  font-size: var(--fs-sm);
+  font-weight: var(--w-strong);
+}
+
+.tcp-meta {
+  color: var(--ink-3);
+  font-family: var(--font-num);
+  font-size: var(--fs-caption);
+  white-space: nowrap;
+}
+
+.tcp-amt {
+  font-family: var(--font-num);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.tcp-total {
+  font-family: var(--font-hero);
+  font-size: var(--fs-display);
+  font-weight: var(--w-display);
+  font-variant-numeric: tabular-nums var(--hero-nums);
 }
 
 .tcp-save {
-  height: 12px;
-  width: 55%;
-  align-self: flex-end;
-  border-radius: calc(var(--r-control) / 2);
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--r-control);
   background: var(--btn-primary-bg);
+  box-shadow: var(--btn-primary-shadow);
+  color: var(--btn-primary-ink);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-strong);
+}
+
+/* Desktop: a live preview pane beside the gallery, with its own Cancel / Apply */
+.theme-pane {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .theme-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+    align-items: start;
+    gap: var(--sp-4);
+  }
+
+  .theme-pane {
+    position: sticky;
+    top: var(--sp-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+  }
+
+  .theme-pane-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-2);
+  }
+
+  .theme-pane-title {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+    font-weight: var(--w-strong);
+  }
+
+  .theme-pane-preview .tcp {
+    border: 1px solid var(--line);
+    border-radius: var(--r-panel);
+  }
+
+  .theme-pane-preview .tcp-screen {
+    zoom: 0.85;
+  }
+
+  .theme-pane-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-2);
+  }
 }
 
 .theme-tile-check {
@@ -9356,9 +9867,9 @@ div.ins-wide,
   .st-view > .st-doc { grid-column: 2; grid-row: 2 / span 3; margin-top: 0; min-width: 0; }
 }
 
+/* Theme preview: the live preview pane in Settings has Cancel / Apply, so the floating bar is for phones */
 @media (min-width: 1024px) {
   .theme-preview-bar {
-    bottom: 24px;
-    left: calc(50% + var(--desktop-nav-width) / 2);
+    display: none;
   }
 }

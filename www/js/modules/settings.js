@@ -13,7 +13,7 @@ import { changedFields } from '../utils/audit-changes.js';
 import { PrinterService, loadReceiptDrawing } from '../services/printer.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
-import { LABOUR_PACKAGE_KG_MAX, LABOUR_PACKAGE_KG_MIN, normalizeLabourSettings, normalizePackageKg } from '../utils/money.js';
+import { LABOUR_PACKAGE_KG_MAX, LABOUR_PACKAGE_KG_MIN, moneyText, normalizeLabourSettings, normalizePackageKg } from '../utils/money.js';
 import { DEFAULT_THRESHOLDS, normalizeThresholds } from '../utils/bill-checks.js';
 import { CHANGED_ELSEWHERE, NEEDS_INTERNET, writeErrorKey } from '../utils/write-conflict.js';
 import { t } from '../i18n/index.js';
@@ -52,6 +52,52 @@ export const CHECK_THRESHOLD_FIELDS = [
 const MAX_BUSINESS_NAME = 80;
 const MAX_BUSINESS_DETAILS = 120;
 const MAX_UPI = 60;
+
+/** @param {string} cls @param {string} [text] */
+function themeSpan(cls, text) {
+    const el = document.createElement('span');
+    el.className = cls;
+    if (text != null) el.textContent = text;
+    return el;
+}
+
+/**
+ * A miniature of Billing (app bar, Purchase / Retail sale, two lines, the total and Save) in a theme:
+ * real DOM scoped with data-theme / data-mode, so every theme previews itself.
+ * @param {{id: string, kind: string}} th
+ */
+function themePreview(th) {
+    const span = themeSpan;
+    const systemDark = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const preview = span('tcp');
+    preview.setAttribute('aria-hidden', 'true');
+    preview.setAttribute('data-theme', th.id);
+    preview.setAttribute('data-mode', resolveMode(ThemeManager.current.appearance, th.kind, systemDark));
+    const screen = span('tcp-screen');
+    const bar = span('tcp-bar');
+    bar.append(span('tcp-title', t('ui.nav.billing')), span('tcp-chip', t('ui.sync.synced')));
+    const seg = span('tcp-seg');
+    const on = span('tcp-seg-on');
+    on.append(span('tcp-dot'), t('ui.common.purchase'));
+    const off = span('tcp-seg-off');
+    off.append(span('tcp-dot tcp-dot-sale'), t('ui.billing.sale'));
+    seg.append(on, off);
+    const card = span('tcp-card');
+    let total = 0;
+    for (const [kg, rate] of [[50, 56], [48.5, 55.5]]) {
+        const row = span('tcp-row');
+        const main = span('tcp-row-main');
+        main.append(span('tcp-item', t('ui.settings.theme_sample_item')), span('tcp-meta', `${kg} kg × ${moneyText(rate, { exact: true })}`));
+        row.append(main, span('tcp-amt', moneyText(kg * rate)));
+        card.append(row);
+        total += kg * rate;
+    }
+    const foot = span('tcp-foot');
+    foot.append(span('tcp-total', moneyText(total)), span('tcp-save', t('ui.common.save')));
+    screen.append(bar, seg, card, foot);
+    preview.append(screen);
+    return preview;
+}
 
 /** Audit entry for a shared setting saved for everyone, with before → after (#85); nothing when unchanged. */
 function noteSettingsChange(section, before, after) {
@@ -175,26 +221,15 @@ export class SettingsManager {
     static renderThemeGallery() {
         const box = document.getElementById('themeGallery');
         if (!box) return;
-        const systemDark = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const span = (cls, text) => {
-            const el = document.createElement('span');
-            el.className = cls;
-            if (text != null) el.textContent = text;
-            return el;
-        };
+        const span = themeSpan;
         box.replaceChildren(...THEMES.map((th) => {
             const card = document.createElement('button');
             card.type = 'button';
             card.className = 'theme-tile';
             card.dataset.themeChoice = th.id;
             card.setAttribute('data-onclick', `settings.previewTheme('${th.id}')`);
-            const preview = span('theme-tile-preview');
-            preview.setAttribute('aria-hidden', 'true');
-            preview.setAttribute('data-theme', th.id);
-            preview.setAttribute('data-mode', resolveMode(ThemeManager.current.appearance, th.kind, systemDark));
-            const panel = span('tcp-card');
-            panel.append(span('tcp-line'), span('tcp-line tcp-line-short'), span('tcp-dots'));
-            preview.append(span('tcp-bar'), panel, span('tcp-save'));
+            const preview = themePreview(th);
+            preview.classList.add('theme-tile-preview');
             const check = span('theme-tile-check');
             check.innerHTML = icon('check', 'i-sm');
             const text = span('theme-tile-text');
@@ -227,6 +262,20 @@ export class SettingsManager {
             const label = document.getElementById('themePreviewText');
             if (label) label.textContent = previewing ? t('ui.settings.theme_previewing', { name: t(`ui.settings.theme_${previewing}`) }) : '';
         }
+        this.renderThemePane(shown);
+    }
+
+    /** Desktop: the live preview pane beside the gallery, with its own Cancel / Apply. */
+    static renderThemePane(shown) {
+        const pane = document.getElementById('themePane');
+        if (!pane || !shown) return;
+        const title = document.getElementById('themePaneTitle');
+        if (title) title.textContent = t('ui.settings.theme_live_preview', { name: t(`ui.settings.theme_${shown.id}`) });
+        const kind = document.getElementById('themePaneKind');
+        if (kind) kind.textContent = t(shown.kind === 'dark' ? 'ui.settings.theme_always_dark' : 'ui.settings.theme_light_dark');
+        const box = document.getElementById('themePanePreview');
+        if (box) box.replaceChildren(themePreview(shown));
+        pane.querySelectorAll('[data-theme-pane-action]').forEach((btn) => { btn.disabled = !ThemeManager.previewing; });
     }
 
     /** Shows a theme across the app; the preview bar applies or cancels it. */
@@ -255,8 +304,9 @@ export class SettingsManager {
 
     /** The preview bar hides under the focused Apply / Cancel: keep keyboard focus in the gallery. */
     static focusThemeCard(id) {
-        const bar = document.getElementById('themePreviewBar');
-        if (bar && !bar.contains(document.activeElement) && document.activeElement !== document.body) return;
+        const active = document.activeElement;
+        const hosts = ['themePreviewBar', 'themePane'].map((hook) => document.getElementById(hook)).filter(Boolean);
+        if (hosts.length && !hosts.some((host) => host.contains(active)) && active !== document.body) return;
         document.querySelector(`[data-theme-choice="${id}"]`)?.focus({ preventScroll: true });
     }
 

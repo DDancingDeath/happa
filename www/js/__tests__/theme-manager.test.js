@@ -81,10 +81,26 @@ test('apply saves the new keys, drops the old darkMode and fires aadhat:themecha
     expect(localStorage.getItem('darkMode')).toBeNull();
 });
 
-test('an unknown saved theme falls back to the default', () => {
+test('an unknown saved theme falls back to the default, and the fallback is saved for the boot script', () => {
     localStorage.setItem(THEME_KEYS.theme, 'no-such-theme');
+    localStorage.setItem(THEME_KEYS.kind, 'dark');
+    localStorage.setItem(THEME_KEYS.appearance, 'light');
+    localStorage.setItem(THEME_KEYS.barDark, '#07070d');
     expect(ThemeManager.init().theme).toBe('modern');
-    expect(attrs()[0]).toBe('modern');
+    expect(attrs()).toEqual(['modern', 'light', 'light']);
+    expect(localStorage.getItem(THEME_KEYS.theme)).toBe('modern');
+    expect(localStorage.getItem(THEME_KEYS.kind)).toBe('both');
+    expect(localStorage.getItem(THEME_KEYS.barDark)).toBeNull();
+});
+
+test('a saved 4.6 theme is kept (Glass, Material, Fluent; Cyberpunk is always dark)', () => {
+    for (const [theme, mode] of [['glass', 'light'], ['material', 'light'], ['fluent', 'light'], ['cyberpunk', 'dark']]) {
+        localStorage.setItem(THEME_KEYS.theme, theme);
+        localStorage.setItem(THEME_KEYS.appearance, 'light');
+        expect(ThemeManager.init().theme).toBe(theme);
+        expect(attrs()).toEqual([theme, 'light', mode]);
+        expect(localStorage.getItem(THEME_KEYS.theme)).toBe(theme);
+    }
 });
 
 test('the browser bar takes the page colour and caches it for the boot script', () => {

@@ -16,10 +16,12 @@ const COMBOS = [
     ['nature', 'light'], ['nature', 'dark'], ['dark', 'light'], ['midnight', 'system'],
     ['vintage', 'light'], ['vintage', 'dark'], ['classic', 'light'], ['classic', 'dark'],
     ['premium', 'light'], ['premium', 'dark'],
+    ['glass', 'light'], ['glass', 'dark'], ['material', 'light'], ['material', 'dark'],
+    ['fluent', 'light'], ['fluent', 'dark'], ['cyberpunk', 'light'],
     ['vintage', 'light', 'hi'], ['vintage', 'dark', 'hi'], ['classic', 'light', 'hi'], ['classic', 'dark', 'hi'],
-    ['premium', 'light', 'hi'], ['premium', 'dark', 'hi'],
+    ['premium', 'light', 'hi'], ['premium', 'dark', 'hi'], ['cyberpunk', 'system', 'hi'],
 ];
-const DARK_KIND = new Set(['dark', 'midnight']);
+const DARK_KIND = new Set(['dark', 'midnight', 'cyberpunk']);
 const MONTH = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })();
 // Part-paid this month: the open row shows a warning tag and a balance line
 const THEME_WORKER = {
@@ -148,7 +150,7 @@ for (const [theme, appearance, lang = 'en'] of COMBOS) {
     });
 }
 
-test('printing from the serif themes looks like Modern: colours, faces, italic, rules and corners are screen-only', async ({ page, problems }) => {
+test('printing from the serif and 4.6 themes looks like Modern: colours, faces, italic, rules and corners are screen-only', async ({ page, problems }) => {
     test.setTimeout(120000);
     await useTheme(page, 'modern', 'light');
     await login(page, 'owner');
@@ -173,7 +175,7 @@ test('printing from the serif themes looks like Modern: colours, faces, italic, 
         };
     }, [theme, mode]);
     const modern = await look('modern', 'light');
-    for (const theme of ['vintage', 'classic', 'premium']) {
+    for (const theme of ['vintage', 'classic', 'premium', 'glass', 'material', 'fluent', 'cyberpunk']) {
         for (const mode of ['light', 'dark']) expect(await look(theme, mode), `${theme} ${mode} in print`).toEqual(modern);
     }
     expect(problems.pageErrors).toEqual([]);
@@ -187,7 +189,9 @@ test('the gallery previews without saving; Cancel, leaving Settings and Apply be
     const bar = page.locator('#themePreviewBar');
 
     await showTab(page, 'settings-common');
-    await expect(page.locator('#themeGallery .theme-tile')).toHaveCount(8);
+    await expect(page.locator('#themeGallery .theme-tile')).toHaveCount(12);
+    // Each card is a mini Billing in its own theme
+    await expect(page.locator('[data-theme-choice="cyberpunk"] .tcp[data-theme="cyberpunk"][data-mode="dark"] .tcp-save')).toHaveText(/Save/);
     await expect(page.locator('[data-theme-choice="modern"]')).toHaveAttribute('aria-pressed', 'true');
 
     await page.click('[data-theme-choice="nordic"]');

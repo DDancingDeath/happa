@@ -892,9 +892,9 @@
   .st-view > .st-doc { grid-column: 2; grid-row: 2 / span 3; margin-top: 0; min-width: 0; }
 }
 
+/* Theme preview: the live preview pane in Settings has Cancel / Apply, so the floating bar is for phones */
 @media (min-width: 1024px) {
   .theme-preview-bar {
-    bottom: 24px;
-    left: calc(50% + var(--desktop-nav-width) / 2);
+    display: none;
   }
 }

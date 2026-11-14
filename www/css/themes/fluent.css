@@ -1,0 +1,99 @@
+/* Fluent (redesign 4.6, DIRECTION 4.2): Windows 11 Mica canvas, Segoe UI Variable, 4/8 px corners,
+   high-contrast double focus ring; dark uses a light accent with dark text. Screen-only, so print stays Modern. */
+@media screen {
+  [data-theme="fluent"] {
+    --r-control: 4px;
+    --r-panel: 8px;
+    --r-chip: 4px;
+    --r-sheet: 8px;
+    --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, Roboto, "Noto Sans", Arial, "Noto Sans Devanagari", "Nirmala UI", sans-serif;
+    --tracking-display: 0;
+  }
+
+  [data-theme="fluent"]:not([data-mode="dark"]) {
+    color-scheme: light;
+    --bg: #f3f3f3;
+    --surface: #ffffff;
+    --surface-2: #f6f6f6;
+    --surface-3: #ececec;
+    --line: #e5e5e5;
+    --line-strong: #d1d1d1;
+    --ink: #1a1a1a;
+    --ink-2: #5d5d5d;
+    --ink-3: #616161;
+    --ink-placeholder: #6b6b6b;
+    --accent: #005fb8;
+    --accent-hover: #0067c0;
+    --accent-strong: #003e92;
+    --accent-text: #005fb8;
+    --accent-soft: #e5f0fa;
+    --accent-line: #a9cdee;
+    --mode-sale: #0f7b0f;
+    --mode-sale-soft: #dff6dd;
+    --mode-wholesale: #8251c2;
+    --mode-wholesale-soft: #efe9f7;
+    --mode-rentals: #00737a;
+    --positive: #0f7b0f;
+    --positive-soft: #dff6dd;
+    --negative: #c42b1c;
+    --negative-soft: #fde7e9;
+    --negative-fill: #c42b1c;
+    --warning: #9d5d00;
+    --warning-soft: #fff4ce;
+    --focus: 0 0 0 2px #ffffff, 0 0 0 4px #1a1a1a;
+    --e1: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --panel-border: #e5e5e5;
+    --panel-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --input-bg: #ffffff;
+    --input-border: #d1d1d1;
+    --bar-bg: #f3f3f3;
+    --seg-track: #ececec;
+    --seg-on: #ffffff;
+    --btn-primary-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  [data-theme="fluent"][data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #202020;
+    --surface: #2b2b2b;
+    --surface-2: #323232;
+    --surface-3: #3a3a3a;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.14);
+    --ink: #ffffff;
+    --ink-2: #cfcfcf;
+    --ink-3: #ababab;
+    --ink-placeholder: #a0a0a0;
+    --accent: #60cdff;
+    --accent-hover: #75d4ff;
+    --accent-strong: #005fb8;
+    --accent-text: #60cdff;
+    --accent-soft: rgba(96, 205, 255, 0.12);
+    --accent-line: rgba(96, 205, 255, 0.4);
+    --on-accent: #000000;
+    --mode-sale: #6ccb5f;
+    --on-mode-sale: #000000;
+    --mode-sale-soft: rgba(108, 203, 95, 0.14);
+    --mode-wholesale: #b69ce0;
+    --on-mode-wholesale: #000000;
+    --mode-wholesale-soft: rgba(182, 156, 224, 0.14);
+    --mode-rentals: #4fd1d9;
+    --positive: #6ccb5f;
+    --positive-soft: rgba(108, 203, 95, 0.14);
+    --negative: #ff99a4;
+    --negative-soft: rgba(255, 153, 164, 0.12);
+    --warning: #fce100;
+    --warning-soft: rgba(252, 225, 0, 0.1);
+    --focus: 0 0 0 2px #000000, 0 0 0 4px #ffffff;
+    --panel-border: rgba(255, 255, 255, 0.06);
+    --panel-shadow: none;
+    --input-bg: #2d2d2d;
+    --input-border: rgba(255, 255, 255, 0.14);
+    --bar-bg: #202020;
+    --seg-track: #323232;
+    --seg-on: #3a3a3a;
+    --toast-bg: #3a3a3a;
+    --toast-ink: #ffffff;
+    --btn-primary-shadow: none;
+  }
+}

@@ -66,6 +66,13 @@ export const ThemeManager = {
         // The first start keeps its choice, so a key the app writes later can't change it
         if (store && store.getItem(THEME_KEYS.appearance) === null) safeSetItem(THEME_KEYS.appearance, this.current.appearance, store);
         const state = this.render(this.current);
+        // A saved theme this version doesn't know: save the fallback, so the boot script stops painting its mode
+        const saved = store ? store.getItem(THEME_KEYS.theme) : null;
+        if (saved !== null && !themeById(saved)) {
+            safeSetItem(THEME_KEYS.theme, state.theme, store);
+            safeSetItem(THEME_KEYS.kind, state.kind, store);
+            try { store.removeItem(THEME_KEYS.barLight); store.removeItem(THEME_KEYS.barDark); } catch { /* storage unavailable */ }
+        }
         const barKey = state.mode === 'dark' ? THEME_KEYS.barDark : THEME_KEYS.barLight;
         if (store && BAR_COLOUR.test(state.bar) && store.getItem(barKey) !== state.bar) safeSetItem(barKey, state.bar, store);
         const query = systemQuery();
