@@ -110,13 +110,6 @@
   padding: 4px 8px;
 }
 
-.app-updates-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 8px 0;
-}
-
 body.dark-mode .app-sheet {
   background: #1f2937;
   color: #f3f4f6;

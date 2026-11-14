@@ -522,20 +522,6 @@
   }
 
   /* ---------- Generic: wider grids and tables ---------- */
-  .stats-grid-2:has(> :nth-child(3)) {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  /* Values stay level across the row when a label wraps to two lines */
-  .stats-grid-2:has(> :nth-child(3)) > .stat-card {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .stats-grid-2:has(> :nth-child(3)) > .stat-card > .stat-label {
-    flex: 1 0 auto;
-  }
-
   .tab table {
     width: 100%;
   }
