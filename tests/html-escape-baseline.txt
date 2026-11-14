@@ -199,7 +199,6 @@ www/js/modules/money.js: t('ui.money.stock_vs_not_known', { when: sinceLabel }) 
 www/js/modules/money.js: tag ← onTap
 www/js/modules/money.js: v (markup via barsSvg)
 www/js/modules/money.js: value (sink)
-www/js/modules/notifications.js: d.icon ← d = describeNotification(n)
 www/js/modules/outstanding.js: Helpers.formatDate(transaction.date)
 www/js/modules/outstanding.js: by
 www/js/modules/outstanding.js: chaseFirst(aging.parties) (markup via map(p => ` <li class="row aging-b${p.bucket}"><span class="row-main"><strong>${partyName(p)}</strong> — ${moneyHtml(p.total)} · ${withMoney(t('u) .bucket)
