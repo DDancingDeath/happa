@@ -53,6 +53,10 @@ const MAX_BUSINESS_NAME = 80;
 const MAX_BUSINESS_DETAILS = 120;
 const MAX_UPI = 60;
 
+/** The gallery's sample bill: kg, rate, amount (fixed figures, nothing is computed on screen). */
+const THEME_SAMPLE_LINES = [[50, 56, 2800], [48.5, 55.5, 2691.75]];
+const THEME_SAMPLE_TOTAL = 5491.75;
+
 /** @param {string} cls @param {string} [text] */
 function themeSpan(cls, text) {
     const el = document.createElement('span');
@@ -83,17 +87,15 @@ function themePreview(th) {
     off.append(span('tcp-dot tcp-dot-sale'), t('ui.billing.sale'));
     seg.append(on, off);
     const card = span('tcp-card');
-    let total = 0;
-    for (const [kg, rate] of [[50, 56], [48.5, 55.5]]) {
+    for (const [kg, rate, amount] of THEME_SAMPLE_LINES) {
         const row = span('tcp-row');
         const main = span('tcp-row-main');
         main.append(span('tcp-item', t('ui.settings.theme_sample_item')), span('tcp-meta', `${kg} kg × ${moneyText(rate, { exact: true })}`));
-        row.append(main, span('tcp-amt', moneyText(kg * rate)));
+        row.append(main, span('tcp-amt', moneyText(amount)));
         card.append(row);
-        total += kg * rate;
     }
     const foot = span('tcp-foot');
-    foot.append(span('tcp-total', moneyText(total)), span('tcp-save', t('ui.common.save')));
+    foot.append(span('tcp-total', moneyText(THEME_SAMPLE_TOTAL)), span('tcp-save', t('ui.common.save')));
     screen.append(bar, seg, card, foot);
     preview.append(screen);
     return preview;
