@@ -12,6 +12,7 @@ import { Helpers } from '../utils/helpers.js';
 import { t, tn } from '../i18n/index.js';
 import { billTotal, formatAmount, formatRupees, hasBillAmount, isActiveBill, isOpeningRecord, openingAmount, outstandingDue, readPayment, UNKNOWN_AMOUNT, formatKg, formatRate } from '../utils/money.js';
 import { billDateOf } from '../utils/history-filters.js';
+import { ageInDays, dueTone } from '../utils/aging.js';
 import { printStatusOf } from '../utils/print-status.js';
 import { SyncStatus } from './sync-status.js';
 
@@ -19,6 +20,8 @@ const L = (key, params) => Helpers.escapeHtml(t(key, params));
 
 /** Class names of the row slots, in desktop column order. */
 export const BILL_ROW_SLOTS = Object.freeze(['no', 'party', 'amount', 'date', 'items', 'chips']);
+
+const MODE_DOT = Object.freeze({ retail: ' sale', sale: ' sale', wholesale: ' wholesale' });
 
 /**
  * Bill number shown in lists ("S20261022-005"; short id when there is none).
@@ -84,9 +87,11 @@ export function paymentChipsHtml(bill) {
     const pay = readPayment(bill);
     const p = { online: pay.online, cash: pay.cash, due: outstandingDue(bill) };
     const chips = [];
-    if (p.online > 0) chips.push(`<span class="payment-badge payment-online">${L('ui.history.badge_online', { amount: formatAmount(p.online) })}</span>`);
-    if (p.cash > 0) chips.push(`<span class="payment-badge payment-cash">${L('ui.history.badge_cash', { amount: formatAmount(p.cash) })}</span>`);
-    if (p.due > 0) chips.push(`<span class="payment-badge payment-due">${L('ui.history.badge_due', { amount: formatAmount(p.due) })}</span>`);
+    if (p.online > 0) chips.push(`<span class="tag payment-badge payment-online">${L('ui.history.badge_online', { amount: formatAmount(p.online) })}</span>`);
+    if (p.cash > 0) chips.push(`<span class="tag payment-badge payment-cash">${L('ui.history.badge_cash', { amount: formatAmount(p.cash) })}</span>`);
+    const date = billDateOf(bill);
+    const tone = dueTone(date ? ageInDays(date) : null, p.due);
+    if (p.due > 0) chips.push(`<span class="tag payment-badge payment-due${tone ? ` ${Helpers.escapeHtml(tone)}` : ''}">${L('ui.history.badge_due', { amount: formatAmount(p.due) })}</span>`);
     return chips.join('');
 }
 
@@ -118,7 +123,7 @@ export function buildBillRow(bill, { onclick, kind, rowTap = false, typeTag = fa
     const opening = isOpeningRecord(bill);
     const voided = !isActiveBill(bill);
     const type = kind || bill?.type || 'purchase';
-    div.className = `history-item bill-row${opening ? ' is-opening' : ''}${voided ? ' is-voided' : ''}`;
+    div.className = `history-item bill-row row${opening ? ' is-opening' : ''}${voided ? ' is-voided' : ''}`;
     div.setAttribute('data-type', type);
     if (rowTap && onclick) {
         // `onclick` is escaped for markup (escapeJsAttr): parse it as markup, as the link's was
@@ -136,7 +141,7 @@ export function buildBillRow(bill, { onclick, kind, rowTap = false, typeTag = fa
     const date = billRowDate(bill);
     const items = billItemsText(bill);
     div.innerHTML = `
-        <span class="bill-row__no" title="#${Helpers.escapeHtml(number)}"><span class="bill-row__link"${link}>#${Helpers.escapeHtml(number)}</span></span>
+        <span class="bill-row__no" title="#${Helpers.escapeHtml(number)}"><span class="mode-dot${Helpers.escapeHtml(MODE_DOT[type] || '')}" aria-hidden="true"></span><span class="bill-row__link"${link}>#${Helpers.escapeHtml(number)}</span></span>
         <span class="bill-row__party" title="${Helpers.escapeHtml(party)}">${party ? `<strong>${Helpers.escapeHtml(party)}</strong>` : '—'}</span>
         <span class="bill-row__amount">${Helpers.escapeHtml(billListAmountText(bill))}</span>
         <span class="bill-row__meta">
@@ -310,8 +315,8 @@ export function billTableHtml(bills, { onclickFor, openings = [], voided = [], t
     const openingRows = group(openings, 'ui.history.old_dues_group');
     const voidedRows = group(voided, 'ui.void.group');
     return `
-        <div class="bill-table-wrap">
-            <table class="bill-table">
+        <div class="bill-table-wrap panel">
+            <table class="table bill-table">
                 <thead>
                     <tr>
                         <th class="bill-table__no">${L('ui.history.col_bill_no')}</th>

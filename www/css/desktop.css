@@ -462,14 +462,6 @@
     align-items: center;
     column-gap: 12px;
     padding: 8px 16px;
-    margin-bottom: 6px;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-xs);
-  }
-
-  .history-item.bill-row:hover {
-    transform: none;
-    box-shadow: var(--shadow-sm);
   }
 
   .history-item.bill-row > *,
