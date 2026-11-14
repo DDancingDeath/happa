@@ -5,12 +5,12 @@
 .rt-card h3 { margin: 0 0 8px; font-size: var(--fs-body); }
 .rt-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .rt-card-head h3 { margin: 0; }
-.rt-card-head select { width: auto; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: var(--fs-sm); }
+.rt-card-head select { width: auto; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: var(--fs-input); }
 .rt-sub { margin-top: 12px !important; }
 .rt-muted { color: var(--text-secondary); font-size: var(--fs-caption); margin-top: 6px; }
-.rt-empty { color: var(--text-secondary); padding: 12px; text-align: center; font-size: 14px; }
-.rt-note { font-size: 14px; line-height: 1.45; }
-.rt-ok { font-size: 14px; line-height: 1.45; color: var(--on-success-soft); }
+.rt-empty { color: var(--text-secondary); padding: 12px; text-align: center; font-size: var(--fs-sm); }
+.rt-note { font-size: var(--fs-sm); line-height: 1.45; }
+.rt-ok { font-size: var(--fs-sm); line-height: 1.45; color: var(--on-success-soft); }
 .rt-warn { font-size: var(--fs-sm); line-height: 1.45; color: var(--on-warning-soft); background: var(--warning-soft); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
 .rt-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
 .rt-actions .btn { white-space: normal; text-align: left; }
@@ -19,15 +19,15 @@
 
 .rt-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .rt-controls label { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-caption); color: var(--text-secondary); min-width: 0; }
-.rt-controls select { padding: 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: 14px; width: 100%; min-width: 0; box-sizing: border-box; }
+.rt-controls select { padding: 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: var(--fs-input); width: 100%; min-width: 0; box-sizing: border-box; }
 
 .rt-outlook { border-left: 4px solid var(--border-strong); border-radius: 8px; background: var(--surface-muted); padding: 10px; margin-bottom: 8px; }
 .rt-outlook-up { border-left-color: #b91c1c; background: var(--danger-soft); }
 .rt-outlook-down { border-left-color: #059669; background: var(--success-soft); }
 .rt-outlook-flat { border-left-color: var(--border-strong); }
-.rt-outlook-head { font-weight: var(--w-strong); font-size: 14px; }
+.rt-outlook-head { font-weight: var(--w-strong); font-size: var(--fs-sm); }
 .rt-outlook-meta { font-size: var(--fs-caption); margin-top: 4px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.rt-arrow { font-size: 16px; }
+.rt-arrow { font-size: var(--fs-body); }
 .rt-conf { padding: 2px 8px; border-radius: 999px; font-weight: var(--w-strong); background: var(--seg-bg); }
 .rt-conf-high { background: var(--success-soft); color: var(--on-success-soft); }
 .rt-conf-medium { background: var(--warning-soft); color: var(--on-warning-soft); }
@@ -41,14 +41,14 @@
 .rt-table-wrap { overflow-x: auto; }
 .rt-table { border-collapse: collapse; width: 100%; font-size: var(--fs-caption); }
 .rt-table th, .rt-table td { border: 1px solid var(--border-color); padding: 6px; text-align: right; white-space: nowrap; }
-.rt-table th { font-weight: var(--w-label); font-size: 11px; text-align: center; }
+.rt-table th { font-weight: var(--w-label); font-size: var(--fs-caption); text-align: center; }
 .rt-table td:first-child { text-align: left; font-weight: var(--w-strong); }
 .rt-neg { color: var(--on-danger-soft); }
 
 .rt-line { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--text-secondary); margin-right: 4px; vertical-align: middle; }
 .rt-line-dashed { border-top-style: dashed; }
 .rt-warn-inline { color: var(--on-warning-soft); }
-.rt-src { font-size: 11px; color: var(--text-secondary); text-align: left !important; }
+.rt-src { font-size: var(--fs-caption); color: var(--text-secondary); text-align: left !important; }
 .rt-click { cursor: pointer; }
 .rt-selected td { background: var(--info-soft); }
 .rt-week td { background: var(--surface-muted); font-weight: var(--w-strong); }

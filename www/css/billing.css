@@ -9,7 +9,7 @@
   width: 140px;
   flex-shrink: 0;
   font-weight: var(--w-label);
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
   margin: 0;
 }
@@ -57,7 +57,7 @@ label {
   margin-top: 12px;
   margin-bottom: 8px;
   font-weight: var(--w-label);
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
 }
 
@@ -154,7 +154,7 @@ input[type="number"] {
 .rate-input {
   width: 70px;
   padding: 10px;
-  font-size: 16px;
+  font-size: var(--fs-input);
   font-weight: var(--w-strong);
   border: 2px solid;
   border-radius: var(--radius);
@@ -184,7 +184,7 @@ input[type="number"] {
   width: 28px;
   height: 28px;
   border-radius: var(--radius-sm);
-  font-size: 18px;
+  font-size: var(--fs-lead);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -254,7 +254,7 @@ input[type="number"] {
   border-radius: var(--radius);
   background: var(--warning-soft);
   color: var(--on-warning-soft);
-  font-size: 14px;
+  font-size: var(--fs-sm);
 }
 
 .autosave-banner[hidden] {

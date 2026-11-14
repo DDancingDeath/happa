@@ -91,7 +91,7 @@ html {
   text-align: left;
   color: var(--text-primary);
   line-height: 1.5;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   overflow-y: auto;
   flex: 1;
 }
@@ -150,7 +150,7 @@ button:active, .btn:active {
 
 input, textarea, select {
   -webkit-tap-highlight-color: transparent;
-  font-size: 16px; /* Prevents zoom on iOS */
+  font-size: var(--fs-input); /* Prevents zoom on iOS */
 }
 
 /* Smooth scrolling for tabs */
@@ -368,7 +368,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   color: var(--on-danger-soft);
   border: 1px solid var(--danger-border);
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: var(--w-strong);
   cursor: pointer;
 }
@@ -394,7 +394,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   
   .bill-action-btn {
     padding: 10px 12px;
-    font-size: 14px;
+    font-size: var(--fs-sm);
   }
 }
 

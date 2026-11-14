@@ -54,7 +54,7 @@
     margin: 6px 0 0;
     padding-left: 4px;
     list-style: none;
-    font-size: 14px;
+    font-size: var(--fs-sm);
 }
 
 input.bill-check-block,
@@ -87,7 +87,7 @@ tr.bill-check-warn > td:first-child {
 
 .bill-check-msg {
     margin: 2px 0 8px;
-    font-size: 14px;
+    font-size: var(--fs-sm);
     font-weight: var(--w-strong);
     line-height: 1.35;
     text-align: left;

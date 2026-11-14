@@ -32,7 +32,7 @@
   border: 1px solid var(--danger-border);
   color: var(--on-danger-soft);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-  font-size: 14px;
+  font-size: var(--fs-sm);
 }
 
 .clock-banner__text {
