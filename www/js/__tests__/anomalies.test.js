@@ -143,7 +143,7 @@ describe('bill rules', () => {
         expect(night.en).toBe('Entered at 00:11 (outside shop hours)');
         expect(anomalyText(night)).toEqual({ en: 'Entered at 12:11 am (outside shop hours)', hi: '12:11 पूर्वाह्न पर एंट्री (दुकान के समय के बाहर)' });
         const stored = { type: 'rate-confirmed', en: 'Wheat: 100 kg × ₹2,400.00 = ₹2,40,000; today\'s rate ₹24.50 would give ₹2,450', hi: 'x ₹24.00' };
-        expect(anomalyText(stored)).toEqual({ en: 'Wheat: 100 kg × ₹2,400 = ₹2,40,000; today\'s rate ₹24.50 would give ₹2,450', hi: 'x ₹24' });
+        expect(anomalyText(stored)).toEqual({ ...stored, en: 'Wheat: 100 kg × ₹2,400 = ₹2,40,000; today\'s rate ₹24.50 would give ₹2,450', hi: 'x ₹24' });
         expect(anomalyText({ type: 'cash-short', en: 'Short ₹12.00', hi: '' }).en).toBe('Short ₹12.00');
     });
 

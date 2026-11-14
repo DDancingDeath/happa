@@ -154,9 +154,9 @@ const RATE_TEXT_TYPES = new Set(['rate-confirmed', 'rate-high', 'rate-low', 'bel
 /**
  * An anomaly's text for the screen; the stored text is kept as saved. A night entry's "Entered at 00:11" is
  * rebuilt from `at` in the 12-hour IST time (DATE-TEXT `time`, "12:11 am"), and rates lose a ".00"
- * (MONEY-TEXT `rate`).
+ * (MONEY-TEXT `rate`); other records are returned as they are.
  * @param {*} a
- * @returns {{en: string, hi: string}}
+ * @returns {*}
  */
 export function anomalyText(a) {
     const at = Number(a?.at);
@@ -168,8 +168,9 @@ export function anomalyText(a) {
             hi: `${formatTimeOfDay(wall, { lang: 'hi' })} पर एंट्री (दुकान के समय के बाहर)`
         };
     }
-    const fix = RATE_TEXT_TYPES.has(a?.type) ? screenRateText : (/** @type {*} */ s) => String(s ?? '');
-    return { en: fix(a?.en), hi: fix(a?.hi) };
+    if (!RATE_TEXT_TYPES.has(a?.type)) return a;
+    const fix = (/** @type {*} */ s) => (s == null ? s : screenRateText(s));
+    return { ...a, en: fix(a.en), hi: fix(a.hi) };
 }
 
 /**
