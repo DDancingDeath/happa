@@ -10,9 +10,9 @@
 .wp-list .row-trail { display: grid; justify-items: end; gap: var(--sp-1); }
 .wp-list .row-trail .row-meta, .wp-detail .row-meta { white-space: normal; }
 .wp-form, .wp-detail { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }
-.wp-table { font-size: var(--fs-sm); }
-.wp-table th, .wp-table td { white-space: nowrap; }
-.wp-table .num { font-family: var(--font-num); }
+.workers-page .table { font-size: var(--fs-sm); }
+.workers-page .table th, .workers-page .table td { white-space: nowrap; }
+.workers-page .table .num { font-family: var(--font-num); }
 .wp-left { color: var(--ink); }
 
 @media (min-width: 1024px) {

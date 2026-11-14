@@ -11,7 +11,7 @@
     "inlineStyle": 36,
     "emoji": 12,
     "titleCase": 17,
-    "legacyClass": 269
+    "legacyClass": 267
   },
   "strict": [
     "www/css/admin.css",
@@ -198,13 +198,11 @@
       "www/js/modules/outstanding.js": 1,
       "www/js/modules/purchase.js": 2,
       "www/js/modules/rate-trends.js": 16,
-      "www/js/modules/recurring-bills.js": 1,
       "www/js/modules/retail-sale.js": 2,
       "www/js/modules/statements.js": 5,
       "www/js/modules/stock.js": 4,
       "www/js/modules/voice-billing.js": 1,
       "www/js/modules/wholesale-sales.js": 1,
-      "www/js/modules/workers.js": 1,
       "www/js/ui/bill-highlight.js": 6,
       "www/js/ui/bill-row.js": 5,
       "www/js/ui/bill-status.js": 7,

@@ -172,7 +172,7 @@ function renderMonths(months) {
             <td>${stateTag(r)}</td>
             <td>${balanceLine(r.closing)}</td>
         </tr>`).join('');
-    return `<div class="scroll-cue"><div class="scroll-cue-inner"><table class="table wp-table">
+    return `<div class="scroll-cue"><div class="scroll-cue-inner"><table class="table">
             <thead><tr><th>${et('ui.workers.month')}</th><th>${et('ui.workers.col_pay')}</th><th>${et('ui.workers.col_paid')}</th><th>${et('ui.workers.col_advance')}</th><th>${et('ui.workers.col_state')}</th><th>${et('ui.workers.col_balance')}</th></tr></thead>
             <tbody>${rows}</tbody></table></div></div>`;
 }
