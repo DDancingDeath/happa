@@ -9961,7 +9961,7 @@ div.ins-wide,
 .st-totals { margin-top: var(--sp-3); }
 .st-flag td { background: var(--warning-soft); }
 .st-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); margin-top: var(--sp-2); }
-.st-balance { margin-top: 0; }
+.st-balance { margin: 0 0 var(--sp-4); }
 .st-balance > .hero-value { margin-bottom: var(--sp-2); }
 .st-match { margin-top: var(--sp-2); }
 
