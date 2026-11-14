@@ -297,6 +297,7 @@
   --z-drawer: 1000;
   --z-sheet: 9000;
   --z-dialog: 10000;
+  --z-busy: 15000;
   --z-modal: 20000;
   --z-toast: 100000;
   --z-max: 2147483647;

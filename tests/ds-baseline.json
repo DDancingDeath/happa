@@ -1,17 +1,17 @@
 {
   "_readme": "Design-system ratchet (tests/ci/ds-guard.test.js, docs/design-system.md §7). Per-file counts may only go down; lower them with DS_BASELINE=lower npx jest ds-guard. Files in \"strict\" are pinned at 0 on every metric.",
   "totals": {
-    "spacing": 287,
+    "spacing": 257,
     "radius": 2,
     "shadow": 0,
     "zIndex": 0,
     "important": 30,
     "idSelector": 159,
-    "themeSelector": 6,
+    "themeSelector": 4,
     "inlineStyle": 31,
     "emoji": 12,
     "titleCase": 15,
-    "legacyClass": 167
+    "legacyClass": 132
   },
   "strict": [
     "www/css/admin.css",
@@ -66,16 +66,14 @@
   ],
   "metrics": {
     "spacing": {
-      "www/css/app-updates.css": 7,
       "www/css/bill-checks.css": 10,
       "www/css/billing.css": 18,
       "www/css/buttons.css": 17,
-      "www/css/charts.css": 13,
       "www/css/day.css": 36,
       "www/css/desktop.css": 22,
-      "www/css/finance.css": 22,
+      "www/css/finance.css": 15,
       "www/css/forms.css": 16,
-      "www/css/history.css": 41,
+      "www/css/history.css": 38,
       "www/css/overlay.css": 2,
       "www/css/rate-trends.css": 24,
       "www/css/surfaces.css": 13,
@@ -111,7 +109,6 @@
       "www/css/totals.css": 49
     },
     "themeSelector": {
-      "www/css/app-updates.css": 2,
       "www/css/bill-checks.css": 4
     },
     "inlineStyle": {
@@ -152,22 +149,18 @@
       "www/js/modules/retail-sale.js": 1,
       "www/js/modules/statements.js": 5,
       "www/js/modules/stock.js": 4,
-      "www/js/modules/voice-billing.js": 1,
       "www/js/modules/wholesale-sales.js": 1,
       "www/js/ui/bill-highlight.js": 2,
       "www/js/ui/bill-row.js": 5,
-      "www/js/ui/bill-status.js": 4,
-      "www/js/ui/finance-breakdown-sheet.js": 17,
+      "www/js/ui/finance-breakdown-sheet.js": 7,
       "www/js/ui/manual-reminders.js": 1,
-      "www/js/ui/pending-line.js": 6,
+      "www/js/ui/pending-line.js": 1,
       "www/js/ui/period-compare.js": 2,
-      "www/js/ui/rate-check.js": 6,
-      "www/js/utils/keyboard-shortcuts.js": 1,
+      "www/js/ui/rate-check.js": 1,
       "www/templates/billing.html": 45,
       "www/templates/day.html": 4,
-      "www/templates/expenses.html": 1,
       "www/templates/insights.html": 1,
-      "www/templates/modals.html": 9,
+      "www/templates/modals.html": 1,
       "www/templates/money.html": 1,
       "www/templates/navigation.html": 5,
       "www/templates/rate-trends.html": 5,

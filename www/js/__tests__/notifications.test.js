@@ -6,6 +6,8 @@
 
 jest.mock('../ui/ui-manager.js', () => ({
     UIManager: {
+        openSheet: jest.fn(),
+        closeSheet: jest.fn(),
         showToast: jest.fn(),
         showLoading: jest.fn(),
         hideLoading: jest.fn(),

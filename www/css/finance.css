@@ -94,62 +94,19 @@
     box-shadow: var(--focus-ring);
 }
 
-/* ==================== CARD BREAKDOWN SHEET (#215) ==================== */
-.fin-sheet-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    z-index: var(--z-sheet);
-    align-items: flex-end;
-    justify-content: center;
-}
-
-.fin-sheet-overlay.active {
-    display: flex;
-}
-
-.fin-sheet {
-    background: var(--white, #fff);
-    width: 100%;
-    max-height: 88vh;
-    border-radius: var(--r-sheet) var(--r-sheet) 0 0;
-    display: flex;
-    flex-direction: column;
-    box-shadow: var(--e3);
-    animation: slideUp 0.25s ease;
-}
-
-.fin-sheet-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 14px 16px 6px;
-}
-
-.fin-sheet-title {
-    flex: 1;
-    min-width: 0;
-}
-
-.fin-sheet-title h3 {
-    margin: 0;
-    font-size: var(--fs-lead);
-}
-
-.fin-sheet-title span {
+/* ==================== CARD BREAKDOWN (#215), an app dialog ==================== */
+.fin-period {
     font-size: var(--fs-caption);
     color: var(--text-muted);
 }
 
-.fin-sheet-value {
+.fin-value {
     font-size: 26px;
     font-weight: var(--w-strong);
-    padding: 0 16px;
 }
 
-.fin-sheet-formula {
-    padding: 8px 16px;
+.fin-formula {
+    padding: var(--sp-2) 0;
     font-size: var(--fs-sm);
     line-height: 2;
 }
@@ -163,26 +120,19 @@
     cursor: pointer;
 }
 
-.fin-sheet-tools {
+.fin-tools {
     display: flex;
     gap: 6px;
-    padding: 6px 16px;
+    padding: 6px 0;
     flex-wrap: wrap;
 }
 
-.fin-sheet-tools input {
+.fin-tools input {
     flex: 1 1 100%;
 }
 
-.fin-sheet-tools select {
+.fin-tools select {
     flex: 1 1 40%;
-}
-
-.fin-sheet-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0 16px;
-    -webkit-overflow-scrolling: touch;
 }
 
 .fin-row {
@@ -242,16 +192,16 @@
     margin: var(--sp-2) auto;
 }
 
-.fin-sheet-total {
+.fin-total {
     display: flex;
     justify-content: space-between;
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    padding-top: var(--sp-3);
     border-top: 2px solid var(--border-color);
     font-size: var(--fs-sm);
 }
 
-.fin-sheet-notes {
-    padding: 0 16px 8px;
+.fin-notes {
+    padding-bottom: var(--sp-2);
     display: flex;
     flex-wrap: wrap;
     gap: 6px;

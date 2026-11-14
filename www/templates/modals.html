@@ -1,14 +1,14 @@
 <!-- App dialog (ui-manager.js): a .dialog from 600 px, a bottom .sheet below, over a .scrim -->
-    <div class="modal-overlay scrim" id="modalOverlay">
-        <div class="modal-box app-dialog dialog" id="modalBox" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalMessage" tabindex="-1">
+    <div class="scrim app-scrim" id="modalOverlay">
+        <div class="app-dialog dialog" id="modalBox" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalMessage" tabindex="-1">
             <div class="grabber" aria-hidden="true"></div>
-            <div class="modal-header" id="modalHeader">
-                <h3 id="modalTitle"><span data-i18n="ui.modals.alert">Alert</span></h3>
+            <div id="modalHeader">
+                <h3 class="dialog-title" id="modalTitle"><span data-i18n="ui.modals.alert">Alert</span></h3>
             </div>
-            <div class="modal-body" id="modalBody">
+            <div class="dialog-body" id="modalBody">
                 <div id="modalMessage"><span data-i18n="ui.modals.this_is_a_message">This is a message</span></div>
             </div>
-            <div class="modal-footer" id="modalFooter">
+            <div class="dialog-actions" id="modalFooter">
                 <button type="button" class="btn btn-ghost" id="modalCancel" data-dismiss data-onclick="ui.closeModal(false)" data-i18n="ui.modals.cancel">Cancel</button>
                 <button type="button" class="btn btn-primary" id="modalConfirm" data-onclick="ui.closeModal(true)" data-i18n="ui.modals.ok">OK</button>
             </div>
@@ -16,12 +16,13 @@
     </div>
 
     <!-- BILL DETAILS OVERLAY -->
-    <div class="bill-details-overlay" id="billDetailsOverlay">
-        <div class="bill-details-container">
-            <div class="bill-details-content" id="billDetailsContent">
+    <div class="scrim app-scrim page-sheet" id="billDetailsOverlay">
+        <div class="app-dialog dialog dialog-wide" role="dialog" aria-modal="true" tabindex="-1">
+            <div class="grabber" aria-hidden="true"></div>
+            <div class="dialog-body" id="billDetailsContent">
                 <!-- Bill content will be inserted here -->
             </div>
-            <div class="bill-details-footer">
+            <div class="dialog-actions bill-details-footer">
                 <button type="button" class="btn btn-ghost" data-dismiss data-onclick="history.closeBillDetails()" data-i18n="ui.common.close">Close</button>
                 <button type="button" class="btn btn-danger" id="billVoidBtn" data-onclick="history.confirmVoidBill()" data-i18n="ui.void.button">Void</button>
                 <button type="button" class="btn btn-danger" id="billDeleteBtn" hidden data-onclick="history.confirmDeleteBill()" data-i18n="ui.void.delete_permanently">Delete permanently</button>
@@ -33,25 +34,25 @@
     </div>
 
     <!-- DRAFTS OVERLAY -->
-    <div class="bill-details-overlay" id="draftsOverlay">
-        <div class="bill-details-container">
-            <div class="bill-details-header">
-                <h2 data-i18n="ui.modals.saved_drafts">Saved drafts</h2>
+    <div class="scrim app-scrim page-sheet" id="draftsOverlay">
+        <div class="app-dialog dialog" role="dialog" aria-modal="true" aria-labelledby="draftsTitle" tabindex="-1">
+            <div class="grabber" aria-hidden="true"></div>
+            <div class="dialog-head">
+                <h2 class="dialog-title" id="draftsTitle" data-i18n="ui.modals.saved_drafts">Saved drafts</h2>
                 <button type="button" class="btn btn-ghost btn-icon" data-dismiss data-onclick="billing.closeDrafts()" aria-label="Close" data-i18n-aria-label="ui.common.close"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-x"/></svg></button>
             </div>
-            <div class="bill-details-content drafts-list" id="draftsContent">
+            <div class="dialog-body" id="draftsContent">
                 <!-- Drafts will be inserted here -->
             </div>
         </div>
     </div>
 
     <!-- ITEM EDIT MODAL -->
-    <div class="bill-details-overlay" id="itemEditOverlay">
-        <div class="bill-details-container item-modal">
-            <div class="bill-details-header">
-                <h2 id="itemModalTitle" data-i18n="ui.items.dialog_add_title">Add rate</h2>
-            </div>
-            <div class="bill-details-content item-modal-body">
+    <div class="scrim app-scrim page-sheet" id="itemEditOverlay">
+        <div class="app-dialog dialog" role="dialog" aria-modal="true" aria-labelledby="itemModalTitle" tabindex="-1">
+            <div class="grabber" aria-hidden="true"></div>
+            <h2 class="dialog-title" id="itemModalTitle" data-i18n="ui.items.dialog_add_title">Add rate</h2>
+            <div class="dialog-body item-modal-body">
                 <div class="field">
                     <label for="itemModalName" data-i18n="ui.modals.item_name_english">Item name (English)*</label>
                     <input type="text" id="itemModalName" class="input"
@@ -105,7 +106,7 @@
                     <button type="button" class="btn btn-danger btn-sm" id="itemModalArchiveBtn" data-onclick="items.archiveFromModal()" hidden data-i18n="ui.items.archive_item">Archive item</button>
                 </div>
             </div>
-            <div class="bill-details-footer item-modal-footer">
+            <div class="dialog-actions">
                 <button type="button" class="btn btn-ghost" data-dismiss data-onclick="items.closeItemModal()" data-i18n="ui.modals.cancel">Cancel</button>
                 <button type="button" class="btn btn-primary" data-onclick="items.saveItemFromModal()" data-i18n="ui.common.save">Save</button>
             </div>

@@ -5,7 +5,7 @@
  */
 
 import { APP_VERSION } from '../version.js';
-import { UIManager } from '../ui/ui-manager.js';
+import { UIManager, buildSheet } from '../ui/ui-manager.js';
 import { openExternal } from '../utils/open-external.js';
 import { getLang, t, LANG_CHANGE_EVENT } from '../i18n/index.js';
 import {
@@ -95,25 +95,25 @@ export class AppUpdatesManager {
     }
 
     static renderWhatsNew(release) {
-        document.getElementById('whatsNewSheet')?.remove();
-        const backdrop = el('div', 'app-sheet-backdrop');
+        const open = document.getElementById('whatsNewSheet');
+        if (open) {
+            UIManager.closeSheet(open);
+            open.remove();
+        }
+        const { overlay: backdrop, box: sheet, title, body, footer } = buildSheet({ labelId: 'whatsNewTitle', title: '', className: 'page-sheet' });
         backdrop.id = 'whatsNewSheet';
-        const sheet = el('div', 'app-sheet');
-        sheet.setAttribute('role', 'dialog');
-        sheet.setAttribute('aria-modal', 'true');
-        sheet.setAttribute('aria-labelledby', 'whatsNewTitle');
 
         // Changelog text is only ever set via textContent (never innerHTML), so it cannot inject markup.
         // The sheet follows the app language (#143); it has no language switch of its own.
-        const title = el('h3', 'app-sheet-title');
-        title.id = 'whatsNewTitle';
-        const versionLine = el('div', 'app-sheet-version');
-        const fallbackNote = el('p', 'app-sheet-fallback');
+        const versionLine = el('p', 'tone-muted');
+        const fallbackNote = el('p', 'notice warn');
         fallbackNote.setAttribute('role', 'note');
-        const list = el('ul', 'app-sheet-notes');
-        const close = el('button', 'btn btn-primary btn-block app-sheet-close');
+        const list = el('ul', 'whats-new-notes');
+        const close = el('button', 'btn btn-primary');
         close.type = 'button';
-        sheet.append(title, versionLine, fallbackNote, list, close);
+        close.dataset.dismiss = '';
+        body.append(versionLine, fallbackNote, list);
+        footer.appendChild(close);
 
         const render = (storedLang) => {
             const { lang, notesLang, notes, fellBack } = whatsNewContent(release, storedLang);
@@ -134,14 +134,13 @@ export class AppUpdatesManager {
         const dismiss = () => {
             store.set(KEYS.lastSeen, APP_VERSION);
             window.removeEventListener(LANG_CHANGE_EVENT, onLangChange);
+            UIManager.closeSheet(backdrop);
             backdrop.remove();
         };
         close.addEventListener('click', dismiss);
-        backdrop.addEventListener('click', (e) => { if (e.target === backdrop) dismiss(); });
 
-        backdrop.appendChild(sheet);
         document.body.appendChild(backdrop);
-        close.focus();
+        UIManager.openSheet(backdrop, { focus: close });
     }
 
     /** Android only: offer a newer APK published on GitHub Releases. */

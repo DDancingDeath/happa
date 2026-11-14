@@ -6,6 +6,7 @@
 import { t, LANG_CHANGE_EVENT } from '../i18n/index.js';
 import { icon } from '../ui/icons.js';
 import { pickLang } from '../i18n/localize.js';
+import { buildSheet, openSheet, closeSheet } from '../ui/ui-manager.js';
 
 export const DESKTOP_QUERY = '(min-width: 1024px)';
 
@@ -114,29 +115,58 @@ function isShown(el) {
 
 /** Topmost open dialog: { closer: () => void | null } or null when none is open. */
 function findOpenModal() {
-    const alertOverlay = document.getElementById('modalOverlay');
-    if (alertOverlay && alertOverlay.classList.contains('active')) {
+    const sheets = openSheets();
+    const top = sheets.filter(el => !el.classList.contains('page-sheet')).pop();
+    if (top) return sheetCloser(top);
+    // Popups built in JS (Users role change, Expense delete, ...) are full-screen fixed
+    // children of <body> with no shared class; appended last, they sit on top.
+    const generic = [...document.body.children].filter(isBodyOverlay);
+    const legacy = generic[generic.length - 1];
+    if (legacy) return legacyCloser(legacy);
+    const page = sheets.pop();
+    if (page) return sheetCloser(page);
+    const other = [...document.querySelectorAll('.modal, .sheet[aria-modal="true"]:not(.app-dialog)')].filter(isShown).pop();
+    return other ? legacyCloser(other) : null;
+}
+
+/**
+ * Open dialogs and sheets of the shared controller (ui-manager.js openSheet), the top one last:
+ * page sheets (.page-sheet) under dialogs, then in the order they opened.
+ * @returns {HTMLElement[]}
+ */
+function openSheets() {
+    const rank = (/** @type {HTMLElement} */ el) => (el.classList.contains('page-sheet') ? 0 : 1e12) + Number(el.dataset.sheetOpen || 0);
+    return /** @type {HTMLElement[]} */ ([...document.querySelectorAll('.app-scrim.active')]).sort((a, b) => rank(a) - rank(b));
+}
+
+/**
+ * @param {HTMLElement} overlay
+ * @returns {{closer: ?(() => void)}}
+ */
+function sheetCloser(overlay) {
+    if (overlay.id === 'modalOverlay') {
         const cancel = document.getElementById('modalCancel');
         const ok = document.getElementById('modalConfirm');
         if (cancel && isShown(cancel)) return { closer: () => cancel.click() };
         // Alert-only dialog: Esc acknowledges it. A custom modal closes only through its own [data-dismiss] button.
         if (ok && isShown(ok)) return { closer: () => ok.click() };
-        const own = /** @type {HTMLElement|null} */ (alertOverlay.querySelector('#modalFooter [data-dismiss]:not([hidden])'));
+        const own = /** @type {HTMLElement|null} */ (overlay.querySelector('#modalFooter [data-dismiss]:not([hidden])'));
         return { closer: own && isShown(own) ? () => own.click() : null };
     }
-    // Popups built in JS (Users role change, Expense delete, ...) are full-screen fixed
-    // children of <body> with no shared class; appended last, they sit on top.
-    const generic = [...document.body.children].filter(isBodyOverlay);
-    const top = generic[generic.length - 1] ||
-        [...document.querySelectorAll('.bill-details-overlay, .modal, .sheet[aria-modal="true"]')].filter(isShown).pop();
-    if (top) {
-        const btn = findCloseControl(top);
-        if (btn) return { closer: () => btn.click() };
-        // Backdrop-click-to-dismiss popups: simulate a click on the backdrop itself.
-        if (typeof /** @type {HTMLElement} */ (top).onclick === 'function') return { closer: () => /** @type {HTMLElement} */ (top).click() };
-        return { closer: null };
-    }
-    return null;
+    const own = /** @type {HTMLElement|null} */ (overlay.querySelector('[data-dismiss]:not([hidden])'));
+    return { closer: own ? () => own.click() : null };
+}
+
+/**
+ * @param {Element} top
+ * @returns {{closer: ?(() => void)}}
+ */
+function legacyCloser(top) {
+    const btn = findCloseControl(top);
+    if (btn) return { closer: () => btn.click() };
+    // Backdrop-click-to-dismiss popups: simulate a click on the backdrop itself.
+    if (typeof /** @type {HTMLElement} */ (top).onclick === 'function') return { closer: () => /** @type {HTMLElement} */ (top).click() };
+    return { closer: null };
 }
 
 /** Closes the topmost open dialog; true when one was closed. */
@@ -175,7 +205,7 @@ const NON_DIALOG_IDS = new Set(['appContent', 'toast', 'loadingOverlay', 'overla
  * @returns {boolean}
  */
 function isBodyOverlay(el) {
-    if (NON_DIALOG_IDS.has(el.id) || !isShown(el)) return false;
+    if (NON_DIALOG_IDS.has(el.id) || el.classList.contains('app-scrim') || !isShown(el)) return false;
     if (getComputedStyle(el).position !== 'fixed') return false;
     const r = el.getBoundingClientRect();
     return r.width >= window.innerWidth * 0.9 && r.height >= window.innerHeight * 0.9;
@@ -221,7 +251,9 @@ function buildContext(target) {
 
 function closeHelp() {
     const el = document.getElementById(HELP_ID);
-    if (el) el.remove();
+    if (!el) return;
+    closeSheet(el);
+    el.remove();
 }
 
 function openHelp() {
@@ -229,12 +261,10 @@ function openHelp() {
     const esc = (/** @type {*} */ s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const row = (/** @type {string} */ keys, /** @type {string} */ label) => `<tr><td>${keys}</td><td>${esc(label)}</td></tr>`;
     const tabRows = TAB_SHORTCUTS.map((tab, i) => row(`<kbd class="kbd">Alt</kbd> + <kbd class="kbd">${i + 1}</kbd>`, pickLang(tab))).join('');
-    const overlay = document.createElement('div');
+    const { overlay, box, body, footer } = buildSheet({ labelId: 'kbdHelpTitle', title: t('ui.kbd.title') });
     overlay.id = HELP_ID;
-    overlay.className = 'kbd-help-overlay';
-    overlay.innerHTML = `
-        <div class="kbd-help" role="dialog" aria-modal="true" aria-labelledby="kbdHelpTitle">
-            <h3 id="kbdHelpTitle">${esc(t('ui.kbd.title'))}</h3>
+    box.classList.add('dialog-wide', 'kbd-help');
+    body.innerHTML = `
             <table><tbody>
                 ${tabRows}
                 ${row('<kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">S</kbd>', t('ui.kbd.save_bill'))}
@@ -242,13 +272,16 @@ function openHelp() {
                 ${row('<kbd class="kbd">/</kbd>', t('ui.kbd.search_page'))}
                 ${row('<kbd class="kbd">Esc</kbd>', t('ui.kbd.close_dialog'))}
                 ${row('<kbd class="kbd">?</kbd>', t('ui.kbd.toggle_help'))}
-            </tbody></table>
-            <button type="button" class="btn btn-primary kbd-help-close">${esc(t('ui.kbd.close'))}</button>
-        </div>`;
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay || /** @type {Element} */ (e.target).classList.contains('kbd-help-close')) closeHelp();
-    });
+            </tbody></table>`;
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'btn btn-primary';
+    close.dataset.dismiss = '';
+    close.textContent = t('ui.kbd.close');
+    close.addEventListener('click', closeHelp);
+    footer.appendChild(close);
     document.body.appendChild(overlay);
+    openSheet(overlay, { focus: close });
 }
 
 /**

@@ -7,7 +7,7 @@
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: calc(var(--z-dialog) + 1);
+  z-index: var(--z-busy);
 }
 
 .loading-overlay.active {

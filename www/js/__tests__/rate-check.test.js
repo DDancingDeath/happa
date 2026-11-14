@@ -207,7 +207,7 @@ const dialog = () => document.querySelector('.rate-check-dialog');
 async function answer(choice) {
     for (let i = 0; i < 50 && !dialog(); i++) await new Promise(r => setTimeout(r, 0));
     expect(dialog()).not.toBeNull();
-    const message = dialog().querySelector('.modal-body p').textContent;
+    const message = dialog().querySelector('.dialog-body p').textContent;
     dialog().querySelector(`[data-choice="${choice}"]`).click();
     return message;
 }
@@ -236,6 +236,37 @@ describe('the confirm dialog', () => {
         expect(await result).toEqual({ ok: false, rateCheck: null });
         expect(document.activeElement.id).toBe('rate');
         expect(dialog()).toBeNull();
+    });
+
+    test('Esc / Back and a tap on the scrim answer "Fix rate"', async () => {
+        const { closeTopDialog } = await import('../utils/keyboard-shortcuts.js');
+        const escaped = checkLineRate({ kind: 'retail', item: ITEM, label: 'Wheat', rate: 260, qty: 15, rateInputId: 'rate' });
+        await settle();
+        expect(closeTopDialog()).toBe(true);
+        expect(await escaped).toEqual({ ok: false, rateCheck: null });
+        const tapped = checkLineRate({ kind: 'retail', item: ITEM, label: 'Wheat', rate: 260, qty: 15, rateInputId: 'rate' });
+        await settle();
+        dialog().dispatchEvent(new Event('pointerdown', { bubbles: true }));
+        dialog().click();
+        expect(await tapped).toEqual({ ok: false, rateCheck: null });
+        expect(dialog()).toBeNull();
+    });
+
+    test('Esc on a narrow screen (no desktop shortcuts) answers "Fix rate"', async () => {
+        const original = window.matchMedia;
+        window.matchMedia = (q) => ({ matches: q.includes('max-width: 599'), media: q, addEventListener() {} });
+        try {
+            const asked = checkLineRate({ kind: 'retail', item: ITEM, label: 'Wheat', rate: 260, qty: 15, rateInputId: 'rate' });
+            await settle();
+            expect(dialog().querySelector('.app-dialog').classList.contains('sheet')).toBe(true);
+            const esc = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+            document.activeElement.dispatchEvent(esc);
+            expect(esc.defaultPrevented).toBe(true);
+            expect(await asked).toEqual({ ok: false, rateCheck: null });
+            expect(dialog()).toBeNull();
+        } finally {
+            window.matchMedia = original;
+        }
     });
 
     test('"Yes, it is right" adds the line with who confirmed it', async () => {

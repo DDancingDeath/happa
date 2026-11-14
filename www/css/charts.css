@@ -35,135 +35,76 @@ html {
   scroll-behavior: smooth;
 }
 
-/* -------------------- MODAL POPUP -------------------- */
-.modal-overlay {
+/* -------------------- Dialogs and sheets (ui-manager.js openSheet) --------------------
+   .app-scrim > .app-dialog: a .dialog from 600 px, a bottom .sheet below; a title, the body, then ghost Cancel
+   and one primary on the right. Later dialogs stack above earlier ones (--sheet-layer). */
+.app-scrim {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: var(--z-modal);
+  inset: 0;
+  z-index: calc(var(--z-modal) + var(--sheet-layer, 0));
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: var(--sp-5);
   opacity: 0;
   visibility: hidden;
-  transition: all 0.3s ease;
-  padding: 20px;
+  transition: opacity var(--transition-slow), visibility var(--transition-slow);
 }
 
-.modal-overlay.active {
+.app-scrim.active {
   opacity: 1;
   visibility: visible;
-}
-
-.modal-box {
-  max-width: 450px;
-  width: 90vw;
-  max-height: 90vh;
-  overflow: hidden;
-  transform: scale(0.9);
-  transition: transform var(--transition-slow);
-  display: flex;
-  flex-direction: column;
-}
-
-.modal-overlay.active .modal-box {
-  transform: scale(1);
-}
-
-/* The app dialog (ui-manager.js): a .dialog from 600 px, a bottom .sheet below; title, message, then ghost Cancel + one primary on the right */
-.modal-overlay.scrim.active {
   transition: opacity var(--transition-slow), visibility 0s;
 }
 
 .app-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
   width: min(480px, 100%);
   min-width: min(320px, 100%);
-  max-width: none;
-  gap: var(--sp-3);
-  padding: var(--sp-5);
-  outline: none;
-}
-
-.app-dialog > .grabber,
-.app-dialog [hidden],
-.app-dialog .modal-header[hidden] {
-  display: none;
-}
-
-.app-dialog .modal-header {
-  display: block;
-  padding: 0;
-  border: 0;
-  background: none;
-  text-align: left;
-}
-
-.app-dialog .modal-header h3 {
-  font-family: var(--font-display);
-  font-size: var(--fs-lead);
-  color: var(--ink);
-}
-
-.app-dialog .modal-body {
-  padding: 0;
-  color: var(--ink-2);
-}
-
-.app-dialog .modal-footer {
-  flex-wrap: wrap;
-  gap: var(--sp-2);
-  padding: var(--sp-1) 0 0;
-  border: 0;
-  background: none;
-}
-
-.app-dialog.sheet {
-  width: auto;
-  min-width: 0;
   max-height: 90vh;
-  padding: var(--sp-3) var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
-  border-bottom: 0;
-  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
-  transform: translateY(100%);
+  overflow: hidden;
+  padding: var(--sp-5);
+  color: var(--ink);
+  outline: none;
+  transform: scale(0.9);
+  transition: transform var(--transition-slow);
 }
 
-.modal-overlay.active > .app-dialog.sheet {
+.app-scrim.active > .app-dialog {
   transform: none;
 }
 
-.app-dialog.sheet > .grabber {
-  display: block;
-  margin-bottom: 0;
+.app-dialog > .grabber,
+.app-dialog [hidden] {
+  display: none;
 }
 
-.app-dialog.sheet .modal-footer > .btn {
-  flex: 1 1 0;
-}
-
-.modal-header {
-  background: var(--card-bg);
-  color: var(--text-primary);
-  padding: 14px 20px;
-  text-align: center;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.modal-header h3 {
+.dialog-title {
   margin: 0;
-  font-size: var(--fs-title);
+  font-family: var(--font-display);
+  font-size: var(--fs-lead);
   font-weight: var(--w-strong);
+  color: var(--ink);
 }
 
-.modal-body {
-  padding: 12px;
-  text-align: left;
-  color: var(--text-primary);
-  line-height: 1.5;
-  font-size: var(--fs-sm);
-  overflow-y: auto;
+.dialog-body {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  text-align: left;
+}
+
+.dialog-body p:first-child {
+  margin-top: 0;
+}
+
+.dialog-body p:last-child {
+  margin-bottom: 0;
 }
 
 #modalMessage {
@@ -174,21 +115,41 @@ html {
   text-align: left;
 }
 
-.modal-footer {
-  padding: 16px 24px;
-  background: var(--card-bg);
-  border-top: 1px solid var(--border-color);
+.dialog-actions {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: var(--sp-2);
+  padding-top: var(--sp-1);
 }
 
-.modal-footer > .btn {
+.dialog-actions > .btn {
   min-width: 80px;
 }
 
+.app-dialog.sheet {
+  width: auto;
+  min-width: 0;
+  padding: var(--sp-3) var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  transform: translateY(100%);
+}
+
+.app-scrim.active > .app-dialog.sheet {
+  transform: none;
+}
+
+.app-dialog.sheet > .grabber {
+  display: block;
+  margin-bottom: 0;
+}
+
+.app-dialog.sheet .dialog-actions > .btn {
+  flex: 1 1 0;
+}
+
 /* Retail sale open: the dialog's primary takes the sale colour */
-body:has(.tab.sale-theme.active) .modal-footer > .btn-primary {
+body:has(.tab.sale-theme.active) .dialog-actions > .btn-primary {
   background-color: var(--btn-sale-bg);
   color: var(--btn-sale-ink);
 }
@@ -268,69 +229,26 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   position: absolute;
 }
 
-/* Bill Details Overlay */
-.bill-details-overlay {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  z-index: var(--z-dialog);
-  animation: fadeIn 0.2s ease;
+/* Page dialogs (bill and expense details, drafts, item, breakdown, What's new): below the confirms they open */
+.app-scrim.page-sheet {
+  z-index: calc(var(--z-dialog) + var(--sheet-layer, 0));
+}
+
+.dialog-wide {
+  width: min(560px, 100%);
+}
+
+/* A title row with its own buttons (Back, Close) */
+.dialog-head {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 20px;
+  gap: var(--sp-2);
 }
 
-.bill-details-overlay.active {
-  display: flex;
-}
-
-.bill-details-container {
-  background: var(--white);
-  border-radius: var(--r-panel);
-  box-shadow: var(--e3);
-  width: 100%;
-  max-width: 500px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  animation: slideUp 0.3s ease;
-}
-
-.bill-details-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color);
-  flex-shrink: 0;
-}
-
-.bill-details-header h2 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-title);
-  color: var(--dark-color);
-}
-
-.bill-details-content {
+.dialog-head > .dialog-title,
+.dialog-head > .grow {
   flex: 1;
-  overflow-y: auto;
-  padding: 24px;
-}
-
-.bill-details-footer {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 16px;
-  border-top: 1px solid var(--border-color);
-  flex-shrink: 0;
-  background: var(--surface-muted);
+  min-width: 0;
 }
 
 /* Close (ghost) on the left, Void (danger), Reprint and Share (tonal), Edit (the one primary) on the right */
@@ -338,15 +256,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   flex: 1;
   min-width: 0;
   padding: 0 var(--sp-3);
-}
-
-.bill-details-footer [hidden],
-.item-modal-body [hidden] {
-  display: none;
-}
-
-.bill-details-content.drafts-list {
-  max-height: 60vh;
 }
 
 .item-modal-body {
@@ -365,25 +274,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   flex: 1;
 }
 
-/* Cancel, then the primary on the right, as in every dialog */
-.item-modal-footer {
-  justify-content: flex-end;
-}
-
 .item-modal-danger {
   display: flex;
   justify-content: flex-start;
   margin-top: var(--sp-2);
-  padding-top: 16px;
+  padding-top: var(--sp-4);
   border-top: 1px solid var(--border-color);
 }
 
 @media (max-width: 480px) {
-  .bill-details-footer {
-    gap: 6px;
-    padding: 12px;
-  }
-  
   .bill-details-footer > .btn {
     padding: 0 var(--sp-1);
     font-size: var(--fs-sm);

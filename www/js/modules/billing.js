@@ -280,6 +280,7 @@ const BillingManager = {
      * number this bill already got on a failed save, or the likely next one.
      */
     renderBillNumber() {
+        this.renderEditNotice();
         const editingMode = this.editingBillIndex === undefined ? null
             : (this.editingBillType === 'retail' ? 'sale' : 'purchase');
         [['purchase', 'purchaseBillNo', PurchaseManager.getPendingBill(), 'P', AppState.purchaseHistory],
@@ -298,6 +299,18 @@ const BillingManager = {
             number.textContent = known || nextBillNumberHint(prefix, bills);
             el.replaceChildren(document.createTextNode(`${t(known ? 'ui.billing.bill_no' : 'ui.billing.next_bill_no')} `), number);
         });
+    },
+
+    /** "Editing #P12" above the form while a saved bill is open in the editor, until it is saved. */
+    renderEditNotice() {
+        const notice = document.getElementById('billEditNotice');
+        if (!notice) return;
+        const editing = this.editingBillIndex !== undefined;
+        notice.hidden = !editing;
+        const text = document.getElementById('billEditNoticeText');
+        if (!editing || !text) return;
+        const number = this.getEditingBill()?.billNumber;
+        text.textContent = number ? t('ui.billing.editing_notice', { number }) : t('ui.billing.editing_notice_unnumbered');
     },
 
     /**
@@ -750,7 +763,7 @@ const BillingManager = {
             const currentUser = firebase.auth().currentUser;
             if (!currentUser) {
                 content.innerHTML = `<p class="empty">${Helpers.escapeHtml(t('ui.billing.login_to_view_drafts'))}</p>`;
-                overlay.classList.add('active');
+                UIManager.openSheet(overlay);
                 return;
             }
 
@@ -780,11 +793,11 @@ const BillingManager = {
                 `).join('');
             }
 
-            overlay.classList.add('active');
+            UIManager.openSheet(overlay);
         } catch (error) {
             console.error('Failed to load drafts:', error);
             content.innerHTML = `<p class="empty tone-neg">${Helpers.escapeHtml(t('ui.billing.failed_load_drafts'))}</p>`;
-            overlay.classList.add('active');
+            UIManager.openSheet(overlay);
         }
     },
 
@@ -792,7 +805,7 @@ const BillingManager = {
      * Close drafts overlay
      */
     closeDrafts() {
-        document.getElementById('draftsOverlay').classList.remove('active');
+        UIManager.closeSheet(document.getElementById('draftsOverlay'));
     },
 
     /**
@@ -1652,8 +1665,7 @@ const BillingManager = {
             this.switchMode(mode, { currentTarget: btn });
         }
 
-        const overlay = document.getElementById('billDetailsOverlay');
-        if (overlay) overlay.classList.remove('active');
+        UIManager.closeSheet(document.getElementById('billDetailsOverlay'));
 
         if (mode === 'purchase') {
             PurchaseManager.setBillItems(bill.items.map(item => ({ ...item })));
@@ -1686,7 +1698,6 @@ const BillingManager = {
             this.prepareBillDates();
             
             window.app.nav.showTab('billing');
-            UIManager.showToast(t('msg.billing.editing_bill_modify_save'));
         } else {
             RetailSaleManager.setSaleItems(bill.items.map(item => ({ ...item })));
             RetailSaleManager.setSaleWeights([]);
@@ -1720,7 +1731,6 @@ const BillingManager = {
             this.prepareBillDates();
             
             window.app.nav.showTab('billing');
-            UIManager.showToast(t('msg.billing.editing_sale_modify_save'));
         }
     },
 

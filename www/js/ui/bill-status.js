@@ -77,11 +77,11 @@ export function renderEditsList(list, edits) {
  * @returns {Promise<?string>}
  */
 export async function askReason({ titleKey, explainKey, labelKey, confirmKey, danger = false }) {
-    const html = `<div class="reason-dialog">
-        ${explainKey ? `<p class="reason-dialog__explain">${L(explainKey)}</p>` : ''}
-        <label class="reason-dialog__label" for="reasonInput">${L(labelKey)}</label>
-        <textarea id="reasonInput" class="reason-dialog__input" rows="2" maxlength="${REASON_MAX}"></textarea>
-    </div>`;
+    const html = `${explainKey ? `<p>${L(explainKey)}</p>` : ''}
+        <div class="field">
+            <label for="reasonInput">${L(labelKey)}</label>
+            <textarea id="reasonInput" class="input" rows="2" maxlength="${REASON_MAX}"></textarea>
+        </div>`;
     const ok = await UIManager.showModalWithHtml(html, t(titleKey), true, { confirmLabel: confirmKey ? t(confirmKey) : '', danger });
     if (!ok) return null;
     const reason = cleanReason(document.getElementById('reasonInput')?.value);

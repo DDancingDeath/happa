@@ -24,6 +24,7 @@ jest.mock('../firebase/repos/bill-drafts.js', () => ({
 const DOM = `
   <div id="billing" class="tab active">
   <div id="autoSaveBanner" hidden><span id="autoSaveBannerText"></span></div>
+  <div id="billEditNotice" hidden><span id="billEditNoticeText"></span></div>
   <button id="purchaseModeBtn"></button><button id="saleModeBtn"></button>
   <div id="purchaseSection">
     <input id="customerName"><select id="billItem"><option value=""></option></select>
@@ -305,6 +306,22 @@ describe('bill number before save (#117, BF-NO)', () => {
         BillingManager.editingBillId = 'r2';
         RetailSaleManager.renderSalesBill();
         expect(document.getElementById('saleBillNo').textContent).toBe('');
+    });
+
+    test('"Editing #…" stays above the form while a saved bill is edited, and goes when it is saved', () => {
+        const notice = () => document.getElementById('billEditNotice');
+        PurchaseManager.renderBill();
+        expect(notice().hidden).toBe(true);
+        AppState.retailSalesHistory = [{ id: 'r1', billNumber: 'S20261020-002' }, { id: 'r2' }];
+        BillingManager.editingBillIndex = 0;
+        BillingManager.editingBillId = 'r1';
+        BillingManager.editingBillType = 'retail';
+        RetailSaleManager.renderSalesBill();
+        expect(notice().hidden).toBe(false);
+        expect(document.getElementById('billEditNoticeText').textContent).toBe('Editing #S20261020-002. Save to update this bill.');
+        BillingManager.editingBillIndex = undefined;
+        RetailSaleManager.renderSalesBill();
+        expect(notice().hidden).toBe(true);
     });
 });
 

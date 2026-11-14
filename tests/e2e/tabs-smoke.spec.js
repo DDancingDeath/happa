@@ -103,7 +103,7 @@ const STEPS = [
     { name: 'Rentals › Access', route: null, page: 'settings', act: "window.app.rentals.page('access')", roles: O, timers: NAV_TIMER_MS, expect: '#roleAccessCard' },
     { name: 'Back to Aadhat', route: null, page: null, act: "window.app.business.set('shop')", roles: A, wait: 600 },
     { name: 'Notifications', route: null, page: null, act: 'window.app.notifications.open()', roles: A, overlay: '#notifPanel', close: 'window.app.notifications.close()' },
-    { name: "What's new", route: null, page: null, act: 'window.app.updates.showWhatsNew()', roles: A, overlay: '#whatsNewSheet', close: "document.querySelector('#whatsNewSheet .app-sheet-close')?.click()" }
+    { name: "What's new", route: null, page: null, act: 'window.app.updates.showWhatsNew()', roles: A, overlay: '#whatsNewSheet', close: "document.querySelector('#whatsNewSheet [data-dismiss]')?.click()" }
 ];
 
 // What a route shows once showTabFromNav's own first render (setTimeout NAV_TIMER_MS) has run: the page's default sub-tab.
@@ -229,7 +229,7 @@ for (const role of A) {
                     for (const sel of s.hidden || []) await expect(page.locator(sel), `${s.name} keeps ${sel} hidden`).toBeHidden();
                     if (s.overlay) await expect(page.locator(s.overlay)).toBeVisible();
                     if (!(await settle(page, s.settle))) all.stuck.push(s.name);
-                    const roots = s.overlay ? [s.overlay] : ['.tab.active', '#modalOverlay.active', '.app-sheet-backdrop'];
+                    const roots = s.overlay ? [s.overlay] : ['.tab.active', '#modalOverlay.active', '.app-scrim.page-sheet.active'];
                     record(all, s.name, await page.evaluate(screenFindings, { lang, roots }));
                     if (s.close) {
                         await page.evaluate(s.close);

@@ -122,10 +122,10 @@ describe('Android Back closes the Item dialog in Hindi (not the page under it)',
         NavigationManager.showTab('billing');
         NavigationManager.showTabFromNav('stock');
         const overlay = document.getElementById('itemEditOverlay');
-        overlay.style.display = 'flex';
+        overlay.classList.add('active');
         const cancel = overlay.querySelector('[data-onclick="items.closeItemModal()"]');
         cancel.textContent = t('ui.modals.cancel');
-        const closed = jest.fn(() => { overlay.style.display = 'none'; });
+        const closed = jest.fn(() => { overlay.classList.remove('active'); });
         cancel.addEventListener('click', closed);
 
         NavigationManager.handlePopState({ state: { happaTab: 'billing' } });

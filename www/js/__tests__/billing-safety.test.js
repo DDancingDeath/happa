@@ -16,6 +16,7 @@ import { PrinterService } from '../services/printer.js';
 import { AuditService } from '../services/audit.js';
 import { BillChecksUI } from '../ui/bill-highlight.js';
 import { UIManager } from '../ui/ui-manager.js';
+import { closeTopDialog } from '../utils/keyboard-shortcuts.js';
 import { Helpers } from '../utils/helpers.js';
 import { AppState } from '../utils/state.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
@@ -149,6 +150,27 @@ describe('purchase: a line typed but not added (S-1, BF-PENDING)', () => {
         expect(dialog()).toBeNull();
         expect($('newWeight').value).toBe('4');
         expect(PurchaseManager.getBillItems()).toHaveLength(1);
+    });
+
+    test('on the shared sheet: Add is focused, and Esc / Back is Cancel', async () => {
+        const saving = PurchaseManager.saveBillToHistory();
+        for (let i = 0; i < 50 && !dialog(); i++) await new Promise(r => setTimeout(r, 0));
+        expect(dialog().matches('.app-scrim.active')).toBe(true);
+        expect(document.activeElement.dataset.choice).toBe('add');
+        expect(closeTopDialog()).toBe(true);
+        expect(await saving).toBeUndefined();
+        expect(FirebaseService.savePurchase).not.toHaveBeenCalled();
+        expect(dialog()).toBeNull();
+        expect(document.activeElement.id).toBe('newWeight');
+    });
+
+    test('Esc on a narrow screen is Cancel', async () => {
+        const saving = PurchaseManager.saveBillToHistory();
+        for (let i = 0; i < 50 && !dialog(); i++) await new Promise(r => setTimeout(r, 0));
+        document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+        expect(await saving).toBeUndefined();
+        expect(FirebaseService.savePurchase).not.toHaveBeenCalled();
+        expect(dialog()).toBeNull();
     });
 
     test('Print with only a typed line asks too (it no longer says "no items")', async () => {
