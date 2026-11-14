@@ -43,13 +43,6 @@
   font-weight: var(--w-strong);
 }
 
-.history-labor {
-  font-size: 14px;
-  color: var(--warning-dark);
-  margin: 8px 0;
-  font-weight: var(--w-strong);
-}
-
 .history-payment {
   font-size: 14px;
   margin: 8px 0;
@@ -165,35 +158,6 @@
 
 .bill-window-note {
   margin: 0 var(--sp-4) var(--sp-4);
-}
-
-.history-items-detail {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 2px solid var(--border-color);
-}
-
-.history-item-detail {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border-color);
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.history-item-detail:last-child {
-  border-bottom: none;
-}
-
-.history-item-detail strong {
-  color: var(--text-primary);
-  font-size: var(--fs-body);
-}
-
-.history-item-detail small {
-  color: var(--text-secondary);
-  display: block;
-  margin-top: 4px;
-  line-height: 1.5;
 }
 
 /* ==================== OLDER HISTORY (windowed loading) ==================== */

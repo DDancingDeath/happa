@@ -51,15 +51,6 @@ input[type="number"] {
   white-space: nowrap;
 }
 
-.tab.purchase-theme .quick-add-btn-inline {
-  background: var(--btn-primary);
-}
-
-.tab.sale-theme .quick-add-btn-inline {
-  background: var(--btn-success);
-  color: var(--btn-sale-ink);
-}
-
 
 label {
   display: block;
@@ -81,19 +72,6 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
   -moz-appearance: textfield;
 }
-
-
-.weight-input-row {
-  display: flex;
-  gap: 10px;
-  align-items: flex-end;
-  margin-top: 12px;
-}
-
-.weight-input-row > div {
-  flex: 1;
-}
-
 
 .weights-compact {
   margin: var(--sp-1) 0 var(--sp-2);
@@ -153,25 +131,6 @@ input[type="number"] {
   border: 1px solid var(--border-color);
 }
 
-.summary-item {
-  text-align: center;
-  flex: 1;
-  white-space: nowrap;
-}
-
-.summary-item span {
-  font-size: 14px;
-  color: var(--text-secondary);
-  font-weight: var(--w-strong);
-}
-
-.summary-item strong {
-  font-size: 16px;
-  font-weight: var(--w-strong);
-  color: var(--text-primary);
-  margin-left: 4px;
-}
-
 .add-to-bill-btn {
   width: 100%;
   margin: 16px 0;
@@ -185,31 +144,6 @@ input[type="number"] {
 
 
 /* -------------------- BILLING THEME -------------------- */
-.tab.purchase-theme {
-  background: var(--light-bg);
-}
-
-.tab.sale-theme {
-  background: linear-gradient(to bottom, var(--success-soft) 0%, var(--light-bg) 240px);
-}
-
-.tab.purchase-theme .add-to-bill-btn {
-  background: var(--btn-primary);
-}
-
-.tab.sale-theme .add-to-bill-btn {
-  background: var(--btn-success);
-  color: var(--btn-sale-ink);
-}
-
-.tab.purchase-theme .bill-totals {
-  border-left: 4px solid var(--purchase-color);
-}
-
-.tab.sale-theme .bill-totals {
-  border-left: 4px solid var(--sale-color);
-}
-
 .rates-container {
   display: flex;
   gap: 8px;
