@@ -291,6 +291,7 @@
   --z-notif-scrim: 1002;
   --z-notif: 1003;
   --z-dialog: 10000;
+  --z-busy: 15000;
   --z-modal: 20000;
   --z-auth: 10000;
 
@@ -2897,7 +2898,7 @@ body.typing .bottom-nav {
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 10001;
+  z-index: var(--z-busy);
 }
 
 .loading-overlay.active {

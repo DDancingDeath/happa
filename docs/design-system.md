@@ -28,7 +28,7 @@ layer-2 tokens. Nothing else changes per theme.
 
 **Not per theme** (on `:root`): the type scale `--fs-caption|sm|body|lead|title|display|hero` (plus `--fs-input`, a fixed 16px for text fields so iOS does not zoom on focus),
 `--lh-body`, `--w-label`, spacing `--sp-1…10`, `--gutter`,
-`--section-gap`, `--row-h`, `--control-h(-sm)`, motion `--ease`, `--dur-1…3`, layers `--z-*` (a page's pop-up menu, the bell, the notifications sheet, dialogs, the sign-in screen). Layouts are therefore
+`--section-gap`, `--row-h`, `--control-h(-sm)`, motion `--ease`, `--dur-1…3`, layers `--z-*` (a page's pop-up menu, the bell, the notifications sheet, page dialogs `--z-dialog`, the saving spinner `--z-busy`, confirms `--z-modal`, the sign-in screen). Layouts are therefore
 identical in every theme. Desktop (≥1024 px, `desktop.css`) sets `--control-h` 36, `--row-h` 44 and the desktop type scale (body 14, lead 16,
 title 18, display 26, hero 30). Hindi (`html[lang="hi"]`) raises `--fs-sm` / `--fs-body` and `--lh-body`,
 makes `--w-label` 400, and turns off a theme's italic titles and display tracking (`--title-style`, `--tracking-display`); the Android app (`html.platform-android`) uses weight 500.
