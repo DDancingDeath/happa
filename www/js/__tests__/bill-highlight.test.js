@@ -5,7 +5,7 @@
  */
 jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}), ACTIONS: { OVERRIDE_CHECK: 'OVERRIDE_CHECK' } } }));
 
-import { BillChecksUI, CHECK_DEBOUNCE_MS, readTypedNumber, BILL_CHECKS_BLOCKING_POLICY, AUTO_ROLLBACK_REASON } from '../ui/bill-highlight.js';
+import { BillChecksUI, CHECK_DEBOUNCE_MS, clearFieldError, readTypedNumber, showFieldError, BILL_CHECKS_BLOCKING_POLICY, AUTO_ROLLBACK_REASON } from '../ui/bill-highlight.js';
 import { tip } from '../tip/index.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AuditService } from '../services/audit.js';
@@ -113,7 +113,7 @@ describe('live marks', () => {
         const rows = document.querySelectorAll('#testTable tbody tr');
         expect(rows[0].classList.contains('bill-check-warn')).toBe(true);
         expect(rows[1].className).toBe('bill-check-line');
-        expect(rows[1].textContent).toContain('⚠️ Rate ₹90.00 is 2.3× the usual ₹40.00');
+        expect(rows[1].textContent).toContain('⚠️ Rate ₹90 is 2.3× the usual ₹40');
         expect($('testSection').classList.contains('bill-checks-warn')).toBe(true);
         expect($('saveBtn').hasAttribute('aria-disabled')).toBe(false);
     });
@@ -212,11 +212,12 @@ describe('save gate', () => {
         $('cash').value = '900';
         const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(false);
         expect((await BillChecksUI.confirmSave('test')).ok).toBe(false);
-        expect(modal).toHaveBeenCalledWith(expect.stringMatching(/Rate ₹90\.00 is 2\.3× .*\n\nSave anyway\?$/), 'Check before saving', true, { confirmLabel: 'Save anyway' });
+        expect(modal).toHaveBeenCalledWith(expect.stringMatching(/Rate ₹90 is 2\.3× .*\n\nSave anyway\?$/), 'Check before saving', true, { confirmLabel: 'Save anyway' });
         modal.mockResolvedValue(true);
         const ok = await BillChecksUI.confirmSave('test');
         expect(ok.ok).toBe(true);
         expect(ok.flags).toEqual([expect.objectContaining({ rule: 'rate-high', by: 'u1' })]);
+        expect(ok.flags[0].en).toBe('Rate ₹90.00 is 2.3× the usual ₹40.00');
         expect(modal).toHaveBeenCalledTimes(2);
     });
 
@@ -289,5 +290,32 @@ describe('save gate', () => {
         const original = { flags: [{ rule: 'x' }], overrides: [{ rule: 'oversell', reason: 'a' }] };
         expect(BillChecksUI.billFields({ flags: [], overrides: [{ rule: 'oversell', reason: 'b' }] }, original))
             .toEqual({ flags: [], overrides: [{ rule: 'oversell', reason: 'a' }, { rule: 'oversell', reason: 'b' }] });
+    });
+});
+
+describe('field error (Field pattern)', () => {
+    test('shows the message under the field with aria-invalid / aria-describedby, survives live checks, clears on edit', () => {
+        jest.useFakeTimers();
+        const rate = document.getElementById('rate');
+        expect(showFieldError('rate', 'Please enter a valid rate')).toBe(true);
+        const msg = document.getElementById('rate-error');
+        expect(msg.textContent).toBe('Please enter a valid rate');
+        expect(msg.getAttribute('role')).toBe('alert');
+        expect(rate.closest('.bill-form-field').nextElementSibling).toBe(msg);
+        expect(rate.getAttribute('aria-invalid')).toBe('true');
+        expect(rate.getAttribute('aria-describedby')).toBe('rate-error');
+        expect(document.activeElement).toBe(rate);
+
+        document.getElementById('party').dispatchEvent(new Event('input', { bubbles: true }));
+        jest.advanceTimersByTime(CHECK_DEBOUNCE_MS + 10);
+        expect(document.getElementById('rate-error')).not.toBeNull();
+
+        rate.value = '40';
+        rate.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(document.getElementById('rate-error')).toBeNull();
+        expect(rate.hasAttribute('aria-invalid')).toBe(false);
+        expect(rate.hasAttribute('aria-describedby')).toBe(false);
+        clearFieldError('rate');
+        expect(showFieldError('missing', 'x')).toBe(false);
     });
 });

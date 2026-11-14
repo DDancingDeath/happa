@@ -23,6 +23,7 @@ import { hidePartyDue, renderPartyDue } from './party-due-line.js';
 import { closeSuggestions, hideNameHint, renderNameHint } from './party-suggest.js';
 import { confirmLineRates } from './rate-check.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
+import { screenRateText } from '../utils/money.js';
 import { getLang, t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
 import { AUTO_ROLLBACK_REASON } from '../tip/scenarios/bill-save.js';
@@ -62,7 +63,55 @@ export function readTypedNumber(id) {
     const n = parseFloat(raw);
     return Number.isFinite(n) ? n : null;
 }
-const text = (i) => (getLang() === 'hi' ? i.hi : i.en);
+/** Rules whose text carries rates (stored with paise, "₹2,400.00"); the screen shows them as rates ("₹2,400"). */
+const RATE_RULES = new Set(['rate-high', 'rate-low', 'below-cost']);
+const text = (i) => {
+    const s = getLang() === 'hi' ? i.hi : i.en;
+    return RATE_RULES.has(i.id) ? screenRateText(s) : s;
+};
+
+/**
+ * Clear the field error set by showFieldError().
+ * @param {string} inputId
+ */
+export function clearFieldError(inputId) {
+    const el = byId(inputId);
+    const msgId = `${inputId}-error`;
+    byId(msgId)?.remove();
+    if (!el) return;
+    if (!el.dataset.billCheck) el.removeAttribute('aria-invalid');
+    const rest = (el.getAttribute('aria-describedby') || '').split(' ').filter(id => id && id !== msgId).join(' ');
+    if (rest) el.setAttribute('aria-describedby', rest);
+    else el.removeAttribute('aria-describedby');
+}
+
+/**
+ * A field error under an input (Field pattern: negative border and a message under it), focused and
+ * cleared on the next edit of that input. False when the input is not on the page.
+ * @param {string} inputId
+ * @param {string} message
+ * @returns {boolean}
+ */
+export function showFieldError(inputId, message) {
+    const el = byId(inputId);
+    if (!el) return false;
+    clearFieldError(inputId);
+    const msgId = `${inputId}-error`;
+    const msg = document.createElement('div');
+    msg.className = `bill-check-msg ${CLASS.block}`;
+    msg.id = msgId;
+    msg.dataset.fieldError = '';
+    msg.setAttribute('role', 'alert');
+    msg.textContent = message;
+    (el.closest('.bill-form-field, .field') || el).insertAdjacentElement('afterend', msg);
+    el.setAttribute('aria-invalid', 'true');
+    const ids = new Set((el.getAttribute('aria-describedby') || '').split(' ').filter(Boolean));
+    ids.add(msgId);
+    el.setAttribute('aria-describedby', [...ids].join(' '));
+    el.addEventListener('input', () => clearFieldError(inputId), { once: true });
+    el.focus?.();
+    return true;
+}
 
 function sectionOf(kind) {
     const cfg = forms[kind];
@@ -83,7 +132,7 @@ function bind(kind) {
 }
 
 function clearMarks(section) {
-    section.querySelectorAll('.bill-check-msg, .bill-check-line').forEach(el => el.remove());
+    section.querySelectorAll('.bill-check-msg:not([data-field-error]), .bill-check-line').forEach(el => el.remove());
     section.querySelectorAll('[data-bill-check]').forEach(el => {
         el.classList.remove(CLASS.block, CLASS.warn);
         el.removeAttribute('aria-invalid');

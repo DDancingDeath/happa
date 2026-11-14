@@ -252,7 +252,7 @@ describe('Stock', () => {
         const text = rows().map(r => r.textContent.replace(/\s+/g, ' ').trim());
         expect(text).toHaveLength(3);
         expect(text[0]).toContain('Rice');
-        expect(text[0]).toContain('Rate: ₹32/kg');   // (100×30 + 50×36) / 150
+        expect(text[0]).toContain('Rate ₹32/kg');   // (100×30 + 50×36) / 150
         expect(text[0]).toContain('150 kg');
         expect(text[0]).toContain('≈ ₹4,800');
         expect(text[1]).toContain('Wheat');

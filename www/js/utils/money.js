@@ -181,6 +181,16 @@ export function formatRate(rate) {
 }
 
 /**
+ * A stored text's rates (saved with preset `ratePaise`, "₹2,400.00") as the screen writes them (preset `rate`,
+ * "₹2,400"); real paise ("₹24.50") stay. For the stored bill-check and anomaly texts, which keep their saved form.
+ * @param {*} text
+ * @returns {string}
+ */
+export function screenRateText(text) {
+    return String(text ?? '').replace(/(₹[\d,]+)\.00(?!\d)/g, '$1');
+}
+
+/**
  * The app's one weight format (KG-TEXT): kg with Indian grouping, at most 3
  * decimals, trailing zeros dropped ("1,250", "12.5", "0.125"); no unit.
  * @param {*} kg

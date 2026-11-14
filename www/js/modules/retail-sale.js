@@ -15,7 +15,7 @@ import {
     bagChecks, buildPaymentSplit, computeLine, computeRetailTotals, editSplitFor, paidOnScreen, paymentSplit, pendingLine, prefillPayment, restInDue,
     shownAmount, sumWeights, validatePaymentSplit, weightsForEdit
 } from '../utils/calc/billing.js';
-import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
+import { BillChecksUI, clearFieldError, readTypedNumber, showFieldError } from '../ui/bill-highlight.js';
 import { settlePendingLine } from '../ui/pending-line.js';
 import { checkBagWeight, checkLineRate, confirmLineBags, keptBagChecks } from '../ui/rate-check.js';
 import { t, tn } from '../i18n/index.js';
@@ -188,9 +188,10 @@ const RetailSaleManager = {
         }
         
         if (!rate || rate <= 0) {
-            UIManager.showToast(t('msg.common.enter_valid_rate'));
+            if (!showFieldError('saleRate', t('msg.common.enter_valid_rate'))) UIManager.showToast(t('msg.common.enter_valid_rate'));
             return;
         }
+        clearFieldError('saleRate');
         
         let allWeights = [];
         

@@ -99,7 +99,7 @@ describe('F06: old-app opening records in History', () => {
         const text = card.textContent.replace(/\s+/g, ' ');
         expect(card.querySelector('.old-app-chip').textContent).toBe('Old app');
         expect(text).toContain('₹2,50,000');
-        expect(text).toContain('Due: ₹2,50,000');
+        expect(text).toContain('Due ₹2,50,000');
         expect(text).toContain('Due carried from the old app');
         expect(text).not.toMatch(/₹ ?0\b|0 packets/);
     });

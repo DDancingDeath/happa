@@ -146,7 +146,7 @@ describe('B. BILL-DUE: Wholesale › Outstanding = Outstanding / Money', () => {
             OutstandingManager.filterDue(filter);
             const rows = Object.fromEntries([...document.querySelectorAll('#dueList [data-history-item]')].map(row => {
                 const id = row.querySelector('input[id^="duePayment_"]').id.slice('duePayment_'.length);
-                return [id, Number(row.querySelector('.history-header').textContent.match(/Due: ₹([\d,.]+)/)[1].replace(/,/g, ''))];
+                return [id, Number(row.querySelector('.history-header').textContent.match(/Due:? ₹([\d,.]+)/)[1].replace(/,/g, ''))];
             }));
             expect(rows).toEqual({ w1: due.w1, 'opening-wholesale-x': due['opening-wholesale-x'] });
             expect(Number(document.querySelector('#dueAging .aging-total').textContent.replace(/[^\d.]/g, ''))).toBe(outstandingTotals(data).receivable.total);

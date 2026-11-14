@@ -15,7 +15,7 @@ import {
     autoLabour, bagChecks, buildPaymentSplit, computeLine, computePurchaseTotals, draftLineSum, editSplitFor, paidOnScreen, payableOnScreen,
     paymentSplit, pendingLine, prefillPayment, restInDue, shownAmount, sumWeights, validatePaymentSplit
 } from '../utils/calc/billing.js';
-import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
+import { BillChecksUI, clearFieldError, readTypedNumber, showFieldError } from '../ui/bill-highlight.js';
 import { settlePendingLine } from '../ui/pending-line.js';
 import { checkBagWeight, checkLineRate, confirmLineBags, keptBagChecks } from '../ui/rate-check.js';
 import { t, tn } from '../i18n/index.js';
@@ -190,9 +190,10 @@ const PurchaseManager = {
         }
         
         if (!rate || rate <= 0) {
-            UIManager.showToast(t('msg.common.enter_valid_rate'));
+            if (!showFieldError('billRate', t('msg.common.enter_valid_rate'))) UIManager.showToast(t('msg.common.enter_valid_rate'));
             return;
         }
+        clearFieldError('billRate');
         
         // If there's a weight typed in the input but not added, add it first
         const pendingWeight = parseFloat(weightInput?.value);

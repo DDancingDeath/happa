@@ -488,7 +488,7 @@ describe('Outstanding screen == oracle', () => {
         const byParty = {};
         document.querySelectorAll('#dueList [data-history-item]').forEach(row => {
             const name = row.querySelector('.history-header strong')?.textContent || '';
-            const due = Number(row.querySelector('.history-header').textContent.match(/Due: ₹([\d,.]+)/)[1].replace(/,/g, ''));
+            const due = Number(row.querySelector('.history-header').textContent.match(/Due:? ₹([\d,.]+)/)[1].replace(/,/g, ''));
             byParty[name] = O.r2((byParty[name] || 0) + due);
         });
         const total = Number(document.querySelector('#dueAging .aging-total').textContent.replace(/[^\d.]/g, ''));

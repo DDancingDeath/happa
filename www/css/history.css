@@ -212,7 +212,9 @@
   margin-bottom: var(--sp-3);
 }
 
+/* Label above the select, as in the shared .field */
 .history-date-label {
+  flex: 1 1 100%;
   font-size: var(--fs-sm);
   font-weight: var(--w-label);
   color: var(--ink-2);

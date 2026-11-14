@@ -17,7 +17,7 @@ import { t } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 import {
     ANOMALY_DEFAULTS, ANOMALY_TYPES, DETECTION_FIELDS, SEVERITIES, SEVERITY_LABELS, STATUS_LABELS,
-    addDaysToKey, anomalyPatterns, billTime, buildDayReportText, detectAnomalies, filterAnomalies,
+    addDaysToKey, anomalyPatterns, anomalyText, billTime, buildDayReportText, detectAnomalies, filterAnomalies,
     istDayKey, istDayStartMs, mergeAnomalies, planAnomalyWrites, presetRange, sortAnomalies, summarizeAnomalies, summaryLine, typeLabel,
     voidedByOthers, withoutStoredVoidTwins, withoutUnstockedOversell
 } from '../utils/anomalies.js';
@@ -577,7 +577,7 @@ export const AnomaliesManager = {
             <div class="row anom-row sev-${esc(a.severity)}${compact ? ' compact' : ''}">
                 <div class="row-main anom-row-body"${canOpen ? ` data-onclick="anomalies.openRef('${id}')" role="button" tabindex="0"` : ''}>
                     <div class="anom-row-head"><span class="anom-dot dot-${esc(a.severity)}"></span>${loc(label)} ${statusBadge}</div>
-                    <div class="anom-why">${loc(a)}</div>
+                    <div class="anom-why">${loc(anomalyText(a))}</div>
                     <div class="anom-meta">${meta}</div>
                     ${a.note ? `<div class="anom-note">${icon('file', 'i-sm')} ${esc(a.note)}${a.reviewedByName ? ` — ${esc(a.reviewedByName)}` : ''}</div>` : ''}
                 </div>
@@ -623,7 +623,7 @@ export const AnomaliesManager = {
             const html = `
                 <div class="anom-review">
                     <strong>${loc(typeLabel(a.type))}</strong>
-                    <p class="tone-muted">${loc(a)}</p>
+                    <p class="tone-muted">${loc(anomalyText(a))}</p>
                     <div class="field">
                         <label for="anomalyReviewNote">${esc(t('ui.anom.note_optional'))}</label>
                         <textarea id="anomalyReviewNote" class="input" rows="2" maxlength="300">${esc(note)}</textarea>

@@ -4096,6 +4096,12 @@ input[type="number"] {
   align-items: end;
 }
 
+/* A rate with a datalist keeps room for the list arrow, so the placeholder is not drawn under it */
+.bill-line-grid .input[list] {
+  padding-right: var(--sp-10);
+  text-overflow: ellipsis;
+}
+
 /* A live check message under Rate or Weight (bill-highlight.js) takes its own row below the three */
 :is(#billing, .bill-page) .bill-line-grid > .bill-check-msg {
   grid-column: 1 / -1;
@@ -5519,7 +5525,9 @@ tr.bill-check-line .bill-check-msg {
   margin-bottom: var(--sp-3);
 }
 
+/* Label above the select, as in the shared .field */
 .history-date-label {
+  flex: 1 1 100%;
   font-size: var(--fs-sm);
   font-weight: var(--w-label);
   color: var(--ink-2);
@@ -9368,12 +9376,6 @@ div.ins-wide,
   }
 
   /* ---------- Billing: entry left, sticky bill summary right ---------- */
-  #billRate,
-  #saleRate {
-    padding-right: var(--sp-10);
-    text-overflow: ellipsis;
-  }
-
   #purchaseSection:not([style*="none"]),
   #saleSection:not([style*="none"]),
   #salesEntrySection:not([style*="none"]) {
