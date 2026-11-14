@@ -278,6 +278,28 @@ export class SettingsManager {
         const box = document.getElementById('themePanePreview');
         if (box) box.replaceChildren(themePreview(shown));
         pane.querySelectorAll('[data-theme-pane-action]').forEach((btn) => { btn.disabled = !ThemeManager.previewing; });
+        this.watchThemePaneActions(pane);
+    }
+
+    /**
+     * Desktop: the floating preview bar shows only while the pane's Cancel / Apply are off screen,
+     * so a live preview can always be applied or cancelled.
+     */
+    static watchThemePaneActions(pane) {
+        const actions = pane.querySelector('.theme-pane-actions');
+        const bar = document.getElementById('themePreviewBar');
+        if (!actions || !bar || this._paneActions === actions) return;
+        this._paneActions = actions;
+        this._paneObserver?.disconnect();
+        if (typeof window.IntersectionObserver !== 'function') {
+            bar.classList.add('theme-preview-float');
+            return;
+        }
+        this._paneObserver = new IntersectionObserver((entries) => {
+            const seen = entries[entries.length - 1];
+            bar.classList.toggle('theme-preview-float', !seen.isIntersecting);
+        });
+        this._paneObserver.observe(actions);
     }
 
     /** Shows a theme across the app; the preview bar applies or cancels it. */

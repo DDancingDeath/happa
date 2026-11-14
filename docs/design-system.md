@@ -80,7 +80,7 @@ derived colour token goes in that block too.
   Cyberpunk mono figures (`--font-num`, `--font-hero`). All these stacks keep `"Nirmala UI", "Noto Sans Devanagari"` before the generic `serif`, so Hindi
   text stays Devanagari sans; only Latin text and digits take the serif.
 - The choice is per device (`happa.theme`, `happa.appearance`, `happa.themeKind`,
-  `happa.bar.light|dark` in localStorage). No Firestore reads or writes.
+  `happa.bar.light|dark` in localStorage). No Firestore reads or writes. A saved theme this version doesn't know (after a rollback) is shown as Modern but kept, with its kind and bar colours; `happa.themeFallback` names it, so the boot script uses the Appearance choice instead of that stale kind.
 - The browser bar (`theme-color`) takes the theme's `--bg`, so `--bg` must be a `#rrggbb` hex.
 
 ### Ink on fills

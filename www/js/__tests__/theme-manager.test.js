@@ -81,15 +81,35 @@ test('apply saves the new keys, drops the old darkMode and fires aadhat:themecha
     expect(localStorage.getItem('darkMode')).toBeNull();
 });
 
-test('an unknown saved theme falls back to the default, and the fallback is saved for the boot script', () => {
+test('an unknown saved theme shows the default but stays saved (with its kind and bar colours) for a version that knows it', () => {
     localStorage.setItem(THEME_KEYS.theme, 'no-such-theme');
     localStorage.setItem(THEME_KEYS.kind, 'dark');
     localStorage.setItem(THEME_KEYS.appearance, 'light');
     localStorage.setItem(THEME_KEYS.barDark, '#07070d');
     expect(ThemeManager.init().theme).toBe('modern');
     expect(attrs()).toEqual(['modern', 'light', 'light']);
+    expect(localStorage.getItem(THEME_KEYS.theme)).toBe('no-such-theme');
+    expect(localStorage.getItem(THEME_KEYS.kind)).toBe('dark');
+    expect(localStorage.getItem(THEME_KEYS.barDark)).toBe('#07070d');
+    expect(localStorage.getItem(THEME_KEYS.barLight)).toBeNull();
+    // The boot script reads this and ignores the stale kind and bar colour
+    expect(localStorage.getItem(THEME_KEYS.fallback)).toBe('no-such-theme');
+    // A version that knows the theme again clears the marker
+    localStorage.setItem(THEME_KEYS.theme, 'cyberpunk');
+    expect(ThemeManager.init().theme).toBe('cyberpunk');
+    expect(localStorage.getItem(THEME_KEYS.fallback)).toBeNull();
+});
+
+test('the first save over an unknown theme replaces it and clears the marker and the old bar colours', () => {
+    localStorage.setItem(THEME_KEYS.theme, 'no-such-theme');
+    localStorage.setItem(THEME_KEYS.kind, 'dark');
+    localStorage.setItem(THEME_KEYS.barDark, '#07070d');
+    localStorage.setItem(THEME_KEYS.appearance, 'light');
+    ThemeManager.init();
+    ThemeManager.apply({ appearance: 'light' });
     expect(localStorage.getItem(THEME_KEYS.theme)).toBe('modern');
     expect(localStorage.getItem(THEME_KEYS.kind)).toBe('both');
+    expect(localStorage.getItem(THEME_KEYS.fallback)).toBeNull();
     expect(localStorage.getItem(THEME_KEYS.barDark)).toBeNull();
 });
 
@@ -139,12 +159,16 @@ describe('preview (Settings › Appearance gallery)', () => {
         expect([localStorage.getItem(THEME_KEYS.theme), localStorage.getItem(THEME_KEYS.kind)]).toEqual(['midnight', 'dark']);
     });
 
-    test('leaving Settings ends a preview; the saved theme and unknown ids never start one', () => {
+    test('leaving Settings › Common (another page or Settings section) ends a preview; the saved theme and unknown ids never start one', () => {
         ThemeManager.init();
         ThemeManager.apply({ theme: 'modern', appearance: 'light' });
         ThemeManager.preview('nature');
         window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId: 'settings' } }));
+        window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId: 'settings', section: 'common' } }));
         expect(ThemeManager.previewing).toBe('nature');
+        window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId: 'settings', section: 'shop' } }));
+        expect(ThemeManager.previewing).toBeNull();
+        ThemeManager.preview('nature');
         window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId: 'billing' } }));
         expect(ThemeManager.previewing).toBeNull();
         expect(attrs()[0]).toBe('modern');

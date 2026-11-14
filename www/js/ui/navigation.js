@@ -390,7 +390,7 @@ const NavigationManager = {
         }
         
         // Lets data listeners refresh views that changed while this tab was hidden
-        window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId: route.tab } }));
+        window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId: route.tab, section: route.section || null } }));
     },
 
     currentTab: null,
