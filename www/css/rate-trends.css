@@ -1,7 +1,6 @@
 /* ==================== RATE TRENDS (#65) ==================== */
 
 .rt-page { padding: 16px; }
-.rt-title { margin: 0 0 12px; font-size: var(--fs-title); }
 .rt-card { margin-bottom: 12px; }
 .rt-card h3 { margin: 0 0 8px; font-size: var(--fs-body); }
 .rt-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
@@ -46,12 +45,6 @@
 .rt-table td:first-child { text-align: left; font-weight: var(--w-strong); }
 .rt-neg { color: var(--on-danger-soft); }
 
-.rt-history { margin: 0; padding-left: 18px; font-size: var(--fs-sm); }
-.rt-history li { margin: 3px 0; }
-
-.rt-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
-.rt-tab { flex: 1; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--card-bg); font-size: 14px; font-weight: var(--w-label); color: var(--text-secondary); cursor: pointer; }
-.rt-tab.active { background: var(--btn-primary); border-color: var(--btn-primary); color: var(--btn-primary-ink); }
 .rt-line { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--text-secondary); margin-right: 4px; vertical-align: middle; }
 .rt-line-dashed { border-top-style: dashed; }
 .rt-warn-inline { color: var(--on-warning-soft); }

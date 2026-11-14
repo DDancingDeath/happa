@@ -338,17 +338,6 @@ body.dark-mode {
   color: var(--text-primary);
 }
 
-body.dark-mode .bill-item-row,
-body.dark-mode .report-card,
-body.dark-mode .date-filter-card,
-body.dark-mode .popular-item,
-body.dark-mode .item-report,
-body.dark-mode .modern-card {
-  background: var(--card-bg);
-  color: var(--text-primary);
-  border-color: var(--border-color);
-}
-
 body.dark-mode input,
 body.dark-mode select,
 body.dark-mode textarea {
@@ -361,13 +350,8 @@ body.dark-mode input::placeholder {
   color: var(--text-muted);
 }
 
-body.dark-mode .top-bar,
 body.dark-mode .modal-box {
   background: var(--card-bg);
-}
-
-body.dark-mode .top-bar {
-  border-bottom-color: var(--border-color);
 }
 
 body.dark-mode .modal-box {
@@ -492,25 +476,9 @@ html[lang="hi"] body {
 /* Money and weight columns line up digit under digit */
 table,
 input[type="number"],
-.stat-value,
-.stat-value-sm,
 .total-row strong,
 .payment-row strong {
   font-variant-numeric: tabular-nums;
-}
-
-/* Modern Card Utility Class */
-.modern-card {
-  background: var(--card-bg);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border-color);
-  padding: var(--space-lg);
-  transition: box-shadow var(--transition), transform var(--transition);
-}
-
-.modern-card:hover {
-  box-shadow: var(--shadow-md);
 }
 
 /* Status Badge Utilities */
@@ -528,18 +496,7 @@ input[type="number"],
   color: var(--success-dark);
 }
 
-.badge-danger {
-  background: var(--danger-light);
-  color: var(--danger-dark);
-}
-
-.badge-warning {
-  background: var(--warning-light);
-  color: var(--warning-dark);
-}
-
 .badge-info {
   background: var(--info-light);
   color: var(--info-dark);
 }
-

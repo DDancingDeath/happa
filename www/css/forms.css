@@ -62,12 +62,6 @@
   color: var(--btn-danger-ink);
 }
 
-.btn-success {
-  border-color: var(--positive-line);
-  background-color: var(--positive-soft);
-  color: var(--positive);
-}
-
 .btn-sm,
 .split-rest-btn {
   padding: 0 12px;
@@ -434,8 +428,7 @@ input[type="checkbox"].switch:focus-visible,
 }
 
 /* ---------- Chips (old: .filter-buttons-secondary .filter-btn; a lone .filter-btn.active) and tags ---------- */
-.chip,
-.filter-buttons-secondary .filter-btn {
+.chip {
   min-height: 32px;
   padding: 0 14px;
   border: 1px solid var(--line-strong);
@@ -446,13 +439,8 @@ input[type="checkbox"].switch:focus-visible,
   font-weight: var(--w-label);
 }
 
-.filter-buttons-secondary .filter-btn {
-  min-height: 44px;
-}
-
 .chip.on,
 .chip[aria-pressed="true"],
-.filter-buttons-secondary .filter-btn.active,
 .filter-btn.active {
   border-color: var(--ink);
   background-color: var(--ink);
