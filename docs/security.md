@@ -38,7 +38,7 @@ handlers and inline `<script>` blocks were removed; before that it was report-on
 
 ```
 default-src 'self';
-script-src 'self' 'sha256-S30NEV1QjPa07MqPpAMhdJxY2NZEFFWgmhevazUvyKY=' https://apis.google.com https://cdn.sheetjs.com
+script-src 'self' 'sha256-2f5RAqbDewBxXTVa1Tbp/okoq/j9aCBrpErcjx6JeBI=' https://apis.google.com https://cdn.sheetjs.com
            https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/;
 style-src 'self' 'unsafe-inline';
 img-src 'self' data: blob:;
@@ -55,7 +55,7 @@ object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 | Source | Used by |
 |---|---|
 | `'self'` | the app, templates, `changelog.json`, the vendored Firebase SDK, the service worker, `/download`, `/r/`, and the small classic scripts in `www/js/boot/` that used to be inline (install-prompt capture and SW registration in `index.html`, `/download`'s language and release notes) |
-| `'sha256-S30N…'` (script) | the one inline script, `#themeBoot` at the top of `index.html`'s `<body>`: it applies the saved theme and appearance (Light / Dark / System) before first paint (#102). It is data-only: it reads `happa.theme`, `happa.appearance`, `happa.themeKind`, `happa.bar.light|dark`, the old `darkMode` and `aadhat.itemNamesFollowLang` (present on every install from before the theme engine, which keeps Light) from localStorage and sets `data-theme` / `data-appearance` / `data-mode` on `<html>` and the `theme-color` meta (only a `#rrggbb` value), so adding a theme changes neither the script nor its hash (`js/ui/theme.js` keeps it live afterwards). An external file can't promise this on a cold load (the browser may paint the body while the file downloads). Keep it on one line (so the hash doesn't depend on line endings); after any edit put its new hash in `firebase.json` (`security-headers.test.js` prints it) |
+| `'sha256-2f5R…'` (script) | the one inline script, `#themeBoot` at the top of `index.html`'s `<body>`: it applies the saved theme and appearance (Light / Dark / System) before first paint (#102). It is data-only: it reads `happa.theme`, `happa.appearance`, `happa.themeKind`, `happa.bar.light|dark`, `happa.themeFallback` (a saved theme this version could not show: then the kind and bar colour cached for it are ignored), the old `darkMode` and `aadhat.itemNamesFollowLang` (present on every install from before the theme engine, which keeps Light) from localStorage and sets `data-theme` / `data-appearance` / `data-mode` on `<html>` and the `theme-color` meta (only a `#rrggbb` value), so adding a theme changes neither the script nor its hash (`js/ui/theme.js` keeps it live afterwards). An external file can't promise this on a cold load (the browser may paint the body while the file downloads). Keep it on one line (so the hash doesn't depend on line endings); after any edit put its new hash in `firebase.json` (`security-headers.test.js` prints it) |
 | `https://cdn.sheetjs.com` (script) | Excel export (`ensureXLSX()`, pinned with SRI) |
 | `firestore.googleapis.com` | Firestore SDK and the tenant page's single REST read |
 | `identitytoolkit.googleapis.com`, `securetoken.googleapis.com` | Firebase Auth sign-in and token refresh |

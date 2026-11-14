@@ -1,0 +1,107 @@
+/* Material (redesign 4.6, DIRECTION 4.2): Material 3 baseline tonal surfaces (seed #6750A4), Roboto first,
+   pill controls, borderless tonal panels. Screen-only, so print stays Modern. */
+@media screen {
+  [data-theme="material"] {
+    --r-control: 22px;
+    --r-panel: 16px;
+    --r-chip: 8px;
+    --r-sheet: 28px;
+    --font-ui: Roboto, "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Noto Sans", Arial, "Noto Sans Devanagari", "Nirmala UI", sans-serif;
+    --w-display: 400;
+    --tracking-display: 0;
+  }
+
+  [data-theme="material"]:not([data-mode="dark"]) {
+    color-scheme: light;
+    --bg: #fef7ff;
+    --surface: #f7f2fa;
+    --surface-2: #ece6f0;
+    --surface-3: #e6e0e9;
+    --line: #e2dce8;
+    --line-strong: #79747e;
+    --ink: #1d1b20;
+    --ink-2: #49454f;
+    --ink-3: #5f5b66;
+    --ink-placeholder: #5d5864;
+    --accent: #6750a4;
+    --accent-hover: #5b4692;
+    --accent-strong: #4f378b;
+    --accent-text: #6750a4;
+    --accent-soft: #e8def8;
+    --accent-line: #cbbdea;
+    --mode-sale: #386a20;
+    --mode-sale-soft: #d7f0c6;
+    --mode-wholesale: #7d5260;
+    --mode-wholesale-soft: #ffd8e4;
+    --mode-rentals: #006a6a;
+    --mode-rentals-soft: #cceeee;
+    --positive: #386a20;
+    --positive-soft: #d7f0c6;
+    --negative: #b3261e;
+    --negative-soft: #f9dedc;
+    --negative-fill: #b3261e;
+    --warning: #8f4a00;
+    --warning-soft: #ffdcc0;
+    --focus: 0 0 0 3px rgba(103, 80, 164, 0.3);
+    --e1: 0 1px 2px rgba(0, 0, 0, 0.12);
+    --panel-border: transparent;
+    --panel-shadow: none;
+    --input-bg: #fffbff;
+    --input-border: #79747e;
+    --bar-bg: #f3edf7;
+    --seg-track: #ece6f0;
+    --seg-on: #e8def8;
+    --toast-bg: #322f35;
+    --toast-ink: #f5eff7;
+    --btn-primary-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 2px 6px 1px rgba(0, 0, 0, 0.1);
+  }
+
+  [data-theme="material"][data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #141218;
+    --surface: #211f26;
+    --surface-2: #2b2930;
+    --surface-3: #36343b;
+    --line: #3b3840;
+    --line-strong: #938f99;
+    --ink: #e6e0e9;
+    --ink-2: #cac4d0;
+    --ink-3: #aea9b4;
+    --ink-placeholder: #aaa5b1;
+    --accent: #d0bcff;
+    --accent-hover: #dccbff;
+    --accent-strong: #4f378b;
+    --accent-text: #d0bcff;
+    --accent-soft: #4a4458;
+    --accent-line: rgba(208, 188, 255, 0.4);
+    --on-accent: #381e72;
+    --mode-sale: #9cd67d;
+    --on-mode-sale: #0c3900;
+    --mode-sale-soft: rgba(156, 214, 125, 0.16);
+    --mode-wholesale: #efb8c8;
+    --on-mode-wholesale: #492532;
+    --mode-wholesale-soft: rgba(239, 184, 200, 0.16);
+    --mode-rentals: #4cdada;
+    --positive: #9cd67d;
+    --positive-soft: rgba(156, 214, 125, 0.14);
+    --negative: #f2b8b5;
+    --negative-soft: rgba(242, 184, 181, 0.14);
+    --warning: #f0c36a;
+    --warning-soft: rgba(240, 195, 106, 0.14);
+    --panel-border: transparent;
+    --panel-shadow: none;
+    --input-bg: #36343b;
+    --input-border: #938f99;
+    --bar-bg: #211f26;
+    --seg-track: #2b2930;
+    --seg-on: #4a4458;
+    --toast-bg: #e6e0e9;
+    --toast-ink: #322f35;
+    --toast-pos: #386a20;
+    --toast-neg: #b3261e;
+    --toast-warn: #8f4a00;
+    --toast-info: #6750a4;
+    --preview-apply-line: #322f35;
+    --btn-primary-shadow: none;
+  }
+}

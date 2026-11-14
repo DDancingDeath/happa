@@ -26,7 +26,20 @@
                 <h4 class="theme-gallery-title" data-i18n="ui.settings.theme">Theme</h4>
                 <button type="button" class="btn btn-ghost btn-sm theme-reset" data-onclick="settings.resetTheme()" data-i18n="ui.settings.theme_reset">Reset to default</button>
             </div>
-            <div class="theme-gallery" id="themeGallery" role="group" aria-label="Theme" data-i18n-aria-label="ui.settings.theme"></div>
+            <div class="theme-layout">
+                <div class="theme-gallery" id="themeGallery" role="group" aria-label="Theme" data-i18n-aria-label="ui.settings.theme"></div>
+                <div class="theme-pane panel" id="themePane">
+                    <div class="theme-pane-head">
+                        <p class="theme-pane-title" id="themePaneTitle" aria-live="polite"></p>
+                        <span class="tag" id="themePaneKind"></span>
+                    </div>
+                    <div class="theme-pane-preview" id="themePanePreview"></div>
+                    <div class="theme-pane-actions">
+                        <button type="button" class="btn" data-theme-pane-action data-onclick="settings.cancelThemePreview()" data-i18n="ui.modals.cancel" disabled>Cancel</button>
+                        <button type="button" class="btn btn-primary" data-theme-pane-action data-onclick="settings.applyThemePreview()" data-i18n="ui.settings.theme_apply" disabled>Apply</button>
+                    </div>
+                </div>
+            </div>
             <p class="setting-description" id="themeDarkHint" hidden></p>
             <p class="setting-description" data-i18n="ui.settings.theme_hint">Tap a theme to preview it. Saved on this device.</p>
 

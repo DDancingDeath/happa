@@ -78,6 +78,15 @@ describe('theme boot script (#102)', () => {
         expect(boot(keys)).toEqual({ theme: 'midnight', appearance: 'light', mode: 'dark', bodyClass: '' });
     });
 
+    test('a saved theme the app could not show (happa.themeFallback) follows the appearance, not its stale kind or bar colour', () => {
+        const keys = { 'happa.theme': 'gone', 'happa.themeKind': 'dark', 'happa.appearance': 'light', 'happa.bar.light': '#07070d', 'happa.themeFallback': 'gone' };
+        expect(boot(keys)).toEqual({ theme: 'gone', appearance: 'light', mode: 'light', bodyClass: '' });
+        expect(document.querySelector('meta[name="theme-color"]').getAttribute('content')).toBe('#667eea');
+        expect(boot({ ...keys, 'happa.appearance': 'system' }, { systemDark: true }).mode).toBe('dark');
+        // The marker names another theme (the app knows this one again): the saved kind applies
+        expect(boot({ ...keys, 'happa.theme': 'midnight' }).mode).toBe('dark');
+    });
+
     test('sets the cached browser bar colour of the mode, only when it is a #rrggbb colour', () => {
         boot({ 'happa.appearance': 'dark', 'happa.bar.dark': '#0d0d10', 'happa.bar.light': '#f7f7f9' });
         expect(document.querySelector('meta[name="theme-color"]').getAttribute('content')).toBe('#0d0d10');

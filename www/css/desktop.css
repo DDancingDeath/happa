@@ -892,9 +892,14 @@
   .st-view > .st-doc { grid-column: 2; grid-row: 2 / span 3; margin-top: 0; min-width: 0; }
 }
 
+/* Theme preview: the Settings pane has Cancel / Apply; the floating bar shows only while they are scrolled off screen */
 @media (min-width: 1024px) {
   .theme-preview-bar {
     bottom: 24px;
     left: calc(50% + var(--desktop-nav-width) / 2);
+  }
+
+  .theme-preview-bar:not(.theme-preview-float) {
+    display: none;
   }
 }

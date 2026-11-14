@@ -11,10 +11,14 @@
 @import url('css/themes/vintage.css');
 @import url('css/themes/classic.css');
 @import url('css/themes/nordic.css');
+@import url('css/themes/glass.css');
+@import url('css/themes/material.css');
+@import url('css/themes/fluent.css');
 @import url('css/themes/nature.css');
 @import url('css/themes/premium.css');
 @import url('css/themes/dark.css');
 @import url('css/themes/midnight.css');
+@import url('css/themes/cyberpunk.css');
 
 /* Components: icons and toast, then the controls and the shared surfaces over them.
    Everything below (the app shell, then the pages) overrides a component in its own context. */

@@ -1,0 +1,64 @@
+/* Cyberpunk (redesign 4.6, DIRECTION 4.2): always dark. Near-black with neon magenta and cyan, yellow warning,
+   mono figures, sharp corners, neon hairlines and a restrained glow. Screen-only, so print stays Modern. */
+@media screen {
+  [data-theme="cyberpunk"] {
+    --r-control: 2px;
+    --r-panel: 4px;
+    --r-chip: 2px;
+    --r-sheet: 6px;
+    color-scheme: dark;
+    --font-num: "Cascadia Mono", Consolas, "Roboto Mono", "Droid Sans Mono", "Noto Sans Mono", "Nirmala UI", "Noto Sans Devanagari", monospace;
+    --font-hero: var(--font-num);
+    --tracking-display: -0.01em;
+    --bg: #07070d;
+    --surface: #0e0e1a;
+    --surface-2: #151527;
+    --surface-3: #1e1e36;
+    --line: rgba(0, 240, 255, 0.16);
+    --line-strong: rgba(0, 240, 255, 0.34);
+    --ink: #ecebff;
+    --ink-2: #b6b4e2;
+    --ink-3: #9390c6;
+    --ink-placeholder: #8582bb;
+    --scrim: rgba(4, 0, 12, 0.7);
+    --accent: #ff2bd6;
+    --accent-hover: #ff52df;
+    --accent-strong: #8a0f73;
+    --accent-text: #ff7ae6;
+    --accent-soft: rgba(255, 43, 214, 0.14);
+    --accent-line: rgba(255, 43, 214, 0.45);
+    --on-accent: #16000f;
+    --mode-sale: #00f5a0;
+    --on-mode-sale: #00170e;
+    --mode-sale-soft: rgba(0, 245, 160, 0.12);
+    --mode-wholesale: #9d8cff;
+    --on-mode-wholesale: #0b0620;
+    --mode-wholesale-soft: rgba(157, 140, 255, 0.14);
+    --mode-rentals: #00e5ff;
+    --mode-rentals-soft: rgba(0, 229, 255, 0.12);
+    --positive: #00f5a0;
+    --positive-soft: rgba(0, 245, 160, 0.1);
+    --negative: #ff4d6d;
+    --negative-soft: rgba(255, 77, 109, 0.14);
+    --warning: #ffd60a;
+    --warning-soft: rgba(255, 214, 10, 0.1);
+    --warning-dot: #ffd60a;
+    --info: #00e5ff;
+    --info-soft: rgba(0, 229, 255, 0.1);
+    --e1: 0 0 0 1px rgba(0, 240, 255, 0.12);
+    --e2: 0 0 0 1px rgba(0, 240, 255, 0.25), 0 12px 32px -8px rgba(0, 0, 0, 0.9);
+    --e3: 0 0 0 1px rgba(255, 43, 214, 0.3), 0 24px 56px -12px rgba(0, 0, 0, 0.9);
+    --highlight: 0 0 #0000;
+    --focus: 0 0 0 2px #07070d, 0 0 0 4px #00f0ff;
+    --panel-border: rgba(0, 240, 255, 0.18);
+    --panel-shadow: none;
+    --input-bg: #0a0a14;
+    --input-border: rgba(0, 240, 255, 0.3);
+    --bar-bg: #0a0a14;
+    --seg-track: #0a0a14;
+    --seg-on: #1e1e36;
+    --toast-bg: #151527;
+    --toast-ink: #ecebff;
+    --btn-primary-shadow: 0 0 18px -4px rgba(255, 43, 214, 0.7);
+  }
+}

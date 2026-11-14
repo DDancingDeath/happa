@@ -14,10 +14,14 @@ export const THEMES = [
     { id: 'vintage', kind: 'both' },
     { id: 'classic', kind: 'both' },
     { id: 'nordic', kind: 'both' },
+    { id: 'glass', kind: 'both' },
+    { id: 'material', kind: 'both' },
+    { id: 'fluent', kind: 'both' },
     { id: 'nature', kind: 'both' },
     { id: 'premium', kind: 'both' },
     { id: 'dark', kind: 'dark' },
     { id: 'midnight', kind: 'dark' },
+    { id: 'cyberpunk', kind: 'dark' },
 ];
 
 /** @param {string|null|undefined} id */
