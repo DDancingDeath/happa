@@ -813,7 +813,8 @@ export class HistoryManager {
         const confirmed = await UIManager.showModal(
             t('msg.void.delete_confirm'),
             t('msg.history.delete_bill'),
-            true
+            true,
+            { confirmLabel: t('ui.void.delete_permanently'), danger: true }
         );
         if (confirmed) await this.deleteBill();
     }

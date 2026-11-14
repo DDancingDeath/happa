@@ -53,7 +53,8 @@ export const UserAdmin = {
         const confirmed = await UIManager.showModal(
             t('msg.common.send_password_reset_email', { email }),
             t('msg.common.reset_password'),
-            true
+            true,
+            { confirmLabel: t('ui.confirm.send_email') }
         );
         if (!confirmed) return false;
         try {
@@ -76,7 +77,8 @@ export const UserAdmin = {
         const confirmed = await UIManager.showModal(
             t('msg.users.confirm_remove_user', { userName: userName || '' }),
             t('msg.common.delete_user'),
-            true
+            true,
+            { confirmLabel: t('ui.confirm.delete_user'), danger: true }
         );
         if (!confirmed) return false;
         try {
@@ -100,7 +102,7 @@ export const UserAdmin = {
      */
     async rejectUser(userId, confirmKey = 'msg.admin.are_sure_want_reject_user') {
         if (!canManage(userId)) return false;
-        const confirmed = await UIManager.showModal(t(confirmKey), t('msg.admin.reject_user'), true);
+        const confirmed = await UIManager.showModal(t(confirmKey), t('msg.admin.reject_user'), true, { confirmLabel: t('ui.admin.reject'), danger: true });
         if (!confirmed) return false;
         try {
             UIManager.showLoading();
@@ -127,7 +129,8 @@ export const UserAdmin = {
         const confirmed = await UIManager.showModal(
             t('msg.users.confirm_restore_user', { userName: userName || '' }),
             t('ui.admin.restore'),
-            true
+            true,
+            { confirmLabel: t('ui.admin.restore') }
         );
         if (!confirmed) return false;
         try {

@@ -208,7 +208,7 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
         setVal('wholesaleCashPayment', 4025);
         const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValueOnce(false);
         expect(await WholesaleSalesManager.completeSale()).toBeUndefined();
-        expect(modal).toHaveBeenCalledWith(expect.stringContaining('Rice: average cost not known (its stock has no rate)'), expect.any(String), true);
+        expect(modal).toHaveBeenCalledWith(expect.stringContaining('Rice: average cost not known (its stock has no rate)'), expect.any(String), true, { confirmLabel: 'Save anyway' });
         expect(saved).toHaveLength(0);
 
         modal.mockResolvedValue(true);
@@ -225,7 +225,7 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
         setVal('wholesaleCashPayment', 4025);
         const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
         const sale = await WholesaleSalesManager.completeSale();
-        expect(modal).toHaveBeenCalledWith(expect.stringContaining('stock is still loading'), expect.any(String), true);
+        expect(modal).toHaveBeenCalledWith(expect.stringContaining('stock is still loading'), expect.any(String), true, { confirmLabel: 'Save anyway' });
         expect(sale).toMatchObject({ profit: null, profitPercent: null, costUnknown: true });
         expect(sale.items[0].costUnknown).toBe(true);
         AppState.stockReady = true;
@@ -261,7 +261,7 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
         setVal('wholesaleCashPayment', 4267);
         const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
         const sale = await WholesaleSalesManager.completeSale();
-        expect(modal).toHaveBeenCalledWith(expect.stringContaining('short 3 kg'), expect.any(String), true);
+        expect(modal).toHaveBeenCalledWith(expect.stringContaining('short 3 kg'), expect.any(String), true, { confirmLabel: 'Save anyway' });
         expect(sale.flags).toEqual([expect.objectContaining({ rule: 'oversell', by: 'owner1' })]);
 
         // Stock fell meanwhile: now 9 kg short → blocked for a member, toast names the item

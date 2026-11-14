@@ -340,7 +340,7 @@ describe('new retail sale save', () => {
         await addLine(0, 36, [10]);
         setVal('saleCashPayment', 360);
         expect(await RetailSaleManager.completeSale()).toBeUndefined();
-        expect(modal).toHaveBeenCalledWith(expect.stringContaining('Rice: selling 10 kg, only 5 kg'), 'Check before saving', true);
+        expect(modal).toHaveBeenCalledWith(expect.stringContaining('Rice: selling 10 kg, only 5 kg'), 'Check before saving', true, { confirmLabel: 'Save anyway' });
         expect(saveRetailSale).not.toHaveBeenCalled();
     });
 
@@ -568,7 +568,7 @@ describe('recording a due payment (Outstanding)', () => {
         // "Record another ₹100?" → yes: a new payment
         setVal('payment_r1', 100);
         await OutstandingManager.recordPayment('r1', 'retail');
-        expect(ask).toHaveBeenCalledWith(expect.stringContaining('₹100 on this bill was already recorded at'), 'Record it again?', true);
+        expect(ask).toHaveBeenCalledWith(expect.stringContaining('₹100 on this bill was already recorded at'), 'Record it again?', true, { confirmLabel: 'Record again' });
         expect(fake.raw('retailSales').get('r1').payments).toHaveLength(2);
         expect(toast).toHaveBeenLastCalledWith('✓ Payment of ₹100 recorded');
         // Another lost answer, the user answers no: nothing more is recorded

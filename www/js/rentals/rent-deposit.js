@@ -152,7 +152,7 @@ async function ownerChange(c, kind, tenantId, lease, entries, i) {
     if (!c.isOwner || !e || e.kind === 'adjust') return;
     let fields = null;
     if (kind === 'remove') {
-        if (!await UIManager.showModal(t('msg.rent.confirm_remove'), t('ui.rent.remove'), true)) return;
+        if (!await UIManager.showModal(t('msg.rent.confirm_remove'), t('ui.rent.remove'), true, { confirmLabel: t('ui.confirm.remove'), danger: true })) return;
     } else {
         const ok = await c.dialog(`<h3>${c.esc(t('ui.rent.edit'))}: ${c.esc(t(`ui.rent.dep_${e.kind}`))}</h3>
             ${lbl(c, 'ui.rent.amount', `<input class="input" id="rentPayAmount" type="number" inputmode="decimal" min="0" step="1" value="${c.esc(e.amount)}">`)}

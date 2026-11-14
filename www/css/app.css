@@ -1160,6 +1160,13 @@ input[type="number"],
   color: var(--btn-danger-ink);
 }
 
+/* A risky choice that is not the main action (Discard the line, Save anyway): danger ink and outline, no fill */
+.btn-danger-outline {
+  border-color: var(--negative);
+  background-color: transparent;
+  color: var(--negative);
+}
+
 .btn-sm {
   padding: 0 12px;
   font-size: var(--fs-sm);
@@ -1956,50 +1963,6 @@ a.row:active {
   margin: 0 auto 12px;
   border-radius: 2px;
   background: var(--line-strong);
-}
-
-/* Dialog actions: ghost Cancel + one primary */
-.modal-btn {
-  min-height: 44px;
-  padding: 0 16px;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  font-family: inherit;
-  font-size: var(--fs-body);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-  transition: background-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
-}
-
-.modal-btn:active {
-  transform: scale(0.98);
-}
-
-.modal-btn:focus-visible {
-  outline: none;
-  box-shadow: var(--focus);
-}
-
-.modal-btn-cancel {
-  background: transparent;
-  color: var(--accent-text);
-}
-
-.modal-btn-cancel:hover {
-  background: var(--surface-2);
-}
-
-.modal-btn-confirm {
-  background: var(--btn-primary-bg);
-  color: var(--btn-primary-ink);
-  box-shadow: var(--btn-primary-shadow);
-}
-
-/* A destructive confirm (Void bill) */
-.modal-btn-confirm.modal-btn-danger {
-  background: var(--btn-danger-bg);
-  color: var(--btn-danger-ink);
-  box-shadow: none;
 }
 
 /* ---------- Toast: near-black in every theme; the type shows as a coloured bar ---------- */
@@ -3831,16 +3794,9 @@ input[type="number"] {
   flex-wrap: wrap;
 }
 
-.pending-line-dialog .modal-footer .modal-btn,
-.rate-check-dialog .modal-footer .modal-btn {
+.pending-line-dialog .modal-footer .btn,
+.rate-check-dialog .modal-footer .btn {
   flex: 1 1 auto;
-}
-
-.pending-line-discard,
-.rate-check-confirm {
-  background: var(--card-bg);
-  color: var(--danger-color);
-  border: 1px solid var(--danger-color);
 }
 
 /* ---------- Billing entry (redesign 3.1a): labels above, ₹ / kg in the field, one line panel ---------- */
@@ -6746,6 +6702,76 @@ html {
   transform: scale(1);
 }
 
+/* The app dialog (ui-manager.js): a .dialog from 600 px, a bottom .sheet below; title, message, then ghost Cancel + one primary on the right */
+.modal-overlay.scrim.active {
+  transition: opacity var(--transition-slow), visibility 0s;
+}
+
+.app-dialog {
+  width: min(480px, 100%);
+  min-width: min(320px, 100%);
+  max-width: none;
+  gap: var(--sp-3);
+  padding: var(--sp-5);
+  outline: none;
+}
+
+.app-dialog > .grabber,
+.app-dialog [hidden],
+.app-dialog .modal-header[hidden] {
+  display: none;
+}
+
+.app-dialog .modal-header {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+.app-dialog .modal-header h3 {
+  font-family: var(--font-display);
+  font-size: var(--fs-lead);
+  color: var(--ink);
+}
+
+.app-dialog .modal-body {
+  padding: 0;
+  color: var(--ink-2);
+}
+
+.app-dialog .modal-footer {
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: var(--sp-1) 0 0;
+  border: 0;
+  background: none;
+}
+
+.app-dialog.sheet {
+  width: auto;
+  min-width: 0;
+  max-height: 90vh;
+  padding: var(--sp-3) var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
+  border-bottom: 0;
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  transform: translateY(100%);
+}
+
+.modal-overlay.active > .app-dialog.sheet {
+  transform: none;
+}
+
+.app-dialog.sheet > .grabber {
+  display: block;
+  margin-bottom: 0;
+}
+
+.app-dialog.sheet .modal-footer > .btn {
+  flex: 1 1 0;
+}
+
 .modal-header {
   background: var(--card-bg);
   color: var(--text-primary);
@@ -6787,26 +6813,14 @@ html {
   justify-content: flex-end;
 }
 
-.modal-btn {
+.modal-footer > .btn {
   min-width: 80px;
 }
 
-
-body:has(.tab.purchase-theme.active) .modal-btn-confirm:not(.modal-btn-danger) {
-  background: var(--btn-primary);
-}
-
-body:has(.tab.purchase-theme.active) .modal-btn-confirm:not(.modal-btn-danger):hover {
-  box-shadow: var(--shadow);
-}
-
-body:has(.tab.sale-theme.active) .modal-btn-confirm:not(.modal-btn-danger) {
-  background: var(--btn-success);
+/* Retail sale open: the dialog's primary takes the sale colour */
+body:has(.tab.sale-theme.active) .modal-footer > .btn-primary {
+  background-color: var(--btn-sale-bg);
   color: var(--btn-sale-ink);
-}
-
-body:has(.tab.sale-theme.active) .modal-btn-confirm:not(.modal-btn-danger):hover {
-  box-shadow: var(--shadow);
 }
 
 /* -------------------- ENHANCED TOUCH INTERACTIONS -------------------- */
@@ -6954,6 +6968,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   flex: 1;
   min-width: 0;
   padding: 0 var(--sp-3);
+}
+
+.bill-details-footer [hidden],
+.item-modal-body [hidden] {
+  display: none;
+}
+
+.bill-details-content.drafts-list {
+  max-height: 60vh;
 }
 
 .item-modal-body {

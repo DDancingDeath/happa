@@ -51,6 +51,13 @@
   color: var(--btn-danger-ink);
 }
 
+/* A risky choice that is not the main action (Discard the line, Save anyway): danger ink and outline, no fill */
+.btn-danger-outline {
+  border-color: var(--negative);
+  background-color: transparent;
+  color: var(--negative);
+}
+
 .btn-sm {
   padding: 0 12px;
   font-size: var(--fs-sm);

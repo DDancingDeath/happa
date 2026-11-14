@@ -66,7 +66,7 @@ export async function action(c, kind, pid, id) {
         if (!old) return fail('msg.rent.save_failed');
     }
     if (kind === 'delete') {
-        if (!await UIManager.showModal(t('msg.rent.confirm_remove'), t('ui.rent.remove'), true)) return;
+        if (!await UIManager.showModal(t('msg.rent.confirm_remove'), t('ui.rent.remove'), true, { confirmLabel: t('ui.confirm.remove'), danger: true })) return;
         return save(c, pid, () => es.deleteExpense(id), 'RENT_EXPENSE_DELETE', { id, amount: old.amount });
     }
     const v = old || { category: 'repairs', unitId: null, amount: '', date: todayLocalISO(), mode: 'cash', note: '' };

@@ -65,8 +65,8 @@ function askFixOrConfirm({ kind, title, message, fix, confirm }) {
             footer.appendChild(b);
             return b;
         };
-        button('modal-btn rate-check-confirm', confirm, 'confirm');
-        const fixBtn = button('modal-btn modal-btn-confirm', fix, 'fix');
+        button('btn btn-danger-outline rate-check-confirm', confirm, 'confirm');
+        const fixBtn = button('btn btn-primary', fix, 'fix');
 
         box.append(header, body, footer);
         overlay.appendChild(box);

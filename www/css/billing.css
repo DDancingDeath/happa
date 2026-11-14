@@ -190,16 +190,9 @@ input[type="number"] {
   flex-wrap: wrap;
 }
 
-.pending-line-dialog .modal-footer .modal-btn,
-.rate-check-dialog .modal-footer .modal-btn {
+.pending-line-dialog .modal-footer .btn,
+.rate-check-dialog .modal-footer .btn {
   flex: 1 1 auto;
-}
-
-.pending-line-discard,
-.rate-check-confirm {
-  background: var(--card-bg);
-  color: var(--danger-color);
-  border: 1px solid var(--danger-color);
 }
 
 /* ---------- Billing entry (redesign 3.1a): labels above, ₹ / kg in the field, one line panel ---------- */

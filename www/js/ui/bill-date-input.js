@@ -118,5 +118,5 @@ export async function allowBackdatedCash(day, cash, pending = null) {
         console.warn('Bill: cash day not checked:', e?.code || e);
     }
     if (!closed) return true;
-    return UIManager.showModal(t('msg.billing.backdated_cash_closed_confirm'), t('msg.checks.check_before_saving'), true);
+    return UIManager.showModal(t('msg.billing.backdated_cash_closed_confirm'), t('msg.checks.check_before_saving'), true, { confirmLabel: t('ui.confirm.save_anyway') });
 }

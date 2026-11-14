@@ -1,17 +1,17 @@
 {
   "_readme": "Design-system ratchet (tests/ci/ds-guard.test.js, docs/design-system.md §7). Per-file counts may only go down; lower them with DS_BASELINE=lower npx jest ds-guard. Files in \"strict\" are pinned at 0 on every metric.",
   "totals": {
-    "spacing": 288,
+    "spacing": 287,
     "radius": 38,
     "shadow": 16,
     "zIndex": 29,
     "important": 30,
     "idSelector": 159,
     "themeSelector": 6,
-    "inlineStyle": 36,
+    "inlineStyle": 31,
     "emoji": 12,
     "titleCase": 15,
-    "legacyClass": 173
+    "legacyClass": 167
   },
   "strict": [
     "www/css/admin.css",
@@ -78,7 +78,7 @@
       "www/css/history.css": 41,
       "www/css/overlay.css": 2,
       "www/css/rate-trends.css": 24,
-      "www/css/surfaces.css": 14,
+      "www/css/surfaces.css": 13,
       "www/css/tables.css": 5,
       "www/css/tabs.css": 4,
       "www/css/toast.css": 4,
@@ -162,7 +162,6 @@
       "www/js/utils/quota-guard.js": 3,
       "www/templates/billing.html": 3,
       "www/templates/day.html": 2,
-      "www/templates/modals.html": 5,
       "www/templates/rate-trends.html": 9
     },
     "emoji": {
@@ -202,13 +201,12 @@
       "www/js/ui/pending-line.js": 6,
       "www/js/ui/period-compare.js": 2,
       "www/js/ui/rate-check.js": 6,
-      "www/js/ui/ui-manager.js": 2,
       "www/js/utils/keyboard-shortcuts.js": 1,
       "www/templates/billing.html": 45,
       "www/templates/day.html": 4,
       "www/templates/expenses.html": 1,
       "www/templates/insights.html": 1,
-      "www/templates/modals.html": 13,
+      "www/templates/modals.html": 9,
       "www/templates/money.html": 1,
       "www/templates/navigation.html": 5,
       "www/templates/rate-trends.html": 5,

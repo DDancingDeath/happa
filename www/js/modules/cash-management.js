@@ -830,7 +830,7 @@ export class CashManagementManager {
         // This phone's own entries not on the server yet are missing from the other phones' counts (#70).
         const unsynced = SyncStatus.pendingCount();
         if (unsynced > 0) {
-            const go = await UIManager.showModal(tn('msg.cash.close_unsynced', unsynced), t('msg.cash.confirm_sign_out'), true);
+            const go = await UIManager.showModal(tn('msg.cash.close_unsynced', unsynced), t('msg.cash.confirm_sign_out'), true, { confirmLabel: t('ui.confirm.close_cash') });
             if (!go) return;
         }
 
@@ -843,7 +843,7 @@ export class CashManagementManager {
                 ? t('msg.cash.signout_extra', { diff: formatAmount(check.amount, { decimals: 2 }), expected: formatAmount(expected, { exact: true }), actual: formatAmount(actualAmount, { exact: true }) })
                 : t('msg.cash.signout_short', { diff: formatAmount(check.amount, { decimals: 2 }), expected: formatAmount(expected, { exact: true }), actual: formatAmount(actualAmount, { exact: true }) });
             
-            const confirmed = await UIManager.showModal(message, t('msg.cash.confirm_sign_out'), true);
+            const confirmed = await UIManager.showModal(message, t('msg.cash.confirm_sign_out'), true, { confirmLabel: t('ui.confirm.close_cash') });
             if (!confirmed) return;
         }
 

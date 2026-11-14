@@ -566,7 +566,7 @@ export class OutstandingManager {
         if (!isRetryOf(open)) {
             const again = await UIManager.showModal(
                 t('msg.outstanding.payment_recorded_earlier', { total, time: formatDayTime(entry.at, { lang: getLang() }) }),
-                t('ui.outstanding.record_again_title'), true);
+                t('ui.outstanding.record_again_title'), true, { confirmLabel: t('ui.confirm.record_again') });
             settlePaymentIntent(key);
             if (again) return null;
         } else {
@@ -939,7 +939,7 @@ export class OutstandingManager {
                 <label for="clearReason">${esc(t('ui.outstanding.write_off_reason'))}</label>
                 <textarea id="clearReason" class="input" rows="2" maxlength="300"></textarea>
             </div>`;
-        const confirmed = await UIManager.showModalWithHtml(html, t('msg.outstanding.mark_as_cleared'), true);
+        const confirmed = await UIManager.showModalWithHtml(html, t('msg.outstanding.mark_as_cleared'), true, { confirmLabel: t('ui.confirm.mark_cleared') });
         if (!confirmed) return false;
 
         const method = document.querySelector('input[name="clearMethod"]:checked')?.value || '';
@@ -996,7 +996,7 @@ export class OutstandingManager {
                 <label for="writeOffReason">${esc(t('ui.outstanding.write_off_reason'))}</label>
                 <textarea id="writeOffReason" class="input" rows="2" maxlength="300"></textarea>
             </div>`;
-        const confirmed = await UIManager.showModalWithHtml(html, t('ui.outstanding.write_off_title', { amount }), true);
+        const confirmed = await UIManager.showModalWithHtml(html, t('ui.outstanding.write_off_title', { amount }), true, { confirmLabel: t('ui.confirm.write_off'), danger: true });
         if (!confirmed) return false;
         return this.confirmWriteOff(transactionType, transaction, (document.getElementById('writeOffReason')?.value || '').trim());
     }
@@ -1179,7 +1179,7 @@ export class OutstandingManager {
                 </table>
                 <div id="ppSum" class="due-dlg-head" role="status"></div>
             </div>`;
-        const ok = await UIManager.showModalWithHtml(html, t(isPay ? 'ui.outstanding.party_pay_title_pay' : 'ui.outstanding.party_pay_title_receive'), true);
+        const ok = await UIManager.showModalWithHtml(html, t(isPay ? 'ui.outstanding.party_pay_title_pay' : 'ui.outstanding.party_pay_title_receive'), true, { confirmLabel: t('ui.confirm.record_payment') });
         if (!ok) return;
         const method = document.querySelector('input[name="partyPayMethod"]:checked')?.value || '';
         const check = this.partyPayCheck();
@@ -1279,7 +1279,7 @@ export class OutstandingManager {
         if (!isRetryOf(open)) {
             const again = await UIManager.showModal(
                 t('msg.outstanding.party_pay_recorded_earlier', { total, name: String(name || ''), time: formatDayTime(entry.at, { lang: getLang() }) }),
-                t('ui.outstanding.record_again_title'), true);
+                t('ui.outstanding.record_again_title'), true, { confirmLabel: t('ui.confirm.record_again') });
             settlePaymentIntent(key);
             if (again) return false;
         } else {

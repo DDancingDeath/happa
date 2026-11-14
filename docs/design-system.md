@@ -94,8 +94,8 @@ fills, the toast.
 Class names and states are in the first lines of `forms.css` and `surfaces.css`. Older classes are
 kept as hooks (JS and E2E use them) and share the new look; they are listed beside the new one.
 
-- **Buttons** `.btn` + `-primary` / `-tonal` / `-ghost` / `-danger` / `-success`, `-sm`, `-icon`,
-  `-block`. One primary button per screen. Hover is a veil over the button's own colour; a busy
+- **Buttons** `.btn` + `-primary` / `-tonal` / `-ghost` / `-danger` / `-danger-outline` / `-success`, `-sm`, `-icon`,
+  `-block` (`-danger-outline`: a risky choice that is not the main action, e.g. Discard the line, Save anyway at a rate check). One primary button per screen. Hover is a veil over the button's own colour; a busy
   save sets `aria-busy` (the `runExclusive` lock). Every button, `-sm` too, and the payment actions
   (`[data-record-payment]`, `[data-mark-cleared]`) are at least 44 px tall. No page has a button class with its own
   look (C2): Billing and Wholesale use Save `-primary`, Print and Share (`-icon`) the default, Add to bill and
@@ -217,7 +217,12 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
 - **Feedback** `.notice` (`.pos/.neg/.warn/.info`; `.solid` puts the tint on an opaque surface for a notice that sticks or floats, `.float` pins it to the top of the screen, `.notice-actions` holds its buttons; `[hidden]` always hides it), `.empty` (write it with `emptyState({ icon, title, text, action, tone })` from `ui/components.js`: the icon tile, a title, an optional line and an optional button; loading and error lines stay a plain `<p class="empty">`), `.skel`, `.toast` (near-black; light in the
   Dark theme), `.dialog` / `.sheet` / `.scrim` (old `.modal-overlay > .modal-box`), `.spinner` (blocking
   saves only). Dialog buttons: Cancel (ghost) on the left, one primary on the right, labelled with a verb; a destructive
-  confirm (Void bill) passes `{ confirmLabel, danger: true }` to `UIManager.showModal` / `showModalWithHtml` (`.modal-btn-danger`).
+  confirm (Void bill) passes `{ confirmLabel, danger: true }` to `UIManager.showModal` / `showModalWithHtml` (`.btn-danger` instead of `.btn-primary`; Cancel is `.btn-ghost`).
+  **The app dialog (C5a)**: `showModal`, `showModalWithHtml` and `showCustomModal` share one controller (`ui/ui-manager.js`)
+  and one template (`#modalOverlay.scrim > #modalBox.app-dialog`): a `.dialog` from 600 px, a bottom `.sheet` with a grabber
+  below. It takes focus, keeps Tab inside (`trapFocus`, shared with the More and Rentals sheets) and gives focus back; Esc,
+  Back and a scrim tap answer it as Cancel (`closeTopDialog`; an alert as OK, a custom modal through its `[data-dismiss]`).
+  A dialog replaced before it was answered resolves as dismissed. The ids and the `AppState.modalResolve` promise are kept.
 - **App shell (phone and tablet, <1024 px)**: `header.app-bar` (`hamburger.css`) holds the open page's title (`#appBarTitle`, the menu name `t('ui.nav.*')` set by `ui/bottom-nav.js` on `aadhat:tabshown`), the sync pill (`#syncStatus`) and the bell; pages scroll under it (`--appbar-h`, `--tab-top`). The menu button shows only in Rentals (no tab bar). **More** opens `#sideNav` as a modal bottom sheet (`navigation.css`): the business switch and the pages not on the tab bar (`data-bar` links are hidden there) in groups (`.nav-group`); it takes focus, keeps Tab inside, closes on Esc, Back or a swipe down and gives focus back. The open page is the `main` landmark (`role="main"`, set by `showTab`).
 - **Desktop shell (≥1024 px, 4.2, `desktop.css`)**: the same `header.app-bar` becomes the 60 px page header beside the sidebar (`--desktop-header-h`): the page title (the same `#appBarTitle`), the sync pill and the bell; pages scroll under it. The sidebar is the same `#sideNav` on `--surface-2`: the business (`.nav-mark`, name and role, the business switch), the same `.nav-group`s as the More sheet (a group shows only when the role may open one of its pages; links a role may not open carry `hidden`), Alt+1…9 hints (`.nav-kbd`, from `TAB_SHORTCUTS` in `keyboard-shortcuts.js`, which also sets `aria-keyshortcuts`), Settings and Shortcuts. At 1024–1279 px it is a 64 px icon rail (names stay for screen readers and show as tooltips). Density: `--control-h` 36, `--row-h` 44. Tab order: header, sidebar, page.
 - **Tones** for text written by scripts: `.tone-pos`, `.tone-neg`, `.tone-warn`, `.tone-info`,
