@@ -224,7 +224,7 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   Back and a scrim tap answer it as Cancel (`closeTopDialog`; an alert as OK, a custom modal through its `[data-dismiss]`).
   A dialog replaced before it was answered resolves as dismissed. The ids and the `AppState.modalResolve` promise are kept.
   **Other dialogs (C5b)** use the same controller and markup: `buildSheet()` makes it in JS, `openSheet(overlay, { focus })` opens it (focus, Tab trap, 350 ms touch guard) and
-  `closeSheet(overlay)` gives focus back. Esc, Back and a scrim tap press the top dialog's `[data-dismiss]`; dialogs stack in
+  `closeSheet(overlay)` gives focus back. Esc (at any width: the controller's own listener, which keyboard-shortcuts.js then skips), Back and a scrim tap press the top dialog's `[data-dismiss]`; dialogs stack in
   the order they open (`--z-modal` + `--sheet-layer`). The bill-save questions (unadded line, extreme rate, heavy bag) are
   built this way with their ids, `data-choice` and the focused default (Add, Fix) unchanged; the reason and voice-check
   dialogs are app dialogs with `.field` content.

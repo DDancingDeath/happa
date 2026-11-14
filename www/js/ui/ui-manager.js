@@ -96,6 +96,24 @@ function bindSheet(overlay, box) {
 }
 
 /**
+ * Esc at any width presses the top dialog's [data-dismiss]. Capture phase, so it runs before
+ * keyboard-shortcuts.js (which skips a handled key) and the key goes no further.
+ * @param {KeyboardEvent} e
+ */
+function onSheetKey(e) {
+    if (e.key !== 'Escape' || e.defaultPrevented || e.isComposing) return;
+    if (!document.querySelector('.app-scrim.active')) return;
+    if (!closeTopDialog()) return;
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+if (typeof document !== 'undefined' && !document.__happaSheetEsc) {
+    document.__happaSheetEsc = true;
+    document.addEventListener('keydown', onSheetKey, true);
+}
+
+/**
  * Opens a dialog / sheet (an .app-scrim with one .app-dialog) on the shared controller.
  * Opening it again while it is open keeps its opener (the content was replaced).
  * @param {?HTMLElement} overlay

@@ -252,6 +252,23 @@ describe('the confirm dialog', () => {
         expect(dialog()).toBeNull();
     });
 
+    test('Esc on a narrow screen (no desktop shortcuts) answers "Fix rate"', async () => {
+        const original = window.matchMedia;
+        window.matchMedia = (q) => ({ matches: q.includes('max-width: 599'), media: q, addEventListener() {} });
+        try {
+            const asked = checkLineRate({ kind: 'retail', item: ITEM, label: 'Wheat', rate: 260, qty: 15, rateInputId: 'rate' });
+            await settle();
+            expect(dialog().querySelector('.app-dialog').classList.contains('sheet')).toBe(true);
+            const esc = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+            document.activeElement.dispatchEvent(esc);
+            expect(esc.defaultPrevented).toBe(true);
+            expect(await asked).toEqual({ ok: false, rateCheck: null });
+            expect(dialog()).toBeNull();
+        } finally {
+            window.matchMedia = original;
+        }
+    });
+
     test('"Yes, it is right" adds the line with who confirmed it', async () => {
         const result = checkLineRate({ kind: 'retail', item: ITEM, label: 'Wheat', rate: 260, qty: 15, rateInputId: 'rate' });
         await answer('confirm');
