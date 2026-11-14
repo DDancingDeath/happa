@@ -9,6 +9,7 @@
  */
 
 import { t, getLang } from '../i18n/index.js';
+import { emptyState } from '../ui/components.js';
 import { Helpers } from '../utils/helpers.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { PrinterService } from '../services/printer.js';
@@ -286,7 +287,7 @@ export async function showHistory(env, tenantId) {
     current = { env, r: null };
     return env.dialog(`<h3>🧾 ${esc(t('ui.rcpt.history_title', { name: cleanText(name) }))}</h3>
         ${unpaid ? `<p class="rent-label">${esc(t('ui.rcpt.without'))}</p>${unpaid}` : ''}
-        ${rows || `<p class="empty">${esc(t('ui.rcpt.none'))}</p>`}
+        ${rows || emptyState({ icon: 'receipt', title: t('ui.rcpt.none') })}
         <p class="rent-help">${esc(t('ui.rcpt.history_note'))}</p>`, { info: true });
 }
 

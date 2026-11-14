@@ -8,6 +8,7 @@
 
 import { Helpers } from '../utils/helpers.js';
 import { t, getLang, tn } from '../i18n/index.js';
+import { emptyState } from './components.js';
 import {
     CARDS, buildBreakdown, searchRows, sortRows, groupRows, groupOptions, sumRows, billsOfLines, PAGE_SIZE
 } from '../utils/finance-breakdown.js';
@@ -255,14 +256,14 @@ export const FinanceBreakdownSheet = {
         if (!list || !totalEl) return;
         const b = this.current();
         if (!b.available) {
-            list.innerHTML = `<p class="empty-state">${esc(t('ui.finance.needs_full_history'))}</p>`;
+            list.innerHTML = emptyState({ icon: 'history', title: t('ui.finance.needs_full_history') });
             totalEl.innerHTML = '';
             return;
         }
         const rows = sortRows(searchRows(b.rows, this.state.query), this.state.sort);
         const showTerm = !!b.formula && this.stack[this.stack.length - 1] !== 'stockCheck';
         if (rows.length === 0) {
-            list.innerHTML = `<p class="empty-state">${esc(t(b.rows.length ? 'ui.finance.no_match' : 'ui.finance.no_rows'))}</p>`;
+            list.innerHTML = emptyState({ icon: 'list', title: t(b.rows.length ? 'ui.finance.no_match' : 'ui.finance.no_rows') });
         } else if (this.state.group === 'none') {
             list.innerHTML = rows.slice(0, this.state.shown).map(r => this.rowHtml(r, showTerm)).join('')
                 + this.moreHtml(rows.length - this.state.shown);

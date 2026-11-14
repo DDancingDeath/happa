@@ -19,7 +19,7 @@ import { SyncStatus } from '../ui/sync-status.js';
 import { t } from '../i18n/index.js';
 import { saveFailedText, EXPENSE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { refusedForClock } from '../utils/clock-skew.js';
-import { moneyHtml, moneyInText } from '../ui/components.js';
+import { moneyHtml, moneyInText, emptyState } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
@@ -495,7 +495,7 @@ export class ExpensesManager {
         this.renderSectionTools(category, expenses);
         if (expenses.length === 0) {
             const empty = isExpenseSearch(this.search[category]) ? t('ui.expenses.no_match') : this.emptyExpenseMessage(category);
-            container.innerHTML = `<p class="empty">${Helpers.escapeHtml(empty)}</p>`;
+            container.innerHTML = emptyState({ icon: 'banknote', title: empty });
             return;
         }
         container.innerHTML = `<div class="panel exp-list">${expenses.map(payment => {

@@ -1833,9 +1833,41 @@ a.row:active {
   font-weight: var(--w-strong);
 }
 
-/* ---------- Empty (old: .empty-state lines) and skeleton ---------- */
-.empty,
-.empty-state {
+.notice[hidden],
+.empty[hidden] {
+  display: none;
+}
+
+.notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+/* Solid: the tint over an opaque surface, for a notice that sticks or floats over the page */
+.notice.solid {
+  background-color: var(--surface);
+  background-image: linear-gradient(var(--notice-tint, transparent), var(--notice-tint, transparent));
+}
+
+.notice.solid.neg { --notice-tint: var(--negative-soft); }
+.notice.solid.warn { --notice-tint: var(--warning-soft); }
+.notice.solid.info { --notice-tint: var(--info-soft); }
+
+/* Float: one message for the whole app at the top of the screen (wrong clock, printer permission) */
+.notice.float {
+  position: fixed;
+  top: calc(var(--sp-2) + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  align-items: center;
+  width: min(92vw, 560px);
+  box-shadow: var(--e2);
+}
+
+/* ---------- Empty and skeleton ---------- */
+.empty {
   padding: var(--sp-6) var(--sp-4);
   color: var(--ink-3);
   font-size: var(--fs-sm);
@@ -1843,6 +1875,7 @@ a.row:active {
 }
 
 .empty .lead-icon {
+  display: flex;
   width: 44px;
   height: 44px;
   margin: 0 auto var(--sp-3);
@@ -1854,6 +1887,18 @@ a.row:active {
   color: var(--ink);
   font-size: var(--fs-body);
   font-weight: var(--w-strong);
+}
+
+.empty p {
+  margin: 0;
+}
+
+.empty.tone-neg {
+  color: var(--negative);
+}
+
+.empty > .btn {
+  margin-top: var(--sp-3);
 }
 
 .skel {
@@ -2828,7 +2873,7 @@ body.typing .bottom-nav {
 
 /* The Android update banner sits above the bar, not on it */
 @media (max-width: 1023.98px) {
-  body:not(.biz-rentals) .app-update-banner {
+  body:not(.biz-rentals) .app-update {
     bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
 }
@@ -2851,49 +2896,9 @@ body.typing .bottom-nav {
   visibility: visible;
 }
 
-/* Wrong phone clock banner (#115) */
-.clock-banner {
-  position: fixed;
-  top: calc(8px + env(safe-area-inset-top, 0px));
-  left: 50%;
-  transform: translateX(-50%);
+/* Wrong phone clock notice (#115): a .notice.float */
+.clock-notice {
   z-index: 9001;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: min(92vw, 560px);
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: linear-gradient(var(--danger-soft), var(--danger-soft)), var(--card-bg);
-  border: 1px solid var(--danger-border);
-  color: var(--on-danger-soft);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-  font-size: var(--fs-sm);
-}
-
-.clock-banner__text {
-  flex: 1;
-}
-
-.clock-banner__recheck {
-  min-height: 40px;
-  padding: 6px 12px;
-  border: none;
-  border-radius: 8px;
-  background: var(--btn-danger);
-  color: #fff;
-  font-weight: var(--w-strong);
-  cursor: pointer;
-}
-
-.clock-banner__close {
-  min-width: 40px;
-  min-height: 40px;
-  border: none;
-  background: none;
-  color: inherit;
-  font-size: var(--fs-title);
-  cursor: pointer;
 }
 
 .bill-times-note {
@@ -4095,49 +4100,11 @@ input[type="number"] {
   transform: scale(0.95);
 }
 
-/* Unsaved-bill banner and bill number hint (#117) */
-.autosave-banner {
-  display: flex;
+/* Unsaved-bill notice and bill number hint (#117) */
+.autosave-notice {
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px 12px;
-  margin-bottom: 16px;
-  padding: 10px 12px;
-  border: 1px solid var(--warning-border);
-  border-left-width: 4px;
-  border-radius: var(--radius);
-  background: var(--warning-soft);
-  color: var(--on-warning-soft);
-  font-size: var(--fs-sm);
-}
-
-.autosave-banner[hidden] {
-  display: none;
-}
-
-.autosave-banner-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.autosave-banner-actions button {
-  padding: 8px 14px;
-  border-radius: 6px;
-  font-weight: var(--w-strong);
-  cursor: pointer;
-}
-
-.autosave-restore {
-  background: var(--btn-primary);
-  border: 1px solid var(--btn-primary);
-  color: var(--btn-primary-ink);
-}
-
-.autosave-discard {
-  background: var(--card-bg);
-  border: 1px solid var(--danger-border);
-  color: var(--on-danger-soft);
+  margin-bottom: var(--sp-4);
 }
 
 .bill-no-hint {
@@ -4522,17 +4489,6 @@ input[type="number"] {
   font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
   line-height: 1.4;
-}
-
-#draftsContent .drafts-empty {
-  margin: 0;
-  padding: var(--sp-6) var(--sp-4);
-  color: var(--ink-3);
-  text-align: center;
-}
-
-#draftsContent .drafts-empty.tone-neg {
-  color: var(--negative);
 }
 
 .draft {
@@ -5468,7 +5424,7 @@ input[type="number"] {
 
   /* Toasts and the update banner show above the bar, not on Save */
   body:has(:is(#billing, .bill-page).tab.active) .toast,
-  body:not(.biz-rentals):has(:is(#billing, .bill-page).tab.active) .app-update-banner {
+  body:not(.biz-rentals):has(:is(#billing, .bill-page).tab.active) .app-update {
     bottom: calc(80px + 72px + env(safe-area-inset-bottom, 0px));
   }
 }
@@ -5511,31 +5467,22 @@ input[type="number"] {
     outline-color: var(--warning-line);
 }
 
-.bill-check-banner {
+.bill-check-notice {
     position: sticky;
     top: 0;
     z-index: 5;
+    flex-direction: column;
+    gap: var(--sp-1);
     margin: 0 0 12px;
-    padding: 8px 12px;
-    border-radius: var(--r-panel);
     border: 1px solid var(--negative-line);
-    /* The soft tint over an opaque surface: the banner sticks over the bill as it scrolls */
-    background: linear-gradient(var(--negative-soft), var(--negative-soft)), var(--surface);
-    color: var(--negative);
-    font-size: var(--fs-sm);
+    border-radius: var(--r-panel);
 }
 
-.bill-check-banner[hidden] {
-    display: none;
-}
-
-.bill-check-banner.bill-check-warn {
+.bill-check-notice.warn {
     border-color: var(--warning-line);
-    background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--surface);
-    color: var(--warning);
 }
 
-.bill-check-banner-head {
+.bill-check-notice-head {
     display: block;
     width: 100%;
     padding: 0;
@@ -5548,11 +5495,10 @@ input[type="number"] {
     cursor: pointer;
 }
 
-.bill-check-banner ul {
-    margin: 6px 0 0;
+.bill-check-notice ul {
+    margin: 0;
     padding-left: 4px;
     list-style: none;
-    font-size: var(--fs-sm);
 }
 
 input.bill-check-block,
@@ -5841,24 +5787,11 @@ body.dark-mode .party-due-line.party-due-old {
   text-align: center;
 }
 
-.history-range-notice {
-  display: flex;
+.history-range-note {
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-  gap: 6px;
   margin: 8px 0 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--primary-soft);
-  color: var(--on-primary-soft);
-  font-size: var(--fs-sm);
-  font-weight: var(--w-regular);
-}
-
-.history-range-notice.is-error {
-  background: var(--warning-soft);
-  color: var(--on-warning-soft);
 }
 
 .history-range-loading {
@@ -6272,25 +6205,17 @@ body.dark-mode .party-due-line.party-due-old {
   color: var(--text-secondary);
 }
 
-/* Bill details: voided banner, edit history (#121), reason dialog */
-.bill-voided-banner {
+/* Bill details: voided notice, edit history (#121), reason dialog */
+.bill-voided-notice {
+  flex-direction: column;
+  gap: var(--sp-1);
   margin: 0 0 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border-left: 4px solid var(--border-strong);
-  background: var(--surface-muted);
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
-.bill-voided-banner__reason {
-  margin-top: 6px;
-}
-
-.bill-voided-banner__by {
-  margin-top: 2px;
+.bill-voided-notice__by {
   font-size: var(--fs-caption);
-  color: var(--text-secondary);
+  color: var(--ink-3);
 }
 
 .bill-edits {
@@ -7829,49 +7754,9 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .settings-biz-bar h2.settings-section-title {
   margin: 0;
 }
-/* "Bluetooth permission needed" banner (#77) */
-.printer-perm-banner {
-  position: fixed;
-  top: calc(var(--sp-2) + env(safe-area-inset-top, 0px));
-  left: 50%;
-  transform: translateX(-50%);
+/* "Bluetooth permission needed" notice (#77): a .notice.float */
+.printer-perm-notice {
   z-index: 9000;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  width: min(92vw, 520px);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: calc(var(--r-control) * 1.25);
-  background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--card-bg);
-  border: 1px solid var(--warning-border);
-  color: var(--on-warning-soft);
-  box-shadow: var(--e2);
-  font-size: var(--fs-sm);
-}
-
-.printer-perm-banner__text {
-  flex: 1;
-}
-
-.printer-perm-banner__allow {
-  min-height: 40px;
-  padding: var(--sp-1) var(--sp-3);
-  border: none;
-  border-radius: var(--r-control);
-  background: var(--btn-primary-bg);
-  color: var(--btn-primary-ink);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-}
-
-.printer-perm-banner__close {
-  min-width: 40px;
-  min-height: 40px;
-  border: none;
-  background: none;
-  color: inherit;
-  font-size: var(--fs-title);
-  cursor: pointer;
 }
 
 /* Theme gallery (redesign 2.6): each preview is real DOM scoped with data-theme / data-mode */
@@ -8879,7 +8764,6 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .rt-head select { width: auto; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: var(--fs-input); }
 .rt-sub { margin-top: 12px !important; }
 .rt-muted { color: var(--text-secondary); font-size: var(--fs-caption); margin-top: 6px; }
-.rt-empty { color: var(--text-secondary); padding: 12px; text-align: center; font-size: var(--fs-sm); }
 .rt-note { font-size: var(--fs-sm); line-height: 1.45; }
 .rt-ok { font-size: var(--fs-sm); line-height: 1.45; color: var(--on-success-soft); }
 .rt-warn { font-size: var(--fs-sm); line-height: 1.45; color: var(--on-warning-soft); background: var(--warning-soft); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
@@ -9110,56 +8994,19 @@ body.no-perm-contacts [data-perm~="contacts"] {
   margin-top: 8px;
 }
 
-.app-update-banner {
+.app-update {
   position: fixed;
-  left: 8px;
-  right: 8px;
-  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  left: var(--sp-2);
+  right: var(--sp-2);
+  bottom: calc(var(--sp-2) + env(safe-area-inset-bottom, 0px));
   z-index: 8999;
-  display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: #1e293b;
-  color: #fff;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-  font-size: var(--fs-sm);
+  box-shadow: var(--e3);
 }
 
 .app-update-text {
-  display: flex;
-  flex-direction: column;
   flex: 1 1 180px;
-}
-
-.app-update-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.app-update-download {
-  background: var(--btn-success);
-  color: var(--btn-sale-ink);
-  border: 0;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-weight: var(--w-strong);
-}
-
-.app-update-howto {
-  color: #c7d2fe;
-  font-size: var(--fs-sm);
-}
-
-.app-update-close {
-  background: transparent;
-  color: #fff;
-  border: 0;
-  font-size: var(--fs-lead);
-  padding: 4px 8px;
 }
 
 body.dark-mode .app-sheet {
@@ -10168,7 +10015,7 @@ div.ins-wide,
   }
 
   /* Live bill-check banner (#188) spans both columns */
-  .bill-check-banner {
+  .bill-check-notice {
     grid-column: 1 / -1;
   }
 
@@ -10346,7 +10193,7 @@ div.ins-wide,
   }
 
   /* ---------- Android update banner: keep clear of the permanent sidebar ---------- */
-  .app-update-banner {
+  .app-update {
     left: calc(var(--desktop-nav-width) + 16px);
     right: 16px;
   }
@@ -10458,7 +10305,7 @@ div.ins-wide,
     gap: 8px;
   }
 
-  #rtOutlook .rt-empty {
+  #rtOutlook .empty {
     grid-column: 1 / -1;
   }
 }
@@ -10544,7 +10391,7 @@ div.ins-wide,
   }
 
   /* The bill-check banner would cover the stuck totals card */
-  .bill-check-banner {
+  .bill-check-notice {
     position: static;
   }
 

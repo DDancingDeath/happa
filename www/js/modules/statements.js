@@ -18,7 +18,7 @@ import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom } from '../ut
 import { openExternal } from '../utils/open-external.js';
 import { moneySummary } from '../utils/business-metrics.js';
 import { MoneyManager } from './money.js';
-import { moneyHtml } from '../ui/components.js';
+import { moneyHtml, emptyState } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import {
     dayBook, partyLedger, partyChoices, itemLedger, exportLines, accountantLines, ACCOUNTANT_COLUMNS, csvLanguage, readCsvEnglish, writeCsvEnglish, plainLabel, isoMinute
@@ -303,7 +303,7 @@ export const StatementsManager = {
 
     renderParty() {
         const lang = getLang();
-        if (!this.partyKey) return { title: t('ui.statements.party'), html: `<p class="empty">${esc(t('ui.insights.no_parties'))}</p>`, share: '', csvHeader: [], csvRows: [] };
+        if (!this.partyKey) return { title: t('ui.statements.party'), html: emptyState({ icon: 'users', title: t('ui.insights.no_parties') }), share: '', csvHeader: [], csvRows: [] };
         const l = partyLedger(this.src(), this.partyKey, this.partyKind);
         const title = `${t('ui.statements.party')} · ${l.name}`;
         const matches = Math.abs(l.closing - l.due) <= 1;
@@ -326,7 +326,7 @@ export const StatementsManager = {
     renderItem() {
         const lang = getLang();
         const item = (AppState.items || []).find(i => i.id === this.itemKey);
-        if (!item) return { title: t('ui.statements.item'), html: `<p class="empty">${esc(t('ui.statements.nothing'))}</p>`, share: '', csvHeader: [], csvRows: [] };
+        if (!item) return { title: t('ui.statements.item'), html: emptyState({ icon: 'file', title: t('ui.statements.nothing') }), share: '', csvHeader: [], csvRows: [] };
         const name = lang === 'hi' ? item.hindiName || item.name : item.name;
         const title = `${t('ui.statements.item')} · ${name}`;
         if (!isFullHistoryLoaded()) {

@@ -22,6 +22,7 @@ import { TIME_MS, AUTO_SAVE_DELAY } from '../utils/constants.js';
 import { PurchaseManager } from './purchase.js';
 import { RetailSaleManager } from './retail-sale.js';
 import { t } from '../i18n/index.js';
+import { emptyState } from '../ui/components.js';
 import { refusedForClock } from '../utils/clock-skew.js';
 import { isStorageFullError, saveFailedText, STORAGE_FULL_KEY, SAVED_ON_PHONE_KEY } from '../utils/storage-full.js';
 import { accessFor, canEditBillWith } from '../utils/role-access.js';
@@ -748,7 +749,7 @@ const BillingManager = {
         try {
             const currentUser = firebase.auth().currentUser;
             if (!currentUser) {
-                content.innerHTML = `<p class="drafts-empty">${Helpers.escapeHtml(t('ui.billing.login_to_view_drafts'))}</p>`;
+                content.innerHTML = `<p class="empty">${Helpers.escapeHtml(t('ui.billing.login_to_view_drafts'))}</p>`;
                 overlay.classList.add('active');
                 return;
             }
@@ -757,7 +758,7 @@ const BillingManager = {
                 .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
             if (drafts.length === 0) {
-                content.innerHTML = `<p class="drafts-empty">${Helpers.escapeHtml(t('ui.billing.no_saved_drafts'))}</p>`;
+                content.innerHTML = emptyState({ icon: 'file', title: t('ui.billing.no_saved_drafts') });
             } else {
                 content.innerHTML = drafts.map((draft) => `
                     <div class="panel draft">
@@ -782,7 +783,7 @@ const BillingManager = {
             overlay.classList.add('active');
         } catch (error) {
             console.error('Failed to load drafts:', error);
-            content.innerHTML = `<p class="drafts-empty tone-neg">${Helpers.escapeHtml(t('ui.billing.failed_load_drafts'))}</p>`;
+            content.innerHTML = `<p class="empty tone-neg">${Helpers.escapeHtml(t('ui.billing.failed_load_drafts'))}</p>`;
             overlay.classList.add('active');
         }
     },

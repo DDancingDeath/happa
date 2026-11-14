@@ -431,7 +431,7 @@ describe('PrinterService with the fake transport', () => {
             expect(banner().textContent).toContain('The printer needs Bluetooth permission (Nearby devices).');
             expect(document.getElementById('printerStatusText').dataset.state).toBe('permission');
 
-            banner().querySelector('.printer-perm-banner__allow').click();
+            banner().querySelector('.printer-perm-notice__allow').click();
             await flush();
             expect(asked).toBe(1);
             expect(banner()).toBeNull();
@@ -475,7 +475,7 @@ describe('PrinterService with the fake transport', () => {
 
         test('× hides the banner; no printer in use, no banner', async () => {
             await PrinterService.bluetoothPermission();
-            banner().querySelector('.printer-perm-banner__close').click();
+            banner().querySelector('.printer-perm-notice__close').click();
             expect(banner()).toBeNull();
             PrinterService.permissionBannerClosed = false;
             AppState.printerSettings = { enabled: false, deviceId: null };

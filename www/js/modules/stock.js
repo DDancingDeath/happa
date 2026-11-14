@@ -29,7 +29,7 @@ import { pickLang } from '../i18n/localize.js';
 import { can } from '../utils/role-access.js';
 import { awaitingServer } from '../utils/data-freshness.js';
 import { icon } from '../ui/icons.js';
-import { moneyHtml, moneyInText } from '../ui/components.js';
+import { moneyHtml, moneyInText, emptyState } from '../ui/components.js';
 
 const stockKg = (q) => formatKg(q);
 
@@ -608,7 +608,7 @@ export class StockManager {
             }
 
             if (rows.length === 0) {
-                container.innerHTML = `<p class="empty">${e(t('ui.deadstock.all_sold', { days: minDays }))}</p>`;
+                container.innerHTML = emptyState({ icon: 'check', tone: 'pos', title: t('ui.deadstock.all_sold', { days: minDays }) });
                 return;
             }
 
@@ -889,7 +889,7 @@ export class StockManager {
 
             if (adjustments.length === 0) {
                 const message = isFullHistoryLoaded() ? t('ui.stock.no_adjustments_yet') : t('ui.stock.no_adjustments_since', { date: formatWindowDate(historyLoadedFrom()) });
-                container.innerHTML = `<p class="empty">${Helpers.escapeHtml(message)}</p>`;
+                container.innerHTML = emptyState({ icon: 'box', title: message });
                 return;
             }
 

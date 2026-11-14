@@ -382,7 +382,7 @@
   }
 
   /* Live bill-check banner (#188) spans both columns */
-  .bill-check-banner {
+  .bill-check-notice {
     grid-column: 1 / -1;
   }
 
@@ -560,7 +560,7 @@
   }
 
   /* ---------- Android update banner: keep clear of the permanent sidebar ---------- */
-  .app-update-banner {
+  .app-update {
     left: calc(var(--desktop-nav-width) + 16px);
     right: 16px;
   }
@@ -672,7 +672,7 @@
     gap: 8px;
   }
 
-  #rtOutlook .rt-empty {
+  #rtOutlook .empty {
     grid-column: 1 / -1;
   }
 }
@@ -758,7 +758,7 @@
   }
 
   /* The bill-check banner would cover the stuck totals card */
-  .bill-check-banner {
+  .bill-check-notice {
     position: static;
   }
 

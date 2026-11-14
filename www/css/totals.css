@@ -586,7 +586,7 @@
 
   /* Toasts and the update banner show above the bar, not on Save */
   body:has(:is(#billing, .bill-page).tab.active) .toast,
-  body:not(.biz-rentals):has(:is(#billing, .bill-page).tab.active) .app-update-banner {
+  body:not(.biz-rentals):has(:is(#billing, .bill-page).tab.active) .app-update {
     bottom: calc(80px + 72px + env(safe-area-inset-bottom, 0px));
   }
 }

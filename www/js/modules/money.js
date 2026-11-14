@@ -41,7 +41,7 @@ import { dataSignature } from '../utils/render-memo.js';
 import { openExternal } from '../utils/open-external.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 import { PrinterService } from '../services/printer.js';
-import { moneyHtml } from '../ui/components.js';
+import { moneyHtml, emptyState } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import {
     compareBarHtml, writeBar, compareTableHtml, compareTarget, choosePreset, chooseCompare, applyDates, applySaved,
@@ -689,7 +689,7 @@ export const MoneyManager = {
         const max = Math.max(1, ...cats.map(c => c.total));
         this.html('moneyCategories', cats.length
             ? cats.map(c => `<div class="ins-barrow ins-tap" data-breakdown="business" role="button" tabindex="0"><span class="ins-barname">${esc(catName(c.category))}</span><span class="ins-bartrack"><span class="ins-barfill" style="--w:${sharePct(c.total, max)}%"></span></span><span class="ins-barval">${moneyHtml(c.total, TM)}</span></div>`).join('')
-            : `<p class="empty">${esc(t('ui.money.no_expenses'))}</p>`);
+            : emptyState({ icon: 'banknote', title: t('ui.money.no_expenses') }));
         this.html('moneyPersonal', moneyHtml(m.M8.total, TM));
         this.html('moneyWithdrawn', moneyHtml(m.M9, TM));
         this.html('moneyKept', moneyHtml(m.M10, TM));
@@ -727,7 +727,7 @@ export const MoneyManager = {
         const lang = getLang();
         this.html('moneyWithdrawalList', rows.length
             ? rows.map(w => `<div class="row"><span class="row-main"><span class="row-title">${esc(w.party || '—')}${w.note ? ` · ${esc(w.note)}` : ''}</span><span class="row-meta">${esc(formatDay(w.t, { lang }))}${SyncStatus.chipHtml(w.id)}</span></span><span class="row-amt">${moneyHtml(w.amount, TM)}</span></div>`).join('')
-            : `<p class="empty">${esc(t('ui.money.no_withdrawals'))}</p>`);
+            : emptyState({ icon: 'banknote', title: t('ui.money.no_withdrawals') }));
         const people = [...new Set((AppState.withdrawalsHistory || []).map(w => w.person).filter(Boolean))];
         this.html('moneyWdPeople', people.map(p => `<option value="${esc(p)}">`).join(''));
     },
@@ -948,7 +948,7 @@ export const MoneyManager = {
                 ? `<p class="empty">${esc(t(state === 'error' ? 'ui.money.accounts_not_loaded' : 'ui.money.accounts_loading'))}</p>`
                 : list.length
                     ? list.map(a => `<div class="row"><span class="lead-icon">${accIcon(a)}</span><span class="row-main">${esc(a.name)}</span><span class="row-trail"><span class="row-amt">${a.type === 'liability' ? '−' : ''}${moneyHtml(a.balance, TM)}</span>${edit ? ` <button type="button" class="btn btn-ghost btn-sm btn-icon" data-onclick="money.removeAccount('${Helpers.escapeJsAttr(a.id)}')" aria-label="${esc(t('ui.money.acc_remove'))}">${icon('x', 'i-sm')}</button>` : ''}</span></div>`).join('')
-                    : `<p class="empty">${esc(t('ui.money.no_accounts'))}</p>`);
+                    : emptyState({ icon: 'card', title: t('ui.money.no_accounts') }));
         const form = document.getElementById('moneyAccForm');
         if (form) form.hidden = !edit || state !== 'ready';
         const phone = AppState.userRole === 'owner' && state === 'ready' && list && !list.length

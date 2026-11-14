@@ -38,7 +38,7 @@ import { isFullHistoryLoaded } from '../utils/history-window.js';
 import { CashManagementManager } from './cash-management.js';
 import { formatKg } from '../utils/money.js';
 import { icon } from '../ui/icons.js';
-import { moneyHtml } from '../ui/components.js';
+import { moneyHtml, emptyState } from '../ui/components.js';
 
 const isOwner = () => AppState.userRole === 'owner';
 /** Number checks (#216) are for owners and managers; errors and audit logs stay owner-only. */
@@ -193,7 +193,7 @@ const DiagnosticsManager = {
                 <button type="button" class="btn btn-primary" data-onclick="diagnostics.runNumberChecks()">${icon('clipCheck', 'i-sm')} ${e(t('ui.numchecks.run'))}</button>
             </div>`;
         if (!this.numberChecks) {
-            container.innerHTML = `${head}<p class="empty diag-empty">${e(t('ui.numchecks.not_run'))}</p>`;
+            container.innerHTML = `${head}${emptyState({ icon: 'clipCheck', title: t('ui.numchecks.not_run') })}`;
             return;
         }
         const cards = this.numberChecks.results.map(r => {
@@ -513,7 +513,7 @@ const DiagnosticsManager = {
 
             <div class="diagnostics-list">
                 ${filteredData.length === 0
-                    ? `<div class="empty diag-empty"><span class="lead-icon pos">${icon('check')}</span>${tx('ui.diag.no_errors')}</div>`
+                    ? emptyState({ icon: 'check', tone: 'pos', title: t('ui.diag.no_errors') })
                     : filteredData.map(error => this.renderErrorCard(error)).join('')}
             </div>
         `;
@@ -646,7 +646,7 @@ const DiagnosticsManager = {
 
             <div class="diagnostics-list">
                 ${filteredLogs.length === 0
-                    ? `<div class="empty diag-empty"><span class="lead-icon">${icon('list')}</span>${tx('ui.settings.no_audit_logs')}</div>`
+                    ? emptyState({ icon: 'list', title: t('ui.settings.no_audit_logs') })
                     : filteredLogs.map(log => this.renderAuditCard(log)).join('')}
             </div>
         `;

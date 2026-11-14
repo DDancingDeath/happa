@@ -10,6 +10,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { AppState } from '../utils/state.js';
 import { t, getLang } from '../i18n/index.js';
+import { emptyState } from '../ui/components.js';
 import { formatRupees, moneyText } from '../utils/money.js';
 import { formatMonth, formatDay, todayLocalISO } from '../utils/dates.js';
 import * as repo from '../firebase/repos/recurring-bills.js';
@@ -168,7 +169,7 @@ function renderStopForm(v) {
 
 function renderPeriods(v) {
     const shown = v.periods.slice(-24).reverse();
-    if (!shown.length) return `<p class="empty">${et('ui.rbills.no_periods')}</p>`;
+    if (!shown.length) return emptyState({ icon: 'calendar', title: t('ui.rbills.no_periods') });
     const rows = shown.map(r => `<tr data-period="${esc(r.period)}">
             <td>${esc(monthName(r.period))}</td>
             <td>${esc(dayName(r.due))}</td>
@@ -185,7 +186,7 @@ function renderPeriods(v) {
 
 function renderEntries(item) {
     const list = [...(item.entries || [])].reverse();
-    if (!list.length) return `<p class="empty">${et('ui.rbills.no_entries')}</p>`;
+    if (!list.length) return emptyState({ icon: 'list', title: t('ui.rbills.no_entries') });
     return list.map((e) => {
         const month = monthName(periodOf(item, e.period));
         if (e.kind === 'bill') {
@@ -242,7 +243,7 @@ export function render() {
     const open = rows.find(v => v.item.id === state.open);
     const list = rows.length
         ? `<div class="panel rb-list">${rows.map(renderRow).join('')}</div>`
-        : `<p class="empty">${et('ui.rbills.none')}</p>`;
+        : emptyState({ icon: 'receipt', title: t('ui.rbills.none') });
     root.innerHTML = `${renderSummary(sum)}
         <div class="rb-actions"><button type="button" class="btn btn-tonal" data-onclick="recurring.showForm('add')">${et('ui.rbills.add')}</button></div>
         ${state.form === 'add' ? renderItemForm(null) : ''}

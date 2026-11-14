@@ -20,7 +20,7 @@ import {
     savedDifference, differenceBand, sessionDetail, noBillLeg, lastCountedSession
 } from '../utils/calc/cash.js';
 import { outstandingDue, formatAmount } from '../utils/money.js';
-import { moneyHtml } from '../ui/components.js';
+import { moneyHtml, emptyState } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import { toFlags } from '../utils/bill-checks.js';
@@ -1138,7 +1138,7 @@ export class CashManagementManager {
             : '';
 
         if (sessions.length === 0) {
-            container.innerHTML = `<p class="empty">${L('ui.cash.no_history')}</p>${loadOlder}`;
+            container.innerHTML = `${emptyState({ icon: 'history', title: t('ui.cash.no_history') })}${loadOlder}`;
             return;
         }
 

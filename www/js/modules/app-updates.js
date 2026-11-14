@@ -169,7 +169,7 @@ export class AppUpdatesManager {
 
     static renderUpdateBanner(version) {
         document.getElementById('appUpdateBanner')?.remove();
-        const banner = el('div', 'app-update-banner');
+        const banner = el('div', 'notice info solid app-update');
         banner.id = 'appUpdateBanner';
         banner.setAttribute('role', 'status');
 
@@ -177,14 +177,14 @@ export class AppUpdatesManager {
         text.appendChild(el('strong', '', t('ui.updates.available', { version })));
         banner.appendChild(text);
 
-        const actions = el('div', 'app-update-actions');
-        const download = el('button', 'app-update-download', t('ui.updates.download'));
+        const actions = el('div', 'notice-actions');
+        const download = el('button', 'btn btn-sm btn-primary', t('ui.updates.download'));
         download.type = 'button';
         download.addEventListener('click', () => this.openExternal(APK_DOWNLOAD_URL));
-        const howTo = el('a', 'app-update-howto', t('ui.updates.how_to_install'));
+        const howTo = el('a', 'btn btn-sm btn-ghost', t('ui.updates.how_to_install'));
         howTo.href = DOWNLOAD_PAGE_URL;
         howTo.addEventListener('click', (e) => { e.preventDefault(); this.openExternal(DOWNLOAD_PAGE_URL); });
-        const close = el('button', 'app-update-close', '✕');
+        const close = el('button', 'btn btn-sm btn-ghost btn-icon', '✕');
         close.type = 'button';
         close.setAttribute('aria-label', t('ui.updates.dismiss'));
         close.addEventListener('click', () => {
