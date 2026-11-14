@@ -305,9 +305,10 @@ body.no-perm-contacts [data-perm~="contacts"] {
   flex-direction: column;
   overflow: hidden;
   padding: 0;
-  border: 1px solid var(--line);
+  border: 1px solid var(--panel-border);
   border-radius: var(--r-panel);
-  background: var(--surface);
+  background: var(--panel-bg);
+  box-shadow: var(--panel-shadow);
   color: var(--ink);
   font: inherit;
   text-align: left;

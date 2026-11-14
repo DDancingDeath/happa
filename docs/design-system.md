@@ -106,6 +106,11 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
 - **Mode dot** `.mode-dot` (`.sale`, `.wholesale`): 8 px identity dot beside a purchase / sale / wholesale label, never a status.
 - **Panel and rows** `.panel`, `.row` (`.row-main`, `.row-title`, `.row-meta`, `.row-trail`,
   `.row-amt`, `.lead-icon`). **Metrics** `.metrics > .metric`, `.hero-num`, `.display-num`, `.meter`.
+  `.panel-tap` is a panel that opens something (hover and focus ring).
+- **Hero figure** `.hero` (C1): the page's one big figure, plain on the page with no fill: a caption
+  `.hero-label` (or `.metric-label`) above a `.hero-num` (or a `.display-num` `.hero-value`), then its
+  in / out or compare line. Money, Statements and Today use it; `ins-hero`, `today-hero` and the
+  bespoke card classes of the legacy registry are gone (theme tiles keep their previews in a panel frame).
 - **Money figure** `.money` with the sign in `<span class="cur">₹</span>` (smaller, `--fs-cur`, and muted
   `ink-3`; plain in print): `<strong class="money"><span class="cur">₹</span><span id="…">0</span></strong>`.
   Billing's totals and action bar use it; the digits keep their own id. Scripts write a figure with
