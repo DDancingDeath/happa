@@ -2,31 +2,8 @@
 # CI fails on a line not here. Fix it (escape / safeUrl) or, once checked, run: npm run check:html-escape -- --update-baseline
 www/js/modules/admin.js: col.id
 www/js/modules/admin.js: t('ui.admin.type_word_to_confirm', { word: `<strong>${Helpers.escapeHtml(DELETE_CONFIRM_WORD)}</strong>` })
-www/js/modules/anomalies.js: SEVERITIES (markup via map(sev => `<span class="anomaly-chip anomaly-sev-${sev}">${loc(SEVERITY_LABELS[sev])}: <strong>${s.bySeverity[sev]}</strong></span>`))
-www/js/modules/anomalies.js: SEV_COLORS[sev] ← SEV_COLORS = { high: '#b91c1c', medium: '#92400e', low: '#4b5563' }
-www/js/modules/anomalies.js: SEV_TONES[sev] ← SEV_TONES = { high: 'tone-neg', medium: 'tone-warn', low: 'tone-muted' }
 www/js/modules/anomalies.js: colorOf(ty) ← TYPE_COLORS[Math.max(0, p.types.indexOf(type)) % TYPE_COLORS.length] {TYPE_COLORS = ['#dc2626', '#2563eb', '#d97706', '#059669', '#7c3aed', '#db2777', '#0891b2', '#}
-www/js/modules/anomalies.js: h
-www/js/modules/anomalies.js: h % 3 === 0 ? h : '' ← h
-www/js/modules/anomalies.js: n
-www/js/modules/anomalies.js: n || '' ← p.heat.cells[i][ty] {p = anomalyPatterns(list)}
-www/js/modules/anomalies.js: p.byHour ← p = anomalyPatterns(list) (markup via map((n, h) => `<div class="anomaly-hour" title="${h}:00 — ${n}"><div class="bar" style="height:${Math.round(100 * n / max)}%"></div><span>${h % ))
-www/js/modules/anomalies.js: p.byUser ← p = anomalyPatterns(list) (markup via map(u => { const top = Object.entries(u.byType).sort((a, b) => b[1] - a[1])[0]; return `<tr><td>${esc(u.name)}</td><td>${u.count}</td><td>${u.hi) .count)
-www/js/modules/anomalies.js: p.byUser ← p = anomalyPatterns(list) (markup via map(u => { const top = Object.entries(u.byType).sort((a, b) => b[1] - a[1])[0]; return `<tr><td>${esc(u.name)}</td><td>${u.count}</td><td>${u.hi) .high)
-www/js/modules/anomalies.js: s.bySeverity[sev] ← s = summarizeAnomalies(list)
-www/js/modules/anomalies.js: s.bySeverity[sev] ← s = summarizeAnomalies(todays)
-www/js/modules/anomalies.js: s.byType ← s = summarizeAnomalies(todays) (markup via map(ty => `<li>${loc(ty)} — <strong>${ty.count}</strong></li>`) .count)
-www/js/modules/anomalies.js: s.topItems ← s = summarizeAnomalies(todays) (markup via map(x => `${esc(x.name)} (${x.count})`) .count)
-www/js/modules/anomalies.js: s.topItems.map(x => `${esc(x.name)} (${x.count})`).join(', ') ← x.count
-www/js/modules/anomalies.js: s.topParties ← s = summarizeAnomalies(todays) (markup via map(x => `${esc(x.name)} (${x.count})`) .count)
-www/js/modules/anomalies.js: s.topParties.map(x => `${esc(x.name)} (${x.count})`).join(', ') ← x.count
-www/js/modules/anomalies.js: s.total ← s = summarizeAnomalies(todays)
-www/js/modules/anomalies.js: sev
 www/js/modules/anomalies.js: title
-www/js/modules/anomalies.js: top ? `${loc(typeLabel(top[0]))} (${top[1]})` : '' ← top[1] {top = Object.entries(u.byType).sort((a, b) => b[1] - a[1])[0]}
-www/js/modules/anomalies.js: ty.count
-www/js/modules/anomalies.js: u.count
-www/js/modules/anomalies.js: u.high
 www/js/modules/ask.js: a.answer (markup via this.answerHtml .page)
 www/js/modules/ask.js: a.page
 www/js/modules/ask.js: html ← line(t('ui.ask.report_head', { type: t(`ui.ask.type_${a.billType}`), period: thi | line(t('ui.ask.report_party', { name: a.party })) | line(t('ui.ask.report_retail_only')) | line(t('ui.ask.report_all_items')) | line(t('ui.ask.report_kinds', { names: a.kinds.map(named).join(', ') })) | line(t(a.no (concatenated)

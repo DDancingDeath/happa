@@ -611,33 +611,32 @@
   }
 
   /* Anomalies page (#187): filters in one row, patterns in two columns, row actions inline */
-  .anomaly-filters {
+  .anom-filters {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
-  .anomaly-pattern-grid {
+  .anom-patterns {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .anomaly-pattern-wide {
+  .anom-wide {
     grid-column: 1 / -1;
   }
 
-  .anomaly-repeat {
+  .anom-repeat {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .anomaly-row {
-    flex-direction: row;
+  .anom-row {
+    flex-wrap: nowrap;
     align-items: center;
-    justify-content: space-between;
   }
 
-  .anomaly-row-main {
+  .anom-row-body {
     flex: 1 1 auto;
   }
 
-  .anomaly-row-actions {
+  .anom-actions {
     flex: 0 0 auto;
     justify-content: flex-end;
   }

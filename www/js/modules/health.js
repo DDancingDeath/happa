@@ -18,6 +18,7 @@ import {
 } from '../tip/health-stats.js';
 
 import { attachScrollCue } from '../ui/scroll-cue.js';
+import { icon } from '../ui/icons.js';
 
 const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const L = (key, params) => esc(t(key, params));
@@ -59,10 +60,10 @@ const target = (test) => {
 /** A pass-rate cell: green at/above target, amber within 5 points, red below. */
 function rateCell(n, test) {
     const rate = passRate(n);
-    if (rate === null) return '<td class="health-rate health-none">–</td>';
+    if (rate === null) return '<td class="hl-rate tone-muted">–</td>';
     const goal = target(test);
     const cls = rate >= goal ? 'ok' : rate >= goal - 5 ? 'near' : 'bad';
-    return `<td class="health-rate health-${cls}" title="${esc(countedRuns(n))}">${esc(rate)}%<small>${esc(countedRuns(n))}</small></td>`;
+    return `<td class="hl-rate hl-${cls}" title="${esc(countedRuns(n))}">${esc(rate)}%<small>${esc(countedRuns(n))}</small></td>`;
 }
 
 const ROLE_LABEL_KEYS = { owner: 'ui.health.role_owner', manager: 'ui.roles.manager', staff: 'ui.roles.member' };
@@ -90,7 +91,7 @@ function deviceCellHtml(dev, usersById) {
     const { who, role, code } = deviceLabel(dev, usersById);
     // The device id is a code, not words in either language (lang="zxx").
     const codeHtml = `<span lang="zxx" translate="no">${esc(code)}</span>`;
-    return `<strong>${esc(who)}</strong><div class="health-muted" title="${esc(dev.deviceId)}">${role ? `${esc(role)} · ` : ''}${codeHtml}</div>`;
+    return `<strong>${esc(who)}</strong><div class="hl-muted" title="${esc(dev.deviceId)}">${role ? `${esc(role)} · ` : ''}${codeHtml}</div>`;
 }
 
 export const HealthManager = {
@@ -106,13 +107,9 @@ export const HealthManager = {
     async init() {
         const denied = document.getElementById('healthDenied');
         const body = document.getElementById('healthBody');
-        if (!canSee()) {
-            if (denied) denied.style.display = 'block';
-            if (body) body.style.display = 'none';
-            return;
-        }
-        if (denied) denied.style.display = 'none';
-        if (body) body.style.display = 'block';
+        if (denied) denied.hidden = canSee();
+        if (body) body.hidden = !canSee();
+        if (!canSee()) return;
         this.renderPolicyCard();
         if (this.data) this.render();
         if (!this.data || Date.now() - this.data.at > BANNER_TTL_MS) await this.refresh();
@@ -157,7 +154,7 @@ export const HealthManager = {
             });
         }
         const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
-        const empty = `<div class="health-empty">${L('ui.health.no_data')}</div>`;
+        const empty = `<p class="empty">${L('ui.health.no_data')}</p>`;
         if (!agg.tests.length) {
             ['healthSummary', 'healthByDay', 'healthByVersion', 'healthReasons', 'healthDurations', 'healthDevices'].forEach(id => set(id, empty));
             set('healthFailures', this.failuresHtml(failures) || empty);
@@ -171,7 +168,7 @@ export const HealthManager = {
             return acc;
         }, {});
 
-        set('healthSummary', `<table class="health-table"><thead><tr>
+        set('healthSummary', `<table class="table hl-table"><thead><tr>
             <th>${L('ui.health.check')}</th><th>${L('ui.health.today')}</th><th>${L('ui.health.last_7_days')}</th>
             <th>${L('ui.health.last_14_days')}</th><th>${L('ui.health.target')}</th><th>${L('ui.health.failing_devices')}</th>
             </tr></thead><tbody>${agg.tests.map(test => `<tr>
@@ -181,44 +178,44 @@ export const HealthManager = {
                 <td>${esc(agg.devicesByTest[test]?.failing || 0)} / ${esc(agg.devicesByTest[test]?.total || 0)}</td>
             </tr>`).join('')}</tbody></table>`);
 
-        set('healthByDay', `<table class="health-table"><thead><tr><th>${L('ui.health.check')}</th>${days7.map(d => `<th>${esc(dayLabel(d))}</th>`).join('')}</tr></thead>
+        set('healthByDay', `<table class="table hl-table"><thead><tr><th>${L('ui.health.check')}</th>${days7.map(d => `<th>${esc(dayLabel(d))}</th>`).join('')}</tr></thead>
             <tbody>${agg.tests.map(test => `<tr><th scope="row">${esc(testLabel(test))}</th>${days7.map(d => rateCell(agg.byTestDay[test]?.[d] || {}, test)).join('')}</tr>`).join('')}</tbody></table>`);
 
         const versions = [...new Set(agg.tests.flatMap(test => Object.keys(agg.byTestVersion[test] || {})))].sort().reverse();
-        set('healthByVersion', `<table class="health-table"><thead><tr><th>${L('ui.health.check')}</th>${versions.map(v => `<th>${esc(v.replace(/_/g, '.'))}</th>`).join('')}</tr></thead>
+        set('healthByVersion', `<table class="table hl-table"><thead><tr><th>${L('ui.health.check')}</th>${versions.map(v => `<th>${esc(v.replace(/_/g, '.'))}</th>`).join('')}</tr></thead>
             <tbody>${agg.tests.map(test => `<tr><th scope="row">${esc(testLabel(test))}</th>${versions.map(v => rateCell(agg.byTestVersion[test]?.[v] || {}, test)).join('')}</tr>`).join('')}</tbody></table>`);
 
-        set('healthReasons', agg.reasons.length ? `<ol class="health-list">${agg.reasons.slice(0, 10).map(r =>
-            `<li><strong>${esc(testLabel(r.test))}</strong>: ${esc(prettyReason(r.name))} <span class="health-count">× ${esc(r.count)}</span></li>`).join('')}</ol>`
-            : `<div class="health-empty">${L('ui.health.no_failures')}</div>`);
+        set('healthReasons', agg.reasons.length ? `<ol class="hl-list">${agg.reasons.slice(0, 10).map(r =>
+            `<li><strong>${esc(testLabel(r.test))}</strong>: ${esc(prettyReason(r.name))} <span class="tone-muted">× ${esc(r.count)}</span></li>`).join('')}</ol>`
+            : `<p class="empty">${L('ui.health.no_failures')}</p>`);
 
-        set('healthDurations', `<table class="health-table"><thead><tr><th>${L('ui.health.check')}</th><th>${L('ui.health.p50')}</th><th>${L('ui.health.p90')}</th></tr></thead>
+        set('healthDurations', `<table class="table hl-table"><thead><tr><th>${L('ui.health.check')}</th><th>${L('ui.health.p50')}</th><th>${L('ui.health.p90')}</th></tr></thead>
             <tbody>${agg.tests.map(test => {
                 const d = agg.durations[test] || {};
                 const fmt = (ms) => (ms == null ? '–' : `≤ ${ms >= 1000 ? `${ms / 1000} s` : `${ms} ms`}`);
                 return `<tr><th scope="row">${esc(testLabel(test))}</th><td>${esc(fmt(d.p50))}</td><td>${esc(fmt(d.p90))}</td></tr>`;
             }).join('')}</tbody></table>`);
 
-        set('healthDevices', `<table class="health-table"><thead><tr><th>${L('ui.health.device')}</th><th>${L('ui.health.platform')}</th>
+        set('healthDevices', `<table class="table hl-table"><thead><tr><th>${L('ui.health.device')}</th><th>${L('ui.health.platform')}</th>
             <th>${L('ui.health.version')}</th><th>${L('ui.health.last_seen')}</th><th>${L('ui.health.runs')}</th><th>${L('ui.health.failed')}</th></tr></thead>
-            <tbody>${agg.devices.slice(0, 30).map(dev => `<tr class="${dev.failed ? 'health-row-bad' : ''}">
+            <tbody>${agg.devices.slice(0, 30).map(dev => `<tr class="${dev.failed ? 'tone-neg' : ''}">
                 <td>${deviceCellHtml(dev, usersById)}</td><td>${esc(platformLabel(dev.platform))}</td><td>${esc(dev.appVersion)}</td>
                 <td>${esc(dev.lastDay ? dayLabel(dev.lastDay) : '')}</td><td>${esc(dev.runs)}</td><td>${esc(dev.failed)}</td></tr>`).join('')}</tbody></table>`);
 
-        set('healthFailures', this.failuresHtml(failures) || `<div class="health-empty">${L('ui.health.no_failures')}</div>`);
+        set('healthFailures', this.failuresHtml(failures) || `<p class="empty">${L('ui.health.no_failures')}</p>`);
         document.querySelectorAll('#health .scroll-cue-inner').forEach(attachScrollCue);
     },
 
     failuresHtml(failures) {
         if (!failures || !failures.length) return '';
         const reasons = tipReasons();
-        return `<div class="health-failures">${failures.map(f => {
+        return `<div class="hl-failures">${failures.map(f => {
             const when = Number(f.at) ? Helpers.formatDateTime(Number(f.at)) : '';
             const resultKey = RESULT_LABEL_KEYS[f.result];
             const flags = Object.entries(f.flags || {}).map(([k, v]) => `${k}=${v}`).join(', ');
-            return `<div class="health-failure">
+            return `<div class="hl-failure">
                 <div><strong>${esc(testLabel(f.test))}</strong> · ${esc(resultKey ? t(resultKey) : f.result)} · ${esc(prettyReason(f.reasonName || reasonName(f.test, f.reason, reasons)))}</div>
-                <div class="health-muted">${esc(when)} · ${esc(f.appVersion)} · ${esc(platformLabel(f.platform))} · <code>${esc(f.deviceId)}</code>${flags ? ` · ${esc(flags)}` : ''}</div>
+                <div class="hl-muted">${esc(when)} · ${esc(f.appVersion)} · ${esc(platformLabel(f.platform))} · <code>${esc(f.deviceId)}</code>${flags ? ` · ${esc(flags)}` : ''}</div>
             </div>`;
         }).join('')}</div>`;
     },
@@ -227,7 +224,7 @@ export const HealthManager = {
     renderPolicyCard() {
         const card = document.getElementById('healthPolicyCard');
         if (!card) return;
-        card.style.display = 'block';
+        card.hidden = false;
         const policies = tip.getPolicies();
         const textarea = document.getElementById('healthPolicies');
         if (textarea) {
@@ -237,7 +234,7 @@ export const HealthManager = {
             textarea.readOnly = AppState.userRole !== 'owner';
         }
         const saveBtn = card.querySelector('button');
-        if (saveBtn) saveBtn.style.display = AppState.userRole === 'owner' ? '' : 'none';
+        if (saveBtn) saveBtn.hidden = AppState.userRole !== 'owner';
         const state = document.getElementById('healthPolicyState');
         if (state) {
             const rows = Object.entries(policies).map(([key, p]) => {
@@ -246,7 +243,7 @@ export const HealthManager = {
                 const now = s.tripped ? t('ui.health.policy_tripped', { rate: s.passrate }) : t('ui.health.policy_ok', { runs: s.runs });
                 return `<li><strong>${esc(key)}</strong> (${esc(testLabel(p.test))}, ${esc(mode)}): ${esc(now)}</li>`;
             });
-            state.innerHTML = rows.length ? `<ul class="health-list">${rows.join('')}</ul>` : `<div class="health-muted">${L('ui.health.no_policies')}</div>`;
+            state.innerHTML = rows.length ? `<ul class="hl-list">${rows.join('')}</ul>` : `<div class="hl-muted">${L('ui.health.no_policies')}</div>`;
         }
     },
 
@@ -288,7 +285,7 @@ export const HealthManager = {
         const el = document.getElementById('tipHealthBanner');
         if (!el) return;
         try {
-            if (!canSee()) { el.style.display = 'none'; return; }
+            if (!canSee()) { el.hidden = true; el.style.display = 'none'; return; }
             const today = dayKeyOf(Date.now());
             if (!this.banner || this.banner.day !== today || Date.now() - this.banner.at > BANNER_TTL_MS) {
                 // Today redraws on every data change: one query at a time
@@ -300,14 +297,16 @@ export const HealthManager = {
                 await this.bannerLoading;
             }
             const low = belowTarget(this.banner.docs, { day: today, targets: tipTargets() });
-            if (!low.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
-            el.innerHTML = `<div class="tip-health-banner-text">⚠️ ${low.map(x => esc(t('ui.health.banner_line', {
+            if (!low.length) { el.hidden = true; el.style.display = 'none'; el.innerHTML = ''; return; }
+            el.innerHTML = `${icon('alert')}<div class="grow tip-health-text">${low.map(x => esc(t('ui.health.banner_line', {
                 check: testLabel(x.test), rate: x.rate, target: x.target, runs: x.runs
             }))).join('<br>')}</div>
-                <button type="button" class="btn btn-secondary" data-onclick="health.openPage()">${L('ui.health.open_health')}</button>`;
-            el.style.display = 'flex';
+                <button type="button" class="btn btn-sm" data-onclick="health.openPage()">${L('ui.health.open_health')}</button>`;
+            el.hidden = false;
+            el.style.display = '';
         } catch (error) {
             console.warn('App health banner not loaded:', error?.code || error);
+            el.hidden = true;
             el.style.display = 'none';
         }
     }

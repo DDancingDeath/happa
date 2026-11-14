@@ -1,50 +1,52 @@
 <div id="health" class="tab">
-    <div class="health-page">
-        <header class="page-head"><h2 data-i18n="ui.health.title">App health</h2></header>
-        <p class="health-muted" data-i18n="ui.health.intro">Live checks from every phone: saving bills, recording payments, closing cash and opening the app.</p>
-        <div id="healthDenied" class="health-empty" style="display: none;" data-i18n="ui.health.denied">Only the owner or a manager can see this page.</div>
-        <div id="healthBody">
-            <div class="health-actions">
-                <button type="button" class="btn btn-secondary" data-onclick="health.refresh()" data-i18n="ui.health.refresh">Refresh</button>
-                <span id="healthStatus" class="health-muted"></span>
-            </div>
-            <section class="modern-card health-card">
-                <h3 data-i18n="ui.health.summary">Pass rate by check</h3>
-                <div class="scroll-cue"><div id="healthSummary" class="health-scroll scroll-cue-inner"></div></div>
-            </section>
-            <section class="modern-card health-card">
-                <h3 data-i18n="ui.health.by_day">By day</h3>
-                <div class="scroll-cue"><div id="healthByDay" class="health-scroll scroll-cue-inner"></div></div>
-            </section>
-            <section class="modern-card health-card">
-                <h3 data-i18n="ui.health.by_version">By app version</h3>
-                <div class="scroll-cue"><div id="healthByVersion" class="health-scroll scroll-cue-inner"></div></div>
-            </section>
-            <section class="modern-card health-card">
-                <h3 data-i18n="ui.health.top_reasons">Top failure reasons</h3>
-                <div id="healthReasons"></div>
-            </section>
-            <section class="modern-card health-card">
-                <h3 data-i18n="ui.health.durations">How long it took</h3>
-                <div class="scroll-cue"><div id="healthDurations" class="health-scroll scroll-cue-inner"></div></div>
-            </section>
-            <section class="modern-card health-card">
-                <h3 data-i18n="ui.health.devices">Phones and computers</h3>
-                <div class="scroll-cue"><div id="healthDevices" class="health-scroll scroll-cue-inner"></div></div>
-            </section>
-            <section class="modern-card health-card">
-                <h3 data-i18n="ui.health.latest_failures">Latest failures</h3>
-                <div id="healthFailures"></div>
-            </section>
-            <section class="modern-card health-card" id="healthPolicyCard" style="display: none;">
-                <h3 data-i18n="ui.health.auto_rollback">Automatic rollback</h3>
-                <p class="health-muted" data-i18n="ui.health.policy_help">If a check keeps failing on a phone, that phone can switch the feature to its safe behaviour. "Report only" just reports it.</p>
-                <p class="health-policy-effect" data-i18n="ui.health.policy_effect">billChecksBlocking with "telemetryOnly": false — on a phone where it trips, the owner and managers are no longer asked for a reason: a block they could override becomes a warning and is saved as an "auto-rollback" override (and in the audit log). Other members are still blocked. Hard blocks (payment split, name for Due, bad rate/quantity) always stop the save.</p>
-                <div id="healthPolicyState"></div>
-                <label for="healthPolicies" class="health-muted" data-i18n="ui.health.policies_json">Rules (JSON)</label>
-                <textarea id="healthPolicies" class="health-policies" rows="7" spellcheck="false"></textarea>
-                <button type="button" class="btn btn-primary" data-onclick="health.savePolicies()" data-i18n="ui.health.save_policies">Save rules</button>
-            </section>
+    <header class="page-head"><h2 data-i18n="ui.health.title">App health</h2></header>
+    <p class="hl-intro" data-i18n="ui.health.intro">Live checks from every phone: saving bills, recording payments, closing cash and opening the app.</p>
+    <p id="healthDenied" class="empty" hidden data-i18n="ui.health.denied">Only the owner or a manager can see this page.</p>
+    <div id="healthBody">
+        <div class="hl-actions">
+            <button type="button" class="btn" data-onclick="health.refresh()"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-refresh"/></svg><span data-i18n="ui.health.refresh">Refresh</span></button>
+            <span id="healthStatus" class="hl-muted" aria-live="polite"></span>
         </div>
+        <section class="panel panel-pad hl-panel">
+            <h3 class="hl-title" data-i18n="ui.health.summary">Pass rate by check</h3>
+            <div class="scroll-cue"><div id="healthSummary" class="hl-scroll scroll-cue-inner"></div></div>
+        </section>
+        <section class="panel panel-pad hl-panel">
+            <h3 class="hl-title" data-i18n="ui.health.by_day">By day</h3>
+            <div class="scroll-cue"><div id="healthByDay" class="hl-scroll scroll-cue-inner"></div></div>
+        </section>
+        <section class="panel panel-pad hl-panel">
+            <h3 class="hl-title" data-i18n="ui.health.by_version">By app version</h3>
+            <div class="scroll-cue"><div id="healthByVersion" class="hl-scroll scroll-cue-inner"></div></div>
+        </section>
+        <section class="panel panel-pad hl-panel">
+            <h3 class="hl-title" data-i18n="ui.health.top_reasons">Top failure reasons</h3>
+            <div id="healthReasons"></div>
+        </section>
+        <section class="panel panel-pad hl-panel">
+            <h3 class="hl-title" data-i18n="ui.health.durations">How long it took</h3>
+            <div class="scroll-cue"><div id="healthDurations" class="hl-scroll scroll-cue-inner"></div></div>
+        </section>
+        <section class="panel panel-pad hl-panel">
+            <h3 class="hl-title" data-i18n="ui.health.devices">Phones and computers</h3>
+            <div class="scroll-cue"><div id="healthDevices" class="hl-scroll scroll-cue-inner"></div></div>
+        </section>
+        <section class="panel panel-pad hl-panel">
+            <h3 class="hl-title" data-i18n="ui.health.latest_failures">Latest failures</h3>
+            <div id="healthFailures"></div>
+        </section>
+        <section class="panel panel-pad hl-panel" id="healthPolicyCard" hidden>
+            <h3 class="hl-title" data-i18n="ui.health.auto_rollback">Automatic rollback</h3>
+            <p class="hl-muted" data-i18n="ui.health.policy_help">If a check keeps failing on a phone, that phone can switch the feature to its safe behaviour. "Report only" just reports it.</p>
+            <p class="notice warn" data-i18n="ui.health.policy_effect">billChecksBlocking with "telemetryOnly": false — on a phone where it trips, the owner and managers are no longer asked for a reason: a block they could override becomes a warning and is saved as an "auto-rollback" override (and in the audit log). Other members are still blocked. Hard blocks (payment split, name for Due, bad rate/quantity) always stop the save.</p>
+            <div id="healthPolicyState"></div>
+            <div class="field">
+                <label for="healthPolicies" data-i18n="ui.health.policies_json">Rules (JSON)</label>
+                <textarea id="healthPolicies" class="input hl-policies" rows="7" spellcheck="false"></textarea>
+            </div>
+            <div class="hl-actions">
+                <button type="button" class="btn btn-primary" data-onclick="health.savePolicies()" data-i18n="ui.health.save_policies">Save rules</button>
+            </div>
+        </section>
     </div>
 </div>

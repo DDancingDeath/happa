@@ -46,7 +46,7 @@ export const UsageView = {
         if (!list) return;
         const bar = document.getElementById('usageRange');
         if (bar) {
-            bar.querySelectorAll('[data-range]').forEach(b => b.classList.toggle('active', b.dataset.range === this.range));
+            bar.querySelectorAll('[data-range]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.range === this.range)));
         }
         let rows = [];
         try {

@@ -188,7 +188,7 @@ test('the gallery previews without saving; Cancel, leaving Settings and Apply be
     const bar = page.locator('#themePreviewBar');
 
     await showTab(page, 'settings-common');
-    await expect(page.locator('#themeGallery .theme-card')).toHaveCount(8);
+    await expect(page.locator('#themeGallery .theme-tile')).toHaveCount(8);
     await expect(page.locator('[data-theme-choice="modern"]')).toHaveAttribute('aria-pressed', 'true');
 
     await page.click('[data-theme-choice="nordic"]');

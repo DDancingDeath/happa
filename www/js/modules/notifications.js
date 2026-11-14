@@ -439,6 +439,7 @@ const NotificationsManager = {
     refreshSettings() {
         const card = document.getElementById('notifSettingsCard');
         if (!card) return;
+        card.hidden = !this.systemSupported();
         card.style.display = this.systemSupported() ? '' : 'none';
         const box = document.getElementById('settingSystemNotifications');
         if (box) box.checked = this.systemEnabled();

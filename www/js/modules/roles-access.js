@@ -63,6 +63,7 @@ export class RolesAccessManager {
         const card = document.getElementById('roleAccessCard');
         if (!card) return;
         const isOwner = AppState.userRole === 'owner';
+        card.hidden = !isOwner;
         card.style.display = isOwner ? '' : 'none';
         const grid = document.getElementById('roleAccessGrid');
         if (!isOwner || !grid) {
@@ -82,7 +83,7 @@ export class RolesAccessManager {
         const daysRow = (p) => `<tr>${label(p)}${CONFIGURABLE_ROLES.map(r => `
             <td><input type="number" inputmode="numeric" min="0" max="${DAY_LIMITS[p]}" step="1" id="${fieldId(r, p)}" aria-label="${e(`${t(PERMISSION_LABEL_KEYS[p])} – ${t(ROLE_LABEL_KEYS[r])}`)}" value="${e(access[r][p])}"></td>`).join('')}</tr>`;
         grid.innerHTML = `
-            <table class="role-access-table">
+            <table class="table role-table">
                 <thead>${head}</thead>
                 <tbody>
                     ${group('ui.roles.group_pages')}
@@ -205,7 +206,7 @@ export class RolesAccessManager {
                     : `<select aria-label="${e(t('ui.roles.rentals_role'))}" data-onchange="roles.setRentRole('${Helpers.escapeJsAttr(u.id)}', this.value)">${rentOptions.map(([v, k]) => `<option value="${v}"${(u.rentRole || '') === v ? ' selected' : ''}>${e(t(k))}</option>`).join('')}</select>`;
                 return `<tr><td>${e(u.name || u.email || '')}</td><td>${e(shopRole(u.role))}</td><td>${rent}</td></tr>`;
             }).join('');
-        box.innerHTML = `<table class="role-access-table role-people-table">
+        box.innerHTML = `<table class="table role-table role-people">
                 <thead><tr><th>${e(t('ui.roles.person'))}</th><th>${e(t('ui.roles.shop_role'))}</th><th>${e(t('ui.roles.rentals_role'))}</th></tr></thead>
                 <tbody>${rows}</tbody>
             </table>

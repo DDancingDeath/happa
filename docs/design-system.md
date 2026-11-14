@@ -149,6 +149,17 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   Save and a tonal Print; a section's list is a `.panel` of `.row`s (amount in `.row-trail`, voided rows `.is-voided` with a
   `.tag`), "Show voided" is a `.switch` and the quick-fill templates are `.chip`s. Expense details: the amount as a
   `.display-num`, then a `.panel` of label | value `.row`s with sprite icons and the remarks as a `.notice`.
+- **Settings, App health and Anomalies (5.8a)**: each Settings card is a `.panel` (`.set-panel`: its title, `.field`s,
+  `.set-toggle` lines with a `.switch` on the right, `.set-kv` label | value lines and `.set-actions` button rows stacked
+  with one gap); Language, Appearance (Light / Dark / System with the sun, moon and auto icons) and the Usage range are
+  `.seg`s; the theme gallery's tiles show the preview flush on top and a check on the chosen theme ("Always dark" is a
+  `.tag`). Units are `.adorn`s (labour kg and ₹, the Rentals electricity rate). `.settings-card` and `.danger-btn` are
+  deleted (Admin no longer uses them). The card hooks `#notifSettingsCard`, `#installAppCard`, `#roleAccessCard`, the printer buttons and the
+  native share button start `hidden`; their scripts set `hidden` with `style.display`. App health: sections are panels,
+  tables `.table`, pass rates tinted cells, and Today's below-target banner a `.notice.neg`. Anomalies: filters are
+  `.field`s in a panel with a `.search-field`, List | Patterns are `.tabs`, rows (also on Today's Day report) are `.row`s
+  with a severity stripe, `.tag` status and `.btn-sm` review buttons, amounts `moneyHtml()`; the heat map and the
+  by-hour bars draw from `--a` / `--h` custom properties and the trend chart's axis text from the theme's muted ink.
 - **Admin (5.8b)**: Users | Data are `.tabs` (Aadhat settings is a ghost button beside them); each list of people is a `.panel`
   of `.row`s (name, email, a `.tag` for the role or status) with small `.btn`s below; the activity range is a `.seg` and the
   report a `.table` (bill total via `moneyHtml`); storage is `.metrics` and a row list; Data sections are panels with tonal

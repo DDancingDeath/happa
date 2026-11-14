@@ -4,207 +4,233 @@
     <section class="settings-section" id="settingsCommon" data-settings-section="common">
         <h2 class="settings-section-title" data-i18n="ui.settings.section_common">Common</h2>
 
-        <div class="settings-card" id="languageSettingsCard">
-            <h3 data-i18n="ui.settings.language">Language</h3>
-            <div class="lang-switch" role="group" aria-label="Language" data-i18n-aria-label="ui.settings.language">
-                <button type="button" class="lang-switch-btn" data-lang-option="en" lang="en" aria-pressed="true" data-onclick="i18n.setLang('en')">English</button>
-                <button type="button" class="lang-switch-btn" data-lang-option="hi" lang="hi" aria-pressed="false" data-onclick="i18n.setLang('hi')">हिंदी</button>
+        <div class="panel panel-pad set-panel" id="languageSettingsCard">
+            <h3 class="set-title" data-i18n="ui.settings.language">Language</h3>
+            <div class="seg lang-switch" role="group" aria-label="Language" data-i18n-aria-label="ui.settings.language">
+                <button type="button" data-lang-option="en" lang="en" aria-pressed="true" data-onclick="i18n.setLang('en')">English</button>
+                <button type="button" data-lang-option="hi" lang="hi" aria-pressed="false" data-onclick="i18n.setLang('hi')">हिंदी</button>
             </div>
             <p class="setting-description" data-i18n="ui.settings.language_hint">App text and messages. Saved on this device.</p>
         </div>
 
-        <div class="settings-card">
-            <h3 data-i18n="ui.settings.appearance">Appearance</h3>
-            
-            <div class="lang-switch" role="group" aria-label="Appearance" data-i18n-aria-label="ui.settings.appearance">
-                <button type="button" class="lang-switch-btn" data-appearance-choice="light" aria-pressed="false" data-onclick="settings.setAppearance('light')" data-i18n="ui.settings.appearance_light">Light</button>
-                <button type="button" class="lang-switch-btn" data-appearance-choice="dark" aria-pressed="false" data-onclick="settings.setAppearance('dark')" data-i18n="ui.settings.appearance_dark">Dark</button>
-                <button type="button" class="lang-switch-btn" data-appearance-choice="system" aria-pressed="false" data-onclick="settings.setAppearance('system')" data-i18n="ui.settings.appearance_system">System</button>
+        <div class="panel panel-pad set-panel">
+            <h3 class="set-title" data-i18n="ui.settings.appearance">Appearance</h3>
+            <div class="seg set-appearance" role="group" aria-label="Appearance" data-i18n-aria-label="ui.settings.appearance">
+                <button type="button" data-appearance-choice="light" aria-pressed="false" data-onclick="settings.setAppearance('light')"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-sun"/></svg><span data-i18n="ui.settings.appearance_light">Light</span></button>
+                <button type="button" data-appearance-choice="dark" aria-pressed="false" data-onclick="settings.setAppearance('dark')"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-moon"/></svg><span data-i18n="ui.settings.appearance_dark">Dark</span></button>
+                <button type="button" data-appearance-choice="system" aria-pressed="false" data-onclick="settings.setAppearance('system')"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-auto"/></svg><span data-i18n="ui.settings.appearance_system">System</span></button>
             </div>
             <p class="setting-description" data-i18n="ui.settings.appearance_hint">System follows this device's light or dark setting. Saved on this device.</p>
 
-            <h4 class="theme-gallery-title" data-i18n="ui.settings.theme">Theme</h4>
+            <div class="theme-gallery-head">
+                <h4 class="theme-gallery-title" data-i18n="ui.settings.theme">Theme</h4>
+                <button type="button" class="btn btn-ghost btn-sm theme-reset" data-onclick="settings.resetTheme()" data-i18n="ui.settings.theme_reset">Reset to default</button>
+            </div>
             <div class="theme-gallery" id="themeGallery" role="group" aria-label="Theme" data-i18n-aria-label="ui.settings.theme"></div>
             <p class="setting-description" id="themeDarkHint" hidden></p>
             <p class="setting-description" data-i18n="ui.settings.theme_hint">Tap a theme to preview it. Saved on this device.</p>
-            <button type="button" class="btn btn-ghost btn-sm theme-reset" data-onclick="settings.resetTheme()" data-i18n="ui.settings.theme_reset">Reset to default</button>
 
-            <label class="checkbox-label">
-                <input type="checkbox" id="settingShowHindi" data-onchange="settings.save()">
+            <label class="set-toggle">
                 <span data-i18n="ui.settings.show_item_names_in">Show item names in Hindi</span>
+                <input type="checkbox" class="switch" id="settingShowHindi" data-onchange="settings.save()">
             </label>
             <p class="setting-description" data-i18n="ui.settings.display_hindi_names_in">Display Hindi names in the app (Bills always use Hindi names)</p>
 
-            <label class="checkbox-label phone-only-setting">
-                <input type="checkbox" id="settingSwipeTabs" data-onchange="bottomNav.setSwipe(this.checked)">
+            <label class="set-toggle phone-only-setting">
                 <span data-i18n="ui.settings.swipe_tabs">Swipe left or right to change page</span>
+                <input type="checkbox" class="switch" id="settingSwipeTabs" data-onchange="bottomNav.setSwipe(this.checked)">
             </label>
             <p class="setting-description phone-only-setting" data-i18n="ui.settings.swipe_tabs_hint">Moves between Billing, Today, History and Outstanding. Saved on this phone.</p>
         </div>
 
-        <div class="settings-card" id="voiceBillingCard">
-            <h3 data-i18n="ui.settings.voice_billing">Voice billing</h3>
-            <label class="checkbox-label">
-                <input type="checkbox" id="settingVoiceBilling" data-onchange="voice.setOn(this.checked)">
+        <div class="panel panel-pad set-panel" id="voiceBillingCard">
+            <h3 class="set-title" data-i18n="ui.settings.voice_billing">Voice billing</h3>
+            <label class="set-toggle">
                 <span data-i18n="ui.settings.voice_billing_toggle">Fill a bill line by speaking</span>
+                <input type="checkbox" class="switch" id="settingVoiceBilling" data-onchange="voice.setOn(this.checked)">
             </label>
             <p class="setting-description" data-i18n="ui.settings.voice_billing_hint">Off unless you switch it on. Tap "Speak the line" on Billing and say the item, weight and rate, e.g. "10 kg rice 30 rupees"; join several lines with "and", and say "customer" before a name. You see what was understood (and hear it, unless muted) before anything is filled: one line fills the form, several are added to the bill only after OK. Voice never saves. The phone's or browser's speech service turns speech into text (usually Google's; it may need the internet); the app keeps no recording or text. Saved on this device.</p>
             <p class="setting-description" id="voiceBillingUnavailable" hidden data-i18n="ui.settings.voice_billing_unavailable">Not available on this device.</p>
-            <label class="checkbox-label">
-                <input type="checkbox" id="settingVoiceBeep" disabled data-onchange="voice.setBeep(this.checked)">
+            <label class="set-toggle">
                 <span data-i18n="ui.settings.voice_beep_toggle">Beep after listening</span>
+                <input type="checkbox" class="switch" id="settingVoiceBeep" disabled data-onchange="voice.setBeep(this.checked)">
             </label>
             <p class="setting-description" data-i18n="ui.settings.voice_beep_hint">A high beep when the line was understood, a low one when not. Saved on this device.</p>
         </div>
 
-        <div class="settings-card" id="crashReportsCard" hidden>
-            <h3 data-i18n="ui.settings.crash_reports">Crash reports</h3>
-            <label class="checkbox-label">
-                <input type="checkbox" id="settingCrashReports">
+        <div class="panel panel-pad set-panel" id="crashReportsCard" hidden>
+            <h3 class="set-title" data-i18n="ui.settings.crash_reports">Crash reports</h3>
+            <label class="set-toggle">
                 <span data-i18n="ui.settings.crash_reports_toggle">Send crash reports from this phone</span>
+                <input type="checkbox" class="switch" id="settingCrashReports">
             </label>
             <p class="setting-description" data-i18n="ui.settings.crash_reports_hint">Off unless you switch it on. Then, if the app crashes or stops responding, Google (Firebase Crashlytics) gets the error and its message, the phone model, the Android and app version, the phone's state (free memory and storage, whether it is rooted) and an install number; about once a day the app also checks Crashlytics' settings with Google, sending the phone details and install number. The app adds no names, bills or amounts, but an error message can include text the app was working on. Google keeps a report 90 days. Saved on this phone.</p>
             <p class="setting-description" id="crashReportsNotSetUp" hidden data-i18n="ui.settings.crash_reports_not_set_up">Not set up in this version of the app yet.</p>
         </div>
 
-        <div class="settings-card" id="accountCard">
-            <h3 data-i18n="ui.settings.account">Account</h3>
-            <label for="settingUserName" data-i18n="ui.settings.your_name">Your name</label>
-            <input type="text" id="settingUserName" maxlength="80" autocomplete="name" />
-            <button class="add-item-btn" type="button" data-onclick="settings.saveName()" data-i18n="ui.common.save">Save</button>
-            <p><strong data-i18n="ui.settings.email">Email:</strong> <span id="userEmail">-</span></p>
-            <button class="filter-btn" type="button" data-onclick="settings.changePassword()" data-i18n="ui.settings.change_password">Change password</button>
+        <div class="panel panel-pad set-panel" id="accountCard">
+            <h3 class="set-title" data-i18n="ui.settings.account">Account</h3>
+            <div class="field">
+                <label for="settingUserName" data-i18n="ui.settings.your_name">Your name</label>
+                <input type="text" class="input" id="settingUserName" maxlength="80" autocomplete="name" />
+            </div>
+            <div class="set-actions">
+                <button class="btn btn-tonal" type="button" data-onclick="settings.saveName()" data-i18n="ui.common.save">Save</button>
+            </div>
+            <div class="set-kv"><span data-i18n="ui.settings.email">Email</span> <span id="userEmail">-</span></div>
+            <div class="set-actions">
+                <button class="btn" type="button" data-onclick="settings.changePassword()" data-i18n="ui.settings.change_password">Change password</button>
+            </div>
             <p class="setting-description" data-i18n="ui.settings.change_password_hint">We email you a link to set a new password.</p>
-            <button class="danger-btn" data-onclick="auth.logout()" data-i18n="ui.settings.logout">Logout</button>
+            <div class="set-actions">
+                <button class="btn btn-danger" type="button" data-onclick="auth.logout()" data-i18n="ui.settings.logout">Log out</button>
+            </div>
         </div>
-        <div class="settings-card" id="notifSettingsCard" style="display: none;">
-            <h3 data-i18n="ui.common.notifications">Notifications</h3>
-            <label class="checkbox-label">
-                <input type="checkbox" id="settingSystemNotifications" data-onchange="notifications.toggleSystem(this.checked)">
+        <div class="panel panel-pad set-panel" id="notifSettingsCard" hidden>
+            <h3 class="set-title" data-i18n="ui.common.notifications">Notifications</h3>
+            <label class="set-toggle">
                 <span data-i18n="ui.settings.desktop_notifications">Desktop notifications</span>
+                <input type="checkbox" class="switch" id="settingSystemNotifications" data-onchange="notifications.toggleSystem(this.checked)">
             </label>
             <p class="setting-description" data-i18n="ui.settings.desktop_notifications_hint">Shows a computer notification for new updates while the app is open in another tab or window. Closed apps can't get notifications yet.</p>
         </div>
 
-        <div class="settings-card">
-            <h3 data-i18n="ui.settings.bluetooth_printer">Bluetooth printer</h3>
-            
-            <label class="checkbox-label">
-                <input type="checkbox" id="settingBluetoothEnabled" data-onchange="settings.toggleBluetoothPrinter()">
+        <div class="panel panel-pad set-panel">
+            <h3 class="set-title" data-i18n="ui.settings.bluetooth_printer">Bluetooth printer</h3>
+
+            <label class="set-toggle">
                 <span data-i18n="ui.settings.enable_bluetooth_printer">Enable Bluetooth printer</span>
+                <input type="checkbox" class="switch" id="settingBluetoothEnabled" data-onchange="settings.toggleBluetoothPrinter()">
             </label>
             <p class="setting-description" data-i18n="ui.settings.use_bluetooth_thermal_printer">Use Bluetooth thermal printer for bill printing</p>
-            
-            <div id="bluetoothPrinterSection" style="display: none; margin-top: 16px;">
-                <div id="printerStatus" style="padding: 12px; background: #f5f5f5; border-radius: 8px; margin-bottom: 12px;">
-                    <strong data-i18n="ui.settings.status">Status:</strong> <span id="printerStatusText"><span data-i18n="ui.settings.printer_not_connected">Not connected</span></span>
+
+            <div id="bluetoothPrinterSection" class="set-printer" hidden>
+                <div id="printerStatus" class="set-kv set-printer-status">
+                    <span data-i18n="ui.settings.status">Status</span> <span id="printerStatusText"><span data-i18n="ui.settings.printer_not_connected">Not connected</span></span>
                 </div>
 
-                <label class="checkbox-label">
-                    <input type="checkbox" id="settingPrintPreview" data-onchange="settings.togglePrintPreview()">
+                <label class="set-toggle">
                     <span data-i18n="ui.settings.print_preview_first">Show the bill before printing</span>
+                    <input type="checkbox" class="switch" id="settingPrintPreview" data-onchange="settings.togglePrintPreview()">
                 </label>
 
                 <div id="savedPrintersList"></div>
-                
-                <button class="add-item-btn" id="scanPrintersBtn" data-onclick="settings.scanBluetoothDevices()" style="margin-bottom: 8px;">
-                    <svg class="i" aria-hidden="true" focusable="false"><use href="#i-search"/></svg><span data-i18n="ui.settings.scan_printers">Scan for printers</span>
-                </button>
-                
+
+                <div class="set-actions">
+                    <button type="button" class="btn btn-tonal" id="scanPrintersBtn" data-onclick="settings.scanBluetoothDevices()">
+                        <svg class="i" aria-hidden="true" focusable="false"><use href="#i-search"/></svg><span data-i18n="ui.settings.scan_printers">Scan for printers</span>
+                    </button>
+                </div>
+
                 <div id="bluetoothDevicesList"></div>
-                
-                <button class="danger-btn" data-onclick="settings.disconnectPrinter()" id="disconnectBtn" style="display: none; margin-top: 12px;" data-i18n="ui.settings.disconnect_printer">
-                    Disconnect printer
-                </button>
-                
-                <button class="add-item-btn" data-onclick="settings.testPrint()" id="testPrintBtn" style="display: none; margin-top: 8px;">
-                    <svg class="i" aria-hidden="true" focusable="false"><use href="#i-printer"/></svg><span data-i18n="ui.settings.test_print">Test print</span>
-                </button>
+
+                <div class="set-actions">
+                    <button type="button" class="btn" data-onclick="settings.testPrint()" id="testPrintBtn" hidden>
+                        <svg class="i" aria-hidden="true" focusable="false"><use href="#i-printer"/></svg><span data-i18n="ui.settings.test_print">Test print</span>
+                    </button>
+                    <button type="button" class="btn btn-danger" data-onclick="settings.disconnectPrinter()" id="disconnectBtn" hidden data-i18n="ui.settings.disconnect_printer">
+                        Disconnect printer
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div class="settings-card" id="receiptSettingsCard">
-            <h3 data-i18n="ui.settings.printed_bill">Printed bill</h3>
+        <div class="panel panel-pad set-panel" id="receiptSettingsCard">
+            <h3 class="set-title" data-i18n="ui.settings.printed_bill">Printed bill</h3>
             <p class="setting-description" data-i18n="ui.settings.printed_bill_hint">The business name and address come from Settings › Aadhat. These choices are saved for everyone; the paper width stays on each phone.</p>
             <p class="setting-description" id="receiptViewOnly" hidden data-i18n="ui.settings.shop_view_only">Only the owner, or a manager allowed in Roles &amp; access, can change these.</p>
-            <button class="add-item-btn" type="button" id="receiptShareBtn" hidden data-onclick="settings.shareOwnReceipt()" data-i18n="ui.settings.receipt_share">Use this phone's choices for all phones</button>
-            <label for="settingReceiptFooter" data-i18n="ui.settings.receipt_footer">Line at the bottom</label>
-            <input type="text" id="settingReceiptFooter" maxlength="80" data-receipt-edit data-i18n-placeholder="ui.settings.receipt_footer_placeholder" placeholder="Thank you, visit again" data-onchange="settings.saveReceiptOptions()" />
-            <label class="checkbox-label">
-                <input type="checkbox" id="settingReceiptQr" data-receipt-edit data-onchange="settings.saveReceiptOptions()">
+            <div class="set-actions">
+                <button class="btn btn-tonal" type="button" id="receiptShareBtn" hidden data-onclick="settings.shareOwnReceipt()" data-i18n="ui.settings.receipt_share">Use this phone's choices for all phones</button>
+            </div>
+            <div class="field">
+                <label for="settingReceiptFooter" data-i18n="ui.settings.receipt_footer">Line at the bottom</label>
+                <input type="text" class="input" id="settingReceiptFooter" maxlength="80" data-receipt-edit data-i18n-placeholder="ui.settings.receipt_footer_placeholder" placeholder="Thank you, visit again" data-onchange="settings.saveReceiptOptions()" />
+            </div>
+            <label class="set-toggle">
                 <span data-i18n="ui.settings.receipt_qr">Print a QR code with the bill number, date and total</span>
+                <input type="checkbox" class="switch" id="settingReceiptQr" data-receipt-edit data-onchange="settings.saveReceiptOptions()">
             </label>
-            <label for="settingReceiptLang" data-i18n="ui.settings.receipt_lang">Bill language</label>
-            <select id="settingReceiptLang" data-receipt-edit data-onchange="settings.saveReceiptOptions()">
-                <option value="app" data-i18n="ui.settings.receipt_lang_app">Same as the app</option>
-                <option value="en" data-i18n="ui.settings.receipt_lang_en">English</option>
-                <option value="hi" data-i18n="ui.settings.receipt_lang_hi">Hindi</option>
-            </select>
-            <label for="settingReceiptDensity" data-i18n="ui.settings.receipt_density">Print darkness</label>
-            <select id="settingReceiptDensity" data-receipt-edit data-onchange="settings.saveReceiptOptions()">
-                <option value="light" data-i18n="ui.settings.receipt_density_light">Light</option>
-                <option value="normal" data-i18n="ui.settings.receipt_density_normal">Normal</option>
-                <option value="dark" data-i18n="ui.settings.receipt_density_dark">Dark</option>
-            </select>
+            <div class="field">
+                <label for="settingReceiptLang" data-i18n="ui.settings.receipt_lang">Bill language</label>
+                <select class="input" id="settingReceiptLang" data-receipt-edit data-onchange="settings.saveReceiptOptions()">
+                    <option value="app" data-i18n="ui.settings.receipt_lang_app">Same as the app</option>
+                    <option value="en" data-i18n="ui.settings.receipt_lang_en">English</option>
+                    <option value="hi" data-i18n="ui.settings.receipt_lang_hi">Hindi</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="settingReceiptDensity" data-i18n="ui.settings.receipt_density">Print darkness</label>
+                <select class="input" id="settingReceiptDensity" data-receipt-edit data-onchange="settings.saveReceiptOptions()">
+                    <option value="light" data-i18n="ui.settings.receipt_density_light">Light</option>
+                    <option value="normal" data-i18n="ui.settings.receipt_density_normal">Normal</option>
+                    <option value="dark" data-i18n="ui.settings.receipt_density_dark">Dark</option>
+                </select>
+            </div>
             <p class="setting-description" id="receiptLogoStatus" data-i18n="ui.settings.receipt_logo_none">No logo</p>
             <input type="file" id="settingReceiptLogo" accept="image/*" hidden data-onchange="settings.chooseReceiptLogo(this)">
-            <div class="app-updates-actions">
-                <button class="filter-btn" type="button" data-receipt-edit data-onclick="settings.pickReceiptLogo()" data-i18n="ui.settings.receipt_logo_choose">Choose logo</button>
-                <button class="filter-btn" type="button" id="receiptLogoRemoveBtn" data-receipt-edit hidden data-onclick="settings.removeReceiptLogo()" data-i18n="ui.settings.receipt_logo_remove">Remove logo</button>
-                <button class="add-item-btn" type="button" data-onclick="settings.previewReceipt()" data-i18n="ui.settings.receipt_preview">Preview the bill</button>
+            <div class="set-actions">
+                <button class="btn" type="button" data-receipt-edit data-onclick="settings.pickReceiptLogo()" data-i18n="ui.settings.receipt_logo_choose">Choose logo</button>
+                <button class="btn" type="button" id="receiptLogoRemoveBtn" data-receipt-edit hidden data-onclick="settings.removeReceiptLogo()" data-i18n="ui.settings.receipt_logo_remove">Remove logo</button>
+                <button class="btn btn-tonal" type="button" data-onclick="settings.previewReceipt()"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-receipt"/></svg><span data-i18n="ui.settings.receipt_preview">Preview the bill</span></button>
             </div>
         </div>
 
-        <div class="settings-card" id="installAppCard" style="display: none;">
-            <h3 data-i18n="ui.settings.install_app">Install app</h3>
-            <button class="add-item-btn" id="installAppBtn" data-onclick="install.prompt()" style="display: none;" data-i18n="ui.settings.install_app_on_device">
-                Install app on this device
-            </button>
-            <p class="setting-description" id="installAppHint" style="display: none;" data-i18n="ui.settings.install_hint">Chrome/Edge: address bar → Install icon. iPhone/iPad Safari: Share → Add to Home Screen.</p>
+        <div class="panel panel-pad set-panel" id="installAppCard" hidden>
+            <h3 class="set-title" data-i18n="ui.settings.install_app">Install app</h3>
+            <div class="set-actions">
+                <button type="button" class="btn btn-tonal" id="installAppBtn" data-onclick="install.prompt()" hidden data-i18n="ui.settings.install_app_on_device">
+                    Install app on this device
+                </button>
+            </div>
+            <p class="setting-description" id="installAppHint" hidden data-i18n="ui.settings.install_hint">Chrome/Edge: address bar → Install icon. iPhone/iPad Safari: Share → Add to Home Screen.</p>
         </div>
 
-        <div class="settings-card">
-            <h3 data-i18n="ui.settings.app_updates">App updates</h3>
-            <p><strong data-i18n="ui.settings.version">Version:</strong> <span id="appVersionText">-</span></p>
-            <div class="app-updates-actions">
-                <button class="add-item-btn" type="button" data-onclick="updates.showWhatsNew()" data-i18n="ui.settings.what_s_new">What's new</button>
-                <button class="add-item-btn" type="button" data-onclick="updates.shareOnWhatsApp()"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-wa"/></svg><span data-i18n="ui.settings.share_on_whatsapp">Share on WhatsApp</span></button>
-                <button class="add-item-btn" type="button" id="shareAppNativeBtn" style="display: none;" data-onclick="updates.shareNative()" data-i18n="ui.settings.share_app">Share app</button>
-                <button class="add-item-btn" type="button" data-onclick="updates.openDownloadPage()" data-i18n="ui.settings.download_page">Download page</button>
+        <div class="panel panel-pad set-panel">
+            <h3 class="set-title" data-i18n="ui.settings.app_updates">App updates</h3>
+            <div class="set-kv"><span data-i18n="ui.settings.version">Version</span> <span id="appVersionText">-</span></div>
+            <div class="set-actions">
+                <button class="btn" type="button" data-onclick="updates.showWhatsNew()" data-i18n="ui.settings.what_s_new">What's new</button>
+                <button class="btn" type="button" data-onclick="updates.shareOnWhatsApp()"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-wa"/></svg><span data-i18n="ui.settings.share_on_whatsapp">Share on WhatsApp</span></button>
+                <button class="btn" type="button" id="shareAppNativeBtn" hidden data-onclick="updates.shareNative()" data-i18n="ui.settings.share_app">Share app</button>
+                <button class="btn" type="button" data-onclick="updates.openDownloadPage()" data-i18n="ui.settings.download_page">Download page</button>
             </div>
             <p class="setting-description" data-i18n="ui.settings.send_app_link_latest">Send the app link and latest changes to everyone who uses the app</p>
         </div>
 
-        <div class="settings-card">
-            <h3 data-i18n="ui.settings.about">About</h3>
-            <p><strong data-i18n="ui.settings.app">App:</strong> <span data-i18n="ui.app.name">Bahi</span></p>
+        <div class="panel panel-pad set-panel">
+            <h3 class="set-title" data-i18n="ui.settings.about">About</h3>
+            <div class="set-kv"><span data-i18n="ui.settings.app">App</span> <span data-i18n="ui.app.name">Bahi</span></div>
             <p class="setting-description" data-i18n="ui.app.by_brand">by happa</p>
-            <p data-i18n="ui.app.tagline">Your business, in one place</p>
+            <p class="set-text" data-i18n="ui.app.tagline">Your business, in one place</p>
         </div>
-        
-        <div class="settings-card" id="usageCard">
-            <h3 data-i18n="ui.usage.title">Usage on this phone</h3>
+
+        <div class="panel panel-pad set-panel" id="usageCard">
+            <h3 class="set-title" data-i18n="ui.usage.title">Usage on this phone</h3>
             <p class="setting-description" data-i18n="ui.usage.hint">What is used most on this phone. Kept only on this phone; nothing is sent.</p>
-            <div class="filter-buttons" id="usageRange">
-                <button type="button" class="filter-btn" data-range="today" data-onclick="usage.setRange('today')" data-i18n="ui.usage.range_today">Today</button>
-                <button type="button" class="filter-btn active" data-range="week" data-onclick="usage.setRange('week')" data-i18n="ui.usage.range_week">Last 7 days</button>
-                <button type="button" class="filter-btn" data-range="month" data-onclick="usage.setRange('month')" data-i18n="ui.usage.range_month">Last 30 days</button>
+            <div class="seg" id="usageRange" role="group" aria-label="Usage on this phone" data-i18n-aria-label="ui.usage.title">
+                <button type="button" data-range="today" aria-pressed="false" data-onclick="usage.setRange('today')" data-i18n="ui.usage.range_today">Today</button>
+                <button type="button" data-range="week" aria-pressed="true" data-onclick="usage.setRange('week')" data-i18n="ui.usage.range_week">Last 7 days</button>
+                <button type="button" data-range="month" aria-pressed="false" data-onclick="usage.setRange('month')" data-i18n="ui.usage.range_month">Last 30 days</button>
             </div>
             <div id="usageList"></div>
-            <div class="app-updates-actions">
-                <button class="add-item-btn" type="button" data-onclick="usage.copy()" data-i18n="ui.usage.copy">Copy</button>
-                <button class="add-item-btn" type="button" data-onclick="usage.clear()" data-i18n="ui.usage.clear">Clear</button>
+            <div class="set-actions">
+                <button class="btn" type="button" data-onclick="usage.copy()" data-i18n="ui.usage.copy">Copy</button>
+                <button class="btn" type="button" data-onclick="usage.clear()" data-i18n="ui.usage.clear">Clear</button>
             </div>
         </div>
-                <div class="settings-card" id="roleAccessCard" style="display: none;">
-            <h3 data-i18n="ui.roles.title">Roles &amp; access</h3>
+        <div class="panel panel-pad set-panel" id="roleAccessCard" hidden>
+            <h3 class="set-title" data-i18n="ui.roles.title">Roles &amp; access</h3>
             <p class="setting-description" data-i18n="ui.roles.hint">Choose what managers and members may see and do. The owner always sees everything.</p>
             <div id="roleAccessGrid"></div>
-            <button class="add-item-btn" type="button" data-onclick="roles.save()" data-i18n="ui.roles.save">Save for everyone</button>
+            <div class="set-actions">
+                <button class="btn btn-primary" type="button" data-onclick="roles.save()" data-i18n="ui.roles.save">Save for everyone</button>
+            </div>
             <p class="setting-description" id="roleAccessStatus"></p>
-            <h4 data-i18n="ui.roles.people">People</h4>
+            <h4 class="set-subtitle" data-i18n="ui.roles.people">People</h4>
             <p class="setting-description" data-i18n="ui.roles.people_load_hint">Each person's Aadhat role and Rentals role.</p>
-            <button class="filter-btn" type="button" id="rolePeopleBtn" data-onclick="roles.loadPeople()" data-i18n="ui.roles.show_people">Show people</button>
+            <div class="set-actions">
+                <button class="btn" type="button" id="rolePeopleBtn" data-onclick="roles.loadPeople()" data-i18n="ui.roles.show_people">Show people</button>
+            </div>
             <div id="rolePeopleList"></div>
         </div>
 
@@ -212,65 +238,88 @@
 
     <div class="settings-biz-bar" id="settingsBizBar" hidden>
         <h2 class="settings-section-title" id="settingsBizTitle"></h2>
-        <button type="button" class="filter-btn settings-biz-toggle" id="settingsBizToggle" hidden data-onclick="settings.showOther()"></button>
+        <button type="button" class="btn btn-ghost btn-sm" id="settingsBizToggle" hidden data-onclick="settings.showOther()"></button>
     </div>
 
     <section class="settings-section" id="settingsShop" data-settings-section="shop" hidden>
         <p class="setting-description" id="settingsShopViewOnly" hidden data-i18n="ui.settings.shop_view_only">Only the owner, or a manager allowed in Roles &amp; access, can change these.</p>
 
-        <div class="settings-card" id="businessDetailsCard">
-            <h3 data-i18n="ui.settings.business_details">Business name and details</h3>
-            <label for="settingBusinessName" data-i18n="ui.settings.business_name">Business name</label>
-            <input type="text" id="settingBusinessName" maxlength="80" data-shop-edit />
-            <label for="settingBusinessDetails" data-i18n="ui.settings.business_details_line">Address or phone (one line)</label>
-            <input type="text" id="settingBusinessDetails" maxlength="120" data-shop-edit />
+        <div class="panel panel-pad set-panel" id="businessDetailsCard">
+            <h3 class="set-title" data-i18n="ui.settings.business_details">Business name and details</h3>
+            <div class="field">
+                <label for="settingBusinessName" data-i18n="ui.settings.business_name">Business name</label>
+                <input type="text" class="input" id="settingBusinessName" maxlength="80" data-shop-edit />
+            </div>
+            <div class="field">
+                <label for="settingBusinessDetails" data-i18n="ui.settings.business_details_line">Address or phone (one line)</label>
+                <input type="text" class="input" id="settingBusinessDetails" maxlength="120" data-shop-edit />
+            </div>
             <p class="setting-description" data-i18n="ui.settings.business_details_hint">Printed at the top of bills and statements. Saved for everyone.</p>
-            <button class="add-item-btn" type="button" data-onclick="settings.saveBusinessDetails()" data-shop-edit data-i18n="ui.roles.save">Save for everyone</button>
+            <div class="set-actions">
+                <button class="btn btn-primary" type="button" data-onclick="settings.saveBusinessDetails()" data-shop-edit data-i18n="ui.roles.save">Save for everyone</button>
+            </div>
         </div>
 
-        <div class="settings-card" id="upiCard">
-            <h3 data-i18n="ui.settings.upi_title">UPI ID</h3>
-            <input type="text" id="settingUpiId" maxlength="60" autocomplete="off" data-onchange="settings.saveUpi()" />
+        <div class="panel panel-pad set-panel" id="upiCard">
+            <h3 class="set-title"><label for="settingUpiId" data-i18n="ui.settings.upi_title">UPI ID</label></h3>
+            <input type="text" class="input" id="settingUpiId" maxlength="60" autocomplete="off" data-onchange="settings.saveUpi()" />
             <p class="setting-description" data-i18n="ui.settings.upi_hint">Added to WhatsApp payment reminders. Saved on this device only.</p>
         </div>
 
-        <div class="settings-card" id="labourSettingsCard">
-            <h3 data-i18n="ui.settings.labour_charges">Labour charges</h3>
+        <div class="panel panel-pad set-panel" id="labourSettingsCard">
+            <h3 class="set-title" data-i18n="ui.settings.labour_charges">Labour charges</h3>
 
-            <label data-i18n="ui.settings.heavy_packet_weight_kg">Heavy packet weight (kg)</label>
-            <input type="number" inputmode="decimal" id="settingHeavyWeight" placeholder="30" value="30" data-onchange="settings.save()" />
+            <div class="field">
+                <label for="settingHeavyWeight" data-i18n="ui.settings.heavy_packet_weight_kg">Heavy packet weight</label>
+                <div class="adorn">
+                    <input type="number" class="input" inputmode="decimal" id="settingHeavyWeight" placeholder="30" value="30" data-onchange="settings.save()" />
+                    <span class="adorn-post" aria-hidden="true">kg</span>
+                </div>
+            </div>
             <p class="setting-description" data-i18n="ui.settings.packets_above_weight_get">Packets above this weight get a labour charge</p>
 
-            <label data-i18n="ui.settings.labour_per_heavy_packet">Labour per heavy packet (₹)</label>
-            <input type="number" inputmode="decimal" id="settingLaborRate" placeholder="6" value="6" data-onchange="settings.save()" />
+            <div class="field">
+                <label for="settingLaborRate" data-i18n="ui.settings.labour_per_heavy_packet">Labour per heavy packet</label>
+                <div class="adorn">
+                    <span class="adorn-pre" aria-hidden="true">₹</span>
+                    <input type="number" class="input" inputmode="decimal" id="settingLaborRate" placeholder="6" value="6" data-onchange="settings.save()" />
+                </div>
+            </div>
 
-            <label for="settingLabourPackageKg" data-i18n="ui.settings.labour_package_kg">Package weight for labour (kg)</label>
-            <input type="number" inputmode="decimal" id="settingLabourPackageKg" min="1" max="200" placeholder="35" value="35" data-onchange="settings.save()" />
+            <div class="field">
+                <label for="settingLabourPackageKg" data-i18n="ui.settings.labour_package_kg">Package weight for labour</label>
+                <div class="adorn">
+                    <input type="number" class="input" inputmode="decimal" id="settingLabourPackageKg" min="1" max="200" placeholder="35" value="35" data-onchange="settings.save()" />
+                    <span class="adorn-post" aria-hidden="true">kg</span>
+                </div>
+            </div>
             <p class="setting-description" data-i18n="ui.settings.labour_package_kg_hint">Today › Labour: today's purchased kg ÷ this weight, rounded up, × labour per packet = to pay labour.</p>
             <p class="setting-description" id="labourSettingsNote"><span data-i18n="ui.settings.saved_for_everyone">Saved for everyone.</span></p>
 
-            <label class="checkbox-label">
-                <input type="checkbox" id="settingAutoLabor" checked data-onchange="settings.save()">
+            <label class="set-toggle">
                 <span data-i18n="ui.settings.enable_automatic_labor_charges">Enable automatic labour charges by default</span>
+                <input type="checkbox" class="switch" id="settingAutoLabor" checked data-onchange="settings.save()">
             </label>
         </div>
 
-        <div class="settings-card" id="billChecksCard">
-            <h3 data-i18n="ui.checks.title">Bill checks</h3>
+        <div class="panel panel-pad set-panel" id="billChecksCard">
+            <h3 class="set-title" data-i18n="ui.checks.title">Bill checks</h3>
             <p class="setting-description" data-i18n="ui.checks.description">Limits for the red/amber warnings while billing. They apply to everyone; blank = default.</p>
-            <div id="settingsChecks"></div>
+            <div id="settingsChecks" class="set-fields"></div>
         </div>
 
-        <div class="settings-card" id="billNumbersCard">
-            <h3 data-i18n="ui.settings.bill_numbers">Bill numbers</h3>
+        <div class="panel panel-pad set-panel" id="billNumbersCard">
+            <h3 class="set-title" data-i18n="ui.settings.bill_numbers">Bill numbers</h3>
             <p class="setting-description" data-i18n="ui.settings.bill_numbers_hint">Bills are numbered P (purchase), S (sale) or W (wholesale), then the date and a number for the day, the same on every phone. Offline, a bill gets this phone's code too.</p>
-            <p><strong data-i18n="ui.settings.device_code">This phone's code:</strong> <span id="settingBillDeviceCode" lang="zxx" translate="no">-</span></p>
+            <div class="set-kv"><span data-i18n="ui.settings.device_code">This phone's code</span> <span id="settingBillDeviceCode" lang="zxx" translate="no">-</span></div>
         </div>
 
-        <div class="settings-card" id="openingStockCard">
-            <h3 data-i18n="ui.stock.set_opening_stock">Set opening stock</h3>
+        <div class="panel panel-pad set-panel" id="openingStockCard">
+            <h3 class="set-title" data-i18n="ui.stock.set_opening_stock">Set opening stock</h3>
             <p class="setting-description" data-i18n="ui.settings.opening_stock_hint">Enter what is in the godown when you start using the app.</p>
-            <button class="filter-btn" type="button" data-onclick="settings.openOpeningStock()" data-i18n="ui.settings.open_stocks">Open Stocks</button>
+            <div class="set-actions">
+                <button class="btn" type="button" data-onclick="settings.openOpeningStock()"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-box"/></svg><span data-i18n="ui.settings.open_stocks">Open stock</span></button>
+            </div>
         </div>
     </section>
 
