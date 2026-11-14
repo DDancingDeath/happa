@@ -229,12 +229,12 @@ export const FinanceBreakdownSheet = {
         const attrs = tappable
             ? ` data-action="bill" data-bill-id="${esc(r.billId)}" data-bill-type="${esc(r.billType)}" role="button" tabindex="0"`
             : '';
-        return `<div class="fin-row${tappable ? ' fin-row-tappable' : ''}"${attrs}>
-            <div class="fin-row-main">
-                <div class="fin-row-title">${esc(title)}</div>
-                ${sub ? `<div class="fin-row-sub">${esc(sub)}</div>` : ''}
+        return `<div class="fin-line${tappable ? ' fin-line-tap' : ''}"${attrs}>
+            <div class="fin-line-main">
+                <div class="fin-line-title">${esc(title)}</div>
+                ${sub ? `<div class="fin-line-sub">${esc(sub)}</div>` : ''}
             </div>
-            <div class="fin-row-amt ${r.amount < 0 ? 'amount-negative' : 'amount-positive'}">${esc(moneyText(r.amount, { exact: true, trueMinus: true }))}</div>
+            <div class="fin-line-amt ${r.amount < 0 ? 'amount-negative' : 'amount-positive'}">${esc(moneyText(r.amount, { exact: true, trueMinus: true }))}</div>
         </div>`;
     },
 
@@ -268,7 +268,7 @@ export const FinanceBreakdownSheet = {
                 const label = this.state.group === 'term' ? t(g.label) : (g.label || t(this.state.group === 'day' ? 'ui.finance.no_date' : 'ui.finance.no_name'));
                 const open = this.state.openGroup === g.key;
                 const body = open
-                    ? `<div class="fin-group-rows">${g.rows.slice(0, this.state.shown).map(r => this.rowHtml(r, showTerm)).join('')}${this.moreHtml(g.rows.length - this.state.shown)}</div>`
+                    ? `<div class="fin-group-lines">${g.rows.slice(0, this.state.shown).map(r => this.rowHtml(r, showTerm)).join('')}${this.moreHtml(g.rows.length - this.state.shown)}</div>`
                     : '';
                 return `<div class="fin-group">
                     <button type="button" class="fin-group-head" data-action="open-group" data-key="${esc(g.key)}" aria-expanded="${open}">

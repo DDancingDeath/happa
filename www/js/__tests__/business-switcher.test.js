@@ -18,7 +18,7 @@ beforeEach(() => {
         <div class="biz-switch" id="bizSwitch" hidden>
             <button data-biz-btn="shop"></button><button data-biz-btn="rentals"></button>
         </div>
-        <div class="side-nav active"></div><div class="overlay active"></div>
+        <div class="side-nav active"></div><div class="scrim nav-scrim active"></div>
         <div id="billing" class="tab"></div>`;
     window.app = { rentals: {} };
     AppState.userRole = 'staff';

@@ -23,7 +23,7 @@ describe('back button returns to the previous tab (F17)', () => {
                 <a href="#" data-onclick="nav.showTab('stock', event)">Stock</a>
                 <a href="#" data-onclick="nav.showTab('history', event)">History</a>
             </nav></div>
-            <div class="overlay" id="overlay"></div>
+            <div class="scrim nav-scrim" id="overlay"></div>
             <div class="tab" id="billing"></div><div class="tab" id="stock"></div><div class="tab" id="history"></div>`;
         NavigationManager.currentTab = null;
         history.replaceState(null, '');
@@ -115,7 +115,7 @@ describe('Android Back closes the Item dialog in Hindi (not the page under it)',
                 <a href="#" data-onclick="nav.showTab('billing', event)">Billing</a>
                 <a href="#" data-onclick="nav.showTab('stock', event)">Stock</a>
             </nav></div>
-            <div class="overlay" id="overlay"></div>
+            <div class="scrim nav-scrim" id="overlay"></div>
             <div class="tab" id="billing"></div><div class="tab" id="stock"></div>${modals}`;
         NavigationManager.currentTab = null;
         history.replaceState(null, '');

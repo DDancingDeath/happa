@@ -112,7 +112,7 @@ const NavigationManager = {
 
     setMenuOpen(open) {
         const sideNav = document.querySelector('.side-nav');
-        const overlay = document.querySelector('.overlay');
+        const overlay = document.querySelector('.nav-scrim');
         const wasOpen = this.isMenuOpen();
         if (sideNav) sideNav.classList.toggle('active', open);
         if (overlay) overlay.classList.toggle('active', open);
@@ -124,7 +124,7 @@ const NavigationManager = {
             sideNav.setAttribute('role', 'dialog');
             sideNav.setAttribute('aria-modal', 'true');
             sideNav.setAttribute('aria-label', t('ui.nav.menu'));
-            sideNav.querySelector('.close-btn')?.focus({ preventScroll: true });
+            sideNav.querySelector('.nav-close')?.focus({ preventScroll: true });
         } else {
             sideNav.removeAttribute('role');
             sideNav.removeAttribute('aria-modal');
@@ -153,7 +153,7 @@ const NavigationManager = {
     // Close the drawer on overlay tap, Esc, or a left swipe on the drawer.
     // Safe to call more than once; listeners are only attached once.
     initMenuDismiss() {
-        const overlay = document.querySelector('.overlay');
+        const overlay = document.querySelector('.nav-scrim');
         if (overlay && !overlay.dataset.dismissBound) {
             overlay.dataset.dismissBound = '1';
             overlay.addEventListener('click', (e) => {

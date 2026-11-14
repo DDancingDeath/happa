@@ -59,11 +59,11 @@
 <!-- App bar (redesign 4.1): page title, sync pill, bell. The menu button shows on the phone only in Rentals (no tab bar there);
      on desktop the bar is not drawn and the bell and pill keep their places (desktop.css) -->
     <header class="app-bar" id="appBar">
-        <button type="button" class="hamburger app-bar-btn" data-onclick="nav.toggleMenu()" aria-controls="sideNav" aria-expanded="false" aria-label="Menu" data-i18n-aria-label="ui.nav.menu"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-menu"/></svg></button>
+        <button type="button" class="hamburger app-bar-action" data-onclick="nav.toggleMenu()" aria-controls="sideNav" aria-expanded="false" aria-label="Menu" data-i18n-aria-label="ui.nav.menu"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-menu"/></svg></button>
         <h1 class="app-bar-title" id="appBarTitle" tabindex="-1"></h1>
         <div class="sync-pill" id="syncStatus" role="status" aria-live="polite" hidden></div>
         <!-- Notifications bell + inbox (#12) -->
-        <button type="button" class="notif-bell app-bar-btn" id="notifBell" hidden data-onclick="notifications.toggle()" aria-label="Notifications" data-i18n-aria-label="ui.common.notifications" title="Notifications" data-i18n-title="ui.common.notifications">
+        <button type="button" class="notif-bell app-bar-action" id="notifBell" hidden data-onclick="notifications.toggle()" aria-label="Notifications" data-i18n-aria-label="ui.common.notifications" title="Notifications" data-i18n-title="ui.common.notifications">
             <span class="notif-bell-icon" aria-hidden="true"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-bell"/></svg></span>
             <span class="notif-badge" id="notifBadge" hidden></span>
         </button>
@@ -93,7 +93,7 @@
                     <button type="button" data-biz-btn="rentals" aria-pressed="false" data-onclick="business.set('rentals')"><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-home"/></svg> <span data-i18n="ui.biz.rentals">Rentals</span></button>
                 </div>
             </div>
-            <button type="button" class="close-btn" data-onclick="nav.toggleMenu()" aria-label="Close" data-i18n-aria-label="ui.common.close"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-x"/></svg></button>
+            <button type="button" class="nav-close" data-onclick="nav.toggleMenu()" aria-label="Close" data-i18n-aria-label="ui.common.close"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-x"/></svg></button>
         </div>
         <nav class="nav-menu" aria-label="Pages" data-i18n-aria-label="ui.nav.pages">
             <div class="nav-group" role="group" aria-labelledby="navGroupDaily">
@@ -212,10 +212,10 @@
     <div class="pull-refresh" id="pullRefresh" hidden aria-hidden="true"><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-refresh"/></svg><span class="pull-refresh-pull" data-i18n="ui.nav.pull_refresh">Pull to refresh</span><span class="pull-refresh-release" data-i18n="ui.nav.release_refresh">Release to refresh</span></div>
 
     <!-- Overlay -->
-    <div class="overlay" id="overlay"></div>
+    <div class="scrim nav-scrim" id="overlay"></div>
 
     <!-- Loading Spinner -->
-    <div class="loading-overlay" id="loadingOverlay">
+    <div class="app-loading" id="loadingOverlay">
         <div class="spinner"></div>
     </div>
 

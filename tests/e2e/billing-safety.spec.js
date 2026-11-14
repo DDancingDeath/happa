@@ -22,7 +22,7 @@ async function retailWithTypedLine(page, customer) {
     await page.selectOption('#saleItem', await optionValue(page, '#saleItem', 'Wheat'));
     await page.fill('#saleRate', '26');
     await page.fill('#saleWeight', '2');
-    await page.click('#saleSection .add-to-bill-btn');
+    await page.click('#saleSection [data-add-line]');
     await expect(page.locator('#saleTotal')).toHaveText('52');
     await page.selectOption('#saleItem', await optionValue(page, '#saleItem', 'Rice'));
     await page.fill('#saleRate', '36');
@@ -37,7 +37,7 @@ test('Save with a typed retail line asks; "Add this line and save" bills it (S-1
     await login(page, 'owner');
     await retailWithTypedLine(page, customer);
     await clickAfterTyping(page, '#saveSaleBtn');
-    const dialog = page.locator('.pending-line-dialog');
+    const dialog = page.locator('.pending-line-sheet');
     await expect(dialog).toBeVisible();
     await expect(dialog.locator('#pendingLineMessage')).toHaveText('Rice 4 kg × ₹36 = ₹144 is typed but not on the bill.');
     await expect(dialog.locator('[data-choice="add"]')).toHaveText('Add this line and save');
@@ -68,14 +68,14 @@ test('"Discard line and save" saves the added lines only; Cancel saves nothing (
     await page.selectOption('#billItem', await optionValue(page, '#billItem', 'Rice'));
     await page.fill('#billRate', '30');
     await page.fill('#newWeight', '10');
-    await page.click('#purchaseSection .add-to-bill-btn');
+    await page.click('#purchaseSection [data-add-line]');
     await expect(page.locator('#billTotal')).toHaveText('300');
     await page.fill('#newWeight', '5'); // the item and rate stay after Add: a weight typed is a new line
     await page.fill('#customerName', customer);
     await page.fill('#cashPayment', '300');
 
     await clickAfterTyping(page, '#saveBillBtn');
-    const dialog = page.locator('.pending-line-dialog');
+    const dialog = page.locator('.pending-line-sheet');
     await expect(dialog.locator('#pendingLineMessage')).toHaveText('Rice 5 kg × ₹30 = ₹150 is typed but not on the bill.');
     await dialog.locator('[data-choice="cancel"]').click();
     await expect(dialog).toHaveCount(0);
@@ -101,14 +101,14 @@ test('a half-typed line is named and focused; the bill waits (S-1)', async ({ pa
     await page.selectOption('#saleItem', await optionValue(page, '#saleItem', 'Wheat'));
     await page.fill('#saleRate', '26');
     await page.fill('#saleWeight', '2');
-    await page.click('#saleSection .add-to-bill-btn');
+    await page.click('#saleSection [data-add-line]');
     await page.fill('#saleCashPayment', '52');
     // Add empties the rate box: a weight typed now has no rate
     await page.fill('#saleWeight', '3');
     await clickAfterTyping(page, '#saveSaleBtn');
     await expectToast(page, /^.+ is not on the bill yet: type its rate and tap Add to Bill, or clear it\.$/);
     await expect(page.locator('#saleRate')).toBeFocused();
-    await expect(page.locator('.pending-line-dialog')).toHaveCount(0);
+    await expect(page.locator('.pending-line-sheet')).toHaveCount(0);
     await shot(page, testInfo, 'S1-half-typed');
     expect((await listDocs('dev_retailSales')).length).toBe(before);
     expect(problems.pageErrors).toEqual([]);
@@ -141,7 +141,7 @@ test('WhatsApp on the bill form shares a draft marked "not saved" and saves noth
     await page.selectOption('#saleItem', await optionValue(page, '#saleItem', 'Wheat'));
     await page.fill('#saleRate', '26');
     await page.fill('#saleWeight', '2');
-    await page.click('#saleSection .add-to-bill-btn');
+    await page.click('#saleSection [data-add-line]');
     await page.fill('#saleCustomerName', customer);
     const share = page.locator('[data-onclick="billing.shareSaleWhatsApp()"]');
     await expect(share).toHaveText('Share draft (not saved)');
@@ -163,7 +163,7 @@ test('Print with no printer: "saved" and "Not printed", never "saved and printed
     await page.selectOption('#saleItem', await optionValue(page, '#saleItem', 'Wheat'));
     await page.fill('#saleRate', '26');
     await page.fill('#saleWeight', '2');
-    await page.click('#saleSection .add-to-bill-btn');
+    await page.click('#saleSection [data-add-line]');
     await page.fill('#saleCustomerName', customer);
     await page.fill('#saleCashPayment', '52');
     await clickAfterTyping(page, '#printSaleBtn');

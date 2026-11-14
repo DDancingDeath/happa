@@ -24,7 +24,7 @@ const MISSING_KEY = {
  */
 export function askPendingLine({ label, line }) {
     return new Promise((resolve) => {
-        const { overlay, body, footer } = buildSheet({ labelId: 'pendingLineTitle', title: t('ui.billing.pending_line_title'), className: 'pending-line-dialog' });
+        const { overlay, body, footer } = buildSheet({ labelId: 'pendingLineTitle', title: t('ui.billing.pending_line_title'), className: 'pending-line-sheet' });
         const message = document.createElement('p');
         message.id = 'pendingLineMessage';
         message.textContent = t('msg.billing.pending_line_prompt', {

@@ -404,7 +404,7 @@ export const DayManager = {
                 const party = bill.customerName || bill.seller || bill.buyer || (type === 'retail' ? t('ui.today.walk_in') : '');
                 const no = bill.billNumber ? `#${bill.billNumber}` : '';
                 const ref = Helpers.escapeJsAttr(`id:${bill.id}`);
-                return `<button type="button" class="today-bill-row today-bill-${type}" data-onclick="history.viewBill('${ref}', '${type}')" aria-label="${esc(t('ui.today.bill_open_aria', { bill: [t(BILL_KIND_KEYS[type]), no, party].filter(Boolean).join(' ') }))}">
+                return `<button type="button" class="today-bill-${type}" data-today-bill data-onclick="history.viewBill('${ref}', '${type}')" aria-label="${esc(t('ui.today.bill_open_aria', { bill: [t(BILL_KIND_KEYS[type]), no, party].filter(Boolean).join(' ') }))}">
                     <span class="today-bill-time">${esc(at ? Helpers.formatTime(new Date(at)) : '')}</span>
                     <span class="today-bill-main"><span class="today-bill-party">${esc(party || no)}</span><span class="today-bill-kind">${esc([t(BILL_KIND_KEYS[type]), party ? no : ''].filter(Boolean).join(' · '))}</span></span>
                     <strong class="today-bill-total">${esc(moneyText(total))}</strong>

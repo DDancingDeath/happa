@@ -88,12 +88,12 @@ tr.bill-check-warn > td:first-child {
     color: var(--on-warning-soft);
 }
 
-tr.bill-check-row > td {
+tr.bill-check-line > td {
     padding-top: 0;
     border-top: none;
 }
 
-tr.bill-check-row .bill-check-msg {
+tr.bill-check-line .bill-check-msg {
     margin: 0 0 4px;
 }
 
@@ -107,7 +107,7 @@ tr.bill-check-row .bill-check-msg {
     outline-offset: 2px;
 }
 
-.bill-check-modal-list {
+.bill-check-list {
     margin: 0 0 12px;
     padding-left: 4px;
     list-style: none;

@@ -137,7 +137,7 @@ describe('one dialog controller (C5a)', () => {
         const { askPendingLine } = await import('../ui/pending-line.js');
         const under = UIManager.showModal('under', 'Under', true);
         const line = askPendingLine({ label: 'Wheat', line: { rate: 30, qty: 4, total: 120 } });
-        const top = document.querySelector('.pending-line-dialog');
+        const top = document.querySelector('.pending-line-sheet');
         expect(Number(top.style.getPropertyValue('--sheet-layer'))).toBeGreaterThan(Number(overlay().style.getPropertyValue('--sheet-layer') || 0));
         expect(document.activeElement.dataset.choice).toBe('add');
         expect(closeTopDialog()).toBe(true);
@@ -227,7 +227,7 @@ test('layers: the saving spinner is above any stack of page dialogs and below th
     const z = (name) => Number(new RegExp(`--z-${name}:\\s*(\\d+);`).exec(css('variables.css'))[1]);
     expect(z('dialog') + 100).toBeLessThan(z('busy'));
     expect(z('busy') + 100).toBeLessThan(z('modal'));
-    expect(css('loading.css')).toMatch(/\.loading-overlay \{[^}]*z-index: var\(--z-busy\);/);
+    expect(css('loading.css')).toMatch(/\.app-loading \{[^}]*z-index: var\(--z-busy\);/);
     expect(css('charts.css')).toMatch(/\.app-scrim \{[^}]*z-index: calc\(var\(--z-modal\) \+ var\(--sheet-layer, 0\)\);/);
     expect(css('charts.css')).toMatch(/\.app-scrim\.page-sheet \{[^}]*z-index: calc\(var\(--z-dialog\) \+ var\(--sheet-layer, 0\)\);/);
 });

@@ -92,8 +92,8 @@ describe('#166 partyDue lookup', () => {
 describe('#166 due line under the name', () => {
     const DOM = `
       <div id="saleSection">
-        <div class="form-row"><label>Customer</label><input id="saleCustomerName"></div>
-        <div class="payment-row"><input id="saleDue"></div>
+        <div class="bill-form-field"><label>Customer</label><input id="saleCustomerName"></div>
+        <div class="pay-line"><input id="saleDue"></div>
       </div>`;
     let draft;
 
@@ -142,7 +142,7 @@ describe('#166 due line under the name', () => {
         // "updating…" is shown by CSS only while the dues come from the cache (#59)
         expect(line().querySelector('.updating-mark').textContent).toBe(' · updating…');
         expect(line().classList.contains('party-due-old')).toBe(true);
-        expect(document.querySelector('#saleSection .form-row').nextElementSibling).toBe(line());
+        expect(document.querySelector('#saleSection .bill-form-field').nextElementSibling).toBe(line());
 
         type('Asha Devi');
         jest.advanceTimersByTime(CHECK_DEBOUNCE_MS);
@@ -210,7 +210,7 @@ describe('#166 due line under the name', () => {
     });
 
     test('purchase form says "We owe"', () => {
-        document.body.innerHTML = '<div class="form-row"><input id="customerName"></div>';
+        document.body.innerHTML = '<div class="bill-form-field"><input id="customerName"></div>';
         renderPartyDue('purchase', 'customerName', { partyName: 'asha', id: 'new' });
         expect(document.getElementById('partyDue-purchase').textContent).toContain('We owe ₹999 on 1 bill');
     });
@@ -231,7 +231,7 @@ describe('#166 Outstanding opened for one party', () => {
 
     test('shows only that party (exact name), escaped, with the same total as the due line; Show all clears it', () => {
         OutstandingManager.showParty('sale', 'Sita <b>');
-        const ids = [...document.querySelectorAll('#dueList .history-item')].map(el => el.textContent);
+        const ids = [...document.querySelectorAll('#dueList [data-history-item]')].map(el => el.textContent);
         expect(ids).toHaveLength(2);
         expect(ids.join(' ')).not.toContain('Sitaram');
         const note = document.querySelector('.party-filter-note');
@@ -242,14 +242,14 @@ describe('#166 Outstanding opened for one party', () => {
         expect(partyDue(billsForKind(AppState, 'retail'), 'Sita <b>').total).toBe(150);
 
         OutstandingManager.clearPartyFilter();
-        expect(document.querySelectorAll('#dueList .history-item')).toHaveLength(3);
+        expect(document.querySelectorAll('#dueList [data-history-item]')).toHaveLength(3);
         expect(document.querySelector('.party-filter-note')).toBeNull();
     });
 
     test('purchase side, and switching filter drops the party', () => {
         OutstandingManager.showParty('purchase', 'mohan');
-        expect(document.querySelectorAll('#dueList .history-item')).toHaveLength(1);
+        expect(document.querySelectorAll('#dueList [data-history-item]')).toHaveLength(1);
         OutstandingManager.filterDue('purchase');
-        expect(document.querySelectorAll('#dueList .history-item')).toHaveLength(2);
+        expect(document.querySelectorAll('#dueList [data-history-item]')).toHaveLength(2);
     });
 });

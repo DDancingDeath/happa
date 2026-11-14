@@ -1,5 +1,5 @@
 {
-  "_readme": "Legacy component classes (UX audit 2026-11-13, page x component matrix) -> the design-system class that replaces them (docs/design-system.md section 3). tests/ci/ds-guard.test.js counts their uses in www/templates and www/js; the count may only go down and reaches 0 when the aliases and bespoke sheets are deleted.",
+  "_readme": "Legacy component classes (UX audit 2026-11-13, page x component matrix) -> the design-system class that replaces them (docs/design-system.md section 3). tests/ci/ds-guard.test.js counts their uses in www/templates and www/js; the count may only go down. K2 took it to 2: hooks are data-* attributes and page layout uses page-scoped classes; today-item and labour-breakdown-table stay because the Today characterisation fixture (tests/fixtures/calculations/today-days.expected.json) pins their markup. Entries stay listed so a removed class cannot come back.",
   "classes": {
     "add-item-btn": ".btn (+ .btn-primary / -tonal / -ghost / -danger / -sm / -icon)",
     "add-to-bill-btn": ".btn (+ .btn-primary / -tonal / -ghost / -danger / -sm / -icon)",

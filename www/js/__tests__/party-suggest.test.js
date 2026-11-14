@@ -107,7 +107,7 @@ describe('Billing name field (ui/party-suggest)', () => {
 
     beforeAll(() => bindPartySuggest());
     beforeEach(() => {
-        document.body.innerHTML = `<div id="saleSection"><div class="form-row field bill-customer"><div class="bill-customer-box">
+        document.body.innerHTML = `<div id="saleSection"><div class="bill-form-field field bill-customer"><div class="bill-party">
             <input id="saleCustomerName"></div><datalist id="saleCustomerOptions"></datalist></div><input id="other"></div>`;
         input = document.getElementById('saleCustomerName');
         AppState.retailSalesHistory = BILLS.map(b => ({ ...b }));

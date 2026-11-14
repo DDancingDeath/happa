@@ -63,7 +63,7 @@ test('phone: More opens a modal sheet that keeps focus inside, closes on Esc and
     await expect(sheet).toHaveAttribute('aria-modal', 'true');
     await expect(sheet).toHaveAttribute('aria-label', 'Menu');
     await expect(more).toHaveAttribute('aria-expanded', 'true');
-    await expect(page.locator('#sideNav .close-btn')).toBeFocused();
+    await expect(page.locator('#sideNav .nav-close')).toBeFocused();
     // The tab bar's pages are not repeated; the others are, in groups
     await expect(page.locator('#sideNav a[data-bar]').first()).toBeHidden();
     await expect(page.locator('#sideNav a[data-onclick*="wholesale-sales"]')).toBeVisible();
@@ -109,7 +109,7 @@ test('phone on its side: the sheet fits under the bar and scrolls', async ({ pag
     expect(box.bottom).toBeLessThanOrEqual(box.vh + 1);
     expect(box.scrolls).toBe(true);
     expect(box.overflow).toBe('auto');
-    await expect(page.locator('#sideNav .close-btn')).toBeInViewport();
+    await expect(page.locator('#sideNav .nav-close')).toBeInViewport();
     await expect(page.locator('#bizSwitch')).toBeInViewport();
     await page.locator('#sideNav a[data-onclick*="diagnostics"]').scrollIntoViewIfNeeded();
     await expect(page.locator('#sideNav a[data-onclick*="diagnostics"]')).toBeInViewport();

@@ -34,7 +34,7 @@ const html = `
       <div id="wrap"><div id="historyList"></div></div>
     </div>`;
 
-const ids = () => [...document.querySelectorAll('#historyList .history-item .bill-row__link')]
+const ids = () => [...document.querySelectorAll('#historyList [data-history-item] .bill-row__link')]
     .map(s => s.textContent.replace('#', ''));
 
 describe('History filters (#160)', () => {

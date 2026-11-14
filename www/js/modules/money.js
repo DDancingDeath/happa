@@ -619,7 +619,7 @@ export const MoneyManager = {
     renderStockMovement(m) {
         const s = m.M17;
         if (!s) { this.html('moneyStockMovement', `<p class="empty">${esc(t('ui.money.caveat_history'))}</p>`); return; }
-        const row = (k, v, card) => `<div class="row ins-row ins-tap" data-breakdown="${card}" role="button" tabindex="0"><span class="row-main">${esc(t(k))}</span><span class="row-amt">${esc(moneyText(v, 'signed'))}</span></div>`;
+        const row = (k, v, card) => `<div class="row ins-line ins-tap" data-breakdown="${card}" role="button" tabindex="0"><span class="row-main">${esc(t(k))}</span><span class="row-amt">${esc(moneyText(v, 'signed'))}</span></div>`;
         this.html('moneyStockMovement', row('ui.money.opening_stock', s.opening, 'stockOpening')
             + row('ui.money.plus_bought', s.purchases, 'stockPurchases')
             + row('ui.money.cogs_minus', s.cogs, 'cogs')
@@ -924,20 +924,20 @@ export const MoneyManager = {
         this.html('moneyWorthCaveats', seeStock && worth !== null && cfg.netWorthTerms.includes('drawer') && !drawerKnown
             ? `<div class="notice warn ins-caveat">${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>${esc(t('ui.money.worth_no_drawer', { why: drawerWhy }))}</span></div>` : '');
         const go = (link) => `<button type="button" class="btn btn-ghost btn-sm" data-go="${esc(link)}">${esc(t(`ui.money.home_${link.replace(/-/g, '_')}`))} ›</button>`;
-        const term = (label, value, link, ref) => `<div class="row ins-row"><span class="row-main">${esc(t(label))}</span><span class="row-trail"><span class="row-amt"${ref ? ` data-metric-ref="${ref}"` : ''}>${moneyHtml(value, TM)}</span> ${go(link)}</span></div>`;
+        const term = (label, value, link, ref) => `<div class="row ins-line"><span class="row-main">${esc(t(label))}</span><span class="row-trail"><span class="row-amt"${ref ? ` data-metric-ref="${ref}"` : ''}>${moneyHtml(value, TM)}</span> ${go(link)}</span></div>`;
         // C9 not known (loading, not loaded, no count in 30 days): "—" and why, never ₹0 (#92)
-        const drawerRow = `<div class="row ins-row" data-drawer="${esc(drawer.state)}"><span class="row-main"><span class="row-title">${esc(t(drawerKnown ? 'ui.money.drawer_last' : 'ui.money.drawer_cash'))}</span>`
+        const drawerRow = `<div class="row ins-line" data-drawer="${esc(drawer.state)}"><span class="row-main"><span class="row-title">${esc(t(drawerKnown ? 'ui.money.drawer_last' : 'ui.money.drawer_cash'))}</span>`
             + `${drawerKnown ? '' : `<span class="row-meta">${esc(drawerWhy)}</span>`}</span>`
             + `<span class="row-trail"><span class="row-amt" data-metric-ref="C9">${drawerKnown ? moneyHtml(drawer.amount, TM) : '—'}</span> ${go('cash-management')}</span></div>`;
         const accountsNote = !seeAccounts && this.cfg().netWorthTerms.includes('accounts')
-            ? `<div class="row ins-row"><span class="row-main">${esc(t('ui.money.other_accounts'))}</span><span class="row-meta">${esc(t('ui.money.accounts_owner_manager'))}</span></div>` : '';
+            ? `<div class="row ins-line"><span class="row-main">${esc(t('ui.money.other_accounts'))}</span><span class="row-meta">${esc(t('ui.money.accounts_owner_manager'))}</span></div>` : '';
         this.html('moneyWorthTerms',
             (seeStock && cfg.netWorthTerms.includes('stock') ? term('ui.money.stock_value', stock, 'stock', 'S4') : '')
             + (cfg.netWorthTerms.includes('receivable') ? term('ui.money.to_receive', dues.receivable.total, 'due', 'O4') : '')
             + (cfg.netWorthTerms.includes('drawer') ? drawerRow : '')
-            + (cfg.netWorthTerms.includes('accounts') ? `<div class="row ins-row"><span class="row-main">${esc(t('ui.money.other_accounts'))}</span><span class="row-amt" data-input>${moneyHtml(accounts, TM)}</span></div>` : accountsNote)
+            + (cfg.netWorthTerms.includes('accounts') ? `<div class="row ins-line"><span class="row-main">${esc(t('ui.money.other_accounts'))}</span><span class="row-amt" data-input>${moneyHtml(accounts, TM)}</span></div>` : accountsNote)
             + term('ui.money.to_pay', -dues.payable.total, 'due', 'O3')
-            + (seeStock ? `<div class="row ins-row ins-total"><span class="row-main">${esc(t('ui.money.net_worth'))}</span><span class="row-amt" data-metric-ref="M15">${moneyHtml(worth, TM)}</span></div>` : ''));
+            + (seeStock ? `<div class="row ins-line ins-total"><span class="row-main">${esc(t('ui.money.net_worth'))}</span><span class="row-amt" data-metric-ref="M15">${moneyHtml(worth, TM)}</span></div>` : ''));
         const list = this.accounts();
         const state = this.sharedAccounts.state;
         const edit = this.canEditAccounts();

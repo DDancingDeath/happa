@@ -72,7 +72,7 @@ describe('items and parties == oracle (I1, I3, I4) and add up', () => {
     test('Retail / wholesale split adds up to sales (I2)', () => {
         InsightsManager.init('items');
         const w = O.metrics(data, OCT);
-        const vals = [...document.querySelectorAll('#insightsSplit .ins-row span:last-child')].map(el => num(el.textContent.split('·')[0]));
+        const vals = [...document.querySelectorAll('#insightsSplit .ins-line span:last-child')].map(el => num(el.textContent.split('·')[0]));
         expect(vals).toEqual([Math.round(w.M1_retail), Math.round(w.M1_wholesale)]);
     });
 

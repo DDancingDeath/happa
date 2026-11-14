@@ -220,7 +220,7 @@ describe('#46/#77 Outstanding panel', () => {
         expect(panel.querySelector('.aging-overdue').textContent).toBe('Overdue (> 30 days) ₹500');
         expect(panel.querySelector('.aging-chase li').textContent).toContain('₹500 overdue');
         expect(panel.textContent.toLowerCase()).not.toContain('staff');
-        expect(document.querySelectorAll('#dueList .history-item')).toHaveLength(2);
+        expect(document.querySelectorAll('#dueList [data-history-item]')).toHaveLength(2);
     });
 
     test('an age group with ₹0 is not coloured by its age', () => {
@@ -234,10 +234,10 @@ describe('#46/#77 Outstanding panel', () => {
     test('tapping a bucket filters the bill list; tapping again shows all', () => {
         OutstandingManager.renderDue();
         OutstandingManager.setAgingBucket('90+');
-        expect([...document.querySelectorAll('#dueList .history-item')].map(el => el.textContent)).toEqual([expect.stringContaining('#R1')]);
+        expect([...document.querySelectorAll('#dueList [data-history-item]')].map(el => el.textContent)).toEqual([expect.stringContaining('#R1')]);
         expect(document.querySelectorAll('#dueAgingParties .aging-party')).toHaveLength(1);
         OutstandingManager.setAgingBucket('90+');
-        expect(document.querySelectorAll('#dueList .history-item')).toHaveLength(2);
+        expect(document.querySelectorAll('#dueList [data-history-item]')).toHaveLength(2);
     });
 
     test('payables show no Remind button and no chase list', () => {
@@ -297,7 +297,7 @@ describe('#125 wholesale dues on Outstanding (All / Retail / Wholesale)', () => 
         AppState.purchaseHistory = [];
         AppState.currentDueFilter = 'purchase';
     });
-    const ids = () => [...document.querySelectorAll('#dueList .history-item')].map(el => el.querySelector('input[type="number"]').id.replace(/^(due)?[pP]ayment_/, '')).sort();
+    const ids = () => [...document.querySelectorAll('#dueList [data-history-item]')].map(el => el.querySelector('input[type="number"]').id.replace(/^(due)?[pP]ayment_/, '')).sort();
     const total = () => document.querySelector('#dueAging .aging-total').textContent;
     const active = () => [...document.querySelectorAll('#due .due-seg > .active, #dueSaleKinds > .active')].map(b => b.dataset.dueKind || b.className.match(/filter-(purchase|sale)/)[1]);
 
@@ -344,7 +344,7 @@ describe('#125 wholesale dues on Outstanding (All / Retail / Wholesale)', () => 
         OutstandingManager.filterDue('sale');
         // its own input ids: the Wholesale page lists the same bill with payment_w2
         expect(document.getElementById('payment_w2')).toBeNull();
-        const row = document.getElementById('duePayment_w2').closest('.history-item');
+        const row = document.getElementById('duePayment_w2').closest('[data-history-item]');
         expect(row.querySelector('#duePaymentOnline_w2')).not.toBeNull();
         const record = jest.spyOn(OutstandingManager, 'recordDuePayment').mockResolvedValue(true);
         document.body.insertAdjacentHTML('beforeend', '<div id="salesOutstandingList"><input id="payment_w2" value="7"></div>');

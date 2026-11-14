@@ -22,7 +22,7 @@
 
     .ins-head > .tabs { order: 1; }
     .ins-head > .ins-period { order: 2; }
-    .ins-head > .ins-cmp-toggle { order: 3; }
+    .ins-head > .ins-more { order: 3; }
     .ins-head > .ins-abbar { order: 4; }
 }
 
@@ -45,8 +45,8 @@
 
 .ins-period .ins-preset:not([multiple]):not([size]) { width: auto; max-width: 42%; min-height: 44px; padding: 0 var(--sp-6) 0 var(--sp-3); background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%; font-size: var(--fs-sm); }
 
-.ins-cmp-toggle { align-self: flex-end; margin-top: var(--sp-1); }
-.ins-cmp-toggle[aria-expanded="true"] .ins-cmp-chev { transform: rotate(180deg); }
+.ins-more { align-self: flex-end; margin-top: var(--sp-1); }
+.ins-more[aria-expanded="true"] .ins-cmp-chev { transform: rotate(180deg); }
 .ins-head:not(.ins-cmp-open) .ins-cmp-more { display: none; }
 
 .ins-compare { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); color: var(--ink-2); font-size: var(--fs-sm); }
@@ -152,8 +152,8 @@ div.ins-wide,
 .ins-host .rt-page { padding: 0; }
 .ins-takeaway-dark { margin: 0 0 var(--sp-3); }
 
-/* Statements: the document's rows (.ins-row and .ins-total are also the print hooks, services/exporter.js) */
-.st-doc .ins-row {
+/* Statements: the document's rows (.ins-line and .ins-total are also the print hooks, services/exporter.js) */
+.st-doc .ins-line {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -164,10 +164,10 @@ div.ins-wide,
     color: var(--ink);
 }
 
-.st-doc .ins-row:last-child { border-bottom: 0; }
-.st-doc .ins-row > span:last-child { font-family: var(--font-num); font-weight: var(--w-strong); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
-.st-doc .ins-row.ins-sub { min-height: 0; padding-top: 0; border-bottom: 0; color: var(--ink-3); font-size: var(--fs-sm); }
-.st-doc .ins-row.ins-total { font-weight: var(--w-strong); }
+.st-doc .ins-line:last-child { border-bottom: 0; }
+.st-doc .ins-line > span:last-child { font-family: var(--font-num); font-weight: var(--w-strong); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.st-doc .ins-line.ins-sub { min-height: 0; padding-top: 0; border-bottom: 0; color: var(--ink-3); font-size: var(--fs-sm); }
+.st-doc .ins-line.ins-total { font-weight: var(--w-strong); }
 
 .st-list { margin-top: var(--sp-2); }
 .st-list .row { min-height: 64px; }
@@ -180,7 +180,7 @@ div.ins-wide,
 .st-flag td { background: var(--warning-soft); }
 .st-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); margin-top: var(--sp-2); }
 .st-balance { margin: 0 0 var(--sp-4); }
-.st-balance > .hero-value { margin-bottom: var(--sp-2); }
+.st-balance > .hero-fig { margin-bottom: var(--sp-2); }
 .st-match { margin-top: var(--sp-2); }
 
 /* Period A vs period B, saved ranges, summary (#140) */
@@ -190,5 +190,5 @@ div.ins-wide,
 .ins-ab-bar select, .ins-ab-dates input, .ins-ab-bar .btn, .ins-ab-dates .btn { min-height: 44px; font-size: var(--fs-sm); }
 .ins-ab-bar .btn, .ins-ab-dates .btn { padding: 0 var(--sp-3); }
 .ins-ab-saved { max-width: 100%; }
-.ins-ab-table .ins-cmp-up { color: var(--positive); }
-.ins-ab-table .ins-cmp-down { color: var(--negative); }
+.ins-cmp-table .ins-cmp-up { color: var(--positive); }
+.ins-cmp-table .ins-cmp-down { color: var(--negative); }

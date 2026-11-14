@@ -1,5 +1,5 @@
 /* The full-screen spinner, for blocking saves only: above any stack of page dialogs, below the confirms */
-.loading-overlay {
+.app-loading {
   position: fixed;
   top: 0;
   left: 0;
@@ -14,7 +14,7 @@
   backdrop-filter: none;
 }
 
-.loading-overlay.active {
+.app-loading.active {
   display: flex;
 }
 

@@ -6,10 +6,10 @@ import { NavigationManager, trapFocus } from '../ui/navigation.js';
 function render() {
     document.body.innerHTML = `
         <div class="side-nav" id="sideNav">
-            <div class="nav-header"><h2>Aadhat</h2><button class="close-btn" type="button">x</button></div>
+            <div class="nav-header"><h2>Aadhat</h2><button class="nav-close" type="button">x</button></div>
             <nav class="nav-menu"><a href="#" id="link">Today</a></nav>
         </div>
-        <div class="overlay" id="overlay"></div>
+        <div class="scrim nav-scrim" id="overlay"></div>
         <button id="underlying">Save</button>
         <button class="bottom-nav-item" data-tab="more" aria-expanded="false">More</button>`;
     NavigationManager.initMenuDismiss();
@@ -82,7 +82,7 @@ describe('side menu as a bottom sheet (redesign 4.1)', () => {
         expect(nav.getAttribute('aria-modal')).toBe('true');
         expect(nav.getAttribute('aria-label')).toBe('Menu');
         expect(more.getAttribute('aria-expanded')).toBe('true');
-        expect(document.activeElement).toBe(nav.querySelector('.close-btn'));
+        expect(document.activeElement).toBe(nav.querySelector('.nav-close'));
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
         expect(nav.hasAttribute('role')).toBe(false);
         expect(more.getAttribute('aria-expanded')).toBe('false');
@@ -91,7 +91,7 @@ describe('side menu as a bottom sheet (redesign 4.1)', () => {
 
     test('Tab and Shift+Tab wrap inside the open sheet', () => {
         NavigationManager.openMenu();
-        const close = document.querySelector('#sideNav .close-btn');
+        const close = document.querySelector('#sideNav .nav-close');
         const link = document.getElementById('link');
         link.focus();
         const tab = (shiftKey) => {
@@ -109,7 +109,7 @@ describe('side menu as a bottom sheet (redesign 4.1)', () => {
         document.body.insertAdjacentHTML('beforeend', '<header class="app-bar"><button class="hamburger">Menu</button><h1 id="appBarTitle" tabindex="-1">Rentals</h1></header>');
         const more = document.querySelector('[data-tab="more"]');
         const menu = document.querySelector('.app-bar .hamburger');
-        const shownEls = new Set([document.querySelector('#sideNav .close-btn'), more]);
+        const shownEls = new Set([document.querySelector('#sideNav .nav-close'), more]);
         Element.prototype.getClientRects.mockImplementation(function () { return shownEls.has(this) ? [{}] : []; });
         more.focus();
         NavigationManager.openMenu();

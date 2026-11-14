@@ -70,7 +70,7 @@
     flex: 1 1 40%;
 }
 
-.fin-row {
+.fin-line {
     display: flex;
     justify-content: space-between;
     gap: 10px;
@@ -78,27 +78,27 @@
     border-bottom: 1px solid var(--border-color);
 }
 
-.fin-row-tappable {
+.fin-line-tap {
     cursor: pointer;
 }
 
-.fin-row-main {
+.fin-line-main {
     min-width: 0;
 }
 
-.fin-row-title {
+.fin-line-title {
     font-size: var(--fs-sm);
     font-weight: var(--w-strong);
     overflow-wrap: anywhere;
 }
 
-.fin-row-sub {
+.fin-line-sub {
     font-size: var(--fs-caption);
     color: var(--text-muted);
     overflow-wrap: anywhere;
 }
 
-.fin-row-amt {
+.fin-line-amt {
     font-weight: var(--w-strong);
     white-space: nowrap;
 }
@@ -118,7 +118,7 @@
     color: inherit;
 }
 
-.fin-group-rows {
+.fin-group-lines {
     padding-left: 12px;
 }
 

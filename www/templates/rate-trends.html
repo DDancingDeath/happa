@@ -83,11 +83,11 @@
 
                 <div id="rtTableView" style="display: none;">
                     <div class="panel panel-pad rt-panel">
-                        <div class="rt-table-wrap" id="rtTable"></div>
+                        <div class="rt-scroll" id="rtTable"></div>
                     </div>
                     <div class="panel panel-pad rt-panel">
                         <h3 data-i18n="ui.trends.items_changes">Rate changes on the Rates page</h3>
-                        <div class="rt-table-wrap" id="rtSteps"></div>
+                        <div class="rt-scroll" id="rtSteps"></div>
                     </div>
                 </div>
             </div>
@@ -100,7 +100,7 @@
                         </label>
                     </div>
                     <h3 class="rt-sub" data-i18n="ui.trends.traffic_title">Items moved in the month</h3>
-                    <div class="rt-table-wrap" id="rtTrafficTable"></div>
+                    <div class="rt-scroll" id="rtTrafficTable"></div>
                     <div class="rt-muted" data-i18n="ui.trends.traffic_note">From bills: kg = purchase + wholesale + retail kg; amount = kg × bill rate. Tap an item for day-by-day detail.</div>
                 </div>
                 <div class="panel panel-pad rt-panel">
@@ -110,14 +110,14 @@
                             <select id="rtTrafficItem" data-onchange="rateTrends.setTrafficItem(this.value)"></select>
                         </label>
                     </div>
-                    <div class="rt-table-wrap" id="rtDaily"></div>
+                    <div class="rt-scroll" id="rtDaily"></div>
                 </div>
                 <div class="panel panel-pad rt-panel">
                     <div class="rt-head">
                         <h3 data-i18n="ui.trends.weekly_title">Week by week</h3>
                         <select id="rtTrafficWeeks" data-onchange="rateTrends.setTrafficWeeks(this.value)" aria-label="Weeks" data-i18n-aria-label="ui.trends.weeks"></select>
                     </div>
-                    <div class="rt-table-wrap" id="rtWeekly"></div>
+                    <div class="rt-scroll" id="rtWeekly"></div>
                     <div class="rt-muted" data-i18n="ui.trends.weekly_note">Weeks run Monday to Sunday. Each cell: kg (number of bills).</div>
                 </div>
             </div>

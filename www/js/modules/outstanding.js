@@ -99,7 +99,7 @@ export class OutstandingManager {
             row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
         });
         
-        const items = container.querySelectorAll('.history-item');
+        const items = container.querySelectorAll('[data-history-item]');
         
         if (items.length === 0) {
             this.renderDue();
@@ -226,7 +226,8 @@ export class OutstandingManager {
         const today = startOfLocalDay();
         shownTransactions.forEach(transaction => {
             const div = document.createElement("div");
-            div.className = "history-item due-bill";
+            div.className = "due-bill";
+            div.dataset.historyItem = '';
             div.setAttribute('data-type', transaction.transactionType);
             const billDate = billDateOf(transaction);
             const ageDays = billDate ? ageInDays(billDate, today) : null;

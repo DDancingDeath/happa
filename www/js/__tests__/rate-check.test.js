@@ -203,7 +203,7 @@ describe('BF-BAGCHECK: one bag / packet above 100 kg', () => {
 
 // ---------- the dialog and the forms ----------
 
-const dialog = () => document.querySelector('.rate-check-dialog');
+const dialog = () => document.querySelector('.rate-check-sheet');
 async function answer(choice) {
     for (let i = 0; i < 50 && !dialog(); i++) await new Promise(r => setTimeout(r, 0));
     expect(dialog()).not.toBeNull();

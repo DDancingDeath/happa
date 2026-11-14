@@ -59,14 +59,14 @@ test('members without the Wholesale page see no wholesale card or bills', () => 
     jest.spyOn(HealthManager, 'renderTodayBanner').mockResolvedValue();
     DayManager.loadTodayData();
     expect(document.getElementById('todayChWholesale').hidden).toBe(true);
-    const rows = [...document.querySelectorAll('.today-bill-row')].map(r => r.getAttribute('data-onclick'));
+    const rows = [...document.querySelectorAll('[data-today-bill]')].map(r => r.getAttribute('data-onclick'));
     expect(rows).toHaveLength(1);
     expect(rows[0]).toContain("'retail'");
     expect(prompt().hidden).toBe(false);
     AppState.userRole = 'owner';
     DayManager.loadTodayData();
     expect(document.getElementById('todayChWholesale').hidden).toBe(false);
-    expect(document.querySelectorAll('.today-bill-row')).toHaveLength(2);
+    expect(document.querySelectorAll('[data-today-bill]')).toHaveLength(2);
     jest.restoreAllMocks();
     ['salesHistory', 'retailSalesHistory'].forEach(k => { AppState[k] = []; });
     AppState.userRole = null;

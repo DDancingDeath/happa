@@ -191,11 +191,11 @@ function stockPage({ role = 'owner' } = {}) {
 
 async function stockScreen() {
     await StockManager.renderStock();
-    const list = [...document.querySelectorAll('#stockList .stock-item')].map(el => squash(el.textContent));
+    const list = [...document.querySelectorAll('#stockList [data-stock-item]')].map(el => squash(el.textContent));
     await StockManager.renderAdjustmentHistory();
-    const adjustments = [...document.querySelectorAll('#adjustmentHistory .history-item')].map(el => squash(el.textContent));
+    const adjustments = [...document.querySelectorAll('#adjustmentHistory [data-history-item]')].map(el => squash(el.textContent));
     await StockManager.renderDeadStock();
-    const dead = { summary: squash(document.getElementById('deadStockSummary').textContent), rows: [...document.querySelectorAll('#deadStockList .stock-item')].map(el => squash(el.textContent)) };
+    const dead = { summary: squash(document.getElementById('deadStockSummary').textContent), rows: [...document.querySelectorAll('#deadStockList [data-stock-item]')].map(el => squash(el.textContent)) };
     const current = {};
     StockManager.loadAdjustItemsDropdown();
     for (const item of [...STOCK_ITEMS, { id: '' }]) {
@@ -216,7 +216,7 @@ describe('Stock screen, pinned (S1–S4, adjustment value)', () => {
     test('staff: "Available" above 100 kg, rate shown', async () => {
         stockPage({ role: 'staff' });
         await StockManager.renderStock();
-        pin('stock.staff', [...document.querySelectorAll('#stockList .stock-item')].map(el => squash(el.textContent)));
+        pin('stock.staff', [...document.querySelectorAll('#stockList [data-stock-item]')].map(el => squash(el.textContent)));
     });
 
     test('Not selling in Hindi: the average rate is Hindi too, no English "avg" (#92)', async () => {
@@ -224,7 +224,7 @@ describe('Stock screen, pinned (S1–S4, adjustment value)', () => {
         setLang('hi');
         try {
             await StockManager.renderDeadStock();
-            const rows = [...document.querySelectorAll('#deadStockList .stock-item')].map(el => squash(el.textContent)).join(' | ');
+            const rows = [...document.querySelectorAll('#deadStockList [data-stock-item]')].map(el => squash(el.textContent)).join(' | ');
             expect(rows).toContain('औसत ₹31.33/kg');
             expect(rows).not.toMatch(/avg/i);
         } finally {
@@ -239,12 +239,12 @@ describe('Stock screen, pinned (S1–S4, adjustment value)', () => {
         const stock = copy(AppState.stock);
         jest.spyOn(FirebaseService, 'getStock').mockImplementation(async () => copy(stock));
         await StockManager.renderStock();
-        const list = [...document.querySelectorAll('#stockList .stock-item')].map(el => squash(el.textContent));
+        const list = [...document.querySelectorAll('#stockList [data-stock-item]')].map(el => squash(el.textContent));
         await StockManager.renderDeadStock();
-        const dead = { summary: squash(document.getElementById('deadStockSummary').textContent), rows: [...document.querySelectorAll('#deadStockList .stock-item')].map(el => squash(el.textContent)) };
+        const dead = { summary: squash(document.getElementById('deadStockSummary').textContent), rows: [...document.querySelectorAll('#deadStockList [data-stock-item]')].map(el => squash(el.textContent)) };
         AppState.stockAdjustments = AppState.stockAdjustments.slice(-8);
         await StockManager.renderAdjustmentHistory();
-        const adjustments = [...document.querySelectorAll('#adjustmentHistory .history-item')].map(el => squash(el.textContent));
+        const adjustments = [...document.querySelectorAll('#adjustmentHistory [data-history-item]')].map(el => squash(el.textContent));
         pin(`stock.${name}`, { list, dead, adjustments });
     });
 });
@@ -426,7 +426,7 @@ describe('Outstanding aging, pinned (O1–O4, ages)', () => {
             OutstandingManager.filterDue(kind);
             got[kind] = {
                 aging: squash(document.getElementById('dueAging').textContent),
-                ages: [...document.querySelectorAll('#dueList .history-item')].map(el => `${squash(el.querySelector('.history-header').textContent)} | ${squash(el.querySelector('.aging-age').textContent)}`)
+                ages: [...document.querySelectorAll('#dueList [data-history-item]')].map(el => `${squash(el.querySelector('.history-header').textContent)} | ${squash(el.querySelector('.aging-age').textContent)}`)
             };
         });
         pin(`outstanding.${name}`, got);

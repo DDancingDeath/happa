@@ -346,8 +346,8 @@ describe('BF-RATECHECK, BF-BAGCHECK: the billing confirms (OD-02; bag weight, 8 
         setVal('saleWeight', 12.4);
         const adding = RetailSaleManager.addToSalesBill();
         const want = O.rateCheckOracle({ rate: 140, qty: 12.4, listed: AppState.items[1].saleRates });
-        for (let i = 0; i < 20 && !document.querySelector('.rate-check-dialog'); i++) await Promise.resolve();
-        const dialog = document.querySelector('.rate-check-dialog');
+        for (let i = 0; i < 20 && !document.querySelector('.rate-check-sheet'); i++) await Promise.resolve();
+        const dialog = document.querySelector('.rate-check-sheet');
         expect(dialog.querySelector('#rateCheckMessage').textContent)
             .toBe(`Wheat 12.4 kg × ₹140 = ₹${want.amount.toLocaleString('en-IN')}. Today's rate ₹28 would give ₹${want.todayAmount}.`);
         dialog.querySelector('[data-choice="fix"]').click();

@@ -62,7 +62,7 @@ const WHOLESALE_DOM = `
 
 const $ = (id) => document.getElementById(id);
 const setVal = (id, v) => { $(id).value = String(v); };
-const dialog = () => document.querySelector('.pending-line-dialog');
+const dialog = () => document.querySelector('.pending-line-sheet');
 const toasts = () => UIManager.showToast.mock.calls.map(c => c[0]);
 
 /** Waits for the "Line not added" dialog, answers it and returns its message. */
@@ -340,7 +340,7 @@ describe('Print with no printer (S-12)', () => {
 });
 
 describe('Billing mode (D-5)', () => {
-    const DOM = `<div class="side-nav"><nav class="nav-menu"></nav></div><div class="overlay"></div>
+    const DOM = `<div class="side-nav"><nav class="nav-menu"></nav></div><div class="scrim nav-scrim"></div>
         <div class="tab" id="billing">
           <button class="active" id="purchaseModeBtn"></button><button id="saleModeBtn"></button>
           <div id="purchaseSection" style="display: block;"></div><div id="saleSection" style="display: none;"></div>

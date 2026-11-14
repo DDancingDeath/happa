@@ -200,7 +200,7 @@ body:has(.tab.sale-theme.active) .dialog-actions > .btn-primary {
   flex: 1;
 }
 
-.item-modal-danger {
+.item-danger-zone {
   display: flex;
   justify-content: flex-start;
   margin-top: var(--sp-2);

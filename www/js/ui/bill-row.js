@@ -4,7 +4,7 @@
  * the old app" toggle. Both pages use these so their rows line up the same way:
  * desktop = one grid row with fixed columns (bill no | party | amount |
  * date & by | items | payment chips), phone = a two-line card (see
- * history.css / desktop.css, `.bill-row`).
+ * history.css / desktop.css, `[data-bill-row]`).
  * @module ui/bill-row
  */
 
@@ -109,7 +109,7 @@ export function billItemsText(bill) {
 }
 
 /**
- * One bill row element (`div.history-item.bill-row`).
+ * One bill row element (`div[data-history-item][data-bill-row]`).
  * @param {Object} bill
  * @param {Object} opts
  * @param {string} opts.onclick - safe data-onclick call for the bill number (built with Helpers.escapeJsAttr)
@@ -123,7 +123,9 @@ export function buildBillRow(bill, { onclick, kind, rowTap = false, typeTag = fa
     const opening = isOpeningRecord(bill);
     const voided = !isActiveBill(bill);
     const type = kind || bill?.type || 'purchase';
-    div.className = `history-item bill-row row${opening ? ' is-opening' : ''}${voided ? ' is-voided' : ''}`;
+    div.className = `row${opening ? ' is-opening' : ''}${voided ? ' is-voided' : ''}`;
+    div.dataset.historyItem = '';
+    div.dataset.billRow = '';
     div.setAttribute('data-type', type);
     if (rowTap && onclick) {
         // `onclick` is escaped for markup (escapeJsAttr): parse it as markup, as the link's was
@@ -146,7 +148,7 @@ export function buildBillRow(bill, { onclick, kind, rowTap = false, typeTag = fa
         <span class="bill-row__amount">${Helpers.escapeHtml(billListAmountText(bill))}</span>
         <span class="bill-row__meta">
             <span class="bill-row__date">${Helpers.escapeHtml(date.text)}${date.bad ? badDateBadgeHtml() : ''}${by ? `<span class="bill-row__by"> • ${byNameHtml(by)}</span>` : ''}</span>
-            <span class="bill-row__items history-summary" title="${Helpers.escapeHtml(items)}">${Helpers.escapeHtml(items)}</span>
+            <span class="bill-row__items" title="${Helpers.escapeHtml(items)}">${Helpers.escapeHtml(items)}</span>
             <span class="bill-row__chips history-payment">${tag}${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${opening ? '' : SyncStatus.chipHtml(bill?.id)}${voidedChipHtml(bill)}${printStatusChipHtml(bill)}${paymentChipsHtml(bill)}</span>
         </span>
     `;
@@ -315,8 +317,8 @@ export function billTableHtml(bills, { onclickFor, openings = [], voided = [], t
     const openingRows = group(openings, 'ui.history.old_dues_group');
     const voidedRows = group(voided, 'ui.void.group');
     return `
-        <div class="bill-table-wrap panel">
-            <table class="table bill-table">
+        <div class="bill-table-scroll panel">
+            <table class="table" data-bill-table>
                 <thead>
                     <tr>
                         <th class="bill-table__no">${L('ui.history.col_bill_no')}</th>

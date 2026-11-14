@@ -155,7 +155,8 @@ export class StockManager {
         stockWithDetails.forEach(item => {
             const displayName = (AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name;
             const div = document.createElement("div");
-            div.className = "stock-item row";
+            div.className = "row";
+            div.dataset.stockItem = '';
             const rateLine = txMoney('ui.stock.rate_per_kg', { rate: formatAmount(item.rate, 'rate') }, item.rate, 'rate');
 
             if (item.isOrphan) {
@@ -250,7 +251,7 @@ export class StockManager {
         if (!rows.length) return '';
         const lines = rows.map(r => `<li><strong>${Helpers.escapeHtml(r.name)}</strong> ${isStaff && r.quantity > 100 ? tx('ui.stock.available')
             : tx('ui.stock.low_row', { qty: stockKg(r.quantity), level: stockKg(r.level) })}</li>`).join('');
-        return `<div class="stock-low-card notice warn" role="status">${icon('triangle')}<div class="grow"><b>${tx('ui.stock.low_title', { n: rows.length })}</b><ul class="stock-low-list">${lines}</ul></div></div>`;
+        return `<div class="notice warn" data-stock-low role="status">${icon('triangle')}<div class="grow"><b>${tx('ui.stock.low_title', { n: rows.length })}</b><ul class="stock-low-list">${lines}</ul></div></div>`;
     }
 
     /**
@@ -448,7 +449,7 @@ export class StockManager {
         if (!container) return;
         
         // Get all stock items
-        const stockItems = container.querySelectorAll('.stock-item');
+        const stockItems = container.querySelectorAll('[data-stock-item]');
         
         if (stockItems.length === 0) {
             // No items rendered yet, render first
@@ -555,7 +556,7 @@ export class StockManager {
     static refreshForLanguage() {
         const dead = document.getElementById('deadStockSection');
         if (dead && !dead.hidden) this.renderDeadStock();
-        if (document.querySelector('#stockList .stock-item')) this.renderStock();
+        if (document.querySelector('#stockList [data-stock-item]')) this.renderStock();
         this.updateAdjustmentPlaceholder();
         this.renderAdjustmentHistory();
         const updating = document.querySelector('#stockList .stock-updating');
@@ -617,7 +618,7 @@ export class StockManager {
                 const sale = daysSinceLabel(r.daysSinceSale, r.saleBeyondWindow, windowDays);
                 const purchase = daysSinceLabel(r.daysSincePurchase, r.purchaseBeyondWindow, windowDays);
                 return `
-                <div class="stock-item dead-stock-item row">
+                <div class="dead-stock-item row" data-stock-item>
                         <div class="row-main">
                             <div class="row-title">${e(displayName || r.name || '-')}</div>
                             <div class="row-meta tone-warn">${e(t('ui.deadstock.last_sale'))}: ${e(sale)}${r.uncertain ? ' *' : ''}</div>
@@ -898,7 +899,8 @@ export class StockManager {
             
             adjustments.forEach(adj => {
                 const div = document.createElement("div");
-                div.className = "history-item stock-adj";
+                div.className = "stock-adj";
+                div.dataset.historyItem = '';
                 
                 const typeLabels = { add: t('ui.stock.adj_added'), remove: t('ui.stock.adj_removed'), set: t('ui.stock.adj_set_to') };
                 

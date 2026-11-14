@@ -415,8 +415,8 @@ html[lang="hi"] body {
 /* Money and weight columns line up digit under digit */
 table,
 input[type="number"],
-.total-row strong,
-.payment-row strong {
+.total-line strong,
+.pay-line strong {
   font-variant-numeric: tabular-nums;
 }
 

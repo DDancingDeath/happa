@@ -253,7 +253,7 @@ export function compareTableHtml(rows, labels) {
     const body = rows.map(r => `<tr data-cmp-row="${r.id}"${r.id === 'M6' ? ' data-perm="profit"' : ''}><td>${esc(t(ROW_KEYS[r.id]))}</td>`
         + `<td class="num">${moneyText(r.a, 'signed')}</td><td class="num">${moneyText(r.b, 'signed')}</td><td class="num">${signed(r.diff)}</td>`
         + `<td class="num ins-cmp-${r.c?.dir || 'none'}">${esc(pctText(r.c) || '—')}</td></tr>`).join('');
-    return `<table class="table ins-table ins-ab-table">${head}<tbody>${body}</tbody></table>`;
+    return `<table class="table ins-cmp-table">${head}<tbody>${body}</tbody></table>`;
 }
 
 /**

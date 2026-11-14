@@ -270,8 +270,8 @@
     margin-bottom: var(--sp-3);
 }
 
-/* ---------- Bills: one panel per open bill (BILL-DUE); .history-item is the hook (tests, search) ---------- */
-.history-item.due-bill {
+/* ---------- Bills: one panel per open bill (BILL-DUE); [data-history-item] is the hook (tests, search) ---------- */
+[data-history-item].due-bill {
     margin-bottom: var(--sp-3);
     padding: var(--sp-4);
     border: 1px solid var(--panel-border);

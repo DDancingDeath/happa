@@ -32,7 +32,7 @@
     text-overflow: ellipsis;
   }
 
-  .app-bar .app-bar-btn {
+  .app-bar .app-bar-action {
     position: relative;
     top: auto;
     left: auto;
@@ -55,11 +55,11 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  .app-bar .app-bar-btn:hover {
+  .app-bar .app-bar-action:hover {
     background: var(--state-hover);
   }
 
-  .app-bar .app-bar-btn:active {
+  .app-bar .app-bar-action:active {
     transform: scale(0.96);
   }
 

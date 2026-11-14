@@ -219,7 +219,7 @@ describe('Today › By bill type (T18): paid later, write-off, voided, wholesale
                 .forEach(([id, f]) => expect([type, f, shown(`todayCh${k}${id}`)]).toEqual([type, f, rupee(c[f])]));
             expect(document.getElementById(`todayCh${k}WrittenOffRow`).hidden).toBe(!(c.writtenOff > 0));
         });
-        expect(document.querySelectorAll('#todayBillsList .today-bill-row')).toHaveLength(4);
+        expect(document.querySelectorAll('#todayBillsList [data-today-bill]')).toHaveLength(4);
     });
 });
 describe("Today › By bill type (T18) and Today's bills (T19) == oracle", () => {
@@ -261,7 +261,7 @@ describe("Today › By bill type (T18) and Today's bills (T19) == oracle", () =>
         });
 
         specTest('T19')('T19 rows: every bill of today once, newest first, with its total; a row opens that bill', () => {
-            const rows = [...document.querySelectorAll('#todayBillsList .today-bill-row')];
+            const rows = [...document.querySelectorAll('#todayBillsList [data-today-bill]')];
             const ids = rows.map(r => /id:([^']+)'/.exec(r.getAttribute('data-onclick'))[1]);
             expect([...ids].sort()).toEqual(want.T19.map(r => r.id).sort());
             const byId = Object.fromEntries(want.T19.map(r => [r.id, r]));
@@ -299,7 +299,7 @@ describe('Stock screen == oracle (S1, S2, S3, S5)', () => {
         jest.spyOn(FirebaseService, 'getStock').mockImplementation(async () => copy(stock));
         jest.spyOn(UIManager, 'withLoading').mockImplementation(async (fn) => fn());
     });
-    const rows = () => [...document.querySelectorAll('#stockList .stock-item')].map(el => el.textContent.replace(/\s+/g, ' '));
+    const rows = () => [...document.querySelectorAll('#stockList [data-stock-item]')].map(el => el.textContent.replace(/\s+/g, ' '));
     const itemOf = (id) => FIX.items.find(i => i.id === id);
 
     test('each row: kg (S1), rate per kg (S2) and value (S3)', async () => {
@@ -344,7 +344,7 @@ describe('Stock screen == oracle (S1, S2, S3, S5)', () => {
         await StockManager.renderStock();
         const level = (i) => (typeof i.lowStockKg === 'number' ? i.lowStockKg : 10);
         const expected = AppState.items.filter(i => want.perItem[i.id] && want.perItem[i.id].qty < level(i)).map(i => i.name).sort();
-        const card = document.querySelector('.stock-low-card');
+        const card = document.querySelector('[data-stock-low]');
         expect(expected.length).toBeGreaterThan(0);
         expect([...card.querySelectorAll('li strong')].map(el => el.textContent).sort()).toEqual(expected);
     });
@@ -355,7 +355,7 @@ describe('Stock screen == oracle (S1, S2, S3, S5)', () => {
             { id: 'a9', itemId: 'i-rice', itemName: 'Rice', adjustType: 'add', quantity: 3, rate: 31.5, previousStock: 60, newStock: 63, date: '2026-10-21T08:00:00', timestamp: NOW - 1 }
         ];
         await StockManager.renderAdjustmentHistory();
-        const cards = [...document.querySelectorAll('#adjustmentHistory .history-item')];
+        const cards = [...document.querySelectorAll('#adjustmentHistory [data-history-item]')];
         expect(cards).toHaveLength(AppState.stockAdjustments.length);
         AppState.stockAdjustments.forEach(adj => {
             const card = cards.find(c => c.textContent.includes(itemOf(adj.itemId).name) && c.textContent.includes(`${adj.quantity} kg`));
@@ -417,7 +417,7 @@ describe('Money page (all time) == oracle', () => {
         localStorage.setItem('financeCustomAccounts', JSON.stringify([{ name: 'Phone', balance: 99999, type: 'asset' }]));
         MoneyManager.init('worth');
         for (let i = 0; i < 6; i += 1) await Promise.resolve();
-        const row = [...document.querySelectorAll('#moneyWorthTerms .ins-row')].find(el => el.querySelector('[data-input]'));
+        const row = [...document.querySelectorAll('#moneyWorthTerms .ins-line')].find(el => el.querySelector('[data-input]'));
         expect(Number(row.querySelector('[data-input]').textContent.replace(/[^\d.-]/g, ''))).toBe(O.otherAccounts(shared));
         expect(O.otherAccounts(shared)).toBe(2201);
         expect(shown('moneyWorthValue')).toBe(rupee(O.netWorth(data, { accounts: O.otherAccounts(shared) })));
@@ -460,7 +460,7 @@ describe('Insights shares == oracle (I2 split, I12 top-5 share)', () => {
     test('I2: retail / wholesale % of sales', () => {
         InsightsManager.init('items');
         const w = O.metrics(data, OCT);
-        const pcts = [...document.querySelectorAll('#insightsSplit .ins-row span:last-child')].map(el => Number(el.textContent.split('·')[1].replace(/[^\d]/g, '')));
+        const pcts = [...document.querySelectorAll('#insightsSplit .ins-line span:last-child')].map(el => Number(el.textContent.split('·')[1].replace(/[^\d]/g, '')));
         expect(pcts).toEqual([Math.round((w.M1_retail / w.M1_sales) * 100), Math.round((w.M1_wholesale / w.M1_sales) * 100)]);
     });
 
@@ -486,7 +486,7 @@ describe('Outstanding screen == oracle', () => {
         OutstandingManager.agingBucket = null;
         OutstandingManager.renderDue();
         const byParty = {};
-        document.querySelectorAll('#dueList .history-item').forEach(row => {
+        document.querySelectorAll('#dueList [data-history-item]').forEach(row => {
             const name = row.querySelector('.history-header strong')?.textContent || '';
             const due = Number(row.querySelector('.history-header').textContent.match(/Due: ₹([\d,.]+)/)[1].replace(/,/g, ''));
             byParty[name] = O.r2((byParty[name] || 0) + due);

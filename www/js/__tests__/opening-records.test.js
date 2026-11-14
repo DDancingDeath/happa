@@ -93,7 +93,7 @@ describe('live case (fake values): ₹2,50,000 opening due today + ₹10 sale pa
         OutstandingManager.agingBucket = null;
         OutstandingManager.renderDue();
         expect(document.querySelector('#dueAging .aging-total').textContent.replace(/[^\d]/g, '')).toBe('250006');
-        expect(document.querySelectorAll('#dueList .history-item')).toHaveLength(2);
+        expect(document.querySelectorAll('#dueList [data-history-item]')).toHaveLength(2);
         expect(outstandingTotals({ retailSales: AppState.retailSalesHistory }).receivable.total).toBe(250006);
     });
 

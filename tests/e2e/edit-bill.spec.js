@@ -64,12 +64,12 @@ test('edit a purchase from History keeps its money fields and records why; then 
     await page.click('#modalConfirm');
     await expectToast(page, /Bill voided/i, 25000);
     expect(await getDoc('dev_purchases', id)).toMatchObject({ voided: true, voidReason: 'Entered twice', openDue: false, editCount: 1 });
-    await expect(page.locator('#historyList .history-item:not(.is-voided)')).toHaveCount(0);
+    await expect(page.locator('#historyList [data-history-item]:not(.is-voided)')).toHaveCount(0);
     await page.click('#historyVoidedToggle');
-    await expect(page.locator('#historyList .history-item.is-voided .voided-reason')).toHaveText('Entered twice');
+    await expect(page.locator('#historyList [data-history-item].is-voided .voided-reason')).toHaveText('Entered twice');
 
     // OD-14: only now (voided) can the owner delete it for good, with its edit records
-    await page.locator('#historyList .history-item.is-voided .bill-row__link').first().click();
+    await page.locator('#historyList [data-history-item].is-voided .bill-row__link').first().click();
     await page.click('#billDeleteBtn');
     await page.click('#modalConfirm');
     await expectToast(page, /deleted/i, 25000);

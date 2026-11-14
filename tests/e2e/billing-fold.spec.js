@@ -87,13 +87,13 @@ async function addLine(page, mode, rate = 30) {
     await page.selectOption(m.item, value);
     await page.fill(m.rate, String(rate));
     await page.fill(m.weight, '10');
-    await tap(page, `${m.section} .quick-add-btn-inline`);
-    await tap(page, `${m.section} .add-to-bill-btn`);
+    await tap(page, `${m.section} [data-add-weight]`);
+    await tap(page, `${m.section} [data-add-line]`);
     await expect(page.locator(m.totals[0])).not.toHaveText('0');
     // Nothing paid yet: the bill checks add their banner above the bill and a line under the
     // split (after a short debounce). Measure with them, the case #104 is about.
     await expect(page.locator(`${m.section} > .bill-check-notice`)).toBeVisible();
-    await expect(page.locator(`${m.section} .bill-col-summary .bill-check-msg`).first()).toBeVisible();
+    await expect(page.locator(`${m.section} .bill-side .bill-check-msg`).first()).toBeVisible();
 }
 
 for (const size of SIZES) {

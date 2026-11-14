@@ -32,7 +32,7 @@ describe('History paging (#24)', () => {
         HistoryManager.pageKey = '';
     });
 
-    const cards = () => document.querySelectorAll('#historyList .history-item');
+    const cards = () => document.querySelectorAll('#historyList [data-history-item]');
     const showMore = () => document.querySelector('#historyList .history-show-more button');
     const olderScrollEnabled = () => attachOlderHistoryScroll.mock.calls.at(-1)[1].enabled();
 
