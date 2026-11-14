@@ -227,7 +227,12 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   `closeSheet(overlay)` gives focus back. Esc, Back and a scrim tap press the top dialog's `[data-dismiss]`; dialogs stack in
   the order they open (`--z-modal` + `--sheet-layer`). The bill-save questions (unadded line, extreme rate, heavy bag) are
   built this way with their ids, `data-choice` and the focused default (Add, Fix) unchanged; the reason and voice-check
-  dialogs are app dialogs with `.field` content.
+  dialogs are app dialogs with `.field` content. The page dialogs are `.app-scrim.page-sheet` (a band under the confirms
+  they open, `--z-dialog`): bill details (`#billDetailsOverlay`, History and Wholesale), drafts (`#draftsOverlay`), the
+  Item dialog (`#itemEditOverlay`), expense details (`#expenseDetailsOverlay`), the Money breakdown
+  (`#financeBreakdownSheet`, a wide dialog on desktop, no longer a side panel) and What's new (`#whatsNewSheet`); the
+  desktop keyboard help (`#kbdHelpOverlay`) is a dialog. `.dialog-head` is a title row with its own Back / Close
+  buttons, `.dialog-wide` a 560 px (desktop 680 px) dialog.
 - **App shell (phone and tablet, <1024 px)**: `header.app-bar` (`hamburger.css`) holds the open page's title (`#appBarTitle`, the menu name `t('ui.nav.*')` set by `ui/bottom-nav.js` on `aadhat:tabshown`), the sync pill (`#syncStatus`) and the bell; pages scroll under it (`--appbar-h`, `--tab-top`). The menu button shows only in Rentals (no tab bar). **More** opens `#sideNav` as a modal bottom sheet (`navigation.css`): the business switch and the pages not on the tab bar (`data-bar` links are hidden there) in groups (`.nav-group`); it takes focus, keeps Tab inside, closes on Esc, Back or a swipe down and gives focus back. The open page is the `main` landmark (`role="main"`, set by `showTab`).
 - **Desktop shell (≥1024 px, 4.2, `desktop.css`)**: the same `header.app-bar` becomes the 60 px page header beside the sidebar (`--desktop-header-h`): the page title (the same `#appBarTitle`), the sync pill and the bell; pages scroll under it. The sidebar is the same `#sideNav` on `--surface-2`: the business (`.nav-mark`, name and role, the business switch), the same `.nav-group`s as the More sheet (a group shows only when the role may open one of its pages; links a role may not open carry `hidden`), Alt+1…9 hints (`.nav-kbd`, from `TAB_SHORTCUTS` in `keyboard-shortcuts.js`, which also sets `aria-keyshortcuts`), Settings and Shortcuts. At 1024–1279 px it is a 64 px icon rail (names stay for screen readers and show as tooltips). Density: `--control-h` 36, `--row-h` 44. Tab order: header, sidebar, page.
 - **Tones** for text written by scripts: `.tone-pos`, `.tone-neg`, `.tone-warn`, `.tone-info`,

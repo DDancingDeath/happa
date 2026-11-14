@@ -542,8 +542,8 @@
   }
 
   /* ---------- Modals: centered dialogs with comfortable width ---------- */
-  .bill-details-container {
-    max-width: 680px;
+  .dialog-wide {
+    width: min(680px, 100%);
   }
 
   .bill-details-footer {
@@ -566,33 +566,6 @@
   }
 
   /* ---------- Keyboard shortcuts help ---------- */
-  .kbd-help-overlay {
-    position: fixed;
-    inset: 0;
-    background: var(--scrim);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 21000;
-  }
-
-  .kbd-help {
-    background: var(--panel-bg);
-    color: var(--ink);
-    border-radius: var(--r-sheet);
-    box-shadow: var(--e3);
-    width: min(560px, 92vw);
-    max-height: 85vh;
-    overflow-y: auto;
-    padding: var(--sp-5) var(--sp-6);
-  }
-
-  .kbd-help h3 {
-    margin: 0 0 var(--sp-3);
-    font-family: var(--font-display);
-    font-size: var(--fs-lead);
-  }
-
   .kbd-help table {
     width: 100%;
     border-collapse: collapse;
@@ -609,11 +582,6 @@
     white-space: nowrap;
     width: 1%;
     padding-right: var(--sp-4);
-  }
-
-  .kbd-help-close {
-    float: right;
-    margin-top: var(--sp-3);
   }
 
   /* Anomalies page (#187): filters in one row, patterns in two columns, row actions inline */
@@ -857,27 +825,13 @@
   }
 }
 
-/* Finance card breakdown (#215): side panel instead of a bottom sheet */
+/* Finance card breakdown (#215): search and the two pickers on one line */
 @media (min-width: 1024px) {
-  .fin-sheet-overlay {
-    align-items: stretch;
-    justify-content: flex-end;
-  }
-
-  .fin-sheet {
-    width: 520px;
-    max-width: 100%;
-    max-height: none;
-    height: 100%;
-    border-radius: 0;
-    box-shadow: -8px 0 30px rgba(0, 0, 0, 0.25);
-  }
-
-  .fin-sheet-tools input {
+  .fin-tools input {
     flex: 2 1 200px;
   }
 
-  .fin-sheet-tools select {
+  .fin-tools select {
     flex: 1 1 120px;
   }
 }

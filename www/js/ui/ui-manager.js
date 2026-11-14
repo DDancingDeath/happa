@@ -182,7 +182,7 @@ function resetModalParts() {
  * The scrim and box of a dialog built in JS (`.app-scrim > .app-dialog`), with a title, a body and the
  * actions; open it with openSheet, close it with closeSheet, then remove it.
  * @param {{role?: string, labelId: string, title: string, describedBy?: string, className?: string}} opts
- * @returns {{overlay: HTMLDivElement, box: HTMLDivElement, body: HTMLDivElement, footer: HTMLDivElement}}
+ * @returns {{overlay: HTMLDivElement, box: HTMLDivElement, title: HTMLHeadingElement, body: HTMLDivElement, footer: HTMLDivElement}}
  */
 export function buildSheet({ role = 'dialog', labelId, title, describedBy = '', className = '' }) {
     const overlay = document.createElement('div');
@@ -207,7 +207,7 @@ export function buildSheet({ role = 'dialog', labelId, title, describedBy = '', 
     footer.className = 'dialog-actions';
     box.append(grabber, h, body, footer);
     overlay.appendChild(box);
-    return { overlay, box, body, footer };
+    return { overlay, box, title: h, body, footer };
 }
 
 const TOAST_TYPES = ['success', 'error', 'warning', 'info'];

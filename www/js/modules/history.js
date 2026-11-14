@@ -675,7 +675,7 @@ export class HistoryManager {
         }
         this.renderPrintStatus();
         
-        document.getElementById('billDetailsOverlay').classList.add('active');
+        UIManager.openSheet(document.getElementById('billDetailsOverlay'));
     }
 
     /** Copies the open bill's trace id (#119): kind letter + document id, no name or amount. */
@@ -692,7 +692,7 @@ export class HistoryManager {
     }
 
     static closeBillDetails() {
-        document.getElementById('billDetailsOverlay').classList.remove('active');
+        UIManager.closeSheet(document.getElementById('billDetailsOverlay'));
     }
 
     /**

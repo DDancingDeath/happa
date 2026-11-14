@@ -6,6 +6,7 @@
 import { t, LANG_CHANGE_EVENT } from '../i18n/index.js';
 import { icon } from '../ui/icons.js';
 import { pickLang } from '../i18n/localize.js';
+import { buildSheet, openSheet, closeSheet } from '../ui/ui-manager.js';
 
 export const DESKTOP_QUERY = '(min-width: 1024px)';
 
@@ -124,7 +125,7 @@ function findOpenModal() {
     if (legacy) return legacyCloser(legacy);
     const page = sheets.pop();
     if (page) return sheetCloser(page);
-    const other = [...document.querySelectorAll('.bill-details-overlay, .modal, .sheet[aria-modal="true"]:not(.app-dialog)')].filter(isShown).pop();
+    const other = [...document.querySelectorAll('.modal, .sheet[aria-modal="true"]:not(.app-dialog)')].filter(isShown).pop();
     return other ? legacyCloser(other) : null;
 }
 
@@ -250,7 +251,9 @@ function buildContext(target) {
 
 function closeHelp() {
     const el = document.getElementById(HELP_ID);
-    if (el) el.remove();
+    if (!el) return;
+    closeSheet(el);
+    el.remove();
 }
 
 function openHelp() {
@@ -258,12 +261,10 @@ function openHelp() {
     const esc = (/** @type {*} */ s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const row = (/** @type {string} */ keys, /** @type {string} */ label) => `<tr><td>${keys}</td><td>${esc(label)}</td></tr>`;
     const tabRows = TAB_SHORTCUTS.map((tab, i) => row(`<kbd class="kbd">Alt</kbd> + <kbd class="kbd">${i + 1}</kbd>`, pickLang(tab))).join('');
-    const overlay = document.createElement('div');
+    const { overlay, box, body, footer } = buildSheet({ labelId: 'kbdHelpTitle', title: t('ui.kbd.title') });
     overlay.id = HELP_ID;
-    overlay.className = 'kbd-help-overlay';
-    overlay.innerHTML = `
-        <div class="kbd-help" role="dialog" aria-modal="true" aria-labelledby="kbdHelpTitle">
-            <h3 id="kbdHelpTitle">${esc(t('ui.kbd.title'))}</h3>
+    box.classList.add('dialog-wide', 'kbd-help');
+    body.innerHTML = `
             <table><tbody>
                 ${tabRows}
                 ${row('<kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">S</kbd>', t('ui.kbd.save_bill'))}
@@ -271,13 +272,16 @@ function openHelp() {
                 ${row('<kbd class="kbd">/</kbd>', t('ui.kbd.search_page'))}
                 ${row('<kbd class="kbd">Esc</kbd>', t('ui.kbd.close_dialog'))}
                 ${row('<kbd class="kbd">?</kbd>', t('ui.kbd.toggle_help'))}
-            </tbody></table>
-            <button type="button" class="btn btn-primary kbd-help-close">${esc(t('ui.kbd.close'))}</button>
-        </div>`;
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay || /** @type {Element} */ (e.target).classList.contains('kbd-help-close')) closeHelp();
-    });
+            </tbody></table>`;
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'btn btn-primary';
+    close.dataset.dismiss = '';
+    close.textContent = t('ui.kbd.close');
+    close.addEventListener('click', closeHelp);
+    footer.appendChild(close);
     document.body.appendChild(overlay);
+    openSheet(overlay, { focus: close });
 }
 
 /**

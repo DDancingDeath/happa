@@ -148,6 +148,22 @@ describe('one dialog controller (C5a)', () => {
         await expect(under).resolves.toBe(false);
     });
 
+    test('a confirm opened from a page dialog (bill details) sits above it and closes first', async () => {
+        const { closeTopDialog } = await import('../utils/keyboard-shortcuts.js');
+        const details = document.getElementById('billDetailsOverlay');
+        UIManager.openSheet(details);
+        expect(details.classList.contains('active')).toBe(true);
+        const closeDetails = jest.fn(() => UIManager.closeSheet(details));
+        details.querySelector('[data-dismiss]').addEventListener('click', closeDetails);
+        const voiding = UIManager.showModal('Void?', 'Void', true);
+        expect(closeTopDialog()).toBe(true);
+        await expect(voiding).resolves.toBe(false);
+        expect(closeDetails).not.toHaveBeenCalled();
+        expect(closeTopDialog()).toBe(true);
+        expect(closeDetails).toHaveBeenCalledTimes(1);
+        expect(details.classList.contains('active')).toBe(false);
+    });
+
     test('a sheet below 600 px, a dialog from 600 px', async () => {
         const original = window.matchMedia;
         try {

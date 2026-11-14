@@ -763,7 +763,7 @@ const BillingManager = {
             const currentUser = firebase.auth().currentUser;
             if (!currentUser) {
                 content.innerHTML = `<p class="empty">${Helpers.escapeHtml(t('ui.billing.login_to_view_drafts'))}</p>`;
-                overlay.classList.add('active');
+                UIManager.openSheet(overlay);
                 return;
             }
 
@@ -793,11 +793,11 @@ const BillingManager = {
                 `).join('');
             }
 
-            overlay.classList.add('active');
+            UIManager.openSheet(overlay);
         } catch (error) {
             console.error('Failed to load drafts:', error);
             content.innerHTML = `<p class="empty tone-neg">${Helpers.escapeHtml(t('ui.billing.failed_load_drafts'))}</p>`;
-            overlay.classList.add('active');
+            UIManager.openSheet(overlay);
         }
     },
 
@@ -805,7 +805,7 @@ const BillingManager = {
      * Close drafts overlay
      */
     closeDrafts() {
-        document.getElementById('draftsOverlay').classList.remove('active');
+        UIManager.closeSheet(document.getElementById('draftsOverlay'));
     },
 
     /**
@@ -1665,8 +1665,7 @@ const BillingManager = {
             this.switchMode(mode, { currentTarget: btn });
         }
 
-        const overlay = document.getElementById('billDetailsOverlay');
-        if (overlay) overlay.classList.remove('active');
+        UIManager.closeSheet(document.getElementById('billDetailsOverlay'));
 
         if (mode === 'purchase') {
             PurchaseManager.setBillItems(bill.items.map(item => ({ ...item })));

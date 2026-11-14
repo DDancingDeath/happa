@@ -637,11 +637,11 @@ export class ExpensesManager {
         // Re-entry on the same day must still be inside the role's back-dating window
         const reenterBtn = document.getElementById('expenseReenterBtn');
         if (reenterBtn) reenterBtn.style.display = allowed && !this.reenterProblem(expense) ? '' : 'none';
-        document.getElementById('expenseDetailsOverlay').classList.add('active');
+        UIManager.openSheet(document.getElementById('expenseDetailsOverlay'));
     }
 
     static closeExpenseDetails() {
-        document.getElementById('expenseDetailsOverlay').classList.remove('active');
+        UIManager.closeSheet(document.getElementById('expenseDetailsOverlay'));
         window.currentExpenseId = null;
         window.currentExpenseCategory = null;
     }

@@ -810,7 +810,7 @@ const ItemsManager = {
         this.resetModalHistory(false);
         
         this.renderModalRates();
-        document.getElementById('itemEditOverlay').style.display = 'flex';
+        UIManager.openSheet(document.getElementById('itemEditOverlay'));
     },
     
     // Open modal to edit existing item
@@ -840,7 +840,7 @@ const ItemsManager = {
         this.resetModalHistory(this.canUseHistory());
         
         this.renderModalRates();
-        document.getElementById('itemEditOverlay').style.display = 'flex';
+        UIManager.openSheet(document.getElementById('itemEditOverlay'));
     },
 
     /**
@@ -1127,7 +1127,7 @@ const ItemsManager = {
     
     // Close item modal
     closeItemModal() {
-        document.getElementById('itemEditOverlay').style.display = 'none';
+        UIManager.closeSheet(document.getElementById('itemEditOverlay'));
         this.currentEditingItemId = null;
         this.editStartSnapshot = null;
         this.modalRates = { purchase: [], wholesale: [], sale: [] };
