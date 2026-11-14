@@ -26,8 +26,7 @@
 
   /* ---------- App shell (redesign 4.2): page header, permanent sidebar, no menu button or overlay ---------- */
   .hamburger,
-  .side-nav .close-btn,
-  .overlay {
+  .side-nav .close-btn {
     display: none !important;
   }
 

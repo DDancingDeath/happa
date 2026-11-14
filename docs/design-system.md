@@ -10,10 +10,11 @@ it is the redesign direction (§3 design system, §4 themes); this page is what 
 | Other themes (tokens only) | `www/css/themes/<id>.css` |
 | Theme registry, Appearance | `www/js/ui/themes.js`, `www/js/ui/theme.js` (ThemeManager) |
 | Pre-paint theme boot | the inline `#themeBoot` script in `www/index.html` (its hash is in the CSP, `docs/security.md`) |
-| Controls (buttons, fields, select, switch, segmented control, tabs, chips, tags) | `www/css/forms.css` |
-| Surfaces and feedback (panel, rows, metrics, hero, meter, notice, empty, skeleton, table, dialog, sheet, toast, loading, tones) | `www/css/surfaces.css` |
+| Controls (buttons, fields, select, switch, segmented control, tabs, chips, tags) and the global element rules (touch, focus ring, iOS field size) | `www/css/forms.css` |
+| Surfaces and feedback (panel, rows, metrics, hero, meter, notice, empty, skeleton, table, scrim, dialog, sheet, toast, tones) | `www/css/surfaces.css` |
+| The app dialog and page dialogs (`.app-scrim > .app-dialog`, `.dialog-*`); the saving spinner | `www/css/charts.css`; `www/css/loading.css` |
 | Icons | sprite at the top of `www/templates/navigation.html`, CSS in `www/css/icons.css` |
-| Cascade order | `www/styles.css` (joined into `www/css/app.css` by `npm run build:css`) |
+| Cascade order | `www/styles.css` (joined into `www/css/app.css` by `npm run build:css`): tokens and themes, then the component sheets (`icons`, `tables`, `tabs`, `toast`, then `forms`, `surfaces` and `loading` over them), then the app shell (`auth`, `hamburger`, `navigation`), then the pages, and `desktop.css` (≥1024 px layout) last. A page overrides a component in its own context; each component class is styled in one component sheet, not again in a page sheet |
 
 ## 1. Token layers
 

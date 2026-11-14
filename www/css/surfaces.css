@@ -316,6 +316,11 @@ a.row:active {
   box-shadow: var(--e2);
 }
 
+/* Wrong phone clock notice (#115): a .notice.float */
+.clock-notice {
+  z-index: calc(var(--z-sheet) + 1);
+}
+
 /* ---------- Empty and skeleton ---------- */
 .empty {
   padding: var(--sp-6) var(--sp-4);
@@ -404,24 +409,19 @@ a.row:active {
   text-align: right;
 }
 
-/* ---------- Scrim, dialog (old: .modal > .modal-content), sheet ---------- */
+/* ---------- Scrim, dialog, sheet ---------- */
 .scrim,
-.overlay,
-.modal {
+.overlay {
   background: var(--scrim);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
 
-.dialog,
-.modal-content {
+.dialog {
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--panel-bg);
   box-shadow: var(--e3);
-}
-
-.dialog {
   width: min(480px, 100% - 32px);
   min-width: min(320px, 100% - 32px);
   padding: var(--sp-5);
@@ -448,8 +448,37 @@ a.row:active {
   background: var(--line-strong);
 }
 
+/* The side menu's scrim on the phone (desktop has a permanent sidebar) */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: calc(var(--z-drawer) - 1);
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition-slow);
+}
+
+.overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+@media (min-width: 1024px) {
+  .overlay {
+    display: none;
+  }
+}
+
 /* ---------- Toast: near-black in every theme; the type shows as a coloured bar ---------- */
 .toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  z-index: var(--z-toast);
+  max-width: 85%;
   padding: 12px 16px;
   border: none;
   border-radius: var(--r-md);
@@ -460,11 +489,15 @@ a.row:active {
   box-shadow: var(--e3);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
   transform: translateX(-50%) translateY(16px);
   transition: opacity var(--dur-2) var(--ease), transform var(--dur-2) var(--ease);
 }
 
 .toast.show {
+  opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
 
@@ -472,21 +505,6 @@ a.row:active {
 .toast.error { box-shadow: var(--stripe) var(--toast-neg), var(--e3); }
 .toast.warning { box-shadow: var(--stripe) var(--toast-warn), var(--e3); }
 .toast.info { box-shadow: var(--stripe) var(--toast-info), var(--e3); }
-
-/* ---------- Loading: the full-screen spinner is for blocking saves only ---------- */
-.loading-overlay {
-  background: var(--scrim);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--line-strong);
-  border-top-color: var(--accent);
-  box-shadow: none;
-}
 
 /* ---------- Text for screen readers only ---------- */
 .sr-only {

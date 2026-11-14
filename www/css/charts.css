@@ -10,31 +10,6 @@
   }
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.tab.active {
-  animation: fadeInUp 0.3s ease;
-}
-
-/* -------------------- UTILITIES -------------------- */
-button, a, input[type="checkbox"] {
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
 /* -------------------- Dialogs and sheets (ui-manager.js openSheet) --------------------
    .app-scrim > .app-dialog: a .dialog from 600 px, a bottom .sheet below; a title, the body, then ghost Cancel
    and one primary on the right. Later dialogs stack above earlier ones (--sheet-layer). */
@@ -152,55 +127,6 @@ html {
 body:has(.tab.sale-theme.active) .dialog-actions > .btn-primary {
   background-color: var(--btn-sale-bg);
   color: var(--btn-sale-ink);
-}
-
-/* -------------------- ENHANCED TOUCH INTERACTIONS -------------------- */
-button, .btn, input[type="submit"], input[type="button"] {
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-  user-select: none;
-  -webkit-user-select: none;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-button:active, .btn:active {
-  transform: scale(0.98);
-}
-
-input, textarea, select {
-  -webkit-tap-highlight-color: transparent;
-  font-size: var(--fs-input); /* Prevents zoom on iOS */
-}
-
-/* Smooth scrolling for tabs */
-.tab {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-}
-
-/* Better focus states for accessibility */
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
-  outline: 3px solid var(--primary-color);
-  outline-offset: 2px;
-}
-
-/* Prevent pull-to-refresh on tabs with content */
-.tab {
-  overscroll-behavior-y: contain;
-}
-
-/* Payment checkbox styling */
-.payment-row input[type="checkbox"] {
-  width: 22px;
-  height: 22px;
-  min-width: 22px;
-  flex-shrink: 0;
-  cursor: pointer;
-  border-radius: var(--r-sm);
-  border: 2px solid var(--border-color);
-  margin: 0;
-  accent-color: var(--primary-color);
 }
 
 /* Enhanced dropdown arrow for rate input */

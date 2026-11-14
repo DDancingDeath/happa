@@ -1,7 +1,7 @@
 .form-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
   margin-bottom: 12px;
 }
 
@@ -55,7 +55,6 @@ label {
   font-size: var(--fs-sm);
   color: var(--text-primary);
 }
-
 
 /* Remove spinner arrows from all number inputs */
 input[type="number"]::-webkit-outer-spin-button,
@@ -115,8 +114,6 @@ input[type="number"] {
   gap: 16px;
   border: 1px solid var(--border-color);
 }
-
-
 
 /* -------------------- BILLING THEME -------------------- */
 .rates-container {
@@ -737,4 +734,22 @@ input[type="number"] {
 
 .bill-view-total > .row-amt {
   font-size: var(--fs-lead);
+}
+
+.bill-times-note {
+  margin: var(--sp-1) 0 var(--sp-2);
+  padding: 8px 10px;
+  border-radius: var(--r-control);
+  background: var(--warning-soft);
+  color: var(--on-warning-soft);
+  font-size: var(--fs-sm);
+}
+
+/* A bill line's remove is a quiet ghost × (3.5) */
+.bill-line-remove {
+  color: var(--ink-2);
+}
+
+.bill-line-remove:hover {
+  color: var(--negative);
 }

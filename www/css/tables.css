@@ -80,15 +80,6 @@
   text-align: center;
 }
 
-/* A bill line's remove is a quiet ghost × (3.5) */
-.bill-line-remove {
-  color: var(--ink-2);
-}
-
-.bill-line-remove:hover {
-  color: var(--negative);
-}
-
 /* Phone and tablet: the bill lines are a row list in a panel (3.5). Item over "kg × rate",
    the amount and × on the right. Same cells as the desktop table. */
 @media (max-width: 1023.98px) {
