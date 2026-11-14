@@ -92,7 +92,7 @@ async function addLine(page, mode, rate = 30) {
     await expect(page.locator(m.totals[0])).not.toHaveText('0');
     // Nothing paid yet: the bill checks add their banner above the bill and a line under the
     // split (after a short debounce). Measure with them, the case #104 is about.
-    await expect(page.locator(`${m.section} > .bill-check-banner`)).toBeVisible();
+    await expect(page.locator(`${m.section} > .bill-check-notice`)).toBeVisible();
     await expect(page.locator(`${m.section} .bill-col-summary .bill-check-msg`).first()).toBeVisible();
 }
 
@@ -106,7 +106,7 @@ for (const size of SIZES) {
         if (size.fields) {
             // A bill an earlier test left unsaved offers Restore above the form; this size measures the form alone
             await settle(page);
-            if (await page.locator('#autoSaveBanner').isVisible()) await page.click('#autoSaveBanner .autosave-discard');
+            if (await page.locator('#autoSaveBanner').isVisible()) await page.click('#autoSaveBanner [data-onclick="billing.resolveRecovery(false)"]');
             await expect(page.locator('#autoSaveBanner')).toBeHidden();
         }
         for (const mode of Object.keys(MODES)) {

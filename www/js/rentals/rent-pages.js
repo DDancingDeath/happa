@@ -9,7 +9,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { todayLocalISO, localISODaysAgo } from '../utils/dates.js';
 import { formatINR } from '../utils/due-reminder.js';
-import { moneyHtml, moneyInText } from '../ui/components.js';
+import { moneyHtml, moneyInText, emptyState } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import { t } from '../i18n/index.js';
 import { AuditService } from '../services/audit.js';
@@ -243,7 +243,7 @@ function renderProperties(d) {
             <span class="row-trail">${owed > 0 ? `<span class="row-amt">${moneyInText(t('ui.rent.owed', { amount: formatINR(owed) }), owed)}</span>` : ''}${late ? c.badge('late', 'ui.rent.status_late') : ''}</span></span>
         </button>`).join('');
     return `<div class="rent-toolbar">${add}</div>
-        ${rows ? `<div class="panel">${rows}</div>` : `<p class="empty">${et(c.canWrite ? 'ui.rent.start_hint' : 'ui.rent.no_properties')}</p>`}`;
+        ${rows ? `<div class="panel">${rows}</div>` : emptyState({ icon: 'building', title: t(c.canWrite ? 'ui.rent.start_hint' : 'ui.rent.no_properties') })}`;
 }
 
 /** A property: its units with the tenant (tap opens them) or Vacant (Let out); Advanced adds Expenses and This month. */
@@ -280,7 +280,7 @@ function renderProperty(d, id) {
         <div class="rent-sub">${esc([p.address, kindLabel(p.kind)].filter(Boolean).join(' · '))}</div>
         ${more}
         <div class="rent-section-title"><span>${et('ui.rent.units')}</span>${w ? btn(' btn-primary btn-sm', 'addUnit', `'${pid}'`, 'ui.rent.add_unit', icon('plus', 'i-sm')) : ''}</div>
-        ${rows ? `<div class="panel">${rows}</div>` : `<p class="empty">${et('ui.rent.no_units')}</p>`}
+        ${rows ? `<div class="panel">${rows}</div>` : emptyState({ icon: 'home', title: t('ui.rent.no_units') })}
     </div>`;
 }
 

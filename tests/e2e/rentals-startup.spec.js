@@ -41,6 +41,8 @@ test('start-up loads no rentals code and reads no rent_* data; opening Rentals d
         .find(e => /\/js\/rentals\//.test(e.name))?.startTime ?? -1);
     const shown = timings.find(m => m.name === 'aadhat:app-shown').t;
     expect(firstRentals).toBeGreaterThan(shown);
+    // An empty notice strip must not show ([hidden] beats .notice's display: flex)
+    await expect(page.locator('#rentalsNotice')).toBeHidden();
 
     await page.evaluate(() => window.app.business.set('shop'));
     await expect(page.locator('body')).not.toHaveClass(/biz-rentals/);

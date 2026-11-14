@@ -240,49 +240,11 @@ input[type="number"] {
   transform: scale(0.95);
 }
 
-/* Unsaved-bill banner and bill number hint (#117) */
-.autosave-banner {
-  display: flex;
+/* Unsaved-bill notice and bill number hint (#117) */
+.autosave-notice {
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px 12px;
-  margin-bottom: 16px;
-  padding: 10px 12px;
-  border: 1px solid var(--warning-border);
-  border-left-width: 4px;
-  border-radius: var(--radius);
-  background: var(--warning-soft);
-  color: var(--on-warning-soft);
-  font-size: var(--fs-sm);
-}
-
-.autosave-banner[hidden] {
-  display: none;
-}
-
-.autosave-banner-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.autosave-banner-actions button {
-  padding: 8px 14px;
-  border-radius: 6px;
-  font-weight: var(--w-strong);
-  cursor: pointer;
-}
-
-.autosave-restore {
-  background: var(--btn-primary);
-  border: 1px solid var(--btn-primary);
-  color: var(--btn-primary-ink);
-}
-
-.autosave-discard {
-  background: var(--card-bg);
-  border: 1px solid var(--danger-border);
-  color: var(--on-danger-soft);
+  margin-bottom: var(--sp-4);
 }
 
 .bill-no-hint {
@@ -666,17 +628,6 @@ input[type="number"] {
   font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
   line-height: 1.4;
-}
-
-#draftsContent .drafts-empty {
-  margin: 0;
-  padding: var(--sp-6) var(--sp-4);
-  color: var(--ink-3);
-  text-align: center;
-}
-
-#draftsContent .drafts-empty.tone-neg {
-  color: var(--negative);
 }
 
 .draft {

@@ -173,7 +173,7 @@
 
             <h3 class="bill-section-title" data-i18n="ui.wholesale.recent_sales">Recent wholesale bills</h3>
             <div id="salesRecentList">
-                <p class="empty" data-i18n="ui.wholesale.no_sales_yet">No sales yet</p>
+                <div class="empty"><span class="lead-icon"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-receipt"/></svg></span><b data-i18n="ui.wholesale.no_sales_yet">No sales yet</b></div>
             </div>
             <div class="ws-more">
                 <button type="button" class="btn btn-ghost btn-sm" data-onclick="wholesaleSales.filterTab('history')" data-i18n="ui.wholesale.see_all_history">See all in History</button>
@@ -209,13 +209,13 @@
             </div>
 
             <div id="salesHistoryList">
-                <p class="empty" data-i18n="ui.wholesale.no_sales_yet">No sales yet</p>
+                <div class="empty"><span class="lead-icon"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-receipt"/></svg></span><b data-i18n="ui.wholesale.no_sales_yet">No sales yet</b></div>
             </div>
         </div>
 
         <div id="salesOutstandingSection" hidden>
             <div id="salesOutstandingList" class="due-list">
-                <p class="empty" data-i18n="ui.wholesale.no_outstanding_payments">No outstanding payments</p>
+                <div class="empty"><span class="lead-icon"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-wallet"/></svg></span><b data-i18n="ui.wholesale.no_outstanding_payments">No outstanding payments</b></div>
             </div>
         </div>
     </div>

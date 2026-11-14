@@ -47,3 +47,17 @@ export function moneyInText(text, amounts, opts) {
     }
     return out + esc(rest);
 }
+
+/**
+ * An empty state (`.empty`): the icon in a tile, a title, an optional line and an optional action.
+ * @param {{icon?: string, title: *, text?: *, tone?: ''|'pos'|'neg'|'warn'|'accent', action?: {label: *, onclick: string}}} o
+ *   icon: a sprite name ('receipt'; icon-sprite.test.js checks it); title, text and the action: plain text, escaped here
+ * @returns {string}
+ */
+export function emptyState({ icon = '', title, text = '', tone = '', action = null }) {
+    const tile = icon
+        ? `<span class="lead-icon${tone ? ` ${esc(tone)}` : ''}"><svg class="i" width="1em" height="1em" aria-hidden="true" focusable="false"><use href="#i-${esc(icon)}"/></svg></span>`
+        : '';
+    const btn = action ? `<button type="button" class="btn btn-sm btn-tonal" data-onclick="${esc(action.onclick)}">${esc(action.label)}</button>` : '';
+    return `<div class="empty">${tile}<b>${esc(title ?? '')}</b>${text ? `<p>${esc(text)}</p>` : ''}${btn}</div>`;
+}

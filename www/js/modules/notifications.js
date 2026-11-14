@@ -8,6 +8,7 @@
 
 import { UIManager } from '../ui/ui-manager.js';
 import { icon } from '../ui/icons.js';
+import { emptyState } from '../ui/components.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { TelemetryService } from '../services/telemetry.js';
 import { Helpers } from '../utils/helpers.js';
@@ -360,7 +361,7 @@ const NotificationsManager = {
         if (!this.panelItems.length) {
             list.innerHTML = rent + (this.loading
                 ? `<div class="empty">${Helpers.escapeHtml(t('ui.notif.loading'))}</div>`
-                : rent ? '' : `<div class="empty"><span class="lead-icon">${icon('bell')}</span><b>${Helpers.escapeHtml(t('ui.notif.none_yet'))}</b></div>`);
+                : rent ? '' : emptyState({ icon: 'bell', title: t('ui.notif.none_yet') }));
         } else {
             list.innerHTML = rent + this.panelItems.map(n => {
                 const d = describeNotification(n);

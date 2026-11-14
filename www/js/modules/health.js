@@ -11,6 +11,7 @@ import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { CHANGED_ELSEWHERE, writeErrorKey } from '../utils/write-conflict.js';
 import { t } from '../i18n/index.js';
+import { emptyState } from '../ui/components.js';
 import { tip, tipTargets, tipReasons } from '../tip/index.js';
 import { dayKeyOf, normalizePolicies } from '../tip/tip.js';
 import {
@@ -154,7 +155,7 @@ export const HealthManager = {
             });
         }
         const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
-        const empty = `<p class="empty">${L('ui.health.no_data')}</p>`;
+        const empty = emptyState({ icon: 'pulse', title: t('ui.health.no_data') });
         if (!agg.tests.length) {
             ['healthSummary', 'healthByDay', 'healthByVersion', 'healthReasons', 'healthDurations', 'healthDevices'].forEach(id => set(id, empty));
             set('healthFailures', this.failuresHtml(failures) || empty);
@@ -187,7 +188,7 @@ export const HealthManager = {
 
         set('healthReasons', agg.reasons.length ? `<ol class="hl-list">${agg.reasons.slice(0, 10).map(r =>
             `<li><strong>${esc(testLabel(r.test))}</strong>: ${esc(prettyReason(r.name))} <span class="tone-muted">× ${esc(r.count)}</span></li>`).join('')}</ol>`
-            : `<p class="empty">${L('ui.health.no_failures')}</p>`);
+            : emptyState({ icon: 'check', tone: 'pos', title: t('ui.health.no_failures') }));
 
         set('healthDurations', `<table class="table hl-table"><thead><tr><th>${L('ui.health.check')}</th><th>${L('ui.health.p50')}</th><th>${L('ui.health.p90')}</th></tr></thead>
             <tbody>${agg.tests.map(test => {
@@ -202,7 +203,7 @@ export const HealthManager = {
                 <td>${deviceCellHtml(dev, usersById)}</td><td>${esc(platformLabel(dev.platform))}</td><td>${esc(dev.appVersion)}</td>
                 <td>${esc(dev.lastDay ? dayLabel(dev.lastDay) : '')}</td><td>${esc(dev.runs)}</td><td>${esc(dev.failed)}</td></tr>`).join('')}</tbody></table>`);
 
-        set('healthFailures', this.failuresHtml(failures) || `<p class="empty">${L('ui.health.no_failures')}</p>`);
+        set('healthFailures', this.failuresHtml(failures) || emptyState({ icon: 'check', tone: 'pos', title: t('ui.health.no_failures') }));
         document.querySelectorAll('#health .scroll-cue-inner').forEach(attachScrollCue);
     },
 

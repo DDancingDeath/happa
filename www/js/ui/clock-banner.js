@@ -26,22 +26,22 @@ export function renderClockBanner(skewMs, { doc = document, onRecheck } = {}) {
     if (!banner) {
         banner = doc.createElement('div');
         banner.id = CLOCK_BANNER_ID;
-        banner.className = 'clock-banner';
+        banner.className = 'notice neg solid float clock-notice';
         banner.setAttribute('role', 'alert');
         doc.body.appendChild(banner);
     }
     banner.textContent = '';
     const text = doc.createElement('span');
-    text.className = 'clock-banner__text';
+    text.className = 'grow';
     text.textContent = t(skewMs > 0 ? 'ui.clock.behind' : 'ui.clock.ahead', { minutes: skewMinutes(skewMs) });
     const again = doc.createElement('button');
     again.type = 'button';
-    again.className = 'clock-banner__recheck';
+    again.className = 'btn btn-sm btn-danger clock-notice__recheck';
     again.textContent = t('ui.clock.recheck');
     again.addEventListener('click', () => onRecheck?.());
     const close = doc.createElement('button');
     close.type = 'button';
-    close.className = 'clock-banner__close';
+    close.className = 'btn btn-sm btn-ghost btn-icon clock-notice__close';
     close.setAttribute('aria-label', t('ui.common.close'));
     close.textContent = '×';
     close.addEventListener('click', () => banner.remove());

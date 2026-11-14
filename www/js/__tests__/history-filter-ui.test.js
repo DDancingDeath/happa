@@ -105,7 +105,7 @@ describe('History filters (#160)', () => {
 
         await Promise.resolve();
         expect(window.FirebaseService.ensureHistoryFrom).toHaveBeenCalledWith(from);
-        const notice = document.querySelector('.history-range-notice');
+        const notice = document.querySelector('.history-range-note');
         expect(notice.textContent).toContain('Loading older bills');
         expect(document.getElementById('historyList').classList.contains('history-range-loading')).toBe(true);
 
@@ -117,7 +117,7 @@ describe('History filters (#160)', () => {
         resolveLoad();
         await new Promise(r => setTimeout(r, 0));
         await new Promise(r => setTimeout(r, 0));
-        expect(document.querySelector('.history-range-notice')).toBeNull();
+        expect(document.querySelector('.history-range-note')).toBeNull();
         expect(document.getElementById('historyList').classList.contains('history-range-loading')).toBe(false);
     });
 });

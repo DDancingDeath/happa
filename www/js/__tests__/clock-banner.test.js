@@ -92,7 +92,7 @@ describe('banner', () => {
         const measure = jest.fn(async () => 15 * MIN);
         await startClockCheck({ storage: memoryStorage(), doc: document, measure, toast });
         measure.mockResolvedValueOnce(30 * 1000);
-        banner().querySelector('.clock-banner__recheck').click();
+        banner().querySelector('.clock-notice__recheck').click();
         await new Promise(r => setTimeout(r, 0));
         expect(banner()).toBeNull();
         expect(toast).toHaveBeenCalledWith("The phone's clock is right now.");
@@ -103,7 +103,7 @@ describe('banner', () => {
         const measure = jest.fn(async () => 15 * MIN);
         await startClockCheck({ storage: memoryStorage(), doc: document, measure, toast });
         measure.mockResolvedValueOnce(null);
-        banner().querySelector('.clock-banner__recheck').click();
+        banner().querySelector('.clock-notice__recheck').click();
         await new Promise(r => setTimeout(r, 0));
         expect(banner()).not.toBeNull();
         expect(toast).toHaveBeenCalledWith("Couldn't check the clock: no internet.");
@@ -111,7 +111,7 @@ describe('banner', () => {
 
     test('× hides it', () => {
         renderClockBanner(20 * MIN, { doc: document });
-        banner().querySelector('.clock-banner__close').click();
+        banner().querySelector('.clock-notice__close').click();
         expect(banner()).toBeNull();
     });
 });

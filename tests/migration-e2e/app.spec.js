@@ -257,7 +257,7 @@ test('migrated owner: original password, carried dues, periods, rates, seasons, 
         let weeksWithKg = 0;
         for (const v of options) {
             await page.selectOption('#rtTrafficItem', v);
-            await expect(weekly.locator('table, .rt-empty, .rt-warn').first()).toBeVisible();
+            await expect(weekly.locator('table, .empty, .rt-warn').first()).toBeVisible();
             weeksWithKg = await weekly.locator('tbody tr').filter({ has: page.locator('strong') }).count();
             if (weeksWithKg) break;
         }

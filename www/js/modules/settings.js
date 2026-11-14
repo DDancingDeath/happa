@@ -17,6 +17,7 @@ import { LABOUR_PACKAGE_KG_MAX, LABOUR_PACKAGE_KG_MIN, normalizeLabourSettings, 
 import { DEFAULT_THRESHOLDS, normalizeThresholds } from '../utils/bill-checks.js';
 import { CHANGED_ELSEWHERE, NEEDS_INTERNET, writeErrorKey } from '../utils/write-conflict.js';
 import { t } from '../i18n/index.js';
+import { emptyState } from '../ui/components.js';
 import { safeSetItem, STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import { settingsView } from '../utils/settings-sections.js';
 import { BusinessSwitcher } from '../ui/business-switcher.js';
@@ -888,7 +889,7 @@ export class SettingsManager {
         if (!container) return;
         
         if (!devices || devices.length === 0) {
-            container.innerHTML = `<p class="empty">${Helpers.escapeHtml(t('ui.settings.no_devices_found'))}</p>`;
+            container.innerHTML = emptyState({ icon: 'phone', title: t('ui.settings.no_devices_found') });
             return;
         }
         

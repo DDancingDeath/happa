@@ -26,10 +26,10 @@ export function voidedBannerHtml(bill) {
     const when = formatDayTime(bill.voidedAt);
     const by = bill.voidedByName || '';
     const line = by ? L('ui.void.by_line', { name: by, when: when || '—' }) : (when ? L('ui.void.when_line', { when }) : '');
-    return `<div class="bill-voided-banner" role="status">
+    return `<div class="notice bill-voided-notice" role="status">
         <span class="voided-chip">${L('ui.void.chip')}</span>
-        <div class="bill-voided-banner__reason">${L('ui.void.reason_line', { reason: bill.voidReason || '—' })}</div>
-        ${line ? `<div class="bill-voided-banner__by">${line}</div>` : ''}
+        <div class="bill-voided-notice__reason">${L('ui.void.reason_line', { reason: bill.voidReason || '—' })}</div>
+        ${line ? `<div class="bill-voided-notice__by">${line}</div>` : ''}
     </div>`;
 }
 

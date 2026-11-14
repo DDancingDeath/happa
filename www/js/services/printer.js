@@ -612,22 +612,22 @@ const PrinterService = {
         if (!banner) {
             banner = document.createElement('div');
             banner.id = 'printerPermissionBanner';
-            banner.className = 'printer-perm-banner';
+            banner.className = 'notice warn solid float printer-perm-notice';
             banner.setAttribute('role', 'alert');
             document.body.appendChild(banner);
         }
         banner.textContent = '';
         const text = document.createElement('span');
-        text.className = 'printer-perm-banner__text';
+        text.className = 'grow';
         text.textContent = t('ui.printer.permission_banner');
         const allow = document.createElement('button');
         allow.type = 'button';
-        allow.className = 'printer-perm-banner__allow';
+        allow.className = 'btn btn-sm btn-primary printer-perm-notice__allow';
         allow.textContent = t('ui.printer.permission_allow');
         allow.addEventListener('click', () => { this.requestBluetoothPermission().catch(e => console.warn('Permission request failed:', e)); });
         const close = document.createElement('button');
         close.type = 'button';
-        close.className = 'printer-perm-banner__close';
+        close.className = 'btn btn-sm btn-ghost btn-icon printer-perm-notice__close';
         close.setAttribute('aria-label', t('ui.common.close'));
         close.textContent = '×';
         close.addEventListener('click', () => {

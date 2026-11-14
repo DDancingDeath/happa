@@ -20,7 +20,7 @@ import * as store from './rent-store.js';
 import { AppState } from '../utils/state.js';
 import { noteRent, rentReminder, leaseReminder, leaseReminderText } from '../utils/reminders.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
-import { moneyHtml, moneyInText } from '../ui/components.js';
+import { moneyHtml, moneyInText, emptyState } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import { isShareToken, publicLink } from './rent-public.js';
 import {
@@ -249,7 +249,7 @@ function renderReports(d) {
     return `<div class="panel">${isManager() ? tile('yearReport', '', 'year', t('ui.rent.yr_btn'), t('ui.rent.rep_yearly_sub')) : ''}
         ${tile('deposits', '', 'deposits', t('ui.rent.dep_held_list'), t('ui.rent.rep_deposits_sub'))}</div>
         <h3 class="rent-section-title">${et('ui.rent.exp_month')} · ${esc(monthLabel(state.month, getLang()))}</h3>
-        ${props.length ? `<div class="panel">${props.map(p => tile('expenses', `'${js(p.id)}'`, '', p.name, '', ex[p.id] || 0)).join('')}</div>` : `<p class="empty">${et('ui.rent.no_properties')}</p>`}`;
+        ${props.length ? `<div class="panel">${props.map(p => tile('expenses', `'${js(p.id)}'`, '', p.name, '', ex[p.id] || 0)).join('')}</div>` : emptyState({ icon: 'building', title: t('ui.rent.no_properties') })}`;
 }
 
 /** Settings › Rentals defaults; built-in defaults when they can't be read. */
@@ -294,7 +294,7 @@ function renderMonth(d, ix, rows) {
     const paid = all.filter(a => !a.ended && a.dues.total <= 0);
     const title = `<h3 class="rent-month-title">${esc(monthLabel(state.month, lang))}</h3>`;
     if (!d.properties.length) {
-        return `${title}<p class="empty">${et('ui.rent.start_hint')}</p>`
+        return `${title}${emptyState({ icon: 'building', title: t('ui.rent.start_hint') })}`
             + (canWrite() ? btn(' btn-primary', 'page', `'properties'`, 'ui.rent.add_property', icon('plus', 'i-sm')) : '');
     }
     const summary = `<div class="panel panel-pad rent-collect">
@@ -304,7 +304,7 @@ function renderMonth(d, ix, rows) {
         <div class="rent-sub">${et('ui.rent.outstanding')}: ${money(sum.due)}</div>
     </div>`;
     const list = shown.map(a => collectRow(a, ix, lang)).join('')
-        || `<p class="empty">${et(owe.length ? 'ui.rent.none_late' : 'ui.rent.all_paid', { month: monthLabel(state.month, lang) })}</p>`;
+        || emptyState({ icon: 'check', tone: 'pos', title: t(owe.length ? 'ui.rent.none_late' : 'ui.rent.all_paid', { month: monthLabel(state.month, lang) }) });
     const paidList = paid.length ? `<details class="rent-more"><summary>${et('ui.rent.paid_month', { n: paid.length })}</summary>
         <div class="panel">${paid.map(a => collectRow(a, ix, lang)).join('')}</div></details>` : '';
     const vacant = sum.vacant ? `<button type="button" class="btn btn-ghost btn-sm rent-vacant" data-onclick="rentals.page('properties')">${et('ui.rent.vacant_units', { n: sum.vacant })}${icon('chevR', 'i-sm')}</button>` : '';
