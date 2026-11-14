@@ -182,10 +182,6 @@
   font-size: 18px;
 }
 
-.payment-row.payment-excess {
-  background: var(--danger-soft) !important;
-}
-
 /* Cash + Online + Due must add up to the bill total (#23) */
 .payment-row.split-remaining-row {
   flex-wrap: wrap;
@@ -194,12 +190,6 @@
 
 .payment-row.split-remaining-row strong {
   font-size: var(--fs-body);
-}
-
-
-.payment-row.payment-excess strong {
-  color: var(--danger-color) !important;
-  animation: pulse 1.5s ease-in-out infinite;
 }
 
 /* -------------------- SAVE BUTTON -------------------- */

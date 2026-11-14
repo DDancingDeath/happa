@@ -155,15 +155,6 @@
   color: var(--info-dark);
 }
 
-.payment-row.payment-excess {
-  background: var(--danger-soft) !important;
-}
-
-.payment-row.payment-excess strong {
-  color: var(--danger-dark) !important;
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
 /* ---------- Billing totals and payment (redesign 3.1b): colon-less labels, ₹ in the field ---------- */
 :is(#billing, .bill-page) .bill-col-summary > .bill-totals {
   border: 1px solid var(--panel-border);
@@ -229,13 +220,6 @@
   font-size: var(--fs-lead);
   font-weight: var(--w-strong);
   font-variant-numeric: tabular-nums;
-}
-
-:is(#billing, .bill-page) .payment-row.payment-total.payment-excess {
-  margin: 0 calc(-1 * var(--sp-3));
-  padding: var(--sp-3) !important;
-  border-bottom-color: transparent;
-  border-radius: var(--r-control);
 }
 
 :is(#billing, .bill-page) .grand-total strong {
@@ -610,4 +594,21 @@
 @keyframes bill-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* Payment rows (from reports.css; keep after the rules above) */
+.payment-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-3) 0;
+  border-bottom: 1px var(--rule-style) var(--border-color);
+}
+
+.payment-row:last-child {
+  border-bottom: none;
+}
+
+.payment-row span {
+  color: var(--text-secondary);
 }
