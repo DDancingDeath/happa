@@ -2,7 +2,7 @@
  * @fileoverview Fade at the right edge of a horizontally scrollable table
  * while more columns are hidden (F28, F34). Markup:
  * <div class="scroll-cue"><div class="scroll-cue-inner">…table…</div></div>
- * Styles: css/tables.css.
+ * Styles: css/surfaces.css.
  * @module ui/scroll-cue
  */
 

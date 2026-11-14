@@ -279,7 +279,7 @@
     margin: var(--desktop-header-h) 0 0 var(--desktop-nav-width);
     max-width: none;
     padding: var(--sp-6) var(--desktop-gutter) var(--desktop-tab-end);
-    /* The page scrolls under the header; dynamic viewport height where supported (tabs.css keeps 100vh for phones). */
+    /* The page scrolls under the header; dynamic viewport height where supported (navigation.css keeps 100vh for phones). */
     min-height: 0;
     height: calc(100vh - var(--desktop-header-h));
     height: calc(100dvh - var(--desktop-header-h));
