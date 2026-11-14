@@ -128,6 +128,7 @@ const STATIC_ASSETS = [
     '/js/ui/navigation.js',
     '/js/ui/bottom-nav.js',
     '/js/ui/scroll-cue.js',
+    '/js/ui/seg.js',
     '/js/ui/sticky-focus.js',
     '/js/ui/sync-status.js',
     '/js/ui/theme.js',
