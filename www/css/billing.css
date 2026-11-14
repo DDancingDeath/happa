@@ -95,21 +95,11 @@ input[type="number"] {
   font-variant-numeric: tabular-nums;
 }
 
-.weight-chip-remove {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: var(--r-sm);
-  background: transparent;
+.weight-chip > .btn-icon {
   color: var(--ink-3);
-  font-size: var(--fs-lead);
-  cursor: pointer;
 }
 
-.weight-chip-remove:hover {
+.weight-chip > .btn-icon:hover {
   color: var(--negative);
 }
 
@@ -162,69 +152,6 @@ input[type="number"] {
   box-shadow: var(--focus-ring);
 }
 
-.delete-rate {
-  background: var(--btn-danger);
-  color: white;
-  border: none;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  font-size: var(--fs-lead);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  font-weight: var(--w-strong);
-  margin-right: 4px;
-  transition: all var(--transition);
-}
-
-.delete-rate:hover {
-  transform: scale(1.05);
-}
-
-.add-rate-plus {
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: var(--radius);
-  font-size: var(--fs-title);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  color: white;
-  transition: all var(--transition);
-  box-shadow: var(--shadow-sm);
-}
-
-.add-rate-plus.purchase {
-  background: var(--btn-primary);
-  color: var(--btn-primary-ink);
-}
-
-.add-rate-plus.wholesale {
-  background: var(--wholesale-color);
-  color: var(--on-mode-wholesale);
-}
-
-.add-rate-plus.sale {
-  background: var(--btn-success);
-  color: var(--btn-sale-ink);
-}
-
-.add-rate-plus:hover {
-  transform: scale(1.05);
-  box-shadow: var(--shadow);
-}
-
-.add-rate-plus:active {
-  transform: scale(0.95);
-}
-
 /* Unsaved-bill notice and bill number hint (#117) */
 .autosave-notice {
   flex-wrap: wrap;
@@ -263,16 +190,9 @@ input[type="number"] {
   flex-wrap: wrap;
 }
 
-.pending-line-dialog .modal-footer .modal-btn,
-.rate-check-dialog .modal-footer .modal-btn {
+.pending-line-dialog .modal-footer .btn,
+.rate-check-dialog .modal-footer .btn {
   flex: 1 1 auto;
-}
-
-.pending-line-discard,
-.rate-check-confirm {
-  background: var(--card-bg);
-  color: var(--danger-color);
-  border: 1px solid var(--danger-color);
 }
 
 /* ---------- Billing entry (redesign 3.1a): labels above, ₹ / kg in the field, one line panel ---------- */
@@ -689,12 +609,6 @@ input[type="number"] {
 
 .ws-add {
   min-height: 48px;
-}
-
-.bill-line-remove {
-  border: none;
-  border-radius: var(--radius);
-  cursor: pointer;
 }
 
 /* Expenses and the live profit (WS-PROFIT) */

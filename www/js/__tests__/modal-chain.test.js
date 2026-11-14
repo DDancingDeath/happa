@@ -32,13 +32,15 @@ test('a confirm can carry its own verb and the danger style, and the next dialog
     const btn = document.getElementById('modalConfirm');
     const voiding = UIManager.showModalWithHtml('<p>x</p>', 'Void this bill?', true, { confirmLabel: 'Void bill', danger: true });
     expect(btn.textContent).toBe('Void bill');
-    expect(btn.classList.contains('modal-btn-danger')).toBe(true);
+    expect(btn.classList.contains('btn-danger')).toBe(true);
+    expect(btn.classList.contains('btn-primary')).toBe(false);
     expect(btn.hasAttribute('data-i18n')).toBe(false);
     btn.click();
     await expect(voiding).resolves.toBe(true);
     const plain = UIManager.showModal('next', 'Next', true);
     expect(btn.textContent).toBe('OK');
-    expect(btn.classList.contains('modal-btn-danger')).toBe(false);
+    expect(btn.classList.contains('btn-danger')).toBe(false);
+    expect(btn.classList.contains('btn-primary')).toBe(true);
     expect(btn.getAttribute('data-i18n')).toBe('ui.modals.ok');
     btn.click();
     await expect(plain).resolves.toBe(true);

@@ -186,7 +186,7 @@ export class StockManager {
             const catalogueItem = AppState.items.find(i => i.id === item.itemId);
             const level = lowStockLevel(catalogueItem);
             const alertLine = canSetAlerts && catalogueItem ? `
-                        <button type="button" class="stock-alert-link" data-onclick="stock.editLowStock('${Helpers.escapeJsAttr(catalogueItem.id)}')">
+                        <button type="button" class="btn btn-ghost btn-sm stock-alert-link" data-onclick="stock.editLowStock('${Helpers.escapeJsAttr(catalogueItem.id)}')">
                             ${icon('bell', 'i-sm')}${level > 0 ? tx('ui.stock.alert_below', { level: stockKg(level) }) : tx('ui.stock.alert_off')}
                         </button>` : '';
             div.innerHTML = `

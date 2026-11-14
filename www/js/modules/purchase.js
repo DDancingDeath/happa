@@ -19,6 +19,7 @@ import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
 import { settlePendingLine } from '../ui/pending-line.js';
 import { checkBagWeight, checkLineRate, confirmLineBags, keptBagChecks } from '../ui/rate-check.js';
 import { t, tn } from '../i18n/index.js';
+import { icon } from '../ui/icons.js';
 import { emit, BILL_CLEARED } from '../utils/events.js';
 import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
@@ -136,7 +137,7 @@ const PurchaseManager = {
                 ${weights.map((w, i) => `
                     <div class="weight-chip">
                         <span>${formatKg(w)}</span>
-                        <button class="weight-chip-remove" data-onclick="purchase.removeWeight(${i})">×</button>
+                        <button type="button" class="btn btn-ghost btn-icon" data-onclick="purchase.removeWeight(${i})" aria-label="${Helpers.escapeHtml(t('ui.modals.delete'))}">${icon('x', 'i-sm')}</button>
                     </div>
                 `).join('')}
             </div>
@@ -323,7 +324,7 @@ const PurchaseManager = {
                     <td>${formatRate(item.rate)}</td>
                     <td>${formatKg(item.qty)} kg</td>
                     <td>${formatRupees(shownAmount(item.total))}</td>
-                    <td><button type="button" class="remove-bill-item" data-onclick="event.stopPropagation(); purchase.deleteBillItem(${index})" aria-label="${Helpers.escapeHtml(t('ui.modals.delete'))}" title="${Helpers.escapeHtml(t('ui.modals.delete'))}">×</button></td>
+                    <td><button type="button" class="btn btn-ghost btn-icon bill-line-remove" data-onclick="event.stopPropagation(); purchase.deleteBillItem(${index})" aria-label="${Helpers.escapeHtml(t('ui.modals.delete'))}" title="${Helpers.escapeHtml(t('ui.modals.delete'))}">${icon('x')}</button></td>
                 </tr>
             `;
         }).join('');

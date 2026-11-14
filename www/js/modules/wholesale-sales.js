@@ -32,6 +32,7 @@ import { lineItemIdentity, isArchivedItem } from '../utils/item-catalog.js';
 import { billTimeFor, validateBillDay } from '../utils/bill-date.js';
 import { allowBackdatedCash, billDateWho, lockBillDate, pickedBillDay, prepareBillDate, resetBillDate } from '../ui/bill-date-input.js';
 import { moneyHtml, moneyInText, emptyState } from '../ui/components.js';
+import { icon } from '../ui/icons.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 
@@ -288,7 +289,7 @@ export class WholesaleSalesManager {
                     <td>${formatRate(item.rate)}</td>
                     <td>${formatKg(item.qty)} kg</td>
                     <td>${moneyHtml(shownAmount(item.total))}</td>
-                    <td><button type="button" class="bill-line-remove" data-onclick="wholesaleSales.removeWholesaleItem(${index})" aria-label="${remove}" title="${remove}">×</button></td>
+                    <td><button type="button" class="btn btn-ghost btn-icon bill-line-remove" data-onclick="wholesaleSales.removeWholesaleItem(${index})" aria-label="${remove}" title="${remove}">${icon('x')}</button></td>
                 </tr>
             `;
         }).join('');

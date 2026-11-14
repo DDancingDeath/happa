@@ -36,7 +36,8 @@ function setConfirmButton({ confirmLabel = '', danger = false } = {}) {
         btn.setAttribute('data-i18n', 'ui.modals.ok');
         btn.textContent = t('ui.modals.ok');
     }
-    btn.classList.toggle('modal-btn-danger', !!danger);
+    btn.classList.toggle('btn-danger', !!danger);
+    btn.classList.toggle('btn-primary', !danger);
 }
 
 // -------------------- The app dialog (#modalOverlay) --------------------
@@ -394,7 +395,7 @@ const UIManager = {
             (buttons || []).forEach(cfg => {
                 const button = document.createElement('button');
                 button.type = 'button';
-                button.className = cfg.class || 'modal-btn';
+                button.className = cfg.class || 'btn';
                 button.textContent = cfg.text;
                 button.dataset.custom = '';
                 if (cfg.value === null || cfg.value === false || cfg.value === undefined) button.dataset.dismiss = '';

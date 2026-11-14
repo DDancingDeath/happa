@@ -450,50 +450,6 @@ a.row:active {
   background: var(--line-strong);
 }
 
-/* Dialog actions: ghost Cancel + one primary */
-.modal-btn {
-  min-height: 44px;
-  padding: 0 16px;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  font-family: inherit;
-  font-size: var(--fs-body);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-  transition: background-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
-}
-
-.modal-btn:active {
-  transform: scale(0.98);
-}
-
-.modal-btn:focus-visible {
-  outline: none;
-  box-shadow: var(--focus);
-}
-
-.modal-btn-cancel {
-  background: transparent;
-  color: var(--accent-text);
-}
-
-.modal-btn-cancel:hover {
-  background: var(--surface-2);
-}
-
-.modal-btn-confirm {
-  background: var(--btn-primary-bg);
-  color: var(--btn-primary-ink);
-  box-shadow: var(--btn-primary-shadow);
-}
-
-/* A destructive confirm (Void bill) */
-.modal-btn-confirm.modal-btn-danger {
-  background: var(--btn-danger-bg);
-  color: var(--btn-danger-ink);
-  box-shadow: none;
-}
-
 /* ---------- Toast: near-black in every theme; the type shows as a coloured bar ---------- */
 .toast {
   padding: 12px 16px;

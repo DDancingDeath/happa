@@ -1958,50 +1958,6 @@ a.row:active {
   background: var(--line-strong);
 }
 
-/* Dialog actions: ghost Cancel + one primary */
-.modal-btn {
-  min-height: 44px;
-  padding: 0 16px;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  font-family: inherit;
-  font-size: var(--fs-body);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-  transition: background-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
-}
-
-.modal-btn:active {
-  transform: scale(0.98);
-}
-
-.modal-btn:focus-visible {
-  outline: none;
-  box-shadow: var(--focus);
-}
-
-.modal-btn-cancel {
-  background: transparent;
-  color: var(--accent-text);
-}
-
-.modal-btn-cancel:hover {
-  background: var(--surface-2);
-}
-
-.modal-btn-confirm {
-  background: var(--btn-primary-bg);
-  color: var(--btn-primary-ink);
-  box-shadow: var(--btn-primary-shadow);
-}
-
-/* A destructive confirm (Void bill) */
-.modal-btn-confirm.modal-btn-danger {
-  background: var(--btn-danger-bg);
-  color: var(--btn-danger-ink);
-  box-shadow: none;
-}
-
 /* ---------- Toast: near-black in every theme; the type shows as a coloured bar ---------- */
 .toast {
   padding: 12px 16px;
@@ -3335,50 +3291,13 @@ html[data-updating] .updating-mark {
   text-align: center;
 }
 
-.remove-bill-item, .remove-sale-item {
-  background: var(--danger-soft);
-  color: var(--on-danger-soft);
-  border: none;
-  padding: 8px 12px;
-  border-radius: var(--radius);
-  font-size: var(--fs-body);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-  min-width: 40px;
-  transition: all var(--transition);
-  box-shadow: inset 0 0 0 1px var(--danger-border);
-}
-
-.remove-bill-item:hover, .remove-sale-item:hover {
-  box-shadow: var(--shadow-sm);
-}
-
-.remove-bill-item:active, .remove-sale-item:active {
-  transform: scale(0.95);
-}
-
-/* Billing's remove is a quiet × (3.5) */
-:is(#billing, .bill-page) :is(.remove-bill-item, .remove-sale-item, .bill-line-remove) {
-  min-width: 40px;
-  min-height: 40px;
-  padding: 0;
-  background: none;
-  box-shadow: none;
+/* A bill line's remove is a quiet ghost × (3.5) */
+.bill-line-remove {
   color: var(--ink-2);
-  font-size: var(--fs-title);
-  font-weight: var(--w-regular);
-  line-height: 1;
 }
 
-:is(#billing, .bill-page) :is(.remove-bill-item, .remove-sale-item, .bill-line-remove):hover {
-  background: var(--state-hover);
-  box-shadow: none;
+.bill-line-remove:hover {
   color: var(--negative);
-}
-
-:is(#billing, .bill-page) :is(.remove-bill-item, .remove-sale-item, .bill-line-remove):focus-visible {
-  outline: none;
-  box-shadow: var(--focus);
 }
 
 /* Phone and tablet: the bill lines are a row list in a panel (3.5). Item over "kg × rate",
@@ -3490,11 +3409,6 @@ html[data-updating] .updating-mark {
   #billTable :is(td.bill-empty, tr.bill-check-row > td), :is(#saleTable, .bill-lines) :is(td.bill-empty, td.empty, tr.bill-check-row > td) {
     display: block;
     max-width: none;
-  }
-
-  :is(#billing, .bill-page) :is(.remove-bill-item, .remove-sale-item, .bill-line-remove) {
-    min-width: 44px;
-    min-height: 44px;
   }
 }
 
@@ -3624,7 +3538,7 @@ html[data-updating] .updating-mark {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-1);
-  padding: var(--sp-1) var(--sp-2);
+  padding: 0 0 0 var(--sp-2);
   border-radius: var(--r-control);
   border: 2px solid;
   transition: all var(--transition);
@@ -3669,56 +3583,9 @@ html[data-updating] .updating-mark {
   outline: none;
 }
 
-.rates-container .delete-rate {
-  background: var(--btn-danger-bg);
-  color: var(--btn-danger-ink);
-  border: none;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--r-sm);
-  font-size: var(--fs-body);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  font-weight: var(--w-strong);
-  margin: 0;
-  padding: 0;
-  flex-shrink: 0;
-  transition: all var(--dur-1);
-}
-
-.rates-container .delete-rate:hover {
-  background: var(--danger-dark);
-  transform: scale(1.05);
-}
-
-.rates-container .delete-rate:active {
-  transform: scale(0.95);
-}
-
-.add-item-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  width: 100%;
-  background: var(--success-color);
-  color: var(--white);
-  border: none;
-  padding: var(--sp-4);
-  border-radius: var(--r-panel);
-  font-size: var(--fs-lead);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-  margin-top: var(--sp-4);
-  box-shadow: var(--shadow);
-  transition: transform var(--dur-1);
-}
-
-.add-item-btn:active {
-  transform: scale(0.98);
+/* Remove (ghost ×) inside a rate chip; Add (+) is a tonal icon button after the chips */
+.rate-group > .btn-icon {
+  color: var(--negative);
 }
 
 /* Item name suggested from the other language (#134), until the user takes it */
@@ -3825,21 +3692,11 @@ input[type="number"] {
   font-variant-numeric: tabular-nums;
 }
 
-.weight-chip-remove {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: var(--r-sm);
-  background: transparent;
+.weight-chip > .btn-icon {
   color: var(--ink-3);
-  font-size: var(--fs-lead);
-  cursor: pointer;
 }
 
-.weight-chip-remove:hover {
+.weight-chip > .btn-icon:hover {
   color: var(--negative);
 }
 
@@ -3892,69 +3749,6 @@ input[type="number"] {
   box-shadow: var(--focus-ring);
 }
 
-.delete-rate {
-  background: var(--btn-danger);
-  color: white;
-  border: none;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  font-size: var(--fs-lead);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  font-weight: var(--w-strong);
-  margin-right: 4px;
-  transition: all var(--transition);
-}
-
-.delete-rate:hover {
-  transform: scale(1.05);
-}
-
-.add-rate-plus {
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: var(--radius);
-  font-size: var(--fs-title);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  color: white;
-  transition: all var(--transition);
-  box-shadow: var(--shadow-sm);
-}
-
-.add-rate-plus.purchase {
-  background: var(--btn-primary);
-  color: var(--btn-primary-ink);
-}
-
-.add-rate-plus.wholesale {
-  background: var(--wholesale-color);
-  color: var(--on-mode-wholesale);
-}
-
-.add-rate-plus.sale {
-  background: var(--btn-success);
-  color: var(--btn-sale-ink);
-}
-
-.add-rate-plus:hover {
-  transform: scale(1.05);
-  box-shadow: var(--shadow);
-}
-
-.add-rate-plus:active {
-  transform: scale(0.95);
-}
-
 /* Unsaved-bill notice and bill number hint (#117) */
 .autosave-notice {
   flex-wrap: wrap;
@@ -3993,16 +3787,9 @@ input[type="number"] {
   flex-wrap: wrap;
 }
 
-.pending-line-dialog .modal-footer .modal-btn,
-.rate-check-dialog .modal-footer .modal-btn {
+.pending-line-dialog .modal-footer .btn,
+.rate-check-dialog .modal-footer .btn {
   flex: 1 1 auto;
-}
-
-.pending-line-discard,
-.rate-check-confirm {
-  background: var(--card-bg);
-  color: var(--danger-color);
-  border: 1px solid var(--danger-color);
 }
 
 /* ---------- Billing entry (redesign 3.1a): labels above, ₹ / kg in the field, one line panel ---------- */
@@ -4419,12 +4206,6 @@ input[type="number"] {
 
 .ws-add {
   min-height: 48px;
-}
-
-.bill-line-remove {
-  border: none;
-  border-radius: var(--radius);
-  cursor: pointer;
 }
 
 /* Expenses and the live profit (WS-PROFIT) */
@@ -5545,8 +5326,7 @@ body.dark-mode .party-due-line.party-due-old {
 }
 
 .infinite-scroll-more,
-.history-range-retry,
-.history-search-older-btn {
+.history-range-retry {
   margin-left: 6px;
   padding: 6px 14px;
   border: 1px solid var(--primary-border);
@@ -5556,11 +5336,6 @@ body.dark-mode .party-due-line.party-due-old {
   font-weight: var(--w-strong);
   font-size: var(--fs-sm);
   cursor: pointer;
-}
-
-.history-search-older-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
 }
 
 .history-search-footer {
@@ -5912,34 +5687,9 @@ body.dark-mode .party-due-line.party-due-old {
   margin-bottom: 4px;
 }
 
-/* ==================== REPRINT / SHARE (#136) ==================== */
-.bill-action-btn.btn-reprint {
-  background: var(--primary-soft);
-  color: var(--on-primary-soft);
-  box-shadow: inset 0 0 0 1px var(--primary-border);
-}
-
-.bill-action-btn.btn-reprint:hover {
-  background: var(--primary-soft);
-}
-
-.bill-action-btn.btn-share {
-  background: var(--btn-success);
-  color: var(--btn-sale-ink);
-}
-
-.bill-action-btn.btn-share:hover {
-  background-image: linear-gradient(var(--state-hover), var(--state-hover));
-}
-
 @media (max-width: 480px) {
   .history-apply-range {
     flex: 1 1 100%;
-  }
-
-  .bill-details-footer .bill-action-btn {
-    padding: 10px 4px;
-    font-size: var(--fs-sm);
   }
 }
 /* Voided bills (#75): hidden by default, greyed with a chip and the reason when shown */
@@ -6059,16 +5809,15 @@ body.dark-mode .party-due-line.party-due-old {
 }
 
 /* #124: Edit / Void past the edit window: shown, greyed, with the reason */
-.bill-action-btn.bill-action-locked {
-    opacity: 0.55;
+.bill-action-locked {
     filter: grayscale(1);
 }
 
-.bill-action-btn.bill-action-locked::before {
+.bill-action-locked::before {
     content: '\1F512  ';
 }
 
-.bill-action-btn.bill-action-locked::after {
+.bill-action-locked::after {
     content: ' · ' attr(data-locked-label);
     font-size: 0.85em;
 }
@@ -6716,16 +6465,8 @@ body.dark-mode .party-due-line.party-due-old {
 }
 
 .stock-alert-link {
-  display: inline-flex;
-  align-items: center;
   gap: var(--sp-1);
-  min-height: 32px;
-  padding: var(--sp-1) 0;
-  border: none;
-  background: none;
-  color: var(--accent-text);
-  font-size: var(--fs-sm);
-  cursor: pointer;
+  padding: 0;
 }
 
 .stock-low-card {
@@ -7019,7 +6760,7 @@ html {
   margin-bottom: 0;
 }
 
-.app-dialog.sheet .modal-footer > .modal-btn {
+.app-dialog.sheet .modal-footer > .btn {
   flex: 1 1 0;
 }
 
@@ -7064,26 +6805,14 @@ html {
   justify-content: flex-end;
 }
 
-.modal-btn {
+.modal-footer > .btn {
   min-width: 80px;
 }
 
-
-body:has(.tab.purchase-theme.active) .modal-btn-confirm:not(.modal-btn-danger) {
-  background: var(--btn-primary);
-}
-
-body:has(.tab.purchase-theme.active) .modal-btn-confirm:not(.modal-btn-danger):hover {
-  box-shadow: var(--shadow);
-}
-
-body:has(.tab.sale-theme.active) .modal-btn-confirm:not(.modal-btn-danger) {
-  background: var(--btn-success);
+/* Retail sale open: the dialog's primary takes the sale colour */
+body:has(.tab.sale-theme.active) .modal-footer > .btn-primary {
+  background-color: var(--btn-sale-bg);
   color: var(--btn-sale-ink);
-}
-
-body:has(.tab.sale-theme.active) .modal-btn-confirm:not(.modal-btn-danger):hover {
-  box-shadow: var(--shadow);
 }
 
 /* -------------------- ENHANCED TOUCH INTERACTIONS -------------------- */
@@ -7210,27 +6939,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   color: var(--dark-color);
 }
 
-.bill-details-close {
-  background: none;
-  border: none;
-  font-size: var(--fs-display);
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 0;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-}
-
-.bill-details-close:hover {
-  background: var(--bg-light);
-  color: var(--dark-color);
-}
-
 .bill-details-content {
   flex: 1;
   overflow-y: auto;
@@ -7247,40 +6955,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   background: var(--surface-muted);
 }
 
-.bill-action-btn {
+/* Close (ghost) on the left, Void (danger), Reprint and Share (tonal), Edit (the one primary) on the right */
+.bill-details-footer > .btn {
   flex: 1;
-  padding: 12px 16px;
-  font-size: var(--fs-body);
-  font-weight: var(--w-strong);
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: center;
   min-width: 0;
-}
-
-.bill-action-btn:active {
-  transform: scale(0.98);
-}
-
-.bill-action-btn.btn-close {
-  background: var(--seg-bg);
-  color: var(--text-primary);
-}
-
-.bill-action-btn.btn-close:hover {
-  background: var(--border-strong);
-}
-
-.bill-action-btn.btn-delete {
-  background: var(--danger-soft);
-  color: var(--on-danger-soft);
-  box-shadow: inset 0 0 0 1px var(--danger-border);
-}
-
-.bill-action-btn.btn-delete:hover {
-  background: var(--danger-soft);
+  padding: 0 var(--sp-3);
 }
 
 .bill-details-footer [hidden],
@@ -7321,39 +7000,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border-top: 1px solid var(--border-color);
 }
 
-.item-delete-btn {
-  min-height: 40px;
-  padding: 8px 16px;
-  background: transparent;
-  color: var(--on-danger-soft);
-  border: 1px solid var(--danger-border);
-  border-radius: 10px;
-  font-size: var(--fs-sm);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-}
-
-.item-delete-btn:hover {
-  background: var(--danger-soft);
-}
-
-.bill-action-btn.btn-edit {
-  background: var(--btn-primary);
-  color: var(--btn-primary-ink);
-}
-
-.bill-action-btn.btn-edit:hover {
-  background: var(--primary-dark);
-}
-
 @media (max-width: 480px) {
   .bill-details-footer {
     gap: 6px;
     padding: 12px;
   }
   
-  .bill-action-btn {
-    padding: 10px 12px;
+  .bill-details-footer > .btn {
+    padding: 0 var(--sp-1);
     font-size: var(--fs-sm);
   }
 }
@@ -7955,11 +7609,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .today-bill-retail .today-bill-kind::before { background: var(--mode-sale); }
 .today-bill-wholesale .today-bill-kind::before { background: var(--mode-wholesale); }
 .today-bill-total { flex: none; }
-.today-bills-more {
-  width: 100%; min-height: 44px; border: none; border-top: 1px solid var(--line); border-radius: 0 0 var(--r-panel) var(--r-panel);
-  background: none; color: var(--accent-text); font: inherit; font-weight: var(--w-strong); cursor: pointer;
-}
-.today-bills-more[hidden] { display: none; }
+.today-bills-more { border-top-color: var(--line); border-radius: 0 0 var(--r-panel) var(--r-panel); }
 
 /* Item details (T17) */
 .today-item .row-meta { white-space: normal; }
@@ -7978,7 +7628,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .today-reminder-form { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .today-reminder-form input, .today-reminder-form select { min-height: 44px; font-size: var(--fs-input); padding: 6px 10px; }
 .today-reminder-repeat { color: var(--text-secondary); font-size: var(--fs-caption); }
-.today-reminder-form-buttons { display: flex; gap: 8px; }
+.today-reminder-form-actions { display: flex; gap: var(--sp-2); }
 
 /* Ask (#88) */
 .ask-page { max-width: 720px; }
@@ -8476,17 +8126,6 @@ body.no-perm-contacts [data-perm~="contacts"] {
     color: var(--text-muted);
 }
 
-.fin-sheet-btn {
-    background: none;
-    border: none;
-    font-size: var(--fs-title);
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    cursor: pointer;
-    color: var(--text-muted);
-}
-
 .fin-sheet-value {
     font-size: 26px;
     font-weight: var(--w-strong);
@@ -8583,8 +8222,8 @@ body.no-perm-contacts [data-perm~="contacts"] {
 }
 
 .fin-more {
-    display: block;
-    margin: 10px auto;
+    display: flex;
+    margin: var(--sp-2) auto;
 }
 
 .fin-sheet-total {
@@ -8846,8 +8485,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 }
 
 .app-sheet-close {
-  width: 100%;
-  margin-top: 8px;
+  margin-top: var(--sp-2);
 }
 
 .app-update {
@@ -9314,19 +8952,6 @@ body.dark-mode .app-sheet-fallback {
     gap: var(--sp-2);
     margin-top: var(--sp-2);
 }
-
-.ins-step {
-    min-width: 44px;
-    min-height: 44px;
-    border: 1px solid var(--input-border);
-    border-radius: var(--r-control);
-    background: var(--input-bg);
-    color: var(--ink);
-    font-size: var(--fs-title);
-    cursor: pointer;
-}
-
-.ins-step:focus-visible { outline: none; box-shadow: var(--focus); }
 
 .ins-period-label {
     flex: 1;
@@ -10043,9 +9668,13 @@ div.ins-wide,
     justify-content: flex-end;
   }
 
-  .bill-details-footer .bill-action-btn {
+  .bill-details-footer > .btn {
     flex: 0 0 auto;
     min-width: 120px;
+  }
+
+  .bill-details-footer > [data-dismiss] {
+    margin-right: auto;
   }
 
   /* ---------- Android update banner: keep clear of the permanent sidebar ---------- */

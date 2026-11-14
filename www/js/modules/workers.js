@@ -197,7 +197,7 @@ function renderDetail(item) {
             <h3>${esc(w.name)}</h3>
             <p>${balanceLine(item.balance)}</p>
             <div class="wp-actions">
-                <button type="button" class="btn btn-primary btn-sm" data-onclick="workers.showForm('pay')">${et('ui.workers.record_btn')}</button>
+                <button type="button" class="btn btn-tonal btn-sm" data-onclick="workers.showForm('pay')">${et('ui.workers.record_btn')}</button>
                 <button type="button" class="btn btn-tonal btn-sm" data-onclick="workers.showForm('edit')">${et('ui.workers.edit')}</button>
                 ${leave}
             </div>

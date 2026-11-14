@@ -181,7 +181,7 @@ function isBodyOverlay(el) {
     return r.width >= window.innerWidth * 0.9 && r.height >= window.innerHeight * 0.9;
 }
 
-const CLOSE_SELECTOR = '.bill-details-close, .bill-action-btn.btn-close, .modal-close, [data-dismiss]';
+const CLOSE_SELECTOR = '.modal-close, [data-dismiss]';
 const CLOSE_TEXT = /^(cancel|close|✕|×|रद्द|रहने|बंद)/i;
 
 /**

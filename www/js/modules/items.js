@@ -145,7 +145,7 @@ const ItemsManager = {
                            data-oninput="items.updateRate(${id}, ${rateIndex}, this.value)"
                            data-onchange="items.commitRate(${id}, ${rateIndex})"
                            placeholder="${Helpers.escapeHtml(t('ui.common.rate'))}">
-                    <button class="delete-rate" data-onclick="items.deleteRate(${id}, ${rateIndex})">×</button>
+                    <button type="button" class="btn btn-ghost btn-icon" data-onclick="items.deleteRate(${id}, ${rateIndex})" aria-label="${Helpers.escapeHtml(t('ui.modals.delete'))}">${icon('x', 'i-sm')}</button>
                 </div>
             `).join('');
             
@@ -157,7 +157,7 @@ const ItemsManager = {
                            data-oninput="items.updateSaleRate(${id}, ${rateIndex}, this.value)"
                            data-onchange="items.commitSaleRate(${id}, ${rateIndex})"
                            placeholder="${Helpers.escapeHtml(t('ui.common.rate'))}">
-                    <button class="delete-rate" data-onclick="items.deleteSaleRate(${id}, ${rateIndex})">×</button>
+                    <button type="button" class="btn btn-ghost btn-icon" data-onclick="items.deleteSaleRate(${id}, ${rateIndex})" aria-label="${Helpers.escapeHtml(t('ui.modals.delete'))}">${icon('x', 'i-sm')}</button>
                 </div>
             `).join('');
             
@@ -169,7 +169,7 @@ const ItemsManager = {
                            data-oninput="items.updateWholesaleRate(${id}, ${rateIndex}, this.value)"
                            data-onchange="items.commitWholesaleRate(${id}, ${rateIndex})"
                            placeholder="${Helpers.escapeHtml(t('ui.common.rate'))}">
-                    <button class="delete-rate" data-onclick="items.deleteWholesaleRate(${id}, ${rateIndex})">×</button>
+                    <button type="button" class="btn btn-ghost btn-icon" data-onclick="items.deleteWholesaleRate(${id}, ${rateIndex})" aria-label="${Helpers.escapeHtml(t('ui.modals.delete'))}">${icon('x', 'i-sm')}</button>
                 </div>
             `).join('');
             
@@ -191,15 +191,15 @@ const ItemsManager = {
                 </label>
                 <div class="field">
                     <span class="rates-head"><span class="mode-dot" aria-hidden="true"></span>${Helpers.escapeHtml(t('ui.items.purchase_rates_kg'))}</span>
-                    <div class="rates-container">${purchaseRatesHTML}<button type="button" class="add-rate-plus purchase" data-onclick="items.addRate(${id})">+</button></div>
+                    <div class="rates-container">${purchaseRatesHTML}<button type="button" class="btn btn-tonal btn-icon" data-onclick="items.addRate(${id})" aria-label="${Helpers.escapeHtml(t('ui.items.add_item'))}">${icon('plus')}</button></div>
                 </div>
                 <div class="field">
                     <span class="rates-head"><span class="mode-dot wholesale" aria-hidden="true"></span>${Helpers.escapeHtml(t('ui.items.wholesale_rates_kg'))}</span>
-                    <div class="rates-container">${wholesaleRatesHTML}<button type="button" class="add-rate-plus wholesale" data-onclick="items.addWholesaleRate(${id})">+</button></div>
+                    <div class="rates-container">${wholesaleRatesHTML}<button type="button" class="btn btn-tonal btn-icon" data-onclick="items.addWholesaleRate(${id})" aria-label="${Helpers.escapeHtml(t('ui.items.add_item'))}">${icon('plus')}</button></div>
                 </div>
                 <div class="field">
                     <span class="rates-head"><span class="mode-dot sale" aria-hidden="true"></span>${Helpers.escapeHtml(t('ui.items.retail_rates_kg'))}</span>
-                    <div class="rates-container">${saleRatesHTML}<button type="button" class="add-rate-plus sale" data-onclick="items.addSaleRate(${id})">+</button></div>
+                    <div class="rates-container">${saleRatesHTML}<button type="button" class="btn btn-tonal btn-icon" data-onclick="items.addSaleRate(${id})" aria-label="${Helpers.escapeHtml(t('ui.items.add_item'))}">${icon('plus')}</button></div>
                 </div>
             `;
             
@@ -948,7 +948,7 @@ const ItemsManager = {
                        value="${Helpers.escapeHtml(rate)}" 
                        data-oninput="items.updateModalRate('purchase', ${idx}, this.value)"
                        placeholder="${Helpers.escapeHtml(t('ui.common.rate'))}">
-                <button class="delete-rate" data-onclick="items.deleteModalRate('purchase', ${idx})">×</button>
+                <button type="button" class="btn btn-ghost btn-icon" data-onclick="items.deleteModalRate('purchase', ${idx})" aria-label="${Helpers.escapeHtml(t('ui.modals.delete'))}">${icon('x', 'i-sm')}</button>
             </div>
         `).join('');
         
@@ -960,7 +960,7 @@ const ItemsManager = {
                        value="${Helpers.escapeHtml(rate)}" 
                        data-oninput="items.updateModalRate('wholesale', ${idx}, this.value)"
                        placeholder="${Helpers.escapeHtml(t('ui.common.rate'))}">
-                <button class="delete-rate" data-onclick="items.deleteModalRate('wholesale', ${idx})">×</button>
+                <button type="button" class="btn btn-ghost btn-icon" data-onclick="items.deleteModalRate('wholesale', ${idx})" aria-label="${Helpers.escapeHtml(t('ui.modals.delete'))}">${icon('x', 'i-sm')}</button>
             </div>
         `).join('');
         
@@ -972,7 +972,7 @@ const ItemsManager = {
                        value="${Helpers.escapeHtml(rate)}" 
                        data-oninput="items.updateModalRate('sale', ${idx}, this.value)"
                        placeholder="${Helpers.escapeHtml(t('ui.common.rate'))}">
-                <button class="delete-rate" data-onclick="items.deleteModalRate('sale', ${idx})">×</button>
+                <button type="button" class="btn btn-ghost btn-icon" data-onclick="items.deleteModalRate('sale', ${idx})" aria-label="${Helpers.escapeHtml(t('ui.modals.delete'))}">${icon('x', 'i-sm')}</button>
             </div>
         `).join('');
     },

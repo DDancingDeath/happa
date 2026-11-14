@@ -502,7 +502,7 @@ export const MoneyManager = {
         this.renderCompare(null, null, {});
         this.lastSummary = null;
         this.html('moneyNotLoaded', `<div class="empty"><p>${esc(t('ui.money.older_not_loaded', { period: this.periodLabel(r) }))}</p>`
-            + `<button type="button" class="btn btn-primary" data-onclick="money.loadOlder()">${esc(t('ui.money.load_older'))}</button></div>`);
+            + `<button type="button" class="btn btn-tonal" data-onclick="money.loadOlder()">${esc(t('ui.money.load_older'))}</button></div>`);
         this.html('moneyChecks', '');
     },
 

@@ -101,7 +101,10 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   look (C2): Billing and Wholesale use Save `-primary`, Print and Share (`-icon`) the default, Add to bill and
   Rest → due `-tonal`, the draft toolbar and the contact picker `-ghost`; inside `.bill-sale` (Retail sale) and
   `.ws-entry` (Wholesale) the primary and tonal buttons take the mode's colour. `.add-to-bill-btn` and
-  `.quick-add-btn-inline` stay as E2E hooks with no look of their own.
+  `.quick-add-btn-inline` stay as E2E hooks with no look of their own. Bill details' footer: Close (ghost, left), Void and
+  Delete permanently (danger), Reprint and Share (tonal), Edit (the one primary, right). Small × and + inside a row
+  (weight chips, bill lines, rate chips) are `-ghost -icon` / `-tonal -icon` with the sprite icon; period steppers are `-icon`.
+  Inline text links inside a sentence (`.due-bill-link`, `.bill-edits__view`) stay links.
 - **Fields** `.field > label + .input`, label above, `₹` / `kg` in `.adorn`; native `<select>`
   styled as an input; checkbox and switch; `.kbd` hints (desktop). **Search** `.search-field > .i + .input`: the
   sprite search icon inside the field (decorative, `aria-hidden`), the input keeps its own `aria-label`.
@@ -214,7 +217,7 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
 - **Feedback** `.notice` (`.pos/.neg/.warn/.info`; `.solid` puts the tint on an opaque surface for a notice that sticks or floats, `.float` pins it to the top of the screen, `.notice-actions` holds its buttons; `[hidden]` always hides it), `.empty` (write it with `emptyState({ icon, title, text, action, tone })` from `ui/components.js`: the icon tile, a title, an optional line and an optional button; loading and error lines stay a plain `<p class="empty">`), `.skel`, `.toast` (near-black; light in the
   Dark theme), `.dialog` / `.sheet` / `.scrim` (old `.modal-overlay > .modal-box`), `.spinner` (blocking
   saves only). Dialog buttons: Cancel (ghost) on the left, one primary on the right, labelled with a verb; a destructive
-  confirm (Void bill) passes `{ confirmLabel, danger: true }` to `UIManager.showModal` / `showModalWithHtml` (`.modal-btn-danger`).
+  confirm (Void bill) passes `{ confirmLabel, danger: true }` to `UIManager.showModal` / `showModalWithHtml` (`.btn-danger` instead of `.btn-primary`; Cancel is `.btn-ghost`).
   **The app dialog (C5a)**: `showModal`, `showModalWithHtml` and `showCustomModal` share one controller (`ui/ui-manager.js`)
   and one template (`#modalOverlay.scrim > #modalBox.app-dialog`): a `.dialog` from 600 px, a bottom `.sheet` with a grabber
   below. It takes focus, keeps Tab inside (`trapFocus`, shared with the More and Rentals sheets) and gives focus back; Esc,
