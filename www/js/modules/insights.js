@@ -178,12 +178,12 @@ export const InsightsManager = {
 
     showSection() {
         document.querySelectorAll('#insights [data-insights-pane]').forEach(el => { el.hidden = el.dataset.insightsPane !== this.section; });
-        const mark = (sel, attr, value) => document.querySelectorAll(sel).forEach(b => {
+        const mark = (sel, attr, value, aria = 'aria-pressed') => document.querySelectorAll(sel).forEach(b => {
             const on = b.dataset[attr] === value;
             b.classList.toggle('active', on);
-            b.setAttribute('aria-selected', String(on));
+            b.setAttribute(aria, String(on));
         });
-        mark('#insights [data-insights-section]', 'insightsSection', this.section);
+        mark('#insights [data-insights-section]', 'insightsSection', this.section, 'aria-selected');
         document.querySelectorAll('#insights [data-insights-section]').forEach(b => { b.hidden = !this.mayOpen(b.dataset.insightsSection); });
         mark('#insights [data-items-type]', 'itemsType', this.itemsType);
         mark('#insights [data-party-kind]', 'partyKind', this.partyKind);

@@ -100,9 +100,15 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
 - **Fields** `.field > label + .input`, label above, `₹` / `kg` in `.adorn`; native `<select>`
   styled as an input; checkbox and switch; `.kbd` hints (desktop). **Search** `.search-field > .i + .input`: the
   sprite search icon inside the field (decorative, `aria-hidden`), the input keeps its own `aria-label`.
-- **Segmented control** `.seg` (old `.filter-buttons > .filter-btn`), with a mode dot for
-  purchase / sale. **Tabs** `.tabs` (old `.sub-tabs > .sub-tab`). **Chips** `.chip`, **tags** `.tag`
-  (`.pos/.neg/.warn/.info`).
+- **One rule for switches (C3)**: page sections are **Tabs** `.tabs` (underline; `role="tablist"`, each
+  button `role="tab"` with `aria-selected`); filters and modes are a **Segmented control** `.seg`
+  (`role="group"`, each button `aria-pressed`; a `.mode-dot` span for purchase / sale); on / off is a **chip**
+  `.chip` (`aria-pressed`) or a `.switch`. **Tags** `.tag` (`.pos/.neg/.warn/.info`). The old `.filter-buttons`,
+  `.filter-btn`, `.sub-tabs`, `.sub-tab` and the bespoke `*-toggle-chip`s are gone (action buttons that used
+  `.filter-btn` are `.btn .btn-sm`).
+- **Tab keyboard** (`www/js/ui/seg.js`, installed once on the document): every `role="tablist"` has a roving
+  tabindex (only the selected tab is a Tab stop) and Left / Right / Home / End select a tab through its own
+  click handler, also for tablists drawn later.
 - **Mode dot** `.mode-dot` (`.sale`, `.wholesale`): 8 px identity dot beside a purchase / sale / wholesale label, never a status.
 - **Panel and rows** `.panel`, `.row` (`.row-main`, `.row-title`, `.row-meta`, `.row-trail`,
   `.row-amt`, `.lead-icon`). **Metrics** `.metrics > .metric`, `.hero-num`, `.display-num`, `.meter`.

@@ -9,8 +9,7 @@
 .draft-btn,
 .add-to-bill-btn,
 .quick-add-btn-inline,
-.split-rest-btn,
-.filter-btn {
+.split-rest-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -89,8 +88,7 @@
 .draft-btn:hover:not(:disabled),
 .add-to-bill-btn:hover:not(:disabled),
 .quick-add-btn-inline:hover:not(:disabled),
-.split-rest-btn:hover:not(:disabled),
-.filter-btn:hover:not(:disabled):not(.active) {
+.split-rest-btn:hover:not(:disabled) {
   background-image: linear-gradient(var(--state-hover), var(--state-hover));
 }
 
@@ -100,8 +98,7 @@
 .draft-btn:active:not(:disabled),
 .add-to-bill-btn:active:not(:disabled),
 .quick-add-btn-inline:active:not(:disabled),
-.split-rest-btn:active:not(:disabled),
-.filter-btn:active:not(:disabled) {
+.split-rest-btn:active:not(:disabled) {
   transform: scale(0.98);
 }
 
@@ -111,9 +108,7 @@
 .draft-btn:focus-visible,
 .add-to-bill-btn:focus-visible,
 .quick-add-btn-inline:focus-visible,
-.split-rest-btn:focus-visible,
-.filter-btn:focus-visible,
-.sub-tab:focus-visible {
+.split-rest-btn:focus-visible {
   outline: none;
   box-shadow: var(--focus);
 }
@@ -125,8 +120,7 @@
 .draft-btn:disabled,
 .add-to-bill-btn:disabled,
 .quick-add-btn-inline:disabled,
-.split-rest-btn:disabled,
-.filter-btn:disabled {
+.split-rest-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
   box-shadow: none;
@@ -325,9 +319,8 @@ input[type="checkbox"].switch:focus-visible,
   box-shadow: var(--focus);
 }
 
-/* ---------- Segmented control: .seg (old: .filter-buttons > .filter-btn) ---------- */
-.seg,
-.filter-buttons {
+/* ---------- Segmented control: .seg, aria-pressed (modes and filters) ---------- */
+.seg {
   display: flex;
   gap: 2px;
   padding: 3px;
@@ -335,8 +328,11 @@ input[type="checkbox"].switch:focus-visible,
   background: var(--seg-track);
 }
 
-.seg > button,
-.filter-buttons .filter-btn {
+.seg > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
   flex: 1;
   min-width: 0;
   min-height: 44px;
@@ -346,60 +342,41 @@ input[type="checkbox"].switch:focus-visible,
   background-color: transparent;
   box-shadow: none;
   color: var(--ink-2);
+  font-family: inherit;
   font-size: var(--fs-sm);
   font-weight: var(--w-label);
+  cursor: pointer;
 }
 
 .seg > .on,
 .seg > [aria-pressed="true"],
-.seg > [aria-selected="true"],
-.filter-buttons .filter-btn.active {
+.seg > [aria-selected="true"] {
   background-color: var(--seg-on);
   color: var(--ink);
   box-shadow: var(--e1);
 }
 
-.seg > button:focus-visible,
-.filter-buttons .filter-btn:focus-visible {
+.seg > button:focus-visible {
   outline: none;
   box-shadow: var(--focus);
 }
 
-/* Mode dot: Billing's purchase / sale segments show the mode colour on both */
-#purchaseModeBtn::before,
-#saleModeBtn::before {
-  content: '';
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--mode-purchase);
-}
-
-#saleModeBtn::before {
-  background: var(--mode-sale);
-}
-
 /* These set display, which would otherwise beat the hidden attribute */
-:is(.btn, .save-btn, .print-btn, .draft-btn, .add-to-bill-btn, .quick-add-btn-inline, .split-rest-btn, .filter-btn)[hidden],
+:is(.btn, .save-btn, .print-btn, .draft-btn, .add-to-bill-btn, .quick-add-btn-inline, .split-rest-btn)[hidden],
 .seg[hidden],
-.filter-buttons[hidden],
-.tabs[hidden],
-.sub-tabs[hidden] {
+.tabs[hidden] {
   display: none;
 }
 
-/* ---------- Tabs: .tabs (old: .sub-tabs > .sub-tab), underline with a 2 px ink indicator ---------- */
-.tabs,
-.sub-tabs {
+/* ---------- Tabs: .tabs, role=tablist / tab + aria-selected (page sections), underline with a 2 px ink indicator ---------- */
+.tabs {
   display: flex;
   gap: 4px;
   border-bottom: 1px solid var(--line);
   background: none;
 }
 
-.tabs > button,
-.sub-tab {
+.tabs > button {
   min-height: 44px;
   padding: 0 12px;
   margin-bottom: -1px;
@@ -415,19 +392,17 @@ input[type="checkbox"].switch:focus-visible,
   transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 
-.tabs > button:hover,
-.sub-tab:hover {
+.tabs > button:hover {
   color: var(--ink);
 }
 
 .tabs > .on,
-.tabs > [aria-selected="true"],
-.sub-tab.active {
+.tabs > [aria-selected="true"] {
   border-bottom-color: var(--ink);
   color: var(--ink);
 }
 
-/* ---------- Chips (old: .filter-buttons-secondary .filter-btn; a lone .filter-btn.active) and tags ---------- */
+/* ---------- Chips: .chip + aria-pressed (on/off), and tags ---------- */
 .chip {
   min-height: 32px;
   padding: 0 14px;
@@ -440,8 +415,7 @@ input[type="checkbox"].switch:focus-visible,
 }
 
 .chip.on,
-.chip[aria-pressed="true"],
-.filter-btn.active {
+.chip[aria-pressed="true"] {
   border-color: var(--ink);
   background-color: var(--ink);
   color: var(--bg);

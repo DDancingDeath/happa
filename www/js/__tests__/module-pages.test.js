@@ -227,7 +227,7 @@ describe('Rates page (items list)', () => {
 describe('Stock', () => {
     beforeEach(() => {
         document.body.innerHTML = `
-          <div id="stock"><button class="filter-btn"></button><button class="filter-btn"></button></div>
+          <div id="stock"><button></button><button></button></div>
           <input id="stockSearchInput"><div id="stockList"></div>
           <select id="adjustItem"></select><select id="adjustType"><option>add</option><option>remove</option><option>set</option></select>
           <input id="adjustQuantity"><input id="adjustRate" value="0"><input id="adjustReason">

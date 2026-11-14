@@ -224,8 +224,6 @@
 
 /* Tap targets (#68): page toggles, primary buttons and list actions are at least 44 px tall */
 .btn,
-.filter-btn,
-.sub-tab,
 .save-btn,
 .draft-btn,
 .split-rest-btn,

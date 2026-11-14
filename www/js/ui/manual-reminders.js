@@ -100,9 +100,9 @@ export const ManualReminders = {
             + (r.party ? ` <span class="today-reminder-party-name">· ${esc(r.party)}</span>` : '')
             + ` <span class="today-reminder-days${r.days < 0 ? ' late' : ''}">${esc(this.whenText(r))}</span>`
             + (isReminderRepeat(r.repeat) ? ` <span class="today-reminder-repeat">${esc(t(`ui.reminders.repeat_${r.repeat}`))}</span>` : '')
-            + `<span class="today-reminder-actions"><button type="button" class="filter-btn" data-reminder-done data-onclick="day.reminderDone('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.done'))}</button>`
-            + (manage ? `<button type="button" class="filter-btn" data-onclick="day.reminderEdit('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.edit'))}</button>`
-                + `<button type="button" class="filter-btn" data-onclick="day.reminderCancel('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.cancel'))}</button>` : '')
+            + `<span class="today-reminder-actions"><button type="button" class="btn btn-sm" data-reminder-done data-onclick="day.reminderDone('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.done'))}</button>`
+            + (manage ? `<button type="button" class="btn btn-sm" data-onclick="day.reminderEdit('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.edit'))}</button>`
+                + `<button type="button" class="btn btn-sm" data-onclick="day.reminderCancel('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.cancel'))}</button>` : '')
             + '</span></li>';
     },
 
@@ -173,7 +173,7 @@ export const ManualReminders = {
             + (g.later ? `<div class="today-reminder-more">${esc(t('ui.reminders.later', { count: g.later }))}</div>` : '')
             + (this.list.length >= REMINDER_LISTEN_LIMIT ? `<div class="today-reminder-more">${esc(t('ui.reminders.limit', { count: REMINDER_LISTEN_LIMIT }))}</div>` : '')
             + (manage ? (this.formOpen ? this.formHtml()
-                : `<button type="button" class="filter-btn" data-onclick="day.reminderForm(true)">${esc(t('ui.reminders.add'))}</button>`) : '')
+                : `<button type="button" class="btn btn-sm" data-onclick="day.reminderForm(true)">${esc(t('ui.reminders.add'))}</button>`) : '')
             + '</div></div>';
     },
 
