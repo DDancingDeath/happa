@@ -63,8 +63,8 @@ describe('#69 session totals', () => {
         const box = document.createElement('div');
         box.innerHTML = html;
         const text = box.textContent.replace(/\s+/g, ' ');
-        expect(text).toContain('Opening + added + cash in: ₹4,050');
-        expect(text).toContain('Total cash out: ₹1,830');
+        expect(text).toContain('Opening + added + cash in ₹4,050');
+        expect(text).toContain('Total cash out ₹1,830');
     });
 
     test('a closed day\'s status card shows what it was closed with, not the live totals (a later void, #99)', () => {

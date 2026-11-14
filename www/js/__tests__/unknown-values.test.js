@@ -85,8 +85,8 @@ describe('bill details', () => {
         AppState.purchaseHistory = [{ id: 'q1', billNumber: 'Q1', date: 'not a date', items: [], laborCharges: 30 }];
         await HistoryManager.viewBill('id:q1', 'purchase');
         const text = document.getElementById('billDetailsContent').textContent.replace(/\s+/g, ' ');
-        expect(text).toContain('Purchase total: —');
-        expect(text).toContain('Total payable: —');
+        expect(text).toContain('Purchase total —');
+        expect(text).toContain('Total payable —');
         expect(text).toContain('₹30');
         expect(document.querySelector('#billDetailsContent .bad-date-badge')).not.toBeNull();
     });

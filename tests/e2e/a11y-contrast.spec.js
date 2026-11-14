@@ -10,7 +10,7 @@ const { seed } = require('./support/seed');
 
 const PAGES = [
     ['Billing', 'billing'], ['Today', 'day'], ['Today › Cash', 'day', "window.app.day.showSubTab('cash')"],
-    ['History', 'history'], ['Outstanding', 'due'], ['Stocks', 'stock'], ['Wholesale', 'wholesale-sales'],
+    ['History', 'history'], ['Outstanding', 'due'], ['Stock', 'stock'], ['Wholesale', 'wholesale-sales'],
     ['Expenses', 'expenses'], ['Cash', 'cash-management'], ['Rates', 'rates'], ['Money', 'money'],
     ['Insights', 'insights'], ['Statements', 'statements'], ['Settings', 'settings-common'], ['Settings › Aadhat', 'settings-shop']
 ];
