@@ -285,9 +285,11 @@
   --dur-2: 200ms;
   --dur-3: 280ms;
   /* Layers */
+  --z-menu: 5;
   --z-bell: 1000;
   --z-notif-scrim: 1002;
   --z-notif: 1003;
+  --z-dialog: 10000;
   --z-auth: 10000;
 
   --transition-fast: var(--dur-1) var(--ease);
@@ -12176,9 +12178,14 @@ div.ins-wide,
     margin-left: auto;
   }
 
-  /* rentals.css (loaded later) caps the phone width; desktop pages are full width */
-  .tab.rentals-tab {
-    max-width: none;
+  /* Rentals (rentals.css loads later, so these are one step more specific): the title is in the header bar, so the
+     view switch sits on the right (DIRECTION.md, page header); the unit filters share one row */
+  .tab .rent-head {
+    justify-content: flex-end;
+  }
+
+  .tab .rent-filters {
+    grid-template-columns: repeat(5, auto);
   }
 
   /* ---------- Billing: mode and the drafts toolbar share one row under the page header (4.2) ---------- */

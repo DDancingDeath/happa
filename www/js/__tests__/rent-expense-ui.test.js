@@ -41,7 +41,7 @@ const SNAP = {
     charges: [{ id: `L1_${MONTH}`, leaseId: 'L1', unitId: 'U1', tenantId: 'T1', month: MONTH, dueDay: 10, rent: 5000, amount: 5000, paid: 3000, payments: [] }],
     expenses: [{ id: 'E1', propertyId: 'P1', amount: 1200, month: MONTH }, { id: 'E2', propertyId: 'P2', amount: 800, month: MONTH }]
 };
-const cards = (root) => [...root.querySelector('.rent-cards').children].map(c => [...c.children].map(x => x.textContent.trim()).join(' '));
+const cards = (root) => [...root.querySelector('.rent-metrics, .rent-cards').children].map(c => [...c.children].map(x => x.textContent.trim()).join(' '));
 const body = () => document.getElementById('rentDialogBody');
 
 beforeEach(() => {

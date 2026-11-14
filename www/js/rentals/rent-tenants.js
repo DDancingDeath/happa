@@ -8,6 +8,8 @@
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { formatINR, whatsAppReminderUrl } from '../utils/due-reminder.js';
+import { moneyHtml, moneyInText } from '../ui/components.js';
+import { icon } from '../ui/icons.js';
 import { openExternal } from '../utils/open-external.js';
 import { t, getLang } from '../i18n/index.js';
 import { AuditService } from '../services/audit.js';
@@ -20,12 +22,13 @@ import {
 
 const esc = (v) => Helpers.escapeHtml(v);
 const js = (v) => Helpers.escapeJsAttr(v);
-const money = (n) => esc(formatINR(n));
+const money = (n) => { const h = moneyHtml(n); return h === '—' ? esc(formatINR(n)) : h; };
 const et = (key, p) => esc(t(key, p));
 const byId = (id) => document.getElementById(id);
 const fail = (key, p) => UIManager.showToast(t(key, p), 'error');
-const btn = (cls, fn, args, key, icon = '', attrs = '') => `<button type="button" class="rent-btn${cls}"${attrs} data-onclick="rentals.${fn}(${args})">${icon}${et(key)}</button>`;
-const lbl = (key, field) => `<label class="rent-label">${et(key)}${field}</label>`;
+const btn = (cls, fn, args, key, icon = '', attrs = '') => `<button type="button" class="btn${cls}"${attrs} data-onclick="rentals.${fn}(${args})">${icon}${et(key)}</button>`;
+const lbl = (key, field) => `<label class="field rent-label">${et(key)}${field}</label>`;
+const phones = (tn) => `${icon('phone', 'i-sm')}${esc(tn.phone)}${tn.phone2 ? `, ${esc(tn.phone2)}` : ''}`;
 const val = (id) => (byId(id)?.value ?? '').trim();
 
 /** rentals.js's context, set by every exported call. */
@@ -55,35 +58,35 @@ function listRows(d, adv) {
         || a.tn.name.localeCompare(b.tn.name));
     return list.map(({ tn, lease: l, due }) => {
         const where = l ? esc(c.placeOf(ix, l.unitId)) : et('ui.rent.no_unit');
-        const more = adv ? [tn.phone ? `📞 ${esc(tn.phone)}${tn.phone2 ? `, ${esc(tn.phone2)}` : ''}` : '',
-            l ? `${et('ui.rent.rent_terms', { amount: formatINR(l.rent), day: l.dueDay })} ${c.elecTag(l)}` : '', l?.startDate ? esc(c.sinceText(l)) : '',
+        const more = adv ? [tn.phone ? phones(tn) : '',
+            l ? `${moneyInText(t('ui.rent.rent_terms', { amount: formatINR(l.rent), day: l.dueDay }), l.rent)} ${c.elecTag(l)}` : '', l?.startDate ? esc(c.sinceText(l)) : '',
             isMonth(l?.agreementEnd) ? et('ui.rent.agr_till', { month: monthLabel(l.agreementEnd, getLang()) }) : '', tn.notes ? esc(tn.notes) : ''].filter(Boolean) : [];
-        return `<button type="button" class="rent-list-row rent-tenant-row" data-tenant="${esc(tn.id)}" data-onclick="rentals.openTenant('${js(tn.id)}')">
-            <span class="rent-row-head"><span><span class="rent-name">${esc(tn.name)}</span><span class="rent-sub">${where}</span>
+        return `<button type="button" class="row rent-entry" data-tenant="${esc(tn.id)}" data-onclick="rentals.openTenant('${js(tn.id)}')">
+            <span class="rent-entry-head"><span class="row-main"><span class="row-title">${esc(tn.name)}</span><span class="row-meta">${where}</span>
                 ${more.map(x => `<span class="rent-sub">${x}</span>`).join('')}</span>
-            <span class="rent-row-right">${due.total > 0 ? `<span class="rent-due">${money(due.total)}</span>` : ''}${statusOf(due)}</span></span>
+            <span class="row-trail">${due.total > 0 ? `<span class="row-amt">${money(due.total)}</span>` : ''}${statusOf(due)}</span></span>
         </button>`;
-    }).join('') || `<p class="rent-empty">${et(d.tenants.length ? 'ui.rent.no_match' : 'ui.rent.no_tenants_hint')}</p>`;
+    }).join('') || `<p class="empty">${et(d.tenants.length ? 'ui.rent.no_match' : 'ui.rent.no_tenants_hint')}</p>`;
 }
 
 function renderTenants(d) {
     const adv = c.state.mode === 'advanced';
     const v = c.state.tenantList;
-    const search = d.tenants.length > 8 || v.q ? `<input type="search" id="rentTenantSearch" value="${esc(v.q)}" placeholder="${et('ui.rent.search_tenants')}" aria-label="${et('ui.rent.search_tenants')}" data-oninput="rentals.tenantList('q', this.value)">` : '';
-    const add = c.canWrite ? btn(' rent-btn-primary', 'addTenant', '', 'ui.rent.add_tenant', '+ ') : '';
-    const chip = (k, cur, field, key) => `<button type="button" class="filter-btn${k === cur ? ' active" aria-pressed="true"' : '" aria-pressed="false"'} data-onclick="rentals.tenantList('${field}', '${k}')">${et(key)}</button>`;
+    const search = d.tenants.length > 8 || v.q ? `<input class="input" type="search" id="rentTenantSearch" value="${esc(v.q)}" placeholder="${et('ui.rent.search_tenants')}" aria-label="${et('ui.rent.search_tenants')}" data-oninput="rentals.tenantList('q', this.value)">` : '';
+    const add = c.canWrite ? btn(' btn-primary', 'addTenant', '', 'ui.rent.add_tenant', icon('plus', 'i-sm')) : '';
+    const chip = (k, cur, field, key) => `<button type="button" class="chip" aria-pressed="${k === cur ? 'true' : 'false'}" data-onclick="rentals.tenantList('${field}', '${k}')">${et(key)}</button>`;
     const tools = adv ? `<div class="rent-chips" role="group">${FILTERS.map(k => chip(k, v.filter, 'filter', `ui.rent.tfilter_${k}`)).join('')}</div>
         <div class="rent-chips" role="group">${SORTS.map(k => chip(k, v.sort, 'sort', `ui.rent.tsort_${k}`)).join('')}</div>` : '';
     // Moved-out tenants whose link is still on (it stays readable until turned off).
     const ix = c.index(d);
-    const endedLinks = adv && c.isManager ? d.linked.filter(l => l.status === 'ended').map(l => `<div class="rent-list-row">
-            <div class="rent-name">${esc(ix.tenants.get(l.tenantId)?.name || t('ui.rent.no_name'))}</div>
-            <div class="rent-sub">${et('ui.rent.moved_out')} · ${esc(monthLabel(l.endMonth, getLang()))}</div>
-            <div class="rent-actions">${btn(' rent-btn-small', 'shareLink', `'${js(l.id)}'`, 'ui.rent.link_on', '🔗 ')}</div>
+    const endedLinks = adv && c.isManager ? d.linked.filter(l => l.status === 'ended').map(l => `<div class="row rent-entry">
+            <div class="row-title">${esc(ix.tenants.get(l.tenantId)?.name || t('ui.rent.no_name'))}</div>
+            <div class="row-meta">${et('ui.rent.moved_out')} · ${esc(monthLabel(l.endMonth, getLang()))}</div>
+            <div class="rent-actions">${btn(' btn-sm', 'shareLink', `'${js(l.id)}'`, 'ui.rent.link_on', icon('link', 'i-sm'))}</div>
         </div>`).join('') : '';
     return `<div class="rent-toolbar">${search}${add}</div>${tools}
-        <div class="rent-list" id="rentTenantList">${listRows(d, adv)}</div>
-        ${endedLinks ? `<h3 class="rent-section-title">${et('ui.rent.links_moved_out')}</h3><div class="rent-list">${endedLinks}</div>` : ''}`;
+        <div class="panel rent-tenant-list" id="rentTenantList">${listRows(d, adv)}</div>
+        ${endedLinks ? `<h3 class="rent-section-title">${et('ui.rent.links_moved_out')}</h3><div class="panel">${endedLinks}</div>` : ''}`;
 }
 
 /** Search redraws only the list, so the box keeps its focus. */
@@ -105,7 +108,7 @@ function monthLine(ch, lang, place) {
     const e = ch.electricity;
     return `<li>${esc(monthLabel(ch.month, lang))}${place ? ` · ${esc(place)}` : ''}: ${money(chargeDue(ch))}
         ${c.badge(s.status === 'partial' ? 'partial' : 'due', s.status === 'partial' ? 'ui.rent.status_partial' : 'ui.rent.status_due')}${s.late ? ` ${c.badge('late', 'ui.rent.status_late')}` : ''}
-        ${e ? `<span class="rent-sub">${et('ui.rent.incl_electricity', { amount: formatINR(e.amount), units: e.units })}</span>` : ''}</li>`;
+        ${e ? `<span class="rent-sub">${moneyInText(t('ui.rent.incl_electricity', { amount: formatINR(e.amount), units: e.units }), e.amount)}</span>` : ''}</li>`;
 }
 
 function renderTenant(d, id) {
@@ -121,43 +124,43 @@ function renderTenant(d, id) {
     const lid = lease ? js(lease.id) : '';
     const linked = lease || d.linked.find(l => l.tenantId === id) || null;
     const menu = [
-        w ? btn('', 'editTenant', `'${tid}'`, 'ui.rent.edit') : '',
-        lease && c.isManager ? btn('', 'agreement', `'${lid}'`, 'ui.rent.agr_btn') : '',
-        linked && c.isManager ? btn('', 'shareLink', `'${js(linked.id)}'`, isShareToken(linked.shareToken) ? 'ui.rent.link_on' : 'ui.rent.link_make') : '',
-        lease && w ? btn('', 'changeUnit', `'${tid}'`, 'ui.rent.change_unit') : '',
-        !lease && w ? btn(' rent-btn-danger', 'archiveTenant', `'${tid}'`, 'ui.rent.remove') : ''
+        w ? btn(' btn-ghost', 'editTenant', `'${tid}'`, 'ui.rent.edit') : '',
+        lease && c.isManager ? btn(' btn-ghost', 'agreement', `'${lid}'`, 'ui.rent.agr_btn') : '',
+        linked && c.isManager ? btn(' btn-ghost', 'shareLink', `'${js(linked.id)}'`, isShareToken(linked.shareToken) ? 'ui.rent.link_on' : 'ui.rent.link_make') : '',
+        lease && w ? btn(' btn-ghost', 'changeUnit', `'${tid}'`, 'ui.rent.change_unit') : '',
+        !lease && w ? btn(' btn-ghost tone-neg', 'archiveTenant', `'${tid}'`, 'ui.rent.remove') : ''
     ].filter(Boolean);
     const several = new Set(due.charges.map(x => x.leaseId)).size > 1;
     const months = due.charges.map(x => monthLine(x, lang, several ? c.placeOf(ix, x.unitId, x.unitLabel || '') : '')).join('');
     const first = owing[0];
-    const payActs = first ? `${w ? btn(' rent-btn-primary', 'pay', `'${js(first.leaseId)}'`, 'ui.rent.record_payment', '', ' data-rent-pay') : ''}
-        ${w ? owing.slice(1).map(r => `<button type="button" class="rent-btn" data-rent-pay data-onclick="rentals.pay('${js(r.leaseId)}')">${et('ui.rent.collect_at', { place: c.placeOf(ix, r.unitId, r.unitLabel || '') })}</button>`).join('') : ''}
-        ${btn(' rent-btn-wa', 'remindTenant', `'${tid}'`, 'ui.rent.whatsapp')}` : '';
+    const payActs = first ? `${w ? btn(' btn-primary', 'pay', `'${js(first.leaseId)}'`, 'ui.rent.record_payment', '', ' data-rent-pay') : ''}
+        ${w ? owing.slice(1).map(r => `<button type="button" class="btn" data-rent-pay data-onclick="rentals.pay('${js(r.leaseId)}')">${et('ui.rent.collect_at', { place: c.placeOf(ix, r.unitId, r.unitLabel || '') })}</button>`).join('') : ''}
+        ${btn(' btn-success', 'remindTenant', `'${tid}'`, 'ui.rent.whatsapp', icon('wa', 'i-sm'))}` : '';
     const current = lease ? d.charges.find(x => x.leaseId === lease.id && x.month === c.state.month) : null;
     const inc = lease ? increaseDue(lease, c.state.month) : { due: false };
     const meterBtn = lease && w && current && elecMode(lease) === 'meter' && (!current.electricity || c.isManager)
-        ? btn('', 'meter', `'${lid}'`, 'ui.rent.meter_reading', '⚡ ') : '';
-    const leaseCard = lease ? `<section class="rent-summary">
+        ? btn('', 'meter', `'${lid}'`, 'ui.rent.meter_reading', icon('bolt', 'i-sm')) : '';
+    const leaseCard = lease ? `<section class="panel panel-pad rent-box">
             <h4 class="rent-section-title">${et('ui.rent.lease')}</h4>
-            <div>${et('ui.rent.rent_terms', { amount: formatINR(lease.rent), day: lease.dueDay })} ${c.elecTag(lease)}</div>
+            <div>${moneyInText(t('ui.rent.rent_terms', { amount: formatINR(lease.rent), day: lease.dueDay }), lease.rent)} ${c.elecTag(lease)}</div>
             ${lease.startDate ? `<div class="rent-sub">${esc(c.sinceText(lease))}</div>` : ''}
             ${isMonth(lease.agreementEnd) ? `<div class="rent-sub">${et('ui.rent.agr_till', { month: monthLabel(lease.agreementEnd, lang) })}</div>` : ''}
-            ${inc.due ? `<div class="rent-increase">📈 ${et('ui.rent.increase_due', { pct: inc.pct, amount: formatINR(inc.newRent) })}</div>` : ''}
+            ${inc.due ? `<div class="notice info rent-increase">${icon('trend', 'i-sm')}<span class="grow">${moneyInText(t('ui.rent.increase_due', { pct: inc.pct, amount: formatINR(inc.newRent) }), inc.newRent)}</span></div>` : ''}
             <div class="rent-actions">${w ? btn('', 'editLease', `'${lid}'`, 'ui.rent.update_rent') : ''}${meterBtn}
-                ${w ? btn(' rent-btn-danger', 'moveOut', `'${lid}'`, 'ui.rent.move_out') : ''}</div>
+                ${w ? btn(' btn-ghost tone-neg', 'moveOut', `'${lid}'`, 'ui.rent.move_out') : ''}</div>
         </section>`
-        : `<section class="rent-summary"><p class="rent-empty">${et('ui.rent.no_unit')}.</p>${w ? btn('', 'moveIn', `'${tid}'`, 'ui.rent.let_unit') : ''}</section>`;
+        : `<section class="panel panel-pad rent-box"><p class="empty">${et('ui.rent.no_unit')}.</p>${w ? btn('', 'moveIn', `'${tid}'`, 'ui.rent.let_unit') : ''}</section>`;
     return `<div class="rent-detail" data-tenant-detail="${esc(id)}">
-        <div class="rent-detail-bar">${btn(' rent-btn-small', 'back', '', 'ui.nav.tenants', '← ')}
-            ${menu.length ? `<details class="rent-menu"><summary aria-label="${et('ui.rent.more_actions')}">⋯</summary><div class="rent-menu-list">${menu.join('')}</div></details>` : ''}</div>
-        <h3 class="rent-name" id="rentDetailTitle" tabindex="-1">${esc(tn.name)}</h3>
-        <div class="rent-sub">${tn.phone ? `📞 ${esc(tn.phone)}${tn.phone2 ? `, ${esc(tn.phone2)}` : ''} · ` : ''}${lease ? esc(c.placeOf(ix, lease.unitId)) : et('ui.rent.no_unit')}</div>
+        <div class="rent-detail-bar">${btn(' btn-ghost btn-sm', 'back', '', 'ui.nav.tenants', icon('chevL', 'i-sm'))}
+            ${menu.length ? `<details class="rent-menu"><summary class="btn btn-ghost btn-icon" aria-label="${et('ui.rent.more_actions')}">${icon('dots')}</summary><div class="panel rent-menu-list">${menu.join('')}</div></details>` : ''}</div>
+        <h3 class="rent-detail-title" id="rentDetailTitle" tabindex="-1">${esc(tn.name)}</h3>
+        <div class="rent-sub">${tn.phone ? `${phones(tn)} · ` : ''}${lease ? esc(c.placeOf(ix, lease.unitId)) : et('ui.rent.no_unit')}</div>
         ${tn.notes ? `<div class="rent-sub">${esc(tn.notes)}</div>` : ''}
-        <section class="rent-summary">
-            ${due.total > 0 ? `<div class="rent-row-head"><span class="rent-name">${et('ui.rent.owes', { amount: formatINR(due.total) })}</span><span>${statusOf(due)}</span></div>
-                <ul class="rent-months">${months}</ul>` : `<p class="rent-empty">${et('ui.rent.no_rent_due')}</p>`}
-            ${current?.adv > 0 ? `<div class="rent-sub">${et('ui.rent.adv_next', { amount: formatINR(current.adv) })}</div>` : ''}
-            <div class="rent-actions">${payActs}${c.receiptsBtn(id)}${btn('', 'deposit', `'${tid}'`, 'ui.rent.dep_btn', '💰 ')}</div>
+        <section class="panel panel-pad rent-box">
+            ${due.total > 0 ? `<div class="rent-entry-head"><span class="rent-owes">${moneyInText(t('ui.rent.owes', { amount: formatINR(due.total) }), due.total)}</span><span>${statusOf(due)}</span></div>
+                <ul class="rent-months">${months}</ul>` : `<p class="empty">${et('ui.rent.no_rent_due')}</p>`}
+            ${current?.adv > 0 ? `<div class="rent-sub">${moneyInText(t('ui.rent.adv_next', { amount: formatINR(current.adv) }), current.adv)}</div>` : ''}
+            <div class="rent-actions">${payActs}${c.receiptsBtn(id)}${btn('', 'deposit', `'${tid}'`, 'ui.rent.dep_btn', icon('coins', 'i-sm'))}</div>
         </section>
         ${leaseCard}
     </div>`;
@@ -185,10 +188,10 @@ function remindTenant(id) {
 /** Add tenant: name and phones; a unit picked here starts their tenancy (Move in) straight after. */
 async function addTenant() {
     const open = c.dialog(`<h3>${et('ui.rent.add_tenant')}</h3>
-        ${lbl('ui.rent.tenant_name', '<input id="rentTenantName" type="text" maxlength="80">')}
-        ${lbl('ui.rent.phone_required', '<input id="rentTenantPhone" type="tel" maxlength="20" inputmode="tel">')}
-        ${lbl('ui.rent.phone2', '<input id="rentTenantPhone2" type="tel" maxlength="20" inputmode="tel">')}
-        ${lbl('ui.rent.notes', '<input id="rentTenantNotes" type="text" maxlength="500">')}
+        ${lbl('ui.rent.tenant_name', '<input class="input" id="rentTenantName" type="text" maxlength="80">')}
+        ${lbl('ui.rent.phone_required', '<input class="input" id="rentTenantPhone" type="tel" maxlength="20" inputmode="tel">')}
+        ${lbl('ui.rent.phone2', '<input class="input" id="rentTenantPhone2" type="tel" maxlength="20" inputmode="tel">')}
+        ${lbl('ui.rent.notes', '<input class="input" id="rentTenantNotes" type="text" maxlength="500">')}
         <div id="rentTenantUnitBox"></div>`);
     void c.unitUi('fillPicker', 'rentTenantUnitBox', 'rentTenantUnit');
     if (!await open) return;
@@ -206,10 +209,10 @@ async function editTenant(id) {
     const tn = store.snapshot().tenants.find(x => x.id === id);
     if (!tn) return;
     const ok = await c.dialog(`<h3>${et('ui.rent.edit')}</h3>
-        ${lbl('ui.rent.tenant_name', `<input id="rentEditName" type="text" maxlength="80" value="${esc(tn.name)}">`)}
-        ${lbl('ui.rent.phone_required', `<input id="rentEditPhone" type="tel" maxlength="20" value="${esc(tn.phone || '')}">`)}
-        ${lbl('ui.rent.phone2', `<input id="rentEditPhone2" type="tel" maxlength="20" value="${esc(tn.phone2 || '')}">`)}
-        ${lbl('ui.rent.notes', `<input id="rentEditNotes" type="text" maxlength="500" value="${esc(tn.notes || '')}">`)}`);
+        ${lbl('ui.rent.tenant_name', `<input class="input" id="rentEditName" type="text" maxlength="80" value="${esc(tn.name)}">`)}
+        ${lbl('ui.rent.phone_required', `<input class="input" id="rentEditPhone" type="tel" maxlength="20" value="${esc(tn.phone || '')}">`)}
+        ${lbl('ui.rent.phone2', `<input class="input" id="rentEditPhone2" type="tel" maxlength="20" value="${esc(tn.phone2 || '')}">`)}
+        ${lbl('ui.rent.notes', `<input class="input" id="rentEditNotes" type="text" maxlength="500" value="${esc(tn.notes || '')}">`)}`);
     if (!ok) return;
     const raw = { name: val('rentEditName'), phone: val('rentEditPhone'), phone2: val('rentEditPhone2'), notes: val('rentEditNotes') };
     const err = tenantError(raw);
@@ -252,10 +255,10 @@ async function meter(leaseId) {
     const prevLocked = e != null || unit?.lastReading != null;
     const defaultRate = e?.rate ?? unit?.meterRate ?? (await c.defaults()).meterRate ?? '';
     const rateLocked = !c.isManager && unit?.meterRate != null;
-    const ok = await c.dialog(`<h3>⚡ ${et('ui.rent.meter_reading')}: ${esc(monthLabel(c.state.month, getLang()))}</h3>
-        ${lbl('ui.rent.meter_prev', `<input id="rentMeterPrev" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(prev)}"${prevLocked ? ' readonly' : ''}>`)}
-        ${lbl('ui.rent.meter_curr', `<input id="rentMeterCurr" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(e?.curr ?? '')}">`)}
-        ${lbl('ui.rent.meter_rate', `<input id="rentMeterRate" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(defaultRate)}"${rateLocked ? ' readonly' : ''}>`)}
+    const ok = await c.dialog(`<h3>${et('ui.rent.meter_reading')}: ${esc(monthLabel(c.state.month, getLang()))}</h3>
+        ${lbl('ui.rent.meter_prev', `<input class="input" id="rentMeterPrev" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(prev)}"${prevLocked ? ' readonly' : ''}>`)}
+        ${lbl('ui.rent.meter_curr', `<input class="input" id="rentMeterCurr" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(e?.curr ?? '')}">`)}
+        ${lbl('ui.rent.meter_rate', `<input class="input" id="rentMeterRate" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(defaultRate)}"${rateLocked ? ' readonly' : ''}>`)}
         <p class="rent-help">${et('ui.rent.meter_help')}</p>`);
     if (!ok) return;
     let bill;
@@ -283,10 +286,10 @@ async function editLease(leaseId) {
     if (!lease) return;
     const inc = increaseDue(lease, c.state.month);
     const ok = await c.dialog(`<h3>${et('ui.rent.update_rent')}</h3>
-        ${inc.due ? `<p class="rent-increase">📈 ${et('ui.rent.increase_due', { pct: inc.pct, amount: formatINR(inc.newRent) })}</p>` : ''}
-        ${lbl('ui.rent.monthly_rent', `<input id="rentEditRent" type="number" inputmode="decimal" min="0" step="1" value="${esc(inc.due ? inc.newRent : lease.rent)}">`)}
-        ${lbl('ui.rent.due_day', `<input id="rentEditDay" type="number" min="1" max="28" step="1" value="${esc(lease.dueDay)}">`)}
-        ${lbl('ui.rent.increase_pct', `<input id="rentEditPct" type="number" min="0" max="100" step="0.5" value="${esc(inc.pct)}">`)}
+        ${inc.due ? `<p class="notice info rent-increase">${icon('trend', 'i-sm')}<span class="grow">${moneyInText(t('ui.rent.increase_due', { pct: inc.pct, amount: formatINR(inc.newRent) }), inc.newRent)}</span></p>` : ''}
+        ${lbl('ui.rent.monthly_rent', `<input class="input" id="rentEditRent" type="number" inputmode="decimal" min="0" step="1" value="${esc(inc.due ? inc.newRent : lease.rent)}">`)}
+        ${lbl('ui.rent.due_day', `<input class="input" id="rentEditDay" type="number" min="1" max="28" step="1" value="${esc(lease.dueDay)}">`)}
+        ${lbl('ui.rent.increase_pct', `<input class="input" id="rentEditPct" type="number" min="0" max="100" step="0.5" value="${esc(inc.pct)}">`)}
         ${c.elecFieldsHtml(elecMode(lease), lease.meterNo || '')}
         <p class="rent-help">${et('ui.rent.rent_change_note')}</p>`);
     if (!ok) return;
@@ -324,7 +327,7 @@ async function moveOut(leaseId) {
     const ix = c.index(d);
     const ok = await c.dialog(`<h3>${et('ui.rent.move_out_who', { name: ix.tenants.get(lease.tenantId)?.name || '', place: c.placeOf(ix, lease.unitId) })}</h3>
         <p>${et('msg.rent.move_out_note')}</p>
-        ${lbl('ui.rent.last_month', `<input id="rentEndMonth" type="month" min="${esc(earliest)}" max="${esc(c.state.month)}" value="${esc(c.state.month)}">`)}`);
+        ${lbl('ui.rent.last_month', `<input class="input" id="rentEndMonth" type="month" min="${esc(earliest)}" max="${esc(c.state.month)}" value="${esc(c.state.month)}">`)}`);
     if (!ok) return;
     const end = val('rentEndMonth');
     if (!isMonth(end) || end < lease.startMonth || end > c.state.month) return fail('msg.rent.bad_end_month');

@@ -2523,7 +2523,7 @@ export default {
     'msg.rent.bad_phone': "Enter a 10-digit mobile number",
     'msg.rent.bad_date': "Choose a valid start date",
     'msg.rent.bad_elec_mode': "Choose how electricity is paid",
-    'ui.rent.deposit_note': "The agreed amount. Record the money received with 💰 Deposit on the Tenants page. It is not cash in the Aadhat drawer.",
+    'ui.rent.deposit_note': "The agreed amount. Record the money received with Deposit on the Tenants page. It is not cash in the Aadhat drawer.",
     'ui.rent.advance_help': "More than the month's due pays the unpaid months oldest first; only what is left after the latest month is carried to next month as an advance.",
     'msg.rent.adv_carried': "({amount} carried to next month as an advance)",
     'ui.rent.adv_next': "Advance for next month: {amount}",

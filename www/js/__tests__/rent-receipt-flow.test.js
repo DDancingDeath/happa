@@ -181,7 +181,7 @@ describe('the Record payment form (#157 UX redesign)', () => {
     const PREV = '2000-01';
     const old = { ...CHARGE, id: `L1_${PREV}`, month: PREV, rent: 5000, amount: 5000, paid: 1000 };
     const body = () => document.getElementById('rentDialogBody');
-    const chips = () => [...body().querySelectorAll('.rent-chip')];
+    const chips = () => [...body().querySelectorAll('.chip')];
 
     test('keeps the field ids; chips fill the oldest month or everything due; the mode buttons fill the hidden mode', async () => {
         store.snapshot.mockReturnValue({ ...SNAP, charges: [old, CHARGE] });

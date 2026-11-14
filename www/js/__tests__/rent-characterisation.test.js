@@ -98,7 +98,7 @@ function seed() {
 /** Visible text as lines (one per block), so a snapshot diff shows which figure moved. */
 function lines(root) {
     const copy = root.cloneNode(true);
-    copy.querySelectorAll('div, li, h3, h4, p, ul, button, option, label, span.rent-badge').forEach(e => e.append('\n'));
+    copy.querySelectorAll('div, li, h3, h4, p, ul, button, option, label, span[data-rent-status]').forEach(e => e.append('\n'));
     return copy.textContent.split('\n').map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
 }
 const flush = () => new Promise(r => setTimeout(r));
@@ -249,7 +249,7 @@ test('unit list filters: late, due, one property, sorted ascending', async () =>
     setLang('en');
     await show('rent', { view: 'units' });
     const ids = () => [...body().querySelectorAll('[data-unit]')].map(e => e.getAttribute('data-unit'));
-    const totals = () => [...body().querySelectorAll('.rent-card-value')].map(e => e.textContent);
+    const totals = () => [...body().querySelectorAll('.metric-value')].map(e => e.textContent);
     const out = {};
     for (const [field, value] of [['status', 'late'], ['status', 'due'], ['status', ''], ['propertyId', 'P2'], ['sort', 'asc']]) {
         RentalsModule.api.filterUnits(field, value);

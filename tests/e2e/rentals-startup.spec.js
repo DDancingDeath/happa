@@ -67,7 +67,7 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await page.click('#rentDialog .rent-btn-primary');
     // Tenants › the tenant's own screen holds the tenancy and its actions.
     const openRam = async () => {
-        await page.locator('#rentalsBody .rent-tenant-row', { hasText: `Ram ${stamp}` }).click();
+        await page.locator('#rentalsBody [data-tenant]', { hasText: `Ram ${stamp}` }).click();
         await expect(page.locator('#rentDetailTitle')).toHaveText(`Ram ${stamp}`);
     };
     const row = page.locator('#rentalsBody');
@@ -88,15 +88,15 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await page.evaluate(() => window.app.rentals.page('rent'));
     // Simple (the default) lists who owes; Property wise and Unit wise are in Advanced.
     await expect(page.locator('#rentals [data-rent-mode="simple"]')).toHaveClass(/active/);
-    await expect(page.locator('#rentalsBody .rent-list-row', { hasText: `Ram ${stamp}` })).toContainText('5,000');
+    await expect(page.locator('#rentalsBody [data-lease]', { hasText: `Ram ${stamp}` })).toContainText('5,000');
     await page.evaluate(() => window.app.rentals.setMode('advanced'));
     // Property wise: the property card, then the property's units grouped by type.
-    const propCard = page.locator('.rent-prop-card', { hasText: `Gali ${stamp}` });
+    const propCard = page.locator('#rentalsBody [data-property]', { hasText: `Gali ${stamp}` });
     await expect(propCard).toContainText('1 commercial');
     await propCard.click();
     await expect(page.locator('.rent-group-title')).toContainText(['Commercial / shop space (1)']);
     await page.evaluate(() => window.app.rentals.setView('units'));
-    const rent = page.locator('.rent-row', { hasText: `Ram ${stamp}` });
+    const rent = page.locator('#rentalsBody .rent-entry', { hasText: `Ram ${stamp}` });
     await expect(rent).toContainText('5,000');
     await rent.locator('button', { hasText: 'Record payment' }).click();
     await page.fill('#rentPayAmount', '2000');
@@ -152,7 +152,7 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await tenantCtx.close();
 
     await page.evaluate(() => window.app.rentals.page('rent'));
-    await expect(page.locator('.rent-row', { hasText: `Ram ${stamp}` })).toContainText('Moved out');
+    await expect(page.locator('#rentalsBody .rent-entry', { hasText: `Ram ${stamp}` })).toContainText('Moved out');
     expect(problems.pageErrors).toEqual([]);
     expect(problems.consoleErrors).toEqual([]);
 });

@@ -20,6 +20,8 @@ import * as store from './rent-store.js';
 import { AppState } from '../utils/state.js';
 import { noteRent, rentReminder, leaseReminder, leaseReminderText } from '../utils/reminders.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
+import { moneyHtml, moneyInText } from '../ui/components.js';
+import { icon } from '../ui/icons.js';
 import { isShareToken, publicLink } from './rent-public.js';
 import {
     UNIT_TYPES, VIEW_KEY, unitRows, summarize, tenantRows, placeText, typedPlace, meterPending
@@ -32,13 +34,14 @@ import {
 const PAGES = ['rent', 'tenants', 'properties', 'reports'];
 const esc = (v) => Helpers.escapeHtml(v);
 const js = (v) => Helpers.escapeJsAttr(v);
-const money = (n) => esc(formatINR(n));
+/** A figure as moneyHtml(); a missing amount keeps formatINR's text. */
+const money = (n) => { const h = moneyHtml(n); return h === '—' ? esc(formatINR(n)) : h; };
 const et = (key, p) => esc(t(key, p));
 const byId = (id) => document.getElementById(id);
 const fail = (key, p) => UIManager.showToast(t(key, p), 'error');
 /** Button calling window.app.rentals.<fn>(<args>), text = icon + t(key). */
-const btn = (cls, fn, args, key, icon = '', attrs = '') => `<button type="button" class="rent-btn${cls}"${attrs} data-onclick="rentals.${fn}(${args})">${icon}${et(key)}</button>`;
-const lbl = (key, field) => `<label class="rent-label">${et(key)}${field}</label>`;
+const btn = (cls, fn, args, key, icon = '', attrs = '') => `<button type="button" class="btn${cls}"${attrs} data-onclick="rentals.${fn}(${args})">${icon}${et(key)}</button>`;
+const lbl = (key, field) => `<label class="field rent-label">${et(key)}${field}</label>`;
 
 const state = {
     page: 'rent',
@@ -151,7 +154,7 @@ const typeLabel = (type) => t(`ui.rent.utype_${UNIT_TYPES.includes(type) ? type 
 const typeWord = (type) => t(`ui.rent.uword_${UNIT_TYPES.includes(type) ? type : 'flat'}`);
 
 /** "⚡ meter" / "⚡ included" / "⚡ own meter" tag for a lease. */
-const elecTag = (lease) => `<span class="rent-tag">${et(`ui.rent.elec_tag_${elecMode(lease)}`)}</span>`;
+const elecTag = (lease) => `<span class="tag warn">${et(`ui.rent.elec_tag_${elecMode(lease)}`)}</span>`;
 const sinceText = (lease) => (lease?.startDate ? t('ui.rent.since', { date: dateLabel(lease.startDate) }) : '');
 
 /**
@@ -191,7 +194,11 @@ function render() {
     if (state.page === 'reports' && (!adv || !canWrite())) state.page = 'rent';
     const reports = byId('rentReportsTab');
     if (reports) reports.hidden = !adv || !canWrite();
-    document.querySelectorAll('#rentals [data-rent-page]').forEach(b => b.classList.toggle('active', b.getAttribute('data-rent-page') === state.page));
+    document.querySelectorAll('#rentals [data-rent-page]').forEach((b) => {
+        const on = b.getAttribute('data-rent-page') === state.page;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-selected', String(on));
+    });
     document.querySelectorAll('#rentals [data-rent-mode]').forEach((b) => {
         const on = b.getAttribute('data-rent-mode') === state.mode;
         b.classList.toggle('active', on);
@@ -211,13 +218,13 @@ function render() {
         notice.textContent = state.errors.size ? t('msg.rent.could_not_load') : limited ? t('msg.rent.limit_reached') : '';
     }
     if (!['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges', 'monthExpenses'].every(k => state.loaded.has(k))) {
-        root.innerHTML = `<p class="rent-empty">${et('ui.rent.loading')}</p>`;
+        root.innerHTML = `<p class="empty">${et('ui.rent.loading')}</p>`;
         return;
     }
     const d = store.snapshot();
     const need = state.page === 'reports' ? '' : state.page !== 'rent' ? 'pages' : adv ? 'advanced' : '';
     if (need && !lazyMods[need]) {
-        root.innerHTML = `<p class="rent-empty">${et(state.lazyFailed ? 'msg.rent.could_not_load' : 'ui.rent.loading')}</p>`;
+        root.innerHTML = `<p class="empty">${et(state.lazyFailed ? 'msg.rent.could_not_load' : 'ui.rent.loading')}</p>`;
         if (state.lazyFailed) return;
         return loadMod(need).then(() => { if (isVisible()) render(); }, () => { state.lazyFailed = true; fail('msg.rent.could_not_load'); render(); });
     }
@@ -235,13 +242,14 @@ function render() {
 
 /** Advanced › Reports: the yearly report (owner, managers), deposits held and this month's expenses per property (as before). */
 function renderReports(d) {
-    const tile = (fn, args, title, sub) => `<button type="button" class="rent-row rent-prop-card" data-onclick="rentals.${fn}(${args})"><span class="rent-name">${esc(title)}</span><span class="rent-sub">${esc(sub)}</span></button>`;
+    const lead = (kind) => (kind === 'year' ? `<span class="lead-icon">${icon('calendar')}</span>` : kind === 'deposits' ? `<span class="lead-icon">${icon('coins')}</span>` : '');
+    const tile = (fn, args, kind, title, sub, amount = null) => `<button type="button" class="row" data-onclick="rentals.${fn}(${args})">${lead(kind)}<span class="row-main"><span class="row-title">${esc(title)}</span>${sub ? `<span class="row-meta">${esc(sub)}</span>` : ''}</span>${amount === null ? '' : `<span class="row-trail row-amt">${money(amount)}</span>`}</button>`;
     const ex = expenseTotals(d.expenses, state.month).byProperty;
     const props = [...d.properties].sort((a, b) => a.name.localeCompare(b.name));
-    return `${isManager() ? tile('yearReport', '', `📊 ${t('ui.rent.yr_btn')}`, t('ui.rent.rep_yearly_sub')) : ''}
-        ${tile('deposits', '', `💰 ${t('ui.rent.dep_held_list')}`, t('ui.rent.rep_deposits_sub'))}
+    return `<div class="panel">${isManager() ? tile('yearReport', '', 'year', t('ui.rent.yr_btn'), t('ui.rent.rep_yearly_sub')) : ''}
+        ${tile('deposits', '', 'deposits', t('ui.rent.dep_held_list'), t('ui.rent.rep_deposits_sub'))}</div>
         <h3 class="rent-section-title">${et('ui.rent.exp_month')} · ${esc(monthLabel(state.month, getLang()))}</h3>
-        ${props.map(p => tile('expenses', `'${js(p.id)}'`, p.name, formatINR(ex[p.id] || 0))).join('') || `<p class="rent-empty">${et('ui.rent.no_properties')}</p>`}`;
+        ${props.length ? `<div class="panel">${props.map(p => tile('expenses', `'${js(p.id)}'`, '', p.name, '', ex[p.id] || 0)).join('')}</div>` : `<p class="empty">${et('ui.rent.no_properties')}</p>`}`;
 }
 
 /** Settings › Rentals defaults; built-in defaults when they can't be read. */
@@ -255,7 +263,7 @@ const headerName = (s) => s?.receiptHeader || AppState.settings?.shopName || '';
 
 // ---------- This month ----------
 
-const badge = (cls, key) => `<span class="rent-badge rent-badge-${cls}">${et(key)}</span>`;
+const badge = (cls, key) => `<span class="tag${cls === 'paid' ? ' pos' : cls === 'partial' ? ' warn' : cls === 'due' ? ' info' : cls === 'late' ? ' neg' : ''}" data-rent-status="${esc(cls)}">${et(key)}</span>`;
 
 /** REM-2 and REM-4 for Today, the bell and Needs attention, saved from complete data only. */
 function notePage(d, ix, rows) {
@@ -286,25 +294,25 @@ function renderMonth(d, ix, rows) {
     const paid = all.filter(a => !a.ended && a.dues.total <= 0);
     const title = `<h3 class="rent-month-title">${esc(monthLabel(state.month, lang))}</h3>`;
     if (!d.properties.length) {
-        return `${title}<p class="rent-empty">${et('ui.rent.start_hint')}</p>`
-            + (canWrite() ? btn(' rent-btn-primary', 'page', `'properties'`, 'ui.rent.add_property') : '');
+        return `${title}<p class="empty">${et('ui.rent.start_hint')}</p>`
+            + (canWrite() ? btn(' btn-primary', 'page', `'properties'`, 'ui.rent.add_property', icon('plus', 'i-sm')) : '');
     }
-    const summary = `<div class="rent-summary">
-        <div class="rent-name">${et('ui.rent.collected_of', { collected: formatINR(sum.collected), expected: formatINR(sum.expected) })}</div>
+    const summary = `<div class="panel panel-pad rent-collect">
+        <div class="rent-collect-line">${moneyInText(t('ui.rent.collected_of', { collected: formatINR(sum.collected), expected: formatINR(sum.expected) }), [sum.collected, sum.expected])}</div>
         ${sum.expected > 0 ? `<progress class="rent-progress" max="${esc(sum.expected)}" value="${esc(sum.collected)}" aria-label="${et('ui.rent.collected')}"></progress>` : ''}
         <div class="rent-sub" data-rent-received>${et('ui.rent.received_month')}: ${receivedText(d)}</div>
         <div class="rent-sub">${et('ui.rent.outstanding')}: ${money(sum.due)}</div>
     </div>`;
     const list = shown.map(a => collectRow(a, ix, lang)).join('')
-        || `<p class="rent-empty">${et(owe.length ? 'ui.rent.none_late' : 'ui.rent.all_paid', { month: monthLabel(state.month, lang) })}</p>`;
+        || `<p class="empty">${et(owe.length ? 'ui.rent.none_late' : 'ui.rent.all_paid', { month: monthLabel(state.month, lang) })}</p>`;
     const paidList = paid.length ? `<details class="rent-more"><summary>${et('ui.rent.paid_month', { n: paid.length })}</summary>
-        <div class="rent-list">${paid.map(a => collectRow(a, ix, lang)).join('')}</div></details>` : '';
-    const vacant = sum.vacant ? `<button type="button" class="rent-link" data-onclick="rentals.page('properties')">${et('ui.rent.vacant_units', { n: sum.vacant })} ›</button>` : '';
-    const payAny = canWrite() && owe.length ? `<div class="rent-sticky">${btn(' rent-btn-primary rent-btn-block', 'payAny', '', 'ui.rent.record_payment', '', ' data-rent-pay')}</div>` : '';
+        <div class="panel">${paid.map(a => collectRow(a, ix, lang)).join('')}</div></details>` : '';
+    const vacant = sum.vacant ? `<button type="button" class="btn btn-ghost btn-sm rent-vacant" data-onclick="rentals.page('properties')">${et('ui.rent.vacant_units', { n: sum.vacant })}${icon('chevR', 'i-sm')}</button>` : '';
+    const payAny = canWrite() && owe.length ? `<div class="rent-sticky">${btn(' btn-primary btn-block', 'payAny', '', 'ui.rent.record_payment', '', ' data-rent-pay')}</div>` : '';
     return `${title}${summary}${attentionHtml(d, ix)}
         <h3 class="rent-section-title">${et('ui.rent.to_collect', { n: owe.length })}${owe.some(a => a.late)
-            ? ` <button type="button" class="filter-btn${state.onlyLate ? ' active" aria-pressed="true"' : '" aria-pressed="false"'} data-onclick="rentals.onlyLate()">${et('ui.rent.status_late')}</button>` : ''}</h3>
-        <div class="rent-list">${list}</div>${paidList}${vacant}${payAny}`;
+            ? ` <button type="button" class="chip" aria-pressed="${state.onlyLate ? 'true' : 'false'}" data-onclick="rentals.onlyLate()">${et('ui.rent.status_late')}</button>` : ''}</h3>
+        ${shown.length ? `<div class="panel">${list}</div>` : list}${paidList}${vacant}${payAny}`;
 }
 
 /** RENT-20 once its listener has answered complete; null ("—") until then, or when it failed or was cut at its limit. */
@@ -321,7 +329,8 @@ function monthStateLine(a) {
     const text = m.status === 'paid' ? t('ui.rent.month_paid')
         : m.status === 'partial' ? t('ui.rent.month_part', { paid: formatINR(m.paid), amount: formatINR(m.amount) })
             : t('ui.rent.month_due', { amount: formatINR(m.due) });
-    return `<div class="rent-sub" data-rent-month-state="${esc(m.status)}">${esc(text)}</div>`;
+    const figures = m.status === 'paid' ? [] : m.status === 'partial' ? [m.paid, m.amount] : [m.due];
+    return `<div class="row-meta" data-rent-month-state="${esc(m.status)}">${moneyInText(text, figures)}</div>`;
 }
 
 /** Needs attention: REM-2 and REM-4 as Today and the bell show them (utils/reminders.js), from this visit's data. */
@@ -331,20 +340,20 @@ function attentionHtml(d, ix) {
     const notes = leaseReminder(localStorage, uid, state.month);
     const rows = [];
     if (rem?.late) {
-        rows.push(`<button type="button" class="rent-attn-row" data-onclick="rentals.onlyLate(true)"><span>${et('ui.today.reminder_rent_units', { count: rem.dueUnits, late: rem.late })}</span><strong>${money(rem.due)}</strong></button>`);
+        rows.push(`<button type="button" class="row" data-onclick="rentals.onlyLate(true)"><span class="row-main">${et('ui.today.reminder_rent_units', { count: rem.dueUnits, late: rem.late })}</span><strong class="row-trail row-amt">${money(rem.due)}</strong></button>`);
     }
     const meters = meterPending(d, state.month).length;
-    if (meters) rows.push(`<button type="button" class="rent-attn-row" data-onclick="rentals.meters()"><span>⚡ ${et('ui.rent.meter_pending', { n: meters })}</span></button>`);
+    if (meters) rows.push(`<button type="button" class="row" data-onclick="rentals.meters()"><span class="lead-icon warn">${icon('bolt', 'i-sm')}</span><span class="row-main">${et('ui.rent.meter_pending', { n: meters })}</span></button>`);
     for (const x of notes?.items || []) {
         const lease = d.leases.find(l => placeOf(ix, l.unitId) === x.place && ix.tenants.get(l.tenantId)?.name === x.tenant);
         const fn = !lease ? '' : x.kind === 'increase' ? 'editLease' : isManager() ? 'agreement' : '';
-        const text = `<span>${esc([x.place, x.tenant].filter(Boolean).join(' · '))}</span><span class="rent-sub">${esc(leaseReminderText(x))}</span>`;
-        rows.push(fn ? `<button type="button" class="rent-attn-row" data-onclick="rentals.${fn}('${js(lease.id)}')">${text}</button>` : `<div class="rent-attn-row">${text}</div>`);
+        const text = `<span class="row-main"><span class="row-title">${esc([x.place, x.tenant].filter(Boolean).join(' · '))}</span><span class="row-meta">${esc(leaseReminderText(x))}</span></span>`;
+        rows.push(fn ? `<button type="button" class="row" data-onclick="rentals.${fn}('${js(lease.id)}')">${text}</button>` : `<div class="row">${text}</div>`);
     }
     if (!rows.length) return '';
     const more = rows.length - 4 + (notes?.more || 0);
-    return `<div class="rent-attn"><h3 class="rent-section-title">${et('ui.rent.needs_attention')}</h3>${rows.slice(0, 4).join('')}
-        ${more > 0 ? `<div class="rent-sub">${et('ui.today.reminder_more', { count: more })}</div>` : ''}</div>`;
+    return `<div class="panel rent-attn"><h3 class="rent-section-title">${et('ui.rent.needs_attention')}</h3>${rows.slice(0, 4).join('')}
+        ${more > 0 ? `<div class="rent-sub rent-attn-more">${et('ui.today.reminder_more', { count: more })}</div>` : ''}</div>`;
 }
 
 /** A tenant on This month: amount due, months owed, status; Collect and WhatsApp (and the meter reading still to enter). */
@@ -356,16 +365,16 @@ function collectRow(a, ix, lang) {
         : [a.ended ? badge('vacant', 'ui.rent.moved_out') : '', a.partial ? badge('partial', 'ui.rent.status_partial') : a.late ? '' : badge('due', 'ui.rent.status_due'),
             a.late ? badge('late', 'ui.rent.status_late') : ''].filter(Boolean).join(' ');
     const meter = a.lease && a.current && elecMode(a.lease) === 'meter' && !a.current.electricity
-        ? btn(' rent-btn-small', 'meter', `'${id}'`, 'ui.rent.meter_reading', '⚡ ') : '';
-    const acts = a.dues.total > 0 ? `${btn(' rent-btn-small', 'pay', `'${id}'`, 'ui.rent.collect', '', ' data-rent-pay')}
-        <button type="button" class="rent-btn rent-btn-small rent-btn-wa" aria-label="${et('ui.rent.whatsapp_reminder')}" data-onclick="rentals.remind('${id}')">${et('ui.rent.whatsapp')}</button>` : '';
-    return `<div class="rent-list-row" data-lease="${esc(a.leaseId)}">
-        <div class="rent-row-head"><div><div class="rent-name">${esc(a.name || t('ui.rent.no_name'))}</div>
-            <div class="rent-sub">${esc(placeOf(ix, a.unitId, a.unitLabel || ''))}</div></div>
-            <div class="rent-row-right">${a.dues.total > 0 ? `<div class="rent-due">${money(a.dues.total)}</div>` : ''}</div></div>
-        <div class="rent-sub">${months ? `${esc(months)} · ` : ''}${status}</div>
+        ? btn(' btn-sm', 'meter', `'${id}'`, 'ui.rent.meter_reading', icon('bolt', 'i-sm')) : '';
+    const acts = a.dues.total > 0 ? `${btn(' btn-sm', 'pay', `'${id}'`, 'ui.rent.collect', '', ' data-rent-pay')}
+        <button type="button" class="btn btn-sm btn-success" aria-label="${et('ui.rent.whatsapp_reminder')}" data-onclick="rentals.remind('${id}')">${icon('wa', 'i-sm')}${et('ui.rent.whatsapp')}</button>` : '';
+    return `<div class="row rent-entry" data-lease="${esc(a.leaseId)}">
+        <div class="rent-entry-head"><div class="row-main"><div class="row-title">${esc(a.name || t('ui.rent.no_name'))}</div>
+            <div class="row-meta">${esc(placeOf(ix, a.unitId, a.unitLabel || ''))}</div></div>
+            <div class="row-trail">${a.dues.total > 0 ? `<div class="row-amt">${money(a.dues.total)}</div>` : ''}</div></div>
+        <div class="row-meta">${months ? `${esc(months)} · ` : ''}${status}</div>
         ${monthStateLine(a)}
-        ${a.current?.adv > 0 ? `<div class="rent-sub">${et('ui.rent.adv_next', { amount: formatINR(a.current.adv) })}</div>` : ''}
+        ${a.current?.adv > 0 ? `<div class="row-meta">${moneyInText(t('ui.rent.adv_next', { amount: formatINR(a.current.adv) }), a.current.adv)}</div>` : ''}
         ${acts || meter ? `<div class="rent-actions">${acts}${meter}</div>` : ''}
     </div>`;
 }
@@ -375,7 +384,7 @@ async function payAny() {
     const ix = index(store.snapshot());
     const owe = tenantRows(store.snapshot(), state.month).filter(a => a.dues.total > 0);
     if (owe.length < 2) return owe[0] ? pay(owe[0].leaseId) : undefined;
-    const ok = await dialog(`<h3>${et('ui.rent.record_payment')}</h3>${lbl('ui.rent.tenant_pick', `<select id="rentPayWho">${owe.map(a => `<option value="${esc(a.leaseId)}">${esc(a.name)} · ${esc(placeOf(ix, a.unitId, a.unitLabel || ''))} · ${money(a.dues.total)}</option>`).join('')}</select>`)}`);
+    const ok = await dialog(`<h3>${et('ui.rent.record_payment')}</h3>${lbl('ui.rent.tenant_pick', `<select class="input" id="rentPayWho">${owe.map(a => `<option value="${esc(a.leaseId)}">${esc(a.name)} · ${esc(placeOf(ix, a.unitId, a.unitLabel || ''))} · ${esc(formatINR(a.dues.total))}</option>`).join('')}</select>`)}`);
     if (ok && val('rentPayWho')) await pay(val('rentPayWho'));
 }
 
@@ -461,23 +470,23 @@ async function pay(leaseId, typed = null) {
     const today = todayLocalISO();
     const v = typed || { id: first.id, amount: chargeDue(first), mode: 'cash', ref: '', date: today, error: '' };
     const due = (id) => chargeDue(dues.charges.find(c => c.id === id) || first);
-    const options = dues.charges.map(c => `<option value="${esc(c.id)}" data-due="${esc(chargeDue(c))}"${c.id === v.id ? ' selected' : ''}>${esc(monthLabel(c.month, lang))} · ${money(chargeDue(c))}</option>`).join('');
-    const chip = (key, n) => `<button type="button" class="rent-chip" data-amount="${esc(n)}" data-charge="${esc(first.id)}" data-onclick="rentals.fillAmount(this)">${et(key, { amount: formatINR(n) })}</button>`;
-    const modes = PAYMENT_MODES.map(m => `<button type="button" class="rent-seg-btn${m === v.mode ? ' active' : ''}" aria-pressed="${m === v.mode ? 'true' : 'false'}" data-pay-mode="${m}" data-onclick="rentals.payMode(this)">${esc(modeLabel(m))}</button>`).join('');
+    const options = dues.charges.map(c => `<option value="${esc(c.id)}" data-due="${esc(chargeDue(c))}"${c.id === v.id ? ' selected' : ''}>${esc(monthLabel(c.month, lang))} · ${esc(formatINR(chargeDue(c)))}</option>`).join('');
+    const chip = (key, n) => `<button type="button" class="chip" data-amount="${esc(n)}" data-charge="${esc(first.id)}" data-onclick="rentals.fillAmount(this)">${et(key, { amount: formatINR(n) })}</button>`;
+    const modes = PAYMENT_MODES.map(m => `<button type="button"${m === v.mode ? ' class="active"' : ''} aria-pressed="${m === v.mode ? 'true' : 'false'}" data-pay-mode="${esc(m)}" data-onclick="rentals.payMode(this)">${esc(modeLabel(m))}</button>`).join('');
     const name = snap.tenants.find(x => x.id === first.tenantId)?.name || first.tenantName || '';
     const html = `<h3>${et('ui.rent.record_payment')}${name ? ` · ${esc(name)}` : ''}</h3>
         ${lbl('ui.rent.amount', `
-            <input id="rentPayAmount" type="number" inputmode="decimal" min="0" step="1" value="${esc(v.amount)}" aria-describedby="rentPayErr" data-oninput="rentals.payHint()">`)}
+            <input class="input" id="rentPayAmount" type="number" inputmode="decimal" min="0" step="1" value="${esc(v.amount)}" aria-describedby="rentPayErr" data-oninput="rentals.payHint()">`)}
         <p id="rentPayErr" class="rent-field-error" role="alert"${v.error ? '' : ' hidden'}>${v.error ? et(v.error) : ''}</p>
         <div class="rent-chips">${chip('ui.rent.chip_oldest', chargeDue(first))}${dues.charges.length > 1 ? chip('ui.rent.chip_all', dues.total) : ''}</div>
         <div class="rent-label" id="rentPayModeL">${et('ui.rent.mode')}</div>
-        <div class="rent-seg rent-seg-wide" role="group" aria-labelledby="rentPayModeL">${modes}</div>
+        <div class="seg" role="group" aria-labelledby="rentPayModeL">${modes}</div>
         <input id="rentPayMode" type="hidden" value="${esc(v.mode)}">
         <details class="rent-more"${v.id !== first.id || v.ref || v.date !== today ? ' open' : ''}><summary>${et('ui.rent.more_pay')}</summary>
             ${lbl('ui.rent.month', `
-                <select id="rentPayCharge" data-onchange="rentals.fillDue(this)">${options}</select>`)}
-            ${lbl('ui.rent.reference', `<input id="rentPayRef" type="text" maxlength="60" value="${esc(v.ref)}">`)}
-            ${lbl('ui.rent.date', `<input id="rentPayDate" type="date" value="${esc(v.date)}">`)}
+                <select class="input" id="rentPayCharge" data-onchange="rentals.fillDue(this)">${options}</select>`)}
+            ${lbl('ui.rent.reference', `<input class="input" id="rentPayRef" type="text" maxlength="60" value="${esc(v.ref)}">`)}
+            ${lbl('ui.rent.date', `<input class="input" id="rentPayDate" type="date" value="${esc(v.date)}">`)}
         </details>
         <p id="rentPayAdv" class="rent-help"${Number(v.amount) > due(v.id) ? '' : ' hidden'}>${et('ui.rent.advance_help')}</p>`;
     const ok = await dialog(html);
@@ -595,8 +604,8 @@ function receiptUi(fn, ...args) {
 }
 
 /** Record payment and WhatsApp reminder of a lease. */
-const payBtns = (id) => `${btn(' rent-btn-primary', 'pay', `'${js(id)}'`, 'ui.rent.record_payment', '', ' data-rent-pay')} ${btn(' rent-btn-wa', 'remind', `'${js(id)}'`, 'ui.rent.whatsapp_reminder')}`;
-const receiptsBtn = (tenantId) => btn('', 'receipts', `'${js(tenantId)}'`, 'ui.rcpt.receipts', '🧾 ');
+const payBtns = (id) => `${btn(' btn-primary', 'pay', `'${js(id)}'`, 'ui.rent.record_payment', '', ' data-rent-pay')} ${btn(' btn-success', 'remind', `'${js(id)}'`, 'ui.rent.whatsapp_reminder', icon('wa', 'i-sm'))}`;
+const receiptsBtn = (tenantId) => btn('', 'receipts', `'${js(tenantId)}'`, 'ui.rcpt.receipts', icon('receipt', 'i-sm'));
 
 function remind(leaseId) {
     const d = store.snapshot();

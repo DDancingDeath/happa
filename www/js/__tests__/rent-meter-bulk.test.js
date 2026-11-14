@@ -191,7 +191,7 @@ test('Needs attention (Simple) counts the readings to enter and opens the sheet'
     _test.state.mode = 'simple';
     _test.state.detail = '';
     await _test.render();
-    const row = [...document.querySelectorAll('#rentalsBody .rent-attn-row')].find(b => b.textContent.includes('Meter readings'));
+    const row = [...document.querySelectorAll('#rentalsBody .rent-attn .row')].find(b => b.textContent.includes('Meter readings'));
     expect(row.textContent).toContain('Meter readings: 3 to enter');
     expect(row.getAttribute('data-onclick')).toBe('rentals.meters()');
 });

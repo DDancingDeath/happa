@@ -1,17 +1,17 @@
 {
   "_readme": "Design-system ratchet (tests/ci/ds-guard.test.js, docs/design-system.md §7). Per-file counts may only go down; lower them with DS_BASELINE=lower npx jest ds-guard. Files in \"strict\" are pinned at 0 on every metric.",
   "totals": {
-    "spacing": 596,
-    "radius": 80,
+    "spacing": 507,
+    "radius": 67,
     "shadow": 24,
-    "zIndex": 31,
+    "zIndex": 29,
     "important": 40,
     "idSelector": 190,
-    "themeSelector": 19,
+    "themeSelector": 15,
     "inlineStyle": 36,
-    "emoji": 14,
+    "emoji": 12,
     "titleCase": 17,
-    "legacyClass": 449
+    "legacyClass": 368
   },
   "strict": [
     "www/css/admin.css",
@@ -21,6 +21,7 @@
     "www/css/items.css",
     "www/css/notifications.css",
     "www/css/outstanding.css",
+    "www/css/rentals.css",
     "www/css/stock.css",
     "www/js/modules/admin.js",
     "www/js/modules/anomalies.js",
@@ -33,7 +34,11 @@
     "www/js/modules/notifications.js",
     "www/js/modules/roles-access.js",
     "www/js/modules/settings.js",
+    "www/js/rentals/rent-advanced.js",
+    "www/js/rentals/rent-pages.js",
     "www/js/rentals/rent-settings.js",
+    "www/js/rentals/rent-tenants.js",
+    "www/js/rentals/rentals.js",
     "www/js/ui/bill-date-input.js",
     "www/js/ui/components.js",
     "www/js/ui/usage-view.js",
@@ -67,7 +72,6 @@
       "www/css/history.css": 66,
       "www/css/overlay.css": 5,
       "www/css/rate-trends.css": 35,
-      "www/css/rentals.css": 89,
       "www/css/reports.css": 74,
       "www/css/surfaces.css": 14,
       "www/css/tables.css": 6,
@@ -89,7 +93,6 @@
       "www/css/history.css": 13,
       "www/css/overlay.css": 3,
       "www/css/rate-trends.css": 8,
-      "www/css/rentals.css": 13,
       "www/css/reports.css": 6,
       "www/css/surfaces.css": 6,
       "www/css/tables.css": 1,
@@ -125,7 +128,6 @@
       "www/css/loading.css": 1,
       "www/css/navigation.css": 3,
       "www/css/overlay.css": 2,
-      "www/css/rentals.css": 2,
       "www/css/settings.css": 2,
       "www/css/toast.css": 2,
       "www/css/totals.css": 2,
@@ -156,8 +158,7 @@
     "themeSelector": {
       "www/css/app-updates.css": 2,
       "www/css/bill-checks.css": 4,
-      "www/css/day.css": 9,
-      "www/css/rentals.css": 4
+      "www/css/day.css": 9
     },
     "inlineStyle": {
       "www/js/auth/authentication.js": 2,
@@ -174,10 +175,10 @@
     "emoji": {
       "www/js/i18n/en.js#ui.anom": 1,
       "www/js/i18n/en.js#ui.remind": 2,
-      "www/js/i18n/en.js#ui.rent": 4,
+      "www/js/i18n/en.js#ui.rent": 3,
       "www/js/i18n/hi.js#ui.anom": 1,
       "www/js/i18n/hi.js#ui.remind": 2,
-      "www/js/i18n/hi.js#ui.rent": 4
+      "www/js/i18n/hi.js#ui.rent": 3
     },
     "titleCase": {
       "www/js/i18n/en.js#ui.ask": 3,
@@ -206,15 +207,11 @@
       "www/js/modules/voice-billing.js": 1,
       "www/js/modules/wholesale-sales.js": 1,
       "www/js/modules/workers.js": 1,
-      "www/js/rentals/rent-advanced.js": 22,
       "www/js/rentals/rent-deposit.js": 18,
       "www/js/rentals/rent-expense.js": 6,
       "www/js/rentals/rent-link.js": 1,
       "www/js/rentals/rent-meter.js": 1,
-      "www/js/rentals/rent-pages.js": 12,
       "www/js/rentals/rent-report.js": 7,
-      "www/js/rentals/rent-tenants.js": 15,
-      "www/js/rentals/rentals.js": 23,
       "www/js/ui/bill-highlight.js": 6,
       "www/js/ui/bill-row.js": 5,
       "www/js/ui/bill-status.js": 7,
@@ -235,7 +232,7 @@
       "www/templates/money.html": 5,
       "www/templates/navigation.html": 5,
       "www/templates/rate-trends.html": 29,
-      "www/templates/rentals.html": 15,
+      "www/templates/rentals.html": 6,
       "www/templates/wholesale-sales.html": 31
     }
   }

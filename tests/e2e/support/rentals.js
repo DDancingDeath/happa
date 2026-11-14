@@ -1,7 +1,7 @@
 /**
  * Rentals E2E helpers (tests/e2e/rentals-*.spec.js). The selectors live here, so a
  * screen redesign changes this file only: ids, data-* attributes and button names
- * from the English i18n strings, plus `.rent-row` for a tenant's or property's row.
+ * from the English i18n strings, plus `.rent-entry` for a tenant's, unit's or property's row.
  */
 const { expect, expectToast } = require('./app');
 
@@ -15,7 +15,7 @@ function firstOfMonth(back = 0) {
 
 const button = (scope, name) => scope.getByRole('button', { name });
 const dialog = (page) => page.locator('#rentDialog');
-const row = (page, text) => page.locator('#rentalsBody .rent-row', { hasText: text }).first();
+const row = (page, text) => page.locator('#rentalsBody .rent-entry', { hasText: text }).first();
 
 /** Save (true) or Cancel / Close (false) on the open rentals dialog. */
 async function dialogButton(page, ok) {
@@ -42,7 +42,7 @@ const showPage = (page, name) => page.evaluate((p) => window.app.rentals.page(p)
 /** The tenant's own screen (Tenants › tap the tenant); its buttons are on `#rentalsBody`. */
 async function openTenant(page, tenant) {
     await showPage(page, 'tenants');
-    await page.locator('#rentalsBody .rent-tenant-row', { hasText: tenant }).first().click();
+    await page.locator('#rentalsBody [data-tenant]', { hasText: tenant }).first().click();
     await expect(page.locator('#rentDetailTitle')).toHaveText(tenant);
     return page.locator('#rentalsBody');
 }
@@ -59,16 +59,16 @@ async function receiptMore(page) {
     if (!(await more.evaluate(e => e.open))) await more.locator('summary').click();
 }
 
-/** Properties › + Add property: saves property `name`. */
+/** Properties › Add property: saves property `name`. */
 async function addProperty(page, name) {
     await showPage(page, 'properties');
-    await button(page.locator('#rentalsBody'), '+ Add property').click();
+    await button(page.locator('#rentalsBody'), 'Add property').click();
     await page.fill('#rentPropName', name);
     await dialogButton(page, true);
     await expect(page.locator('#rentalsBody [data-property]', { hasText: name })).toBeVisible();
 }
 
-/** The property's own screen (Properties › tap the property): its units, + Add unit, Let out; `#rentalsBody`. */
+/** The property's own screen (Properties › tap the property): its units, Add unit, Let out; `#rentalsBody`. */
 async function openProperty(page, prop) {
     await showPage(page, 'properties');
     await page.locator('#rentalsBody [data-property]', { hasText: prop }).first().click();
@@ -105,7 +105,7 @@ async function setUpTenant(page, { units = [['A', 5000]], deposit = 0, start = '
     await addProperty(page, prop);
     const card = await openProperty(page, prop);
     for (const [label, rent] of units) {
-        await button(card, '+ Add unit').click();
+        await button(card, 'Add unit').click();
         await page.fill('#rentUnitLabel', unit(label));
         await page.selectOption('#rentUnitType', 'commercial');
         await page.fill('#rentUnitRent', String(rent));
@@ -114,7 +114,7 @@ async function setUpTenant(page, { units = [['A', 5000]], deposit = 0, start = '
     }
 
     await showPage(page, 'tenants');
-    await button(page.locator('#rentalsBody'), '+ Add tenant').click();
+    await button(page.locator('#rentalsBody'), 'Add tenant').click();
     await page.fill('#rentTenantName', tenant);
     await page.fill('#rentTenantPhone', '9876543210');
     await dialogButton(page, true);

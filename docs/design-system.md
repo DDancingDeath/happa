@@ -28,7 +28,7 @@ layer-2 tokens. Nothing else changes per theme.
 
 **Not per theme** (on `:root`): the type scale `--fs-caption|sm|body|lead|title|display|hero`,
 `--lh-body`, `--w-label`, spacing `--sp-1…10`, `--gutter`,
-`--section-gap`, `--row-h`, `--control-h(-sm)`, motion `--ease`, `--dur-1…3`, layers `--z-*` (the bell, the notifications sheet, the sign-in screen). Layouts are therefore
+`--section-gap`, `--row-h`, `--control-h(-sm)`, motion `--ease`, `--dur-1…3`, layers `--z-*` (a page's pop-up menu, the bell, the notifications sheet, dialogs, the sign-in screen). Layouts are therefore
 identical in every theme. Hindi (`html[lang="hi"]`) raises `--fs-sm` / `--fs-body` and `--lh-body`,
 makes `--w-label` 400, and turns off a theme's italic titles and display tracking (`--title-style`, `--tracking-display`); the Android app (`html.platform-android`) uses weight 500.
 
@@ -176,6 +176,14 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   `.lead-icon` per type, unread rows tinted `--info-soft` with an `--info` edge) and an `.empty`; its close button has
   `data-dismiss`. `/download` is standalone (`variables.css` pins `html` / `body` for the app shell), so its `<style>` copies the
   tokens it uses; `tests/ci/download-tokens.test.js` keeps them equal to `variables.css` and its rules free of raw colours.
+- **Rentals (5.9a)**: Simple | Advanced is a `.seg` beside the page title (`.rent-head`, on the right on desktop); This month |
+  Tenants | Properties | Reports are `.tabs`, Rentals settings and Roles & access ghost buttons. Lists are `.panel`s of `.row`s:
+  a row with several lines (a tenant, unit or property) is a `.row.rent-entry` (title and figure on top, then details, `.tag`
+  statuses with `data-rent-status`, and small `.btn`s); totals are `.metrics`; the yearly-increase note a `.notice.info`; the ⋯
+  menu, Back, Add, Receipts, Deposit, Meter reading and the phone number use sprite icons (the ⚡ electricity tags stay text,
+  as the characterisation snapshot pins them). Hooks for tests: `data-lease`, `data-unit`, `data-tenant`, `data-property`,
+  `.rent-entry`. `rentals.css` loads after `app.css`, so its desktop rules in `desktop.css` are one step more specific
+  (`.tab .rent-head`).
 - **Feedback** `.notice` (`.pos/.neg/.warn/.info`), `.empty`, `.skel`, `.toast` (near-black; light in the
   Dark theme), `.dialog` / `.sheet` / `.scrim` (old `.modal-overlay > .modal-box`), `.spinner` (blocking
   saves only). Dialog buttons: Cancel (ghost) on the left, one primary on the right, labelled with a verb; a destructive

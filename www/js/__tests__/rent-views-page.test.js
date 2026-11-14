@@ -148,15 +148,15 @@ describe('This month in Simple', () => {
         expect(root.querySelector('[data-lease="L1"] [data-rent-month-state]').textContent).toBe('This month: paid');
         expect(root.querySelector('[data-lease="L9"] [data-rent-month-state]')).toBeNull();
         expect(root.textContent).toContain('Total due (all months): ₹27,000');
-        const owing = [...root.querySelectorAll('#rentalsBody > .rent-list > [data-lease]')].map(e => e.getAttribute('data-lease'));
+        const owing = [...root.querySelectorAll('#rentalsBody > .panel > [data-lease]')].map(e => e.getAttribute('data-lease'));
         expect(owing).toEqual(['L3', 'L9']);
         const hari = root.querySelector('[data-lease="L9"]').textContent;
         expect(hari).toContain('Moved out');
         expect(hari).toContain('3A, Gupta Bhawan');
         expect(root.querySelector('details.rent-more').textContent).toContain('Ram');
         expect(root.textContent).toContain('2 vacant units');
-        expect(root.querySelectorAll('.rent-btn-primary').length).toBe(1);
-        expect(root.querySelector('.rent-filters, .rent-prop-card')).toBeNull();
+        expect(root.querySelectorAll('.btn-primary').length).toBe(1);
+        expect(root.querySelector('.rent-filters, [data-property]')).toBeNull();
     });
 
     test('its listener failing blanks only Received this month: no page notice, the rest renders', async () => {
@@ -186,7 +186,7 @@ describe('This month in Simple', () => {
     test('Needs attention shows what Today shows (REM-2, REM-4), the meter readings to enter (REM-7), and opens the action', async () => {
         saveLeaseReminders(localStorage, { uid: 'u1', month: M, items: [{ kind: 'increase', place: 'Flat 2B, Gupta Bhawan', tenant: 'Ram', pct: 5, newRent: 8400 }] });
         const root = await show('simple');
-        const rows = [...root.querySelectorAll('.rent-attn-row')];
+        const rows = [...root.querySelectorAll('.rent-attn .row')];
         expect(rows[0].textContent).toContain('2 units owe rent · 1 late');
         expect(rows[0].textContent).toContain('₹27,000');
         // Leases without an electricity choice are billed by our meter (the default).
@@ -194,7 +194,7 @@ describe('This month in Simple', () => {
         expect(rows[2].textContent).toContain('rent increase due: 5% → ₹8,400');
         expect(rows[2].getAttribute('data-onclick')).toBe("rentals.editLease('L1')");
         RentalsModule.api.onlyLate(true);
-        expect([...document.querySelectorAll('#rentalsBody > .rent-list > [data-lease]')].map(e => e.getAttribute('data-lease'))).toEqual(['L3', 'L9']);
+        expect([...document.querySelectorAll('#rentalsBody > .panel > [data-lease]')].map(e => e.getAttribute('data-lease'))).toEqual(['L3', 'L9']);
         RentalsModule.api.onlyLate(false);
     });
 
@@ -235,7 +235,7 @@ describe('Tenants and the tenant screen', () => {
         const root = await tenants();
         expect([...root.querySelectorAll('[data-tenant]')].map(e => e.getAttribute('data-tenant'))).toEqual(['T1', 'T2']);
         expect(root.querySelector('.rent-form, #rentTenantName')).toBeNull();
-        expect(root.querySelectorAll('.rent-btn-primary').length).toBe(1);
+        expect(root.querySelectorAll('.btn-primary').length).toBe(1);
         expect(root.querySelector('[data-tenant="T2"]').textContent).toContain('Shop 3, Gupta Bhawan');
         RentalsModule.api.tenantList('q', 'shop 3');
         expect([...root.querySelectorAll('[data-tenant]')].map(e => e.getAttribute('data-tenant'))).toEqual(['T2']);
@@ -249,8 +249,8 @@ describe('Tenants and the tenant screen', () => {
         expect(root.querySelector('#rentDetailTitle').textContent).toBe('Shyam');
         const menu = () => [...document.querySelectorAll('.rent-menu-list button')].map(b => b.getAttribute('data-onclick').match(/rentals\.(\w+)/)[1]);
         expect(menu()).toEqual(['editTenant', 'agreement', 'shareLink', 'changeUnit']);
-        expect(root.querySelector('[data-onclick^="rentals.moveOut"]').className).toContain('rent-btn-danger');
-        expect(root.querySelectorAll('.rent-btn-primary').length).toBe(1);
+        expect(root.querySelector('[data-onclick^="rentals.moveOut"]').className).toContain('tone-neg');
+        expect(root.querySelectorAll('.btn-primary').length).toBe(1);
         rentalsRole.mockReturnValue('member');
         _test.render();
         expect(menu()).toEqual(['editTenant', 'changeUnit']);
@@ -320,7 +320,7 @@ describe('Properties and the property screen', () => {
         expect(root.querySelector('[data-property="P1"]').textContent.replace(/\s+/g, ' ')).toContain('3 units · 2 let ₹10,000 owed');
         expect(root.querySelector('[data-property="P2"]').textContent).toContain('1 unit · 0 let');
         expect(root.querySelector('#rentPropName')).toBeNull();
-        expect(root.querySelectorAll('.rent-btn-primary').length).toBe(1);
+        expect(root.querySelectorAll('.btn-primary').length).toBe(1);
     });
 
     test('property → tenant → Back returns to the property, Back again to the list; vacant units offer Let out', async () => {
