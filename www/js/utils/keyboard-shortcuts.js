@@ -26,7 +26,7 @@ export const TAB_SHORTCUTS = [
 const BILL_BUTTONS = {
     purchase: { save: '#saveBillBtn', print: '#printBillBtn' },
     sale: { save: '#saveSaleBtn', print: '#printSaleBtn' },
-    wholesale: { save: '#salesEntrySection .save-sale-btn', print: '#salesEntrySection .print-sale-btn' }
+    wholesale: { save: '#saveWholesaleBtn', print: '#printWholesaleBtn' }
 };
 
 /**

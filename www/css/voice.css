@@ -54,7 +54,6 @@
 }
 
 .voice-strip[hidden],
-.voice-undo-btn[hidden],
 .voice-edit[hidden] {
   display: none;
 }

@@ -96,8 +96,12 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
 
 - **Buttons** `.btn` + `-primary` / `-tonal` / `-ghost` / `-danger` / `-success`, `-sm`, `-icon`,
   `-block`. One primary button per screen. Hover is a veil over the button's own colour; a busy
-  save sets `aria-busy` (the `runExclusive` lock). Old: `.save-btn`, `.print-btn`, `.draft-btn`,
-  `.add-to-bill-btn`, `.quick-add-btn-inline`, `.split-rest-btn`.
+  save sets `aria-busy` (the `runExclusive` lock). Every button, `-sm` too, and the payment actions
+  (`[data-record-payment]`, `[data-mark-cleared]`) are at least 44 px tall. No page has a button class with its own
+  look (C2): Billing and Wholesale use Save `-primary`, Print and Share (`-icon`) the default, Add to bill and
+  Rest → due `-tonal`, the draft toolbar and the contact picker `-ghost`; inside `.bill-sale` (Retail sale) and
+  `.ws-entry` (Wholesale) the primary and tonal buttons take the mode's colour. `.add-to-bill-btn` and
+  `.quick-add-btn-inline` stay as E2E hooks with no look of their own.
 - **Fields** `.field > label + .input`, label above, `₹` / `kg` in `.adorn`; native `<select>`
   styled as an input; checkbox and switch; `.kbd` hints (desktop). **Search** `.search-field > .i + .input`: the
   sprite search icon inside the field (decorative, `aria-hidden`), the input keeps its own `aria-label`.

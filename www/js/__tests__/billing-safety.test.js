@@ -378,8 +378,8 @@ describe('WhatsApp on the bill form shares a draft (S-10)', () => {
     test('every bill-form share button is labelled "Share draft (not saved)"', () => {
         const read = (f) => fs.readFileSync(path.join(__dirname, '..', '..', 'templates', f), 'utf8');
         const buttons = [read('billing.html'), read('wholesale-sales.html')].join('\n')
-            .match(/<button data-onclick="(?:billing\.share\w+|wholesaleSales\.shareViaWhatsApp)\(\)"[\s\S]*?<\/button>/g);
+            .match(/<button type="button" data-onclick="(?:billing\.share\w+|wholesaleSales\.shareViaWhatsApp)\(\)"[\s\S]*?<\/button>/g);
         expect(buttons).toHaveLength(3);
-        buttons.forEach(b => expect(b).toContain('<span data-i18n="ui.billing.share_draft">Share draft (not saved)</span>'));
+        buttons.forEach(b => expect(b).toContain('<span class="sr-only" data-i18n="ui.billing.share_draft">Share draft (not saved)</span>'));
     });
 });

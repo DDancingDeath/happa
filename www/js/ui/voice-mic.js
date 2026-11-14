@@ -57,7 +57,7 @@ export const VoiceMic = {
         }
         const note = document.getElementById('voiceBillingUnavailable');
         if (note) note.hidden = !!engine;
-        document.querySelectorAll('.voice-mic-btn, .voice-strip').forEach(b => { b.hidden = !show; });
+        document.querySelectorAll('[data-voice-mic], .voice-strip').forEach(b => { b.hidden = !show; });
         const beep = document.getElementById('settingVoiceBeep');
         if (beep) {
             beep.checked = this.beepOn();
