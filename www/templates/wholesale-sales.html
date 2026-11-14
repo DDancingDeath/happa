@@ -2,10 +2,10 @@
     <header class="page-head"><h2 data-i18n="ui.nav.sales">Sales</h2></header>
 
         <!-- Sales | History | Outstanding (redesign 5.5): the Billing components in the wholesale (violet) mode -->
-        <div class="seg ws-seg" role="group">
-            <button type="button" class="active" aria-pressed="true" data-view="sales" data-onclick="wholesaleSales.filterTab('sales', event)" data-i18n="ui.common.sales">Sales</button>
-            <button type="button" aria-pressed="false" data-view="history" data-onclick="wholesaleSales.filterTab('history', event)" data-i18n="ui.wholesale.tab_history">History</button>
-            <button type="button" aria-pressed="false" data-view="outstanding" data-onclick="wholesaleSales.filterTab('outstanding', event)" data-i18n="ui.wholesale.outstanding">Outstanding</button>
+        <div class="tabs ws-tabs" role="tablist">
+            <button type="button" class="active" role="tab" aria-selected="true" aria-controls="salesEntrySection" data-view="sales" data-onclick="wholesaleSales.filterTab('sales', event)" data-i18n="ui.common.sales">Sales</button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="salesHistorySection" data-view="history" data-onclick="wholesaleSales.filterTab('history', event)" data-i18n="ui.wholesale.tab_history">History</button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="salesOutstandingSection" data-view="outstanding" data-onclick="wholesaleSales.filterTab('outstanding', event)" data-i18n="ui.wholesale.outstanding">Outstanding</button>
         </div>
 
         <div id="salesEntrySection">

@@ -342,7 +342,7 @@ export class OutstandingManager {
                 </div>
             </div>`).join('');
 
-        const sortBtn = (by, label) => `<button type="button" class="chip${this.agingSort === by ? ' active' : ''}" aria-pressed="${this.agingSort === by}" data-onclick="outstanding.setAgingSort('${by}')">${label}</button>`;
+        const sortBtn = (by, label) => `<button type="button"${this.agingSort === by ? ' class="active"' : ''} aria-pressed="${this.agingSort === by}" data-onclick="outstanding.setAgingSort('${by}')">${label}</button>`;
 
         el.innerHTML = `
             <div>
@@ -359,7 +359,7 @@ export class OutstandingManager {
                 ${chaseHtml}
                 <details class="aging-parties"${this.partiesOpen ? ' open' : ''} data-ontoggle="outstanding.setPartiesOpen(this.open)">
                     <summary class="aging-subtitle">${tt('ui.outstanding.by_party', { count: parties.length })}</summary>
-                    <div class="aging-sort">${tt('ui.outstanding.sort')} ${sortBtn('amount', tt('ui.outstanding.sort_amount'))} ${sortBtn('age', tt('ui.outstanding.sort_oldest'))}</div>
+                    <div class="aging-sort"><span id="dueAgingSortLabel">${tt('ui.outstanding.sort')}</span><div class="seg" role="group" aria-labelledby="dueAgingSortLabel">${sortBtn('amount', tt('ui.outstanding.sort_amount'))}${sortBtn('age', tt('ui.outstanding.sort_oldest'))}</div></div>
                     <div id="dueAgingParties" class="panel">${rows}</div>
                 </details>
                 <h3 class="aging-subtitle aging-bills-title">${tt('ui.outstanding.bills_title')}</h3>

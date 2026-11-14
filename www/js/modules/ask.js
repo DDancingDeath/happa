@@ -53,7 +53,7 @@ export const AskManager = {
         const host = document.getElementById('askExamples');
         if (!host) return;
         host.innerHTML = Array.from({ length: EXAMPLES }, (_, i) => t(`ui.ask.example_${i + 1}`))
-            .map(q => `<button type="button" class="btn btn-sm ask-example" data-onclick="ask.ask('${Helpers.escapeJsAttr(q)}')">${esc(q)}</button>`)
+            .map(q => `<button type="button" class="chip ask-example" title="${esc(q)}" data-onclick="ask.ask('${Helpers.escapeJsAttr(q)}')">${esc(q)}</button>`)
             .join('');
     },
 

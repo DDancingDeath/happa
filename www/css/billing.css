@@ -729,7 +729,7 @@ input[type="number"] {
   --bill-tone-ink: var(--on-mode-wholesale);
 }
 
-.ws-seg {
+.ws-tabs {
   margin-bottom: var(--sp-3);
 }
 

@@ -192,6 +192,7 @@
 .ask-form { display: flex; gap: 8px; }
 .ask-form input { flex: 1; min-width: 0; min-height: 44px; font-size: var(--fs-input); padding: 8px 12px; }
 .ask-examples { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.ask-example { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .ask-answers { display: flex; flex-direction: column; gap: 10px; }
 .ask-answer { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; }
 .ask-question { font-weight: var(--w-strong); margin-bottom: 4px; }
