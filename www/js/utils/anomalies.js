@@ -20,8 +20,8 @@
  */
 
 import { evaluateBill, evaluateCashCount, evaluateStockAdjustment, isEntryIssue, normalizeThresholds } from './bill-checks.js';
-import { activityBills, billTotal, isPersonalExpense, readLineItem, readPayment, round2, toMoney, formatKg, formatRupees } from './money.js';
-import { parseAnyBillDate, toJsDate } from './dates.js';
+import { activityBills, billTotal, isPersonalExpense, readLineItem, readPayment, round2, toMoney, formatKg, formatRupees, screenRateText } from './money.js';
+import { formatTimeOfDay, parseAnyBillDate, toJsDate } from './dates.js';
 import { isNotCounted } from './cash-session.js';
 import { cleanText } from './due-reminder.js';
 import { firstStockTimes, stockKeyFor } from './stock-check.js';
@@ -146,6 +146,31 @@ export function istDayKey(ms) {
  */
 export function istHour(ms) {
     return new Date(Number(ms) + IST_OFFSET_MS).getUTCHours();
+}
+
+/** Anomaly types whose text carries rates, stored with paise (₹2,400.00). */
+const RATE_TEXT_TYPES = new Set(['rate-confirmed', 'rate-high', 'rate-low', 'below-cost', 'rate-round']);
+
+/**
+ * An anomaly's text for the screen; the stored text is kept as saved. A night entry's "Entered at 00:11" is
+ * rebuilt from `at` in the 12-hour IST time (DATE-TEXT `time`, "12:11 am"), and rates lose a ".00"
+ * (MONEY-TEXT `rate`); other records are returned as they are.
+ * @param {*} a
+ * @returns {*}
+ */
+export function anomalyText(a) {
+    const at = Number(a?.at);
+    if (a?.type === 'night-entry' && Number.isFinite(at) && at > 0) {
+        const ist = new Date(at + IST_OFFSET_MS);
+        const wall = new Date(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate(), ist.getUTCHours(), ist.getUTCMinutes());
+        return {
+            en: `Entered at ${formatTimeOfDay(wall)} (outside shop hours)`,
+            hi: `${formatTimeOfDay(wall, { lang: 'hi' })} पर एंट्री (दुकान के समय के बाहर)`
+        };
+    }
+    if (!RATE_TEXT_TYPES.has(a?.type)) return a;
+    const fix = (/** @type {*} */ s) => (s == null ? s : screenRateText(s));
+    return { ...a, en: fix(a.en), hi: fix(a.hi) };
 }
 
 /**

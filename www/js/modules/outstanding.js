@@ -248,11 +248,11 @@ export class OutstandingManager {
                 ${openingOldTotals(transaction) ? `<div class="history-date">${tt('ui.outstanding.opening_balance', { total: formatAmount(openingOldTotals(transaction).total), paid: formatAmount(openingOldTotals(transaction).paid) })}</div>` : ''}
                 <div class="due-bill-body">
                     <div class="due-bill-line">
-                        <span>${totalLabel}:</span>
+                        <span>${totalLabel}</span>
                         <strong>${moneyHtml(transaction.totalAmount)}</strong>
                     </div>
                     <div class="due-bill-line">
-                        <span>${paidLabel}:</span>
+                        <span>${paidLabel}</span>
                         <strong>${moneyHtml(transaction.paidAmount)}</strong>
                     </div>
                     <div class="due-bill-line due-bill-out">

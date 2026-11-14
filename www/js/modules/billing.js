@@ -15,7 +15,7 @@ import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
 import { billLabour, isActiveBill, readPayment, sumMoney, formatRupees } from '../utils/money.js';
 import { buildPaymentSplit, computeRetailTotals, editKeepsMoney } from '../utils/calc/billing.js';
-import { BillChecksUI } from '../ui/bill-highlight.js';
+import { BillChecksUI, clearFieldError } from '../ui/bill-highlight.js';
 import { bindPartySuggest } from '../ui/party-suggest.js';
 import { findBillIndex } from '../utils/history-window.js';
 import { TIME_MS, AUTO_SAVE_DELAY } from '../utils/constants.js';
@@ -226,6 +226,8 @@ const BillingManager = {
             btn.classList.toggle('active', btn === onBtn);
             btn.setAttribute('aria-pressed', String(btn === onBtn));
         });
+        clearFieldError('billRate');
+        clearFieldError('saleRate');
         
         if (mode === 'sale') {
             this.currentMode = 'sale';
@@ -241,7 +243,7 @@ const BillingManager = {
             if (currentRate) {
                 setTimeout(() => {
                     const saleRateInput = document.getElementById('saleRate');
-                    if (saleRateInput) saleRateInput.value = currentRate;
+                    if (saleRateInput) { saleRateInput.value = currentRate; clearFieldError('saleRate'); }
                 }, 50);
             }
             if (currentWeight) {
@@ -536,7 +538,7 @@ const BillingManager = {
     keepTypedRate(selectId, rateId, kept, typedRate) {
         const rateInput = document.getElementById(rateId);
         if (!rateInput || !typedRate || !kept?.itemId) return;
-        if (document.getElementById(selectId)?.selectedOptions?.[0]?.dataset.itemId === kept.itemId) rateInput.value = typedRate;
+        if (document.getElementById(selectId)?.selectedOptions?.[0]?.dataset.itemId === kept.itemId) { rateInput.value = typedRate; clearFieldError(rateId); }
     },
 
     /**
@@ -585,6 +587,7 @@ const BillingManager = {
         
         rateDatalist.innerHTML = '';
         rateInput.value = '';
+        clearFieldError(rateInput.id);
         rateInput.placeholder = t('ui.billing.select_enter_rate');
         
         if (itemIndex !== undefined && itemIndex !== '') {
@@ -611,6 +614,7 @@ const BillingManager = {
         
         rateDatalist.innerHTML = '';
         rateInput.value = '';
+        clearFieldError(rateInput.id);
         rateInput.placeholder = t('ui.billing.select_enter_rate');
         
         if (itemIndex !== undefined && itemIndex !== '') {
@@ -1466,7 +1470,7 @@ const BillingManager = {
                 setTimeout(() => {
                     if (purchaseData.rate) {
                         const rateInput = document.getElementById('billRate');
-                        if (rateInput) rateInput.value = purchaseData.rate;
+                        if (rateInput) { rateInput.value = purchaseData.rate; clearFieldError('billRate'); }
                     }
                 }, 100);
                 
@@ -1503,7 +1507,7 @@ const BillingManager = {
                 setTimeout(() => {
                     if (saleData.rate) {
                         const saleRateInput = document.getElementById('saleRate');
-                        if (saleRateInput) saleRateInput.value = saleData.rate;
+                        if (saleRateInput) { saleRateInput.value = saleData.rate; clearFieldError('saleRate'); }
                     }
                 }, 100);
                 

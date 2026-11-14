@@ -5,7 +5,7 @@
 import {
     detectAnomalies, anomalyId, planAnomalyWrites, mergeAnomalies, summarizeAnomalies, buildDayReportText,
     filterAnomalies, presetRange, anomalyPatterns, istDayKey, istHour, addDaysToKey, istDayStartMs, summaryLine,
-    voidedByOthers, withoutStoredVoidTwins
+    voidedByOthers, withoutStoredVoidTwins, anomalyText
 } from '../utils/anomalies.js';
 
 const T = (h, m = 0, d = 22) => new Date(2026, 9, d, h, m, 0).getTime(); // Oct 2026, IST
@@ -136,6 +136,15 @@ describe('bill rules', () => {
         expect(types(run({ bills: { retail: [bill({ timestamp: T(3) })] } }))).toEqual(['night-entry']);
         expect(run({ bills: { retail: [bill({ timestamp: T(21, 59) })] } })).toEqual([]);
         expect(run({ bills: { retail: [bill({ timestamp: undefined, date: '2026-10-22' })] } })).toEqual([]);
+    });
+
+    test('stored anomaly texts are kept; the screen shows the 12-hour time and rates without .00', () => {
+        const [night] = run({ bills: { retail: [bill({ timestamp: T(0, 11) })] } });
+        expect(night.en).toBe('Entered at 00:11 (outside shop hours)');
+        expect(anomalyText(night)).toEqual({ en: 'Entered at 12:11 am (outside shop hours)', hi: '12:11 पूर्वाह्न पर एंट्री (दुकान के समय के बाहर)' });
+        const stored = { type: 'rate-confirmed', en: 'Wheat: 100 kg × ₹2,400.00 = ₹2,40,000; today\'s rate ₹24.50 would give ₹2,450', hi: 'x ₹24.00' };
+        expect(anomalyText(stored)).toEqual({ ...stored, en: 'Wheat: 100 kg × ₹2,400 = ₹2,40,000; today\'s rate ₹24.50 would give ₹2,450', hi: 'x ₹24' });
+        expect(anomalyText({ type: 'cash-short', en: 'Short ₹12.00', hi: '' }).en).toBe('Short ₹12.00');
     });
 
     test('old-bill edit and edit after payment are dated by the edit', () => {

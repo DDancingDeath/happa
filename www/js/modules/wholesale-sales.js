@@ -9,7 +9,7 @@ import { Helpers } from '../utils/helpers.js';
 import { computeShortfallsFrom, approxStockNote, stockWarnOnlyNote } from '../utils/stock-check.js';
 import { awaitingServer } from '../utils/data-freshness.js';
 import { normalizeThresholds, stockCreditFor } from '../utils/bill-checks.js';
-import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
+import { BillChecksUI, clearFieldError, readTypedNumber, showFieldError } from '../ui/bill-highlight.js';
 import { settlePendingLine } from '../ui/pending-line.js';
 import { checkLineRate } from '../ui/rate-check.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
@@ -137,6 +137,7 @@ export class WholesaleSalesManager {
         const sellRateEl = document.getElementById("sellRate");
         
         if (!availableStockEl || !avgRateEl || !sellRateEl) return;
+        clearFieldError('sellRate');
 
         const approxEl = document.getElementById("availableStockApprox");
         if (approxEl) {
@@ -198,9 +199,10 @@ export class WholesaleSalesManager {
         }
         
         if (!rate || rate <= 0) {
-            UIManager.showToast(t('msg.common.enter_valid_rate'));
+            if (!showFieldError('sellRate', t('msg.common.enter_valid_rate'))) UIManager.showToast(t('msg.common.enter_valid_rate'));
             return;
         }
+        clearFieldError('sellRate');
         
         if (!quantity || quantity <= 0) {
             UIManager.showToast(t('msg.wholesale.enter_valid_quantity'));
@@ -566,6 +568,7 @@ export class WholesaleSalesManager {
             document.getElementById('wholesaleCustomerName').value = '';
             document.getElementById('sellQuantity').value = '';
             document.getElementById('sellRate').value = '';
+            clearFieldError('sellRate');
             document.getElementById('salesComments').value = '';
             document.getElementById('salesExpensesAmount').value = '0';
             this.resetPaymentFields();

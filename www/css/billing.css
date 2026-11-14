@@ -598,6 +598,12 @@ input[type="number"] {
   align-items: end;
 }
 
+/* A rate with a datalist keeps room for the list arrow, so the placeholder is not drawn under it */
+.bill-line-grid .input[list] {
+  padding-right: var(--sp-10);
+  text-overflow: ellipsis;
+}
+
 /* A live check message under Rate or Weight (bill-highlight.js) takes its own row below the three */
 :is(#billing, .bill-page) .bill-line-grid > .bill-check-msg {
   grid-column: 1 / -1;

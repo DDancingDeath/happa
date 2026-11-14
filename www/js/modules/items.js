@@ -43,6 +43,15 @@ const rateHtml = (rate) => {
     return html === '—' ? Helpers.escapeHtml(formatRate(rate)) : html;
 };
 
+/**
+ * Add a just-saved item to AppState.items unless the live listener already put it there
+ * (its snapshot can arrive before saveItem resolves, which listed the item twice).
+ * @param {*} item
+ */
+const addSavedItem = (item) => {
+    if (!item?.id || !AppState.items.some(i => i && i.id === item.id)) AppState.items.push(item);
+};
+
 const ItemsManager = {
     /**
      * Debounce timers for auto-save operations
@@ -223,7 +232,7 @@ const ItemsManager = {
         
         await UIManager.withLoading(async () => {
             const savedItem = await FirebaseService.saveItem(newItem);
-            AppState.items.push(savedItem);
+            addSavedItem(savedItem);
             this.renderItems();
             AuditService.note(AuditService.ACTIONS.CREATE_ITEM, { itemId: savedItem.id || null, source: 'row' });
         });
@@ -1063,7 +1072,7 @@ const ItemsManager = {
             } else {
                 // Add new item
                 const savedItem = await FirebaseService.saveItem(itemData);
-                AppState.items.push(savedItem);
+                addSavedItem(savedItem);
                 this.recordHistory(savedItem, changes, 'modal');
                 AuditService.note(AuditService.ACTIONS.CREATE_ITEM, { itemId: savedItem.id || null, itemName: savedItem.name || '', source: 'modal' });
                 UIManager.showToast(t('msg.items.item_added'));

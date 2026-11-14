@@ -129,7 +129,11 @@ and page layout uses page-scoped classes (`.bill-form-field`, `.pay-line`, …).
   Inline text links inside a sentence (`.due-bill-link`, `.bill-edits__view`) stay links.
 - **Fields** `.field > label + .input`, label above, `₹` / `kg` in `.adorn`; native `<select>`
   styled as an input; checkbox and switch; `.kbd` hints (desktop). **Search** `.search-field > .i + .input`: the
-  sprite search icon inside the field (decorative, `aria-hidden`), the input keeps its own `aria-label`.
+  sprite search icon inside the field (decorative, `aria-hidden`), the input keeps its own `aria-label`. A field
+  error is `showFieldError(inputId, text)` (`ui/bill-highlight.js`): a `.bill-check-msg` line under the field
+  (`role="alert"`), `aria-invalid` and `aria-describedby` on the input, cleared on its next edit (Billing and
+  Wholesale's "Please enter a valid rate"). A required field has no `*`: it takes `aria-required="true"`, and optional
+  fields say "(optional)".
 - **One rule for switches (C3)**: page sections are **Tabs** `.tabs` (underline; `role="tablist"`, each
   button `role="tab"` with `aria-selected`); filters and modes are a **Segmented control** `.seg`
   (`role="group"`, each button `aria-pressed`; a `.mode-dot` span for purchase / sale); on / off is a **chip**

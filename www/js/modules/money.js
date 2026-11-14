@@ -595,7 +595,7 @@ export const MoneyManager = {
             ? ` <button type="button" class="btn btn-ghost btn-sm" data-go="insights-items" data-metric-ref="I2">${esc(t('ui.money.split_link'))} ›</button>` : '';
         this.html('moneySalesSplit', `<span data-metric-ref="M1">${esc(tn('ui.money.bills', m.M1.count))}</span>${splitLink}`);
         this.html('moneyCogs', moneyHtml(m.M2, TM));
-        this.html('moneyGross', m.M3.total === null ? '—' : `${moneyHtml(m.M3.total, TM)}${m.M3.per100 !== null ? esc(` · ${screenMinus(t('ui.money.per100', { value: formatAmount(roundTo(m.M3.per100, 1), 'rate') }))}`) : ''}`);
+        this.html('moneyGross', m.M3.total === null ? '—' : `${moneyHtml(m.M3.total, TM)}${m.M3.per100 !== null ? esc(` · ${screenMinus(t('ui.money.per100', { value: formatAmount(roundTo(m.M3.per100, 1), 'small') }))}`) : ''}`);
         this.html('moneyBusinessTerm', moneyHtml(m.M4.total, TM));
         this.html('moneyBadDebts', moneyHtml(m.M5, TM));
         this.html('moneyProfitTerm', moneyHtml(m.M6.total, TM));
