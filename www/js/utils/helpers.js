@@ -422,13 +422,13 @@ export class Helpers {
         const amount = formatAmount(Math.abs(check.difference), { exact: true });
         if (check.ok) {
             el.textContent = '✓ ₹0';
-            el.style.color = 'var(--positive)';
+            el.dataset.split = 'ok';
         } else if (check.difference > 0) {
             el.textContent = t('ui.billing.split_left', { amount });
-            el.style.color = 'var(--negative)';
+            el.dataset.split = 'off';
         } else {
             el.textContent = t('ui.billing.split_extra', { amount });
-            el.style.color = 'var(--negative)';
+            el.dataset.split = 'off';
         }
     }
 
@@ -466,19 +466,19 @@ export class Helpers {
         const buttons = (typeof document !== 'undefined' && buttonSelector)
             ? Array.from(/** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll(buttonSelector)))
             : [];
-        const previous = buttons.map(btn => ({ btn, disabled: btn.disabled, opacity: btn.style.opacity }));
+        const previous = buttons.map(btn => ({ btn, disabled: btn.disabled }));
         buttons.forEach(btn => {
             btn.disabled = true;
-            btn.style.opacity = '0.6';
+            btn.dataset.locked = '';
             btn.setAttribute('aria-busy', 'true');
         });
         try {
             return await fn();
         } finally {
             inFlightLocks.delete(key);
-            previous.forEach(({ btn, disabled, opacity }) => {
+            previous.forEach(({ btn, disabled }) => {
                 btn.disabled = disabled;
-                btn.style.opacity = opacity;
+                delete btn.dataset.locked;
                 btn.removeAttribute('aria-busy');
             });
         }

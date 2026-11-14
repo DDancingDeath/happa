@@ -430,8 +430,6 @@ const PurchaseManager = {
             
             if (laborChargesInput) {
                 laborChargesInput.disabled = false;
-                laborChargesInput.style.opacity = '1';
-                laborChargesInput.style.cursor = 'text';
             }
             if (laborCalculationSpan) {
                 laborCalculationSpan.textContent = suggested.working;
@@ -442,8 +440,6 @@ const PurchaseManager = {
             if (laborChargesInput) {
                 laborChargesInput.value = '0';
                 laborChargesInput.disabled = true;
-                laborChargesInput.style.opacity = '0.5';
-                laborChargesInput.style.cursor = 'not-allowed';
             }
             if (laborCalculationSpan) {
                 laborCalculationSpan.textContent = '';

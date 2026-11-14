@@ -31,8 +31,8 @@
   font-weight: var(--w-strong);
   letter-spacing: var(--tracking-display);
   color: var(--ink);
-  margin-bottom: 20px;
-  padding-bottom: 12px;
+  margin-bottom: var(--sp-5);
+  padding-bottom: var(--sp-3);
   border-bottom: 3px solid transparent;
   position: relative;
 }
@@ -52,7 +52,7 @@
   font-size: var(--fs-lead);
   font-weight: var(--w-strong);
   color: var(--ink);
-  margin: 20px 0 12px 0;
+  margin: var(--sp-5) 0 var(--sp-3) 0;
   display: flex;
   align-items: center;
   gap: var(--sp-2);
@@ -460,7 +460,7 @@ body.typing .bottom-nav {
   position: fixed;
   top: var(--tab-top);
   left: 50%;
-  transform: translate(-50%, 0);
+  transform: translate(-50%, var(--pull-y, 0));
   z-index: calc(var(--z-appbar) + 10);
   display: inline-flex;
   align-items: center;

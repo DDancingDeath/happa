@@ -107,7 +107,7 @@
     display: flex;
     justify-content: space-between;
     width: 100%;
-    gap: 8px;
+    gap: var(--sp-2);
     padding: 10px 0;
     background: none;
     border: none;
@@ -119,7 +119,7 @@
 }
 
 .fin-group-lines {
-    padding-left: 12px;
+    padding-left: var(--sp-3);
 }
 
 .fin-more {

@@ -1,17 +1,17 @@
 {
   "_readme": "Design-system ratchet (tests/ci/ds-guard.test.js, docs/design-system.md §7). Per-file counts may only go down; lower them with DS_BASELINE=lower npx jest ds-guard. Files in \"strict\" are pinned at 0 on every metric.",
   "totals": {
-    "spacing": 233,
+    "spacing": 134,
     "radius": 2,
     "shadow": 0,
     "zIndex": 0,
     "important": 25,
     "idSelector": 159,
     "themeSelector": 0,
-    "inlineStyle": 31,
+    "inlineStyle": 18,
     "emoji": 12,
     "titleCase": 15,
-    "legacyClass": 2
+    "legacyClass": 0
   },
   "strict": [
     "www/css/admin.css",
@@ -78,18 +78,18 @@
   },
   "metrics": {
     "spacing": {
-      "www/css/bill-checks.css": 10,
-      "www/css/billing.css": 22,
-      "www/css/day.css": 36,
-      "www/css/desktop.css": 22,
-      "www/css/finance.css": 10,
-      "www/css/forms.css": 16,
-      "www/css/history.css": 38,
-      "www/css/navigation.css": 4,
-      "www/css/rate-trends.css": 24,
-      "www/css/surfaces.css": 14,
-      "www/css/toast.css": 4,
-      "www/css/totals.css": 24,
+      "www/css/bill-checks.css": 4,
+      "www/css/billing.css": 11,
+      "www/css/day.css": 22,
+      "www/css/desktop.css": 12,
+      "www/css/finance.css": 8,
+      "www/css/forms.css": 8,
+      "www/css/history.css": 20,
+      "www/css/navigation.css": 1,
+      "www/css/rate-trends.css": 11,
+      "www/css/surfaces.css": 8,
+      "www/css/toast.css": 2,
+      "www/css/totals.css": 18,
       "www/js/main.js": 1,
       "www/js/services/exporter.js": 6,
       "www/js/utils/quota-guard.js": 2
@@ -118,11 +118,7 @@
     },
     "themeSelector": {},
     "inlineStyle": {
-      "www/js/auth/authentication.js": 2,
-      "www/js/modules/purchase.js": 4,
       "www/js/modules/rate-trends.js": 1,
-      "www/js/ui/bottom-nav.js": 2,
-      "www/js/utils/helpers.js": 5,
       "www/js/utils/quota-guard.js": 3,
       "www/templates/billing.html": 3,
       "www/templates/day.html": 2,
@@ -145,8 +141,6 @@
       "www/js/i18n/en.js#ui.statements": 1,
       "www/js/i18n/en.js#ui.today": 3
     },
-    "legacyClass": {
-      "www/js/modules/day.js": 2
-    }
+    "legacyClass": {}
   }
 }

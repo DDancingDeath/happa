@@ -7,9 +7,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--sp-2);
   min-height: 44px;
-  padding: 0 16px;
+  padding: 0 var(--sp-4);
   border: 1px solid var(--line-strong);
   border-radius: var(--r-control);
   background-color: var(--surface);
@@ -59,7 +59,7 @@
 }
 
 .btn-sm {
-  padding: 0 12px;
+  padding: 0 var(--sp-3);
   font-size: var(--fs-sm);
 }
 
@@ -98,6 +98,15 @@
   opacity: 0.45;
   cursor: not-allowed;
   box-shadow: none;
+}
+
+[data-requires-owner]:disabled,
+[data-requires-manager]:disabled {
+  opacity: 0.5;
+}
+
+[data-locked]:disabled {
+  opacity: 0.6;
 }
 
 /* Busy: the double-tap lock (runExclusive) sets aria-busy while a save runs */
@@ -216,7 +225,7 @@ select:not([multiple]):not([size]) {
 .adorn > .adorn-post {
   display: flex;
   align-items: center;
-  padding: 0 12px;
+  padding: 0 var(--sp-3);
   border: 1px solid var(--input-border);
   background: var(--surface-2);
   color: var(--ink-3);
@@ -309,7 +318,7 @@ input[type="checkbox"].switch:focus-visible,
   flex: 1;
   min-width: 0;
   min-height: 44px;
-  padding: 0 12px;
+  padding: 0 var(--sp-3);
   border: none;
   border-radius: var(--r-control);
   background-color: transparent;
@@ -344,14 +353,14 @@ input[type="checkbox"].switch:focus-visible,
 /* ---------- Tabs: .tabs, role=tablist / tab + aria-selected (page sections), underline with a 2 px ink indicator ---------- */
 .tabs {
   display: flex;
-  gap: 4px;
+  gap: var(--sp-1);
   border-bottom: 1px solid var(--line);
   background: none;
 }
 
 .tabs > button {
   min-height: 44px;
-  padding: 0 12px;
+  padding: 0 var(--sp-3);
   margin-bottom: -1px;
   border: none;
   border-bottom: 2px solid transparent;
@@ -398,7 +407,7 @@ input[type="checkbox"].switch:focus-visible,
   display: inline-flex;
   align-items: center;
   min-height: 22px;
-  padding: 0 8px;
+  padding: 0 var(--sp-2);
   border-radius: var(--r-sm);
   background: var(--surface-2);
   color: var(--ink-2);

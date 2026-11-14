@@ -153,7 +153,7 @@ export const BottomNav = {
                 start.pulled = dy;
                 el.hidden = false;
                 el.classList.toggle('ready', dy >= PULL_REFRESH_PX);
-                el.style.transform = `translate(-50%, ${Math.min(dy, 120) / 2}px)`;
+                el.style.setProperty('--pull-y', `${Math.min(dy, 120) / 2}px`);
             } else if (start.pulled) {
                 start.pulled = 0;
                 el.hidden = true;
@@ -164,7 +164,7 @@ export const BottomNav = {
             const s = start;
             start = null;
             const el = pill();
-            if (el) { el.hidden = true; el.classList.remove('ready'); el.style.transform = ''; }
+            if (el) { el.hidden = true; el.classList.remove('ready'); el.style.removeProperty('--pull-y'); }
             if (!s || !touch) return;
             const dx = touch.clientX - s.x;
             const dy = touch.clientY - s.y;

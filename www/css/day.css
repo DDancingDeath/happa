@@ -1,7 +1,7 @@
 /* ==================== DAY PAGE STYLES ==================== */
 
 .day-container {
-  padding: 20px;
+  padding: var(--sp-5);
 }
 
 .day-tabs {
@@ -18,7 +18,7 @@
   color: var(--ink);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 
 /* Items Grid */
@@ -27,24 +27,24 @@
   gap: 10px;
 }
 
-.labour-breakdown-table {
+.labour-breakdown {
   font-size: var(--fs-sm);
 }
 
-.labour-breakdown-table th,
-.labour-breakdown-table td {
+.labour-breakdown th,
+.labour-breakdown td {
   text-align: right;
 }
 
-.labour-breakdown-table th:first-child,
-.labour-breakdown-table td:first-child {
+.labour-breakdown th:first-child,
+.labour-breakdown td:first-child {
   text-align: left;
 }
 
 .labour-breakdown-note {
   font-size: var(--fs-caption);
   color: var(--ink-2);
-  margin: 8px 0 0;
+  margin: var(--sp-2) 0 0;
 }
 
 /* ---------- Today › Cash (redesign 5.2a): today's cash, then open / record / close, then the history ---------- */
@@ -130,7 +130,7 @@
 .today-channel-name { color: var(--ink); font-weight: var(--w-strong); }
 .today-channel-count { color: var(--ink-3); font-size: var(--fs-sm); }
 .today-channel-total { margin-left: auto; }
-.today-channel-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px var(--sp-5); margin-top: var(--sp-2); color: var(--ink-3); font-size: var(--fs-sm); }
+.today-channel-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-1) var(--sp-5); margin-top: var(--sp-2); color: var(--ink-3); font-size: var(--fs-sm); }
 .today-channel-split > div { display: flex; justify-content: space-between; gap: var(--sp-2); }
 .today-channel-writeoff { grid-column: 1 / -1; }
 
@@ -154,15 +154,15 @@
 .today-bills-more { border-top-color: var(--line); border-radius: 0 0 var(--r-panel) var(--r-panel); }
 
 /* Item details (T17) */
-.today-item .row-meta { white-space: normal; }
-.today-item .row-meta strong { color: var(--ink-2); font-weight: var(--w-strong); }
-.today-item .row-meta .row-amt { color: var(--ink); }
+.day-item .row-meta { white-space: normal; }
+.day-item .row-meta strong { color: var(--ink-2); font-weight: var(--w-strong); }
+.day-item .row-meta .row-amt { color: var(--ink); }
 
 /* Cash open 14 h or more (C10, Q25 of #111) */
 .cash-long-open { background: var(--warning-soft); border: 1px solid var(--warning-line); color: var(--warning); border-radius: var(--r-control); padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3); font-weight: var(--w-strong); }
 
 /* Manual reminders (#86) */
-.reminder-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: var(--fs-sm); padding: 4px 0; }
+.reminder-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); font-size: var(--fs-sm); padding: var(--sp-1) 0; }
 .today-reminder-title { font-weight: var(--w-strong); }
 .today-reminder-days.late { color: var(--negative); font-weight: var(--w-strong); }
 .today-reminder-actions { display: flex; gap: 6px; margin-left: auto; }
@@ -174,21 +174,21 @@
 
 /* Ask (#88) */
 .ask-page { max-width: 720px; }
-.ask-intro { color: var(--ink-2); margin: 4px 0 12px; }
-.ask-form { display: flex; gap: 8px; }
-.ask-form input { flex: 1; min-width: 0; min-height: 44px; font-size: var(--fs-input); padding: 8px 12px; }
-.ask-examples { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.ask-intro { color: var(--ink-2); margin: var(--sp-1) 0 var(--sp-3); }
+.ask-form { display: flex; gap: var(--sp-2); }
+.ask-form input { flex: 1; min-width: 0; min-height: 44px; font-size: var(--fs-input); padding: var(--sp-2) var(--sp-3); }
+.ask-examples { display: flex; flex-wrap: wrap; gap: 6px; margin: var(--sp-3) 0; }
 .ask-example { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .ask-answers { display: flex; flex-direction: column; gap: 10px; }
 .ask-answer { background: var(--panel-bg); border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px 12px; }
-.ask-question { font-weight: var(--w-strong); margin-bottom: 4px; }
+.ask-question { font-weight: var(--w-strong); margin-bottom: var(--sp-1); }
 .ask-line { margin: 2px 0; }
 .ask-answer .ask-open { margin-top: 6px; }
 .ask-answer .ask-open + .ask-open { margin-left: 6px; }
-.ask-change { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.ask-change { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); margin-top: 10px; padding-top: var(--sp-2); border-top: 1px solid var(--line); }
 .ask-change-field { display: flex; flex: 1 1 140px; min-width: 0; flex-direction: column; gap: 2px; font-size: var(--fs-sm); color: var(--ink-2); }
 .ask-change-field select { width: 100%; min-height: 44px; font-size: var(--fs-body); }
-.ask-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ask-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--sp-2); }
 .ask-kind { min-height: 44px; }
 
 /* Cash › history (5.2b): each day is a row, its figures two columns; it lights up under the pointer (#89) */
