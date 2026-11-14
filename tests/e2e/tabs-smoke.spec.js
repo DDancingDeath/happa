@@ -117,7 +117,7 @@ const ROUTE_READY = {
     due: '#due .filter-purchase.active',
     anomalies: '#anomalies .sub-tab.active',
     admin: '#adminTabsContainer [aria-selected="true"]',
-    diagnostics: '#diagnosticsTabsContainer .filter-btn.active'
+    diagnostics: '#diagnosticsTabsContainer [aria-selected="true"]'
 };
 
 // Pages each role may not open: showTab must land somewhere else.

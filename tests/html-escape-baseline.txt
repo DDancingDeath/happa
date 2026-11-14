@@ -54,12 +54,6 @@ www/js/modules/day.js: s.purchaseItems ← s = todaySummary({ bills: { purchase:
 www/js/modules/day.js: s.saleItems ← s = todaySummary({ bills: { purchase: AppState.purchaseHistory, wholesale: AppState. (markup via this.renderItemWiseDetails)
 www/js/modules/day.js: type
 www/js/modules/day.js: type
-www/js/modules/diagnostics.js: actionIcon ← icons[action] {icons = { 'CREATE_BILL': '📥', 'DELETE_BILL': '🗑️', 'CREATE_SALE': '📤', 'DELETE_SALE':}
-www/js/modules/diagnostics.js: formatDateTimeIN(o.timestamp)
-www/js/modules/diagnostics.js: formattedDate ← formatDateTimeIN(log.timestamp, { day: '2-digit', month: 'short', year: 'numeric
-www/js/modules/diagnostics.js: stats.byType['console.error'] || 0 ← stats.byType['console.error'] {stats = { total: this.data.length, totalOccurrences: this.data.reduce((sum, d) => sum + }
-www/js/modules/diagnostics.js: typeColors[error.type] || '#666' ← typeColors[error.type] {typeColors = { 'uncaught': '#ef4444', 'unhandledrejection': '#f97316', 'console.error': '#eab}
-www/js/modules/diagnostics.js: typeLabels[error.type] || Helpers.escapeHtml(error.type) ← typeLabels[error.type] {typeLabels = { 'uncaught': `🔴 ${tx('ui.diag.t_uncaught')}`, 'unhandledrejection': `🟠 ${tx('}
 www/js/modules/health.js: html (sink)
 www/js/modules/history.js: (toMoney(item.total) ?? toMoney(item.amount)) === null ? '—' : formatAmount(toMoney(item.total) ?? toMoney(item.amount), { exact: true }) ← formatAmount(toMoney(item.total) ?? toMoney(item.amount), { exact: true })
 www/js/modules/history.js: billTableHtml(bills, { openings: this.pageOpenings, voided: this.pageVoided, typeTags: type === 'sale', onclickFor: (bill) => `history.viewB (sink)

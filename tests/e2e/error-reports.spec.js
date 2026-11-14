@@ -88,7 +88,7 @@ for (const role of ['manager', 'staff']) {
         await login(page, role);
         if (role === 'manager') {
             await showTab(page, 'diagnostics');
-            await page.waitForSelector('#diagnosticsTabsContainer .filter-btn.active');
+            await page.waitForSelector('#diagnosticsTabsContainer [aria-selected="true"]');
             await page.evaluate(() => window.app.diagnostics.showTab('status'));
             await expect(page.locator('#diagnosticsTabsContainer')).not.toContainText('Status');
         }

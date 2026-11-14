@@ -1,25 +1,27 @@
 {
   "_readme": "Design-system ratchet (tests/ci/ds-guard.test.js, docs/design-system.md §7). Per-file counts may only go down; lower them with DS_BASELINE=lower npx jest ds-guard. Files in \"strict\" are pinned at 0 on every metric.",
   "totals": {
-    "spacing": 794,
-    "radius": 115,
-    "shadow": 32,
+    "spacing": 740,
+    "radius": 104,
+    "shadow": 29,
     "zIndex": 35,
     "important": 41,
     "idSelector": 191,
     "themeSelector": 28,
-    "inlineStyle": 119,
+    "inlineStyle": 68,
     "emoji": 14,
     "titleCase": 18,
-    "legacyClass": 584
+    "legacyClass": 578
   },
   "strict": [
     "www/css/admin.css",
+    "www/css/diagnostics.css",
     "www/css/items.css",
     "www/css/outstanding.css",
     "www/css/stock.css",
     "www/js/modules/admin.js",
     "www/js/modules/cash-management.js",
+    "www/js/modules/diagnostics.js",
     "www/js/modules/history.js",
     "www/js/modules/items.js",
     "www/js/modules/miscellaneous.js",
@@ -27,6 +29,7 @@
     "www/js/ui/components.js",
     "www/templates/admin.html",
     "www/templates/cash-management.html",
+    "www/templates/diagnostics.html",
     "www/templates/due.html",
     "www/templates/history.html",
     "www/templates/items.html",
@@ -64,12 +67,10 @@
       "www/css/totals.css": 24,
       "www/js/main.js": 1,
       "www/js/modules/anomalies.js": 3,
-      "www/js/modules/diagnostics.js": 23,
       "www/js/modules/settings.js": 8,
       "www/js/services/exporter.js": 6,
       "www/js/utils/quota-guard.js": 2,
       "www/templates/anomalies.html": 1,
-      "www/templates/diagnostics.html": 31,
       "www/templates/settings.html": 6
     },
     "radius": {
@@ -96,7 +97,6 @@
       "www/js/main.js": 1,
       "www/js/modules/settings.js": 2,
       "www/js/services/exporter.js": 1,
-      "www/templates/diagnostics.html": 11,
       "www/templates/settings.html": 1
     },
     "shadow": {
@@ -115,8 +115,7 @@
       "www/css/surfaces.css": 4,
       "www/css/tables.css": 1,
       "www/css/workers.css": 1,
-      "www/js/utils/quota-guard.js": 1,
-      "www/templates/diagnostics.html": 3
+      "www/js/utils/quota-guard.js": 1
     },
     "zIndex": {
       "www/css/app-updates.css": 2,
@@ -172,7 +171,6 @@
     "inlineStyle": {
       "www/js/auth/authentication.js": 2,
       "www/js/modules/anomalies.js": 8,
-      "www/js/modules/diagnostics.js": 51,
       "www/js/modules/purchase.js": 4,
       "www/js/modules/rate-trends.js": 1,
       "www/js/modules/settings.js": 6,
@@ -211,7 +209,6 @@
       "www/js/modules/ask.js": 5,
       "www/js/modules/billing.js": 10,
       "www/js/modules/day.js": 11,
-      "www/js/modules/diagnostics.js": 6,
       "www/js/modules/health.js": 10,
       "www/js/modules/insights.js": 2,
       "www/js/modules/money.js": 6,

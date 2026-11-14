@@ -153,6 +153,10 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   of `.row`s (name, email, a `.tag` for the role or status) with small `.btn`s below; the activity range is a `.seg` and the
   report a `.table` (bill total via `moneyHtml`); storage is `.metrics` and a row list; Data sections are panels with tonal
   actions and one danger button; the backup check answers in a `.notice`; Clear data's dialogs use `admin-clear*` classes.
+- **Diagnostics (5.8b)**: Errors | Audit logs | Status | Number checks are `.tabs`; error counts are `.metrics`; errors, audit
+  entries, number checks and the error-report test are panels (`.diag-card`) whose type / result is a `.tag` (audit actions a
+  tinted `.lead-icon`), not a coloured stripe; timings, reads, status and differences are `.table`s (differences via `moneyHtml`);
+  controls are `.btn`s (refresh an icon button). Copied / shared status text and the error report are unchanged plain text.
 - **Feedback** `.notice` (`.pos/.neg/.warn/.info`), `.empty`, `.skel`, `.toast` (near-black; light in the
   Dark theme), `.dialog` / `.sheet` / `.scrim` (old `.modal-overlay > .modal-box`), `.spinner` (blocking
   saves only). Dialog buttons: Cancel (ghost) on the left, one primary on the right, labelled with a verb; a destructive
