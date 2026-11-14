@@ -16,7 +16,8 @@ import { AppState } from '../utils/state.js';
 import { HistoryManager } from '../modules/history.js';
 import { WholesaleSalesManager } from '../modules/wholesale-sales.js';
 import { HISTORY_TAB_KEY, HISTORY_FILTER_KEY } from '../utils/history-filters.js';
-import { BILL_ROW_SLOTS } from '../ui/bill-row.js';
+import { BILL_ROW_SLOTS, byNameHtml } from '../ui/bill-row.js';
+import { setLang } from '../i18n/index.js';
 import { resolveRoute } from '../ui/navigation.js';
 import en from '../i18n/en.js';
 import hi from '../i18n/hi.js';
@@ -279,5 +280,16 @@ describe('Wholesale › History respects the role\'s History "days back" limit',
         AppState.userRole = 'owner';
         WholesaleSalesManager.renderSalesHistory();
         expect(wholesaleNos()).toEqual(['W1', 'W2']);
+    });
+});
+
+describe('"By {name}" on bill rows', () => {
+    afterEach(() => setLang('en'));
+
+    test('the name is escaped, wrapped in <strong> unless asked not to, and placed where the language puts it', () => {
+        expect(byNameHtml('<b>Ram</b> $&')).toBe('By <strong>&lt;b&gt;Ram&lt;/b&gt; $&amp;</strong>');
+        expect(byNameHtml('Ram', false)).toBe('By Ram');
+        setLang('hi');
+        expect(byNameHtml('Ram')).toBe('<strong>Ram</strong> द्वारा');
     });
 });

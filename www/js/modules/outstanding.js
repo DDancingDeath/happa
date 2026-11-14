@@ -24,6 +24,7 @@ import { PrinterService } from '../services/printer.js';
 import { openExternal } from '../utils/open-external.js';
 import { billDateOf } from '../utils/history-filters.js';
 import { getLang, t } from '../i18n/index.js';
+import { byNameHtml } from '../ui/bill-row.js';
 import { tip } from '../tip/index.js';
 import { track } from '../services/usage.js';
 import { paymentRecordProps, paymentErrorOutcome } from '../tip/scenarios/payment-record.js';
@@ -242,7 +243,7 @@ export class OutstandingManager {
                     <div class="due-bill-title"><span class="due-bill-no"><button type="button" class="due-bill-link" data-onclick="outstanding.showDetails('${id}', '${type}')">#${Helpers.escapeHtml(billNumber)}</button></span>${isOpeningRecord(transaction) ? ` <span class="old-app-chip">${tt('ui.history.old_app_chip')}</span>` : ''}${currentDueFilter === 'sale' && this.seesWholesale() ? ` <span class="due-kind-chip tag">${tt(transaction.transactionType === 'wholesale' ? 'ui.outstanding.kind_wholesale' : 'ui.outstanding.kind_retail')}</span>` : ''}${transaction.customerName ? `  <strong>${Helpers.escapeHtml(transaction.customerName)}</strong>` : ''}</div>
                     <span class="due-bill-due">${withMoney(t('ui.outstanding.due_amount', { amount: formatAmount(transaction.outstanding) }), transaction.outstanding)}</span>
                 </div>
-                <div class="history-date">${Helpers.formatDate(transaction.date)}${transaction.createdByName ? ` • ${tt('ui.outstanding.by')} <strong>${Helpers.escapeHtml(transaction.createdByName)}</strong>` : ''} ${ageBadge}</div>
+                <div class="history-date">${Helpers.formatDate(transaction.date)}${transaction.createdByName ? ` • ${byNameHtml(transaction.createdByName)}` : ''} ${ageBadge}</div>
                 ${openingOldTotals(transaction) ? `<div class="history-date">${tt('ui.outstanding.opening_balance', { total: formatAmount(openingOldTotals(transaction).total), paid: formatAmount(openingOldTotals(transaction).paid) })}</div>` : ''}
                 <div class="due-bill-body">
                     <div class="due-bill-line">

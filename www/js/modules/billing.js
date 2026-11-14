@@ -766,7 +766,7 @@ const BillingManager = {
                             <span class="draft-meta">${Helpers.escapeHtml(t(draft.weights?.length > 0 ? 'ui.billing.draft_items_weights' : 'ui.billing.draft_items', { items: draft.items?.length || 0, weights: draft.weights?.length || 0 }))}</span>
                         </div>
                         <div class="draft-date">${Helpers.escapeHtml(draft.date)}</div>
-                        ${draft.customerName ? `<div class="draft-customer">${Helpers.escapeHtml(t('ui.common.customer'))} ${Helpers.escapeHtml(draft.customerName)}</div>` : ''}
+                        ${draft.customerName ? `<div class="draft-customer">${Helpers.escapeHtml(t('ui.common.customer'))} <strong>${Helpers.escapeHtml(draft.customerName)}</strong></div>` : ''}
                         <div class="draft-actions">
                             <button type="button" class="btn btn-primary btn-sm" data-onclick="billing.loadDraft('${Helpers.escapeJsAttr(draft.id)}')">
                                 ${Helpers.escapeHtml(t('ui.billing.load'))}
