@@ -7,6 +7,7 @@
  */
 
 import { UIManager } from '../ui/ui-manager.js';
+import { icon } from '../ui/icons.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { TelemetryService } from '../services/telemetry.js';
 import { Helpers } from '../utils/helpers.js';
@@ -28,6 +29,11 @@ const SYSTEM_PREF_KEY = 'aadhat.notifications.system';
 const CLEANUP_KEY = 'aadhat.notifications.cleanupAt';
 const CLEANUP_EVERY_MS = 24 * 60 * 60 * 1000;
 const TOAST_MS = 5000;
+
+/** Row icon by notification type (the toast and system notification keep describeNotification's emoji). */
+const rowIcon = (type) => (type === 'rate_change' ? icon('tag')
+    : type === 'item_edit' ? icon('box')
+        : type === 'edit' ? icon('receipt') : icon('bell'));
 
 /** Message for a listener / query failure. */
 export function notificationErrorMessage(error) {
@@ -334,15 +340,15 @@ const NotificationsManager = {
                 : `${[x.lease.place, x.lease.tenant].filter(Boolean).join(' · ')}: ${leaseReminderText(x.lease)}`;
             const meta = rent ? `${t('ui.today.reminder_rent_units', { count: x.rent.dueUnits, late: x.rent.late })} · ${asOf(x.at)}` : asOf(x.at);
             return `
-                <button type="button" class="notif-row${this.rentNew.has(x.key) ? ' unread' : ''}" data-reminder="${e(x.kind)}" data-onclick="notifications.openReminder('${rent ? 'rent' : 'tenants'}')">
-                    <span class="notif-icon">${rent ? '🏠' : '📄'}</span>
-                    <span class="notif-body">
-                        <span class="notif-en">${e(title)}</span>
-                        <span class="notif-meta">${e(meta)}</span>
+                <button type="button" class="row notif-item${this.rentNew.has(x.key) ? ' unread' : ''}" data-reminder="${e(x.kind)}" data-onclick="notifications.openReminder('${rent ? 'rent' : 'tenants'}')">
+                    <span class="lead-icon">${rent ? icon('home') : icon('file')}</span>
+                    <span class="row-main">
+                        <span class="row-title">${e(title)}</span>
+                        <span class="row-meta">${e(meta)}</span>
                     </span>
                 </button>`;
         });
-        return rows.join('') + (more ? `<div class="notif-meta">${e(t('ui.today.reminder_more', { count: more }))}</div>` : '');
+        return rows.join('') + (more ? `<div class="row row-meta">${e(t('ui.today.reminder_more', { count: more }))}</div>` : '');
     },
 
     /** @private */
@@ -353,8 +359,8 @@ const NotificationsManager = {
         const rent = this.rentRowsHtml();
         if (!this.panelItems.length) {
             list.innerHTML = rent + (this.loading
-                ? `<div class="notif-empty">${Helpers.escapeHtml(t('ui.notif.loading'))}</div>`
-                : rent ? '' : `<div class="notif-empty">${Helpers.escapeHtml(t('ui.notif.none_yet'))}</div>`);
+                ? `<div class="empty">${Helpers.escapeHtml(t('ui.notif.loading'))}</div>`
+                : rent ? '' : `<div class="empty"><span class="lead-icon">${icon('bell')}</span><b>${Helpers.escapeHtml(t('ui.notif.none_yet'))}</b></div>`);
         } else {
             list.innerHTML = rent + this.panelItems.map(n => {
                 const d = describeNotification(n);
@@ -362,11 +368,11 @@ const NotificationsManager = {
                 const unread = n.read !== true;
                 const who = d.who ? `${Helpers.escapeHtml(d.who)} · ` : '';
                 return `
-                <button type="button" class="notif-row${unread ? ' unread' : ''}" data-onclick="notifications.openNotification('${Helpers.escapeJsAttr(n.id)}')">
-                    <span class="notif-icon">${d.icon}</span>
-                    <span class="notif-body">
-                        <span class="notif-en">${Helpers.escapeHtml(pickLang(d))}</span>
-                        <span class="notif-meta">${who}<span title="${Helpers.escapeHtml(when.abs)}">${Helpers.escapeHtml(pickLang(when))}</span></span>
+                <button type="button" class="row notif-item${unread ? ' unread' : ''}" data-onclick="notifications.openNotification('${Helpers.escapeJsAttr(n.id)}')">
+                    <span class="lead-icon">${rowIcon(n.type)}</span>
+                    <span class="row-main">
+                        <span class="row-title">${Helpers.escapeHtml(pickLang(d))}</span>
+                        <span class="row-meta">${who}<span title="${Helpers.escapeHtml(when.abs)}">${Helpers.escapeHtml(pickLang(when))}</span></span>
                     </span>
                 </button>`;
             }).join('');

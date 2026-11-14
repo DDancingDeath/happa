@@ -98,7 +98,7 @@
     background: transparent;
   }
 
-  .notif-panel {
+  .notif-sheet {
     left: auto;
     right: var(--sp-4);
     top: calc(var(--desktop-header-h) + var(--sp-2));

@@ -317,7 +317,10 @@ describe('Firestore paths (fake Firestore)', () => {
             await NotificationsManager.openInbox();
             await fake.settle();
             expect(document.getElementById('notifPanel').hidden).toBe(false);
-            expect(document.querySelectorAll('#notifList .notif-row')).toHaveLength(2);
+            const items = document.querySelectorAll('#notifList button.row');
+            expect(items).toHaveLength(2);
+            expect([...items].map(r => r.querySelector('.lead-icon use').getAttribute('href'))).toEqual(['#i-tag', '#i-tag']);
+            expect(items[0].textContent).not.toMatch(/\p{Extended_Pictographic}/u);
             expect([...fake.raw('notifications').values()].filter(d => d.userId === 'owner1').every(d => d.read === true)).toBe(true);
             expect(document.getElementById('notifBadge').hidden).toBe(true);
         });
@@ -357,6 +360,7 @@ describe('Firestore paths (fake Firestore)', () => {
             const rows = document.querySelectorAll('#notifList [data-reminder]');
             expect([...rows].map(r => r.dataset.reminder)).toEqual(['rent', 'lease']);
             expect(rows[0].textContent).toContain('Rent due ₹12,000');
+            expect([...rows].map(r => r.querySelector('.lead-icon use').getAttribute('href'))).toEqual(['#i-home', '#i-file']);
             expect(rows[1].innerHTML).toContain('&lt;b&gt;Ravi');
             expect(rows[1].textContent).toContain('rent increase due: 5% → ₹10,500');
             expect(document.getElementById('notifBadge').hidden).toBe(true);
