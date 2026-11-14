@@ -8,13 +8,13 @@
             <button type="button" role="tab" aria-selected="false" aria-controls="salesOutstandingSection" data-view="outstanding" data-onclick="wholesaleSales.filterTab('outstanding', event)" data-i18n="ui.wholesale.outstanding">Outstanding</button>
         </div>
 
-        <div id="salesEntrySection">
+        <div id="salesEntrySection" class="ws-entry">
             <div class="bill-col-entry">
             <div class="form-row field bill-customer">
                 <label for="wholesaleCustomerName" data-i18n="ui.billing.customer_label">Customer</label>
                 <div class="bill-customer-box">
                     <input type="text" class="input" id="wholesaleCustomerName" list="wholesaleCustomerOptions" placeholder="Enter customer name" data-i18n-placeholder="ui.common.enter_customer_name"/>
-                    <button type="button" class="contact-pick-btn" data-perm="contacts" data-onclick="wholesaleSales.pickContact()" title="Pick contact" aria-label="Pick contact" data-i18n-title="ui.common.pick_contact" data-i18n-aria-label="ui.common.pick_contact"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-contact"/></svg></button>
+                    <button type="button" class="btn btn-ghost btn-icon" data-perm="contacts" data-onclick="wholesaleSales.pickContact()" title="Pick contact" aria-label="Pick contact" data-i18n-title="ui.common.pick_contact" data-i18n-aria-label="ui.common.pick_contact"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-contact"/></svg></button>
                 </div>
                 <datalist id="wholesaleCustomerOptions"></datalist>
             </div>
@@ -58,7 +58,7 @@
                     </div>
                 </div>
 
-                <button type="button" class="btn ws-add-btn" data-onclick="wholesaleSales.addToWholesaleBill()"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-plus"/></svg><span data-i18n="ui.common.add_bill">Add to bill</span></button>
+                <button type="button" class="btn btn-tonal btn-block ws-add" data-onclick="wholesaleSales.addToWholesaleBill()"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-plus"/></svg><span data-i18n="ui.common.add_bill">Add to bill</span></button>
             </div>
 
             <h3 class="bill-section-title" data-i18n="ui.billing.on_this_bill">On this bill</h3>
@@ -120,7 +120,7 @@
                 <div class="payment-row split-remaining-row">
                     <span data-i18n="ui.billing.not_split_label">Not split yet</span>
                     <strong id="wholesaleSplitRemaining">₹0</strong>
-                    <button type="button" class="split-rest-btn" data-onclick="wholesaleSales.putRestInDue()" data-i18n="ui.common.rest_due">Rest → due</button>
+                    <button type="button" class="btn btn-tonal btn-sm" data-onclick="wholesaleSales.putRestInDue()" data-i18n="ui.common.rest_due">Rest → due</button>
                 </div>
             </div>
 
@@ -159,15 +159,15 @@
                     <span class="bill-bar-label" data-i18n="ui.billing.total_receivable_label">Total receivable</span>
                     <strong class="bill-bar-money money"><span class="cur">₹</span><span id="wholesaleBarTotal">0</span></strong>
                 </div>
-                <button data-onclick="wholesaleSales.shareViaWhatsApp()" class="share-draft-btn bill-icon-btn" title="Share draft (not saved)" data-i18n-title="ui.billing.share_draft">
+                <button type="button" data-onclick="wholesaleSales.shareViaWhatsApp()" class="btn btn-icon bill-share" title="Share draft (not saved)" data-i18n-title="ui.billing.share_draft">
                     <svg class="i i-fill" aria-hidden="true" focusable="false"><use href="#i-wa"/></svg>
-                    <span data-i18n="ui.billing.share_draft">Share draft (not saved)</span>
+                    <span class="sr-only" data-i18n="ui.billing.share_draft">Share draft (not saved)</span>
                 </button>
-                <button class="print-btn print-sale-btn bill-icon-btn" data-onclick="wholesaleSales.printWholesaleSale()" data-kbd="Ctrl P">
+                <button type="button" class="btn bill-print" id="printWholesaleBtn" data-onclick="wholesaleSales.printWholesaleSale()" data-kbd="Ctrl P">
                     <svg class="i" aria-hidden="true" focusable="false"><use href="#i-printer"/></svg>
-                    <span class="bill-btn-text" data-i18n="ui.common.print">Print</span>
+                    <span class="bill-print-label" data-i18n="ui.common.print">Print</span>
                 </button>
-                <button class="save-btn save-sale-btn" data-onclick="wholesaleSales.completeSale()" data-i18n="ui.common.save" data-kbd="Ctrl S">Save</button>
+                <button type="button" class="btn btn-primary" id="saveWholesaleBtn" data-onclick="wholesaleSales.completeSale()" data-i18n="ui.common.save" data-kbd="Ctrl S">Save</button>
             </div>
             </div>
 

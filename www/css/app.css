@@ -1109,16 +1109,10 @@ input[type="number"],
 /* ---- css/forms.css ---- */
 /* Controls (redesign 2.5a, DIRECTION 3.6): buttons, kbd, fields, select, checkbox and switch,
    segmented control, tabs, chips and tags. Layer 3: tokens only.
-   The older class names listed beside each new one are kept as hooks (JS, E2E) and share its look. */
+   Buttons are only .btn and its variants; an older class left on a button is a hook (JS, E2E) with no look of its own. */
 
 /* ---------- Button: .btn + -primary / -secondary (default) / -tonal / -ghost / -danger, -sm, -icon ---------- */
-.btn,
-.save-btn,
-.print-btn,
-.draft-btn,
-.add-to-bill-btn,
-.quick-add-btn-inline,
-.split-rest-btn {
+.btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1140,18 +1134,14 @@ input[type="number"],
     color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
 }
 
-.btn-primary,
-.save-btn,
-.add-to-bill-btn,
-.quick-add-btn-inline {
+.btn-primary {
   border-color: transparent;
   background-color: var(--btn-primary-bg);
   color: var(--btn-primary-ink);
   box-shadow: var(--btn-primary-shadow);
 }
 
-.btn-tonal,
-.print-btn {
+.btn-tonal {
   border-color: transparent;
   background-color: var(--accent-soft);
   color: var(--accent-text);
@@ -1170,14 +1160,15 @@ input[type="number"],
   color: var(--btn-danger-ink);
 }
 
-.btn-sm,
-.split-rest-btn {
+.btn-sm {
   padding: 0 12px;
   font-size: var(--fs-sm);
 }
 
-.btn-sm {
-  min-height: 32px;
+/* Tap targets (#68): every button, also .btn-sm and the Outstanding / Cash payment actions, is at least 44 px tall */
+[data-record-payment],
+[data-mark-cleared] {
+  min-height: 44px;
 }
 
 .btn-icon {
@@ -1191,62 +1182,32 @@ input[type="number"],
 }
 
 /* Hover is a veil over any variant's colour, so mode colours (purchase / sale / cash) keep theirs */
-.btn:hover:not(:disabled),
-.save-btn:hover:not(:disabled),
-.print-btn:hover:not(:disabled),
-.draft-btn:hover:not(:disabled),
-.add-to-bill-btn:hover:not(:disabled),
-.quick-add-btn-inline:hover:not(:disabled),
-.split-rest-btn:hover:not(:disabled) {
+.btn:hover:not(:disabled) {
   background-image: linear-gradient(var(--state-hover), var(--state-hover));
 }
 
-.btn:active:not(:disabled),
-.save-btn:active:not(:disabled),
-.print-btn:active:not(:disabled),
-.draft-btn:active:not(:disabled),
-.add-to-bill-btn:active:not(:disabled),
-.quick-add-btn-inline:active:not(:disabled),
-.split-rest-btn:active:not(:disabled) {
+.btn:active:not(:disabled) {
   transform: scale(0.98);
 }
 
-.btn:focus-visible,
-.save-btn:focus-visible,
-.print-btn:focus-visible,
-.draft-btn:focus-visible,
-.add-to-bill-btn:focus-visible,
-.quick-add-btn-inline:focus-visible,
-.split-rest-btn:focus-visible {
+.btn:focus-visible {
   outline: none;
   box-shadow: var(--focus);
 }
 
 .btn:disabled,
-.btn[aria-disabled="true"],
-.save-btn:disabled,
-.print-btn:disabled,
-.draft-btn:disabled,
-.add-to-bill-btn:disabled,
-.quick-add-btn-inline:disabled,
-.split-rest-btn:disabled {
+.btn[aria-disabled="true"] {
   opacity: 0.45;
   cursor: not-allowed;
   box-shadow: none;
 }
 
 /* Busy: the double-tap lock (runExclusive) sets aria-busy while a save runs */
-.btn[aria-busy="true"],
-.save-btn[aria-busy="true"],
-.print-btn[aria-busy="true"],
-.add-to-bill-btn[aria-busy="true"] {
+.btn[aria-busy="true"] {
   cursor: progress;
 }
 
-.btn[aria-busy="true"]::after,
-.save-btn[aria-busy="true"]::after,
-.print-btn[aria-busy="true"]::after,
-.add-to-bill-btn[aria-busy="true"]::after {
+.btn[aria-busy="true"]::after {
   content: '';
   width: 14px;
   height: 14px;
@@ -1261,10 +1222,7 @@ input[type="number"],
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .btn[aria-busy="true"]::after,
-  .save-btn[aria-busy="true"]::after,
-  .print-btn[aria-busy="true"]::after,
-  .add-to-bill-btn[aria-busy="true"]::after {
+  .btn[aria-busy="true"]::after {
     animation: none;
   }
 }
@@ -1471,7 +1429,7 @@ input[type="checkbox"].switch:focus-visible,
 }
 
 /* These set display, which would otherwise beat the hidden attribute */
-:is(.btn, .save-btn, .print-btn, .draft-btn, .add-to-bill-btn, .quick-add-btn-inline, .split-rest-btn)[hidden],
+.btn[hidden],
 .seg[hidden],
 .tabs[hidden] {
   display: none;
@@ -3107,29 +3065,6 @@ html[data-updating] .updating-mark {
 }
 
 /* ---- css/buttons.css ---- */
-.draft-btn {
-  flex: 1;
-  min-width: 80px;
-}
-
-.draft-save-btn {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
-.draft-open-btn {
-  border-color: transparent;
-  background: var(--primary-soft);
-  color: var(--on-primary-soft);
-}
-
-.draft-clear-btn {
-  border-color: var(--danger-border);
-  background: var(--danger-soft);
-  color: var(--on-danger-soft);
-}
-
-
 .bill-totals {
   background: var(--card-bg);
   padding: 16px;
@@ -3299,71 +3234,6 @@ html[data-updating] .updating-mark {
 
 .payment-row.split-remaining-row strong {
   font-size: var(--fs-body);
-}
-
-/* -------------------- SAVE BUTTON -------------------- */
-.save-btn {
-  flex: 1;
-}
-
-.save-purchase-btn {
-  background: var(--btn-primary);
-}
-
-.save-sale-btn {
-  background: var(--btn-success);
-  color: var(--btn-sale-ink);
-}
-
-/* -------------------- PRINT BUTTON -------------------- */
-.print-btn {
-  flex: 1;
-}
-
-.print-purchase-btn {
-  background: var(--primary-soft);
-}
-
-.print-sale-btn {
-  background: var(--success-soft);
-  color: var(--on-success-soft);
-  box-shadow: inset 0 0 0 1px var(--success-border);
-}
-
-
-/* Tap targets (#68): page toggles, primary buttons and list actions are at least 44 px tall */
-.btn,
-.save-btn,
-.draft-btn,
-.split-rest-btn,
-.contact-pick-btn,
-.history-stale-refresh,
-[data-record-payment],
-[data-mark-cleared] {
-  min-height: 44px;
-}
-
-/* The 👤 emoji drawn as a solid glyph in the button's colour, readable in both themes */
-.contact-pick-btn {
-  min-width: 48px;
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 12px;
-  border: 1px solid var(--primary-border);
-  border-radius: var(--radius);
-  background: var(--primary-soft);
-  color: transparent;
-  text-shadow: 0 0 0 var(--on-primary-soft);
-  font-size: var(--fs-title);
-  cursor: pointer;
-}
-
-#saleSection .contact-pick-btn {
-  border-color: var(--success-border);
-  background: var(--success-soft);
-  text-shadow: 0 0 0 var(--on-success-soft);
 }
 
 /* With zoom allowed, iOS (only it matches this @supports) zooms into any field under 16 px when it is focused */
@@ -3907,11 +3777,6 @@ input[type="number"] {
   box-shadow: var(--focus-ring);
 }
 
-.quick-add-btn-inline {
-  white-space: nowrap;
-}
-
-
 label {
   display: block;
   margin-top: 12px;
@@ -3991,16 +3856,6 @@ input[type="number"] {
   border: 1px solid var(--border-color);
 }
 
-.add-to-bill-btn {
-  width: 100%;
-  margin: 16px 0;
-}
-
-#saleSection .quick-add-btn-inline,
-#saleSection .add-to-bill-btn {
-  background: var(--btn-success);
-  color: var(--btn-sale-ink);
-}
 
 
 /* -------------------- BILLING THEME -------------------- */
@@ -4113,29 +3968,12 @@ input[type="number"] {
   color: var(--text-secondary);
 }
 /* Voice billing (#81): shown only when switched on in Settings */
-.voice-mic-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  width: 100%;
-  margin-bottom: 12px;
-  padding: 10px;
-  border: 1px dashed var(--primary-border);
-  border-radius: 8px;
-  background: var(--primary-soft);
-  color: var(--on-primary-soft);
-  font-size: var(--fs-body);
+.btn[data-voice-mic] {
+  margin-bottom: var(--sp-3);
 }
 
-.voice-mic-btn[hidden] {
-  display: none;
-}
-
-.voice-mic-btn.voice-listening {
-  border-style: solid;
-  border-color: var(--danger-border);
-  background: var(--danger-soft);
+.btn[data-voice-mic].voice-listening {
+  background-color: var(--danger-soft);
   color: var(--on-danger-soft);
 }
 
@@ -4180,18 +4018,13 @@ input[type="number"] {
   margin-bottom: var(--sp-3);
 }
 
-#billing .bill-toolbar .draft-btn {
-  flex: none;
-  min-width: 0;
+.bill-toolbar > .btn {
   padding: 0 var(--sp-3);
-  border-color: transparent;
-  background-color: transparent;
-  box-shadow: none;
   color: var(--ink-2);
   font-weight: var(--w-label);
 }
 
-#billing .bill-toolbar .draft-clear-btn {
+.bill-toolbar > .bill-clear {
   margin-left: auto;
   color: var(--negative);
 }
@@ -4252,19 +4085,16 @@ input[type="number"] {
   padding-right: 52px;
 }
 
-:is(#billing, .bill-page) .bill-customer-box > .contact-pick-btn {
+.bill-customer-box > .btn-icon {
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
-  min-width: 48px;
-  border: none;
-  background: transparent;
+  width: 48px;
   color: var(--ink-3);
-  text-shadow: none;
 }
 
-:is(#billing, .bill-page) .bill-customer-box > .contact-pick-btn:hover {
+.bill-customer-box > .btn-icon:hover {
   color: var(--bill-tone-text, var(--accent-text));
 }
 
@@ -4379,6 +4209,7 @@ input[type="number"] {
   grid-column: 2;
   width: auto;
   min-height: 48px;
+  margin-top: var(--sp-3);
 }
 
 /* Rate | Weight | Add on one line */
@@ -4395,13 +4226,10 @@ input[type="number"] {
   order: 1;
 }
 
-#billing .bill-entry-grid > .quick-add-btn-inline {
+.bill-entry-grid > .quick-add-btn-inline {
   min-height: 48px;
   margin-bottom: var(--sp-3);
-  border-color: var(--line-strong);
-  background-color: var(--surface);
-  box-shadow: none;
-  color: var(--ink);
+  white-space: nowrap;
 }
 
 #billing .bill-summary {
@@ -4422,18 +4250,26 @@ input[type="number"] {
   font-variant-numeric: tabular-nums;
 }
 
-/* Add to bill is tonal: Save is the screen's one primary button */
-#billing .add-to-bill-btn {
-  margin: var(--sp-3) 0 0;
-  border-color: transparent;
-  background-color: var(--accent-soft);
-  box-shadow: none;
-  color: var(--accent-text);
+/* Save is the screen's one primary button (Add to bill, Rest → due are tonal); the sale and wholesale
+   screens give both their mode's colour */
+.bill-sale .btn-primary {
+  background-color: var(--btn-sale-bg);
+  color: var(--btn-sale-ink);
 }
 
-#billing #saleSection .add-to-bill-btn {
+.bill-sale .btn-tonal {
   background-color: var(--positive-soft);
   color: var(--positive);
+}
+
+.ws-entry .btn-primary {
+  background-color: var(--bill-tone-fill);
+  color: var(--bill-tone-ink);
+}
+
+.ws-entry .btn-tonal {
+  background-color: var(--bill-tone-soft);
+  color: var(--bill-tone-text);
 }
 
 .bill-breakdown:not(:empty) {
@@ -4581,24 +4417,14 @@ input[type="number"] {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-/* Add to bill is tonal: Save is the screen's one primary button */
-.ws-add-btn {
-  width: 100%;
+.ws-add {
   min-height: 48px;
-  border-color: transparent;
-  background-color: var(--bill-tone-soft);
-  color: var(--bill-tone-text);
 }
 
 .bill-line-remove {
   border: none;
   border-radius: var(--radius);
   cursor: pointer;
-}
-
-.bill-page .save-btn {
-  background-color: var(--bill-tone-fill);
-  color: var(--bill-tone-ink);
 }
 
 /* Expenses and the live profit (WS-PROFIT) */
@@ -4790,7 +4616,6 @@ input[type="number"] {
 }
 
 .voice-strip[hidden],
-.voice-undo-btn[hidden],
 .voice-edit[hidden] {
   display: none;
 }
@@ -5200,17 +5025,6 @@ input[type="number"] {
   }
 }
 
-:is(#billing, .bill-page) .split-rest-btn {
-  border-color: transparent;
-  background-color: var(--bill-tone-soft, var(--accent-soft));
-  color: var(--bill-tone-text, var(--accent-text));
-}
-
-#billing #saleSection .split-rest-btn {
-  background-color: var(--positive-soft);
-  color: var(--positive);
-}
-
 :is(#billing, .bill-page) .form-row.field > .bill-note-print {
   align-self: flex-start;
   min-height: 44px;
@@ -5287,39 +5101,16 @@ input[type="number"] {
   min-height: 48px;
 }
 
-.bill-actions > .bill-icon-btn {
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background-color: var(--surface);
-  box-shadow: none;
-  color: var(--ink);
-}
-
-.bill-actions > .bill-icon-btn:hover:not(:disabled) {
-  background-image: linear-gradient(var(--state-hover), var(--state-hover));
-}
-
-.bill-actions > .share-draft-btn {
+/* Share is an icon (its words stay for screen readers and the tooltip) */
+.bill-actions > .bill-share {
   flex: none;
   width: 48px;
-  padding: 0;
   color: var(--positive);
-  cursor: pointer;
 }
 
-.bill-actions > .share-draft-btn .i {
+.bill-actions > .bill-share .i {
   width: 22px;
   height: 22px;
-}
-
-/* Share is an icon; its words stay for screen readers and the tooltip */
-.bill-actions > .share-draft-btn > span {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 /* Desktop shortcut hint (Ctrl S / Ctrl P), left out of the button's name. ::after is the busy spinner. */
@@ -5364,13 +5155,13 @@ input[type="number"] {
     text-overflow: ellipsis;
   }
 
-  :is(#billing, .bill-page) .bill-actions > .bill-icon-btn {
+  :is(#billing, .bill-page) .bill-actions > .bill-print {
     flex: none;
     width: 48px;
     padding: 0;
   }
 
-  :is(#billing, .bill-page) .bill-actions > .print-btn .bill-btn-text {
+  :is(#billing, .bill-page) .bill-actions > .bill-print .bill-print-label {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -5379,7 +5170,7 @@ input[type="number"] {
     white-space: nowrap;
   }
 
-  :is(#billing, .bill-page) .bill-actions > .save-btn {
+  :is(#billing, .bill-page) .bill-actions > .btn-primary {
     flex: none;
     min-width: 96px;
     padding: 0 var(--sp-5);
@@ -6054,19 +5845,6 @@ body.dark-mode .party-due-line.party-due-old {
 .history-stale-text {
   flex: 1 1 auto;
   min-width: 0;
-}
-
-.history-stale-refresh {
-  flex: 0 0 auto;
-  min-height: 44px;
-  padding: 4px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background: var(--card-bg);
-  color: var(--text-primary);
-  font-size: var(--fs-sm);
-  font-weight: var(--w-strong);
-  cursor: pointer;
 }
 
 /* Table View: one row per bill, same columns as the row */

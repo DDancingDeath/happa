@@ -435,19 +435,6 @@
   min-width: 0;
 }
 
-.history-stale-refresh {
-  flex: 0 0 auto;
-  min-height: 44px;
-  padding: 4px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background: var(--card-bg);
-  color: var(--text-primary);
-  font-size: var(--fs-sm);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-}
-
 /* Table View: one row per bill, same columns as the row */
 .bill-table-wrap {
   overflow-x: auto;

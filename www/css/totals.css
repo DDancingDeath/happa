@@ -362,17 +362,6 @@
   }
 }
 
-:is(#billing, .bill-page) .split-rest-btn {
-  border-color: transparent;
-  background-color: var(--bill-tone-soft, var(--accent-soft));
-  color: var(--bill-tone-text, var(--accent-text));
-}
-
-#billing #saleSection .split-rest-btn {
-  background-color: var(--positive-soft);
-  color: var(--positive);
-}
-
 :is(#billing, .bill-page) .form-row.field > .bill-note-print {
   align-self: flex-start;
   min-height: 44px;
@@ -449,39 +438,16 @@
   min-height: 48px;
 }
 
-.bill-actions > .bill-icon-btn {
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background-color: var(--surface);
-  box-shadow: none;
-  color: var(--ink);
-}
-
-.bill-actions > .bill-icon-btn:hover:not(:disabled) {
-  background-image: linear-gradient(var(--state-hover), var(--state-hover));
-}
-
-.bill-actions > .share-draft-btn {
+/* Share is an icon (its words stay for screen readers and the tooltip) */
+.bill-actions > .bill-share {
   flex: none;
   width: 48px;
-  padding: 0;
   color: var(--positive);
-  cursor: pointer;
 }
 
-.bill-actions > .share-draft-btn .i {
+.bill-actions > .bill-share .i {
   width: 22px;
   height: 22px;
-}
-
-/* Share is an icon; its words stay for screen readers and the tooltip */
-.bill-actions > .share-draft-btn > span {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 /* Desktop shortcut hint (Ctrl S / Ctrl P), left out of the button's name. ::after is the busy spinner. */
@@ -526,13 +492,13 @@
     text-overflow: ellipsis;
   }
 
-  :is(#billing, .bill-page) .bill-actions > .bill-icon-btn {
+  :is(#billing, .bill-page) .bill-actions > .bill-print {
     flex: none;
     width: 48px;
     padding: 0;
   }
 
-  :is(#billing, .bill-page) .bill-actions > .print-btn .bill-btn-text {
+  :is(#billing, .bill-page) .bill-actions > .bill-print .bill-print-label {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -541,7 +507,7 @@
     white-space: nowrap;
   }
 
-  :is(#billing, .bill-page) .bill-actions > .save-btn {
+  :is(#billing, .bill-page) .bill-actions > .btn-primary {
     flex: none;
     min-width: 96px;
     padding: 0 var(--sp-5);
