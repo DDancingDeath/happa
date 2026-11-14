@@ -153,13 +153,21 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   `.set-toggle` lines with a `.switch` on the right, `.set-kv` label | value lines and `.set-actions` button rows stacked
   with one gap); Language, Appearance (Light / Dark / System with the sun, moon and auto icons) and the Usage range are
   `.seg`s; the theme gallery's tiles show the preview flush on top and a check on the chosen theme ("Always dark" is a
-  `.tag`). Units are `.adorn`s (labour kg and ₹, the Rentals electricity rate). `.settings-card` and `.danger-btn` stay
-  only for Admin. The card hooks `#notifSettingsCard`, `#installAppCard`, `#roleAccessCard`, the printer buttons and the
+  `.tag`). Units are `.adorn`s (labour kg and ₹, the Rentals electricity rate). `.settings-card` and `.danger-btn` are
+  deleted (Admin no longer uses them). The card hooks `#notifSettingsCard`, `#installAppCard`, `#roleAccessCard`, the printer buttons and the
   native share button start `hidden`; their scripts set `hidden` with `style.display`. App health: sections are panels,
   tables `.table`, pass rates tinted cells, and Today's below-target banner a `.notice.neg`. Anomalies: filters are
   `.field`s in a panel with a `.search-field`, List | Patterns are `.tabs`, rows (also on Today's Day report) are `.row`s
   with a severity stripe, `.tag` status and `.btn-sm` review buttons, amounts `moneyHtml()`; the heat map and the
   by-hour bars draw from `--a` / `--h` custom properties and the trend chart's axis text from the theme's muted ink.
+- **Admin (5.8b)**: Users | Data are `.tabs` (Aadhat settings is a ghost button beside them); each list of people is a `.panel`
+  of `.row`s (name, email, a `.tag` for the role or status) with small `.btn`s below; the activity range is a `.seg` and the
+  report a `.table` (bill total via `moneyHtml`); storage is `.metrics` and a row list; Data sections are panels with tonal
+  actions and one danger button; the backup check answers in a `.notice`; Clear data's dialogs use `admin-clear*` classes.
+- **Diagnostics (5.8b)**: Errors | Audit logs | Status | Number checks are `.tabs`; error counts are `.metrics`; errors, audit
+  entries, number checks and the error-report test are panels (`.diag-card`) whose type / result is a `.tag` (audit actions a
+  tinted `.lead-icon`), not a coloured stripe; timings, reads, status and differences are `.table`s (differences via `moneyHtml`);
+  controls are `.btn`s (refresh an icon button). Copied / shared status text and the error report are unchanged plain text.
 - **Sign-in, notifications, /download (5.10)**: Login | Register is a `.tabs` (`data-auth-tab` is the hook, `.on` and
   `aria-selected` mark the open card); each card is `.field`s with `.input`s, one `.btn-primary` (Forgot password and Not now are
   `.btn-ghost`), the show-password eye a `.btn-icon`, and "Continue with Google" a `.btn.btn-google` in Google's own colours. The

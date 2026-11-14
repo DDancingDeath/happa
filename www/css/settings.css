@@ -1,56 +1,10 @@
 /* -------------------- SETTINGS -------------------- */
-/* Admin still draws its sections as .settings-card and .danger-btn */
-.settings-card {
-  background: var(--card-bg);
-  padding: var(--sp-5);
-  border-radius: var(--radius-lg);
-  margin-bottom: var(--sp-4);
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border-color);
-  transition: all var(--transition);
-}
-
-.settings-card:hover {
-  box-shadow: var(--shadow-md);
-}
-
-.settings-card h3 {
-  margin: 0 0 var(--sp-4);
-  font-size: 18px;
-  font-weight: var(--w-strong);
-  padding-bottom: var(--sp-3);
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-primary);
-}
-
 .setting-description {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: var(--sp-2) 0 var(--sp-4);
   font-style: italic;
   line-height: 1.6;
-}
-
-.danger-btn {
-  background: var(--btn-danger);
-  color: var(--btn-danger-ink);
-  border: none;
-  padding: var(--sp-4);
-  border-radius: var(--radius-md);
-  font-size: 16px;
-  font-weight: var(--w-strong);
-  cursor: pointer;
-  width: 100%;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition);
-}
-
-.danger-btn:hover {
-  box-shadow: var(--shadow);
-}
-
-.danger-btn:active {
-  transform: scale(0.98);
 }
 
 /* Settings (5.8a): each card is a panel whose parts stack with one gap */
@@ -72,7 +26,11 @@
 .set-printer[hidden],
 .settings-biz-bar[hidden],
 .set-panel > div:empty,
-.set-printer > div:empty,
+.set-printer > div:empty {
+  display: none;
+}
+
+/* Its own rule: an engine without :has() drops only this one */
 .set-actions:not(:has(> :not([hidden]))) {
   display: none;
 }

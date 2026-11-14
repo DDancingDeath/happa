@@ -339,7 +339,6 @@ body.dark-mode {
 }
 
 body.dark-mode .bill-item-row,
-body.dark-mode .settings-card,
 body.dark-mode .report-card,
 body.dark-mode .date-filter-card,
 body.dark-mode .popular-item,
@@ -356,11 +355,6 @@ body.dark-mode textarea {
   background: var(--input-bg);
   color: var(--text-primary);
   border-color: var(--border-strong);
-}
-
-body.dark-mode .diag-delete-btn {
-  background: var(--surface-muted);
-  color: var(--text-primary);
 }
 
 body.dark-mode input::placeholder {
@@ -387,12 +381,10 @@ body.dark-mode .modal-box {
   background: var(--surface-muted) !important;
 }
 
-.dark-mode [style*="background: #fff3cd"],
-.dark-mode [style*="background: #fef3c7"] {
+.dark-mode [style*="background: #fff3cd"] {
   background: var(--warning-soft) !important;
 }
 
-.dark-mode [style*="background: #fee2e2"],
 .dark-mode [style*="background: #fef2f2"] {
   background: var(--danger-soft) !important;
 }
@@ -415,38 +407,26 @@ body.dark-mode .modal-box {
 .dark-mode [style^="color: rgb(75, 85, 99)"],
 .dark-mode [style*=" color: rgb(75, 85, 99)"],
 .dark-mode [style^="color: #666"],
-.dark-mode [style*=" color: #666"],
 .dark-mode [style^="color:#666"],
 .dark-mode [style*=" color:#555"],
 .dark-mode [style*=" color: #555"],
 .dark-mode [style*=";color:#555"],
-.dark-mode [style*=" color: #374151"],
-.dark-mode [style^="color:#4b5563"],
-.dark-mode [style*=";color:#4b5563"] {
+.dark-mode [style*=" color: #374151"] {
   color: var(--text-secondary) !important;
 }
 
 .dark-mode [style*=" color: #059669"],
 .dark-mode [style^="color: #15803d"],
 .dark-mode [style*=" color: #15803d"],
-.dark-mode [style^="color:#15803d"],
 .dark-mode [style^="color: #059669"] {
   color: var(--on-success-soft) !important;
 }
 
 .dark-mode [style^="color: #ef4444"],
 .dark-mode [style*=" color: #ef4444"],
-.dark-mode [style*=" color: #991b1b"],
 .dark-mode [style*=" color:#b91c1c"],
-.dark-mode [style^="color: #b91c1c"],
-.dark-mode [style^="color:#b91c1c"],
-.dark-mode [style*=";color:#b91c1c"] {
+.dark-mode [style^="color: #b91c1c"] {
   color: var(--on-danger-soft) !important;
-}
-
-.dark-mode [style*=" color: #92400e"],
-.dark-mode [style^="color:#b45309"] {
-  color: var(--on-warning-soft) !important;
 }
 
 .dark-mode [style*=" color: #7c3aed"],

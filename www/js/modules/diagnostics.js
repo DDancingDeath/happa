@@ -36,7 +36,9 @@ const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { runNumberChecks } from '../utils/number-checks.js';
 import { isFullHistoryLoaded } from '../utils/history-window.js';
 import { CashManagementManager } from './cash-management.js';
-import { formatKg, formatRupees } from '../utils/money.js';
+import { formatKg } from '../utils/money.js';
+import { icon } from '../ui/icons.js';
+import { moneyHtml } from '../ui/components.js';
 
 const isOwner = () => AppState.userRole === 'owner';
 /** Number checks (#216) are for owners and managers; errors and audit logs stay owner-only. */
@@ -98,29 +100,17 @@ const DiagnosticsManager = {
         const container = document.getElementById('diagnosticsTabsContainer');
         if (!container) return;
 
-        const numbersBtn = `
-                <button class="filter-btn ${this.activeTab === 'numbers' ? 'active' : ''}"
-                        data-onclick="diagnostics.showTab('numbers')">
-                    ${Helpers.escapeHtml(t('ui.numchecks.tab'))}
-                </button>`;
+        const sel = (id) => String(this.activeTab === id);
+        const numbersBtn = `<button type="button" role="tab" aria-selected="${sel('numbers')}" data-onclick="diagnostics.showTab('numbers')">${tx('ui.numchecks.tab')}</button>`;
         if (!isOwner()) {
-            container.innerHTML = `<div class="filter-buttons" style="margin-bottom: 16px;">${numbersBtn}</div>`;
+            container.innerHTML = `<div class="tabs diag-tabs" role="tablist">${numbersBtn}</div>`;
             return;
         }
         container.innerHTML = `
-            <div class="filter-buttons" style="margin-bottom: 16px;">
-                <button class="filter-btn ${this.activeTab === 'errors' ? 'active' : ''}" 
-                        data-onclick="diagnostics.showTab('errors')">
-                    🐛 ${tx('ui.diag.tab_errors')}
-                </button>
-                <button class="filter-btn ${this.activeTab === 'audit' ? 'active' : ''}" 
-                        data-onclick="diagnostics.showTab('audit')">
-                    📋 ${tx('ui.admin.col_audit_logs')}
-                </button>
-                <button class="filter-btn ${this.activeTab === 'status' ? 'active' : ''}"
-                        data-onclick="diagnostics.showTab('status')">
-                    📱 ${tx('ui.status.tab')}
-                </button>
+            <div class="tabs diag-tabs" role="tablist">
+                <button type="button" role="tab" aria-selected="${sel('errors')}" data-onclick="diagnostics.showTab('errors')">${tx('ui.diag.tab_errors')}</button>
+                <button type="button" role="tab" aria-selected="${sel('audit')}" data-onclick="diagnostics.showTab('audit')">${tx('ui.admin.col_audit_logs')}</button>
+                <button type="button" role="tab" aria-selected="${sel('status')}" data-onclick="diagnostics.showTab('status')">${tx('ui.status.tab')}</button>
                 ${numbersBtn}
             </div>
             ${this.technicalDetailsHtml()}
@@ -140,9 +130,9 @@ const DiagnosticsManager = {
     /** Developer timings and read counts, folded away for the owner (F24). */
     technicalDetailsHtml() {
         return `
-            <details class="diagnostics-technical" style="margin-bottom: 16px;">
+            <details class="panel panel-pad diag-block diagnostics-technical">
                 <summary><strong>${Helpers.escapeHtml(t('ui.diagnostics.technical_details'))}</strong></summary>
-                <div style="margin-top: 8px;">
+                <div class="diag-technical-body">
                     ${this.startupTimingsHtml()}
                     ${this.readStatsHtml()}
                 </div>
@@ -187,9 +177,9 @@ const DiagnosticsManager = {
         const label = r.item ? r.item
             : r.kind ? [kinds[r.kind] || r.kind, r.number, r.party, r.day].filter(Boolean).join(' · ')
                 : r.day || '';
-        const fmt = (v) => (row.unit === 'qty' ? formatKg(v) : formatRupees(v, { exact: true }));
-        return `<tr><td>${e(label)}</td><td style="text-align:right">${e(fmt(row.expected))}</td>` +
-            `<td style="text-align:right">${e(fmt(row.actual))}</td><td style="text-align:right;color:#b91c1c">${e(fmt(row.diff))}</td></tr>`;
+        const fmt = (v) => (row.unit === 'qty' ? e(formatKg(v)) : moneyHtml(v, { exact: true }));
+        return `<tr><td>${e(label)}</td><td class="num">${fmt(row.expected)}</td>` +
+            `<td class="num">${fmt(row.actual)}</td><td class="num tone-neg">${fmt(row.diff)}</td></tr>`;
     },
 
     /** Number checks tab: pass/fail per check with the differences. */
@@ -198,36 +188,36 @@ const DiagnosticsManager = {
         if (!container) return;
         const e = (v) => Helpers.escapeHtml(String(v ?? ''));
         const head = `
-            <div class="diag-numchecks-intro" style="margin-bottom:12px;">
-                <p style="margin:0 0 8px 0;color:var(--text-muted,#666);font-size:0.9rem;">${e(t('ui.numchecks.intro'))}</p>
-                <button class="diag-btn refresh" data-onclick="diagnostics.runNumberChecks()">${e(t('ui.numchecks.run'))}</button>
+            <div class="diag-numchecks-intro">
+                <p class="diag-hint">${e(t('ui.numchecks.intro'))}</p>
+                <button type="button" class="btn btn-primary" data-onclick="diagnostics.runNumberChecks()">${icon('clipCheck', 'i-sm')} ${e(t('ui.numchecks.run'))}</button>
             </div>`;
         if (!this.numberChecks) {
-            container.innerHTML = `${head}<div class="diag-empty">${e(t('ui.numchecks.not_run'))}</div>`;
+            container.innerHTML = `${head}<p class="empty diag-empty">${e(t('ui.numchecks.not_run'))}</p>`;
             return;
         }
         const cards = this.numberChecks.results.map(r => {
-            const badge = r.status === 'pass' ? `<span style="color:#15803d;font-weight:600">${e(t('ui.numchecks.passed'))}</span>`
-                : r.status === 'skip' ? `<span style="color:#4b5563;font-weight:600">${e(t('ui.numchecks.skipped'))}</span>`
-                    : `<span style="color:#b91c1c;font-weight:600">${e(t('ui.numchecks.failed', { count: r.problems }))}</span>`;
-            const note = r.note ? `<div style="font-size:0.8rem;color:#4b5563;margin-top:4px;">${e(t(r.note))}</div>` : '';
+            const badge = r.status === 'pass' ? `<span class="tag pos">${e(t('ui.numchecks.passed'))}</span>`
+                : r.status === 'skip' ? `<span class="tag">${e(t('ui.numchecks.skipped'))}</span>`
+                    : `<span class="tag neg">${e(t('ui.numchecks.failed', { count: r.problems }))}</span>`;
+            const note = r.note ? `<div class="diag-hint">${e(t(r.note))}</div>` : '';
             const table = r.rows.length ? `
-                <table style="width:100%;font-size:13px;margin-top:8px;border-collapse:collapse;">
-                    <thead><tr><th style="text-align:left">${e(t('ui.numchecks.col_what'))}</th><th style="text-align:right">${e(t('ui.numchecks.col_expected'))}</th>
-                    <th style="text-align:right">${e(t('ui.numchecks.col_found'))}</th><th style="text-align:right">${e(t('ui.numchecks.col_difference'))}</th></tr></thead>
+                <div class="diag-table-wrap"><table class="table">
+                    <thead><tr><th>${e(t('ui.numchecks.col_what'))}</th><th class="num">${e(t('ui.numchecks.col_expected'))}</th>
+                    <th class="num">${e(t('ui.numchecks.col_found'))}</th><th class="num">${e(t('ui.numchecks.col_difference'))}</th></tr></thead>
                     <tbody>${r.rows.map(row => this.numberCheckRowHtml(row)).join('')}</tbody>
-                </table>
-                ${r.problems > r.rows.length ? `<div style="font-size:0.8rem;color:#4b5563;margin-top:4px;">${e(t('ui.numchecks.more', { count: r.problems - r.rows.length }))}</div>` : ''}` : '';
+                </table></div>
+                ${r.problems > r.rows.length ? `<div class="diag-hint">${e(t('ui.numchecks.more', { count: r.problems - r.rows.length }))}</div>` : ''}` : '';
             return `
-                <div class="diag-error-card diag-numcheck" data-check="${e(r.id)}" data-status="${e(r.status)}">
-                    <div class="diag-error-header"><span class="diag-error-type">${e(r.id)}</span>
-                        <span class="diag-error-message" style="margin:0">${e(t(r.key))}</span></div>
-                    <div>${badge} <span style="font-size:0.8rem;color:#4b5563">${e(t('ui.numchecks.checked', { count: r.checked }))}</span></div>
+                <div class="panel panel-pad diag-card diag-error-card diag-numcheck" data-check="${e(r.id)}" data-status="${e(r.status)}">
+                    <div class="diag-card-head"><span class="tag diag-error-type">${e(r.id)}</span>
+                        <span class="diag-error-message">${e(t(r.key))}</span></div>
+                    <div class="diag-card-meta">${badge} <span class="diag-hint">${e(t('ui.numchecks.checked', { count: r.checked }))}</span></div>
                     ${note}${table}
                 </div>`;
         }).join('');
         container.innerHTML = `${head}<div class="diagnostics-list">${cards}</div>
-            <p style="font-size:0.8rem;color:#4b5563;margin-top:12px;">${e(t('ui.numchecks.footer'))}</p>`;
+            <p class="diag-hint">${e(t('ui.numchecks.footer'))}</p>`;
     },
 
     /**
@@ -237,15 +227,15 @@ const DiagnosticsManager = {
      */
     readStatsHtml() {
         const s = getQuotaStatus();
-        const rows = s.top.map(t => `<tr><td>${Helpers.escapeHtml(t.source)}</td><td style="text-align:right">${Helpers.escapeHtml(String(t.reads))}</td></tr>`).join('');
+        const rows = s.top.map(t => `<tr><td>${Helpers.escapeHtml(t.source)}</td><td class="num">${Helpers.escapeHtml(String(t.reads))}</td></tr>`).join('');
         const quota = s.quota.count
-            ? `<div style="color:#b45309;margin-top:6px;">⚠️ ${tx('ui.diag.quota_hit', { count: s.quota.count, at: formatDateTimeIN(new Date(s.quota.firstAt)), source: s.quota.lastSource })}</div>`
+            ? `<p class="notice warn">${icon('alert', 'i-sm')}<span class="grow">${tx('ui.diag.quota_hit', { count: s.quota.count, at: formatDateTimeIN(new Date(s.quota.firstAt)), source: s.quota.lastSource })}</span></p>`
             : '';
         return `
-            <details class="diagnostics-reads" style="margin-bottom: 16px;">
-                <summary><strong>📊 ${tx('ui.diag.reads_title')}</strong> ≈ ${Helpers.escapeHtml(String(s.reads))}${s.heavy ? ' ⚠️' : ''}</summary>
-                <div style="font-size:12px;color:#4b5563;margin-top:6px;">${tx('ui.diag.reads_note', { at: formatDateTimeIN(new Date(s.since)) })}</div>
-                ${rows ? `<table style="width:100%;font-size:13px;margin-top:8px;border-collapse:collapse;"><thead><tr><th style="text-align:left">${tx('ui.diag.top_sources')}</th><th style="text-align:right">${tx('ui.diag.reads')}</th></tr></thead><tbody>${rows}</tbody></table>` : ''}
+            <details class="diag-block diagnostics-reads">
+                <summary><strong>${tx('ui.diag.reads_title')}</strong> ≈ ${Helpers.escapeHtml(String(s.reads))}${s.heavy ? ` <span class="tone-warn">${icon('alert', 'i-sm')}</span>` : ''}</summary>
+                <p class="diag-hint">${tx('ui.diag.reads_note', { at: formatDateTimeIN(new Date(s.since)) })}</p>
+                ${rows ? `<div class="diag-table-wrap"><table class="table"><thead><tr><th>${tx('ui.diag.top_sources')}</th><th class="num">${tx('ui.diag.reads')}</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}
                 ${quota}
             </details>
         `;
@@ -260,19 +250,19 @@ const DiagnosticsManager = {
         if (!marks.length) return '';
         const rows = startupRows(marks).map((r, i) => {
             const detail = marks[i].detail ? JSON.stringify(marks[i].detail) : '';
-            return `<tr><td>${Helpers.escapeHtml(r.name)}</td><td style="text-align:right">${Helpers.escapeHtml(r.at)}</td>` +
-                `<td style="text-align:right">+${Helpers.escapeHtml(r.delta)}</td><td style="font-size:11px;color:#4b5563">${Helpers.escapeHtml(detail)}</td></tr>`;
+            return `<tr><td>${Helpers.escapeHtml(r.name)}</td><td class="num">${Helpers.escapeHtml(r.at)}</td>` +
+                `<td class="num">+${Helpers.escapeHtml(r.delta)}</td><td class="diag-code">${Helpers.escapeHtml(detail)}</td></tr>`;
         }).join('');
         const listeners = Object.entries(info.listeners || {}).map(([label, l]) =>
             `${label}: ${l.first} (${l.docs} docs) → ${l.readyBy || '?'}`).join('; ');
         return `
-            <details class="diagnostics-startup" style="margin-bottom: 16px;">
-                <summary><strong>⏱ ${tx('ui.diag.startup_title')}</strong> ${tx('ui.diag.startup_hint')}</summary>
-                <table style="width:100%;font-size:13px;margin-top:8px;border-collapse:collapse;">
-                    <thead><tr><th style="text-align:left">${tx('ui.diag.col_step')}</th><th style="text-align:right">${tx('ui.diag.col_at')}</th><th style="text-align:right">${tx('ui.diag.col_step_time')}</th><th style="text-align:left">${tx('ui.diag.col_details')}</th></tr></thead>
+            <details class="diag-block diagnostics-startup">
+                <summary><strong>${tx('ui.diag.startup_title')}</strong> ${tx('ui.diag.startup_hint')}</summary>
+                <div class="diag-table-wrap"><table class="table">
+                    <thead><tr><th>${tx('ui.diag.col_step')}</th><th class="num">${tx('ui.diag.col_at')}</th><th class="num">${tx('ui.diag.col_step_time')}</th><th>${tx('ui.diag.col_details')}</th></tr></thead>
                     <tbody>${rows}</tbody>
-                </table>
-                ${listeners ? `<div style="font-size:11px;color:#4b5563;margin-top:6px;">${tx('ui.diag.listeners', { list: listeners })}</div>` : ''}
+                </table></div>
+                ${listeners ? `<p class="diag-hint diag-code">${tx('ui.diag.listeners', { list: listeners })}</p>` : ''}
             </details>
         `;
     },
@@ -309,28 +299,28 @@ const DiagnosticsManager = {
         const e = (v) => Helpers.escapeHtml(String(v ?? ''));
         const rows = statusRows(this.phoneStatus()).map(r => `
             <tr data-status-row="${e(r.key)}"><td>${e(r.label)}</td>
-                <td style="text-align:right"${r.code ? ' lang="zxx" translate="no"' : ''}>${e(r.value)}</td></tr>`).join('');
+                <td class="num"${r.code ? ' lang="zxx" translate="no"' : ''}>${e(r.value)}</td></tr>`).join('');
         const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
         let speed = '';
         if (this.speed) {
             const [score, ...rest] = speedLines(this.speed);
-            speed = `<div class="diag-error-card diag-speed" data-score="${e(this.speed.score)}" style="margin-top:12px;">
+            speed = `<div class="panel panel-pad diag-card diag-speed" data-score="${e(this.speed.score)}">
                 <strong>${e(score)}</strong>
-                <ul style="margin:8px 0 0 0;padding-left:20px;">${rest.map(l => `<li>${e(l.replace(/^- /, ''))}</li>`).join('')}</ul>
+                <ul class="diag-list">${rest.map(l => `<li>${e(l.replace(/^- /, ''))}</li>`).join('')}</ul>
             </div>`;
         }
         container.innerHTML = `
-            <p style="margin:0 0 8px 0;color:var(--text-muted,#666);font-size:0.9rem;">${tx('ui.status.intro')}</p>
-            <table class="diag-status-table" style="width:100%;font-size:14px;border-collapse:collapse;">
+            <p class="diag-hint">${tx('ui.status.intro')}</p>
+            <div class="panel diag-table-wrap"><table class="table diag-status-table">
                 <tbody>${rows}</tbody>
-            </table>
-            <div class="diagnostics-controls" style="margin-top:12px;">
-                <button class="diag-btn refresh" data-onclick="diagnostics.runSpeedCheck()">${tx('ui.speed.run')}</button>
-                <button class="diag-btn" data-onclick="diagnostics.copyStatus()">${tx('ui.status.copy')}</button>
-                ${canShare ? `<button class="diag-btn" data-onclick="diagnostics.shareStatus()">${tx('ui.status.share')}</button>` : ''}
+            </table></div>
+            <div class="diag-controls">
+                <button type="button" class="btn btn-primary" data-onclick="diagnostics.runSpeedCheck()">${tx('ui.speed.run')}</button>
+                <button type="button" class="btn" data-onclick="diagnostics.copyStatus()">${tx('ui.status.copy')}</button>
+                ${canShare ? `<button type="button" class="btn" data-onclick="diagnostics.shareStatus()">${tx('ui.status.share')}</button>` : ''}
             </div>
             ${speed}
-            <p style="font-size:0.8rem;color:#4b5563;margin-top:12px;">${tx('ui.status.copy_note')}</p>
+            <p class="diag-hint">${tx('ui.status.copy_note')}</p>
             ${this.errorTestHtml()}`;
     },
 
@@ -344,18 +334,18 @@ const DiagnosticsManager = {
             on: 'ui.diag.test_crash_on'
         }[reach];
         const crashBtn = reach === 'on'
-            ? `<button class="diag-btn danger" data-errtest="crash" data-onclick="diagnostics.sendTestCrash()">${tx('ui.diag.test_send_crash')}</button>`
+            ? `<button type="button" class="btn btn-danger" data-errtest="crash" data-onclick="diagnostics.sendTestCrash()">${tx('ui.diag.test_send_crash')}</button>`
             : '';
         return `
-            <div class="diag-error-card diag-errtest" data-crash-reach="${Helpers.escapeHtml(reach)}">
+            <div class="panel panel-pad diag-card diag-errtest" data-crash-reach="${Helpers.escapeHtml(reach)}">
                 <h3>${tx('ui.diag.test_title')}</h3>
-                <p class="setting-description">${tx('ui.diag.test_intro')}</p>
-                <div class="diagnostics-controls">
-                    <button class="diag-btn refresh" data-errtest="error" data-onclick="diagnostics.sendTestError()">${tx('ui.diag.test_send_error')}</button>
+                <p class="diag-hint">${tx('ui.diag.test_intro')}</p>
+                <div class="diag-controls">
+                    <button type="button" class="btn btn-tonal" data-errtest="error" data-onclick="diagnostics.sendTestError()">${tx('ui.diag.test_send_error')}</button>
                     ${crashBtn}
                 </div>
-                <p class="setting-description" data-errtest-note>${tx(note)}</p>
-                <p class="setting-description" data-errtest-result role="status" aria-live="polite"></p>
+                <p class="diag-hint" data-errtest-note>${tx(note)}</p>
+                <p class="diag-hint" data-errtest-result role="status" aria-live="polite"></p>
             </div>`;
     },
 
@@ -422,8 +412,8 @@ const DiagnosticsManager = {
             // No clipboard: show the text with its line breaks so it can be selected.
             const msg = document.getElementById('modalMessage');
             const closed = UIManager.showModal(text, t('ui.status.copy'));
-            if (msg) msg.style.whiteSpace = 'pre-line';
-            Promise.resolve(closed).finally(() => { if (msg) msg.style.whiteSpace = ''; });
+            msg?.classList.add('diag-pre-line');
+            Promise.resolve(closed).finally(() => msg?.classList.remove('diag-pre-line'));
         }
     },
 
@@ -492,51 +482,39 @@ const DiagnosticsManager = {
             stats.byType[d.type] = (stats.byType[d.type] || 0) + 1;
         });
 
+        const metric = (value, key) => `
+                <div class="metric">
+                    <div class="metric-label">${tx(key)}</div>
+                    <div class="metric-value diag-stat-value">${Helpers.escapeHtml(value)}</div>
+                </div>`;
+        const sel = (v) => (this.filter === v ? 'selected' : '');
         container.innerHTML = `
-            <!-- Stats Cards -->
-            <div class="diagnostics-stats">
-                <div class="diag-stat-card">
-                    <div class="diag-stat-value">${Helpers.escapeHtml(stats.total)}</div>
-                    <div class="diag-stat-label">${tx('ui.diag.unique_errors')}</div>
-                </div>
-                <div class="diag-stat-card">
-                    <div class="diag-stat-value">${Helpers.escapeHtml(stats.totalOccurrences)}</div>
-                    <div class="diag-stat-label">${tx('ui.diag.total_occurrences')}</div>
-                </div>
-                <div class="diag-stat-card">
-                    <div class="diag-stat-value">${Helpers.escapeHtml(stats.byType['uncaught'] || 0)}</div>
-                    <div class="diag-stat-label">${tx('ui.diag.uncaught')}</div>
-                </div>
-                <div class="diag-stat-card">
-                    <div class="diag-stat-value">${stats.byType['console.error'] || 0}</div>
-                    <div class="diag-stat-label">${tx('ui.diag.console')}</div>
-                </div>
+            <div class="panel metrics diag-metrics">
+                ${metric(stats.total, 'ui.diag.unique_errors')}
+                ${metric(stats.totalOccurrences, 'ui.diag.total_occurrences')}
+                ${metric(stats.byType['uncaught'] || 0, 'ui.diag.uncaught')}
+                ${metric(stats.byType['console.error'] || 0, 'ui.diag.console')}
             </div>
 
-            <!-- Controls -->
-            <div class="diagnostics-controls">
-                <select id="diagTypeFilter" data-onchange="diagnostics.filterByType(this.value)">
-                    <option value="all" ${this.filter === 'all' ? 'selected' : ''}>${tx('ui.diag.all_types')}</option>
-                    <option value="uncaught" ${this.filter === 'uncaught' ? 'selected' : ''}>${tx('ui.diag.uncaught')}</option>
-                    <option value="unhandledrejection" ${this.filter === 'unhandledrejection' ? 'selected' : ''}>${tx('ui.diag.rejections')}</option>
-                    <option value="console.error" ${this.filter === 'console.error' ? 'selected' : ''}>${tx('ui.diag.console')}</option>
-                    <option value="warning" ${this.filter === 'warning' ? 'selected' : ''}>${tx('ui.diag.warnings')}</option>
-                    <option value="manual" ${this.filter === 'manual' ? 'selected' : ''}>${tx('ui.diag.manual')}</option>
-                    <option value="toast" ${this.filter === 'toast' ? 'selected' : ''}>${tx('ui.diag.t_toast')}</option>
+            <div class="diag-controls">
+                <select id="diagTypeFilter" class="input" data-onchange="diagnostics.filterByType(this.value)">
+                    <option value="all" ${sel('all')}>${tx('ui.diag.all_types')}</option>
+                    <option value="uncaught" ${sel('uncaught')}>${tx('ui.diag.uncaught')}</option>
+                    <option value="unhandledrejection" ${sel('unhandledrejection')}>${tx('ui.diag.rejections')}</option>
+                    <option value="console.error" ${sel('console.error')}>${tx('ui.diag.console')}</option>
+                    <option value="warning" ${sel('warning')}>${tx('ui.diag.warnings')}</option>
+                    <option value="manual" ${sel('manual')}>${tx('ui.diag.manual')}</option>
+                    <option value="toast" ${sel('toast')}>${tx('ui.diag.t_toast')}</option>
                 </select>
-                <button data-onclick="diagnostics.loadData()" class="diag-btn refresh">🔄</button>
-                <button data-onclick="diagnostics.exportErrorReport()" class="diag-btn" data-export="errors">${tx('ui.diag.export_report')}</button>
-                <button data-onclick="diagnostics.clearAll()" class="diag-btn danger" title="${tx('msg.diagnostics.clear_all_diagnostics')}" aria-label="${tx('msg.diagnostics.clear_all_diagnostics')}">🙈</button>
+                <button type="button" data-onclick="diagnostics.loadData()" class="btn btn-icon" title="${tx('ui.health.refresh')}" aria-label="${tx('ui.health.refresh')}">${icon('refresh')}</button>
+                <button type="button" data-onclick="diagnostics.exportErrorReport()" class="btn" data-export="errors">${tx('ui.diag.export_report')}</button>
+                <button type="button" data-onclick="diagnostics.clearAll()" class="btn btn-icon" title="${tx('msg.diagnostics.clear_all_diagnostics')}" aria-label="${tx('msg.diagnostics.clear_all_diagnostics')}">${icon('x')}</button>
             </div>
 
-            <!-- Error List -->
             <div class="diagnostics-list">
-                ${filteredData.length === 0 ? `
-                    <div class="diag-empty">
-                        <span class="diag-empty-icon">✅</span>
-                        <p>${tx('ui.diag.no_errors')}</p>
-                    </div>
-                ` : filteredData.map(error => this.renderErrorCard(error)).join('')}
+                ${filteredData.length === 0
+                    ? `<div class="empty diag-empty"><span class="lead-icon pos">${icon('check')}</span>${tx('ui.diag.no_errors')}</div>`
+                    : filteredData.map(error => this.renderErrorCard(error)).join('')}
             </div>
         `;
     },
@@ -547,53 +525,56 @@ const DiagnosticsManager = {
      * @returns {string} HTML string
      */
     renderErrorCard(error) {
-        const typeColors = {
-            'uncaught': '#ef4444',
-            'unhandledrejection': '#f97316',
-            'console.error': '#eab308',
-            'warning': '#3b82f6',
-            'manual': '#8b5cf6',
-            'toast': '#b91c1c'
+        const tones = {
+            'uncaught': 'neg',
+            'unhandledrejection': 'warn',
+            'console.error': 'warn',
+            'warning': 'info',
+            'manual': '',
+            'toast': 'neg'
         };
 
-        const typeLabels = {
-            'uncaught': `🔴 ${tx('ui.diag.t_uncaught')}`,
-            'unhandledrejection': `🟠 ${tx('ui.diag.t_promise')}`,
-            'console.error': `🟡 ${tx('ui.diag.t_console')}`,
-            'warning': `🔵 ${tx('ui.diag.t_warning')}`,
-            'manual': `🟣 ${tx('ui.diag.t_manual')}`,
-            'toast': `💬 ${tx('ui.diag.t_toast')}`
+        const typeKeys = {
+            'uncaught': 'ui.diag.t_uncaught',
+            'unhandledrejection': 'ui.diag.t_promise',
+            'console.error': 'ui.diag.t_console',
+            'warning': 'ui.diag.t_warning',
+            'manual': 'ui.diag.t_manual',
+            'toast': 'ui.diag.t_toast'
         };
+        const known = Object.hasOwn(typeKeys, error.type);
+        const tone = known ? tones[error.type] : '';
+        const typeLabel = known ? tx(typeKeys[error.type]) : Helpers.escapeHtml(error.type);
 
         const lastSeen = formatDateTimeIN(error.lastSeen);
         const firstSeen = error.firstSeen ? formatDateTimeIN(error.firstSeen, undefined, lastSeen) : lastSeen;
 
         return `
-            <div class="diag-error-card" style="border-left: 4px solid ${typeColors[error.type] || '#666'};">
-                <div class="diag-error-header">
-                    <span class="diag-error-type">${typeLabels[error.type] || Helpers.escapeHtml(error.type)}</span>
-                    ${error.type === 'toast' ? `<span class="diag-error-ref">${tx('ui.diag.ref', { ref: error.id })}</span>` : ''}
-                    <span class="diag-error-count">${Helpers.escapeHtml(error.count || 1)}×</span>
-                    <button data-onclick="diagnostics.deleteError('${Helpers.escapeJsAttr(error.id)}')" class="diag-delete-btn" title="${tx('msg.diagnostics.hide_error_title')}" aria-label="${tx('msg.diagnostics.hide_error_title')}">×</button>
+            <div class="panel panel-pad diag-card diag-error-card">
+                <div class="diag-card-head">
+                    <span class="tag ${Helpers.escapeHtml(tone)} diag-error-type">${typeLabel}</span>
+                    ${error.type === 'toast' ? `<span class="diag-hint">${tx('ui.diag.ref', { ref: error.id })}</span>` : ''}
+                    <span class="tag neg diag-error-count">${Helpers.escapeHtml(error.count || 1)}×</span>
+                    <button type="button" data-onclick="diagnostics.deleteError('${Helpers.escapeJsAttr(error.id)}')" class="btn btn-ghost btn-icon btn-sm diag-delete-btn" title="${tx('msg.diagnostics.hide_error_title')}" aria-label="${tx('msg.diagnostics.hide_error_title')}">${icon('x', 'i-sm')}</button>
                 </div>
                 <div class="diag-error-message">${Helpers.escapeHtml(error.message || t('ui.diag.no_message'))}</div>
-                ${error.source ? `<div class="diag-error-source">📍 ${Helpers.escapeHtml(error.source)}:${Helpers.escapeHtml(error.line || '?')}</div>` : ''}
-                <div class="diag-error-meta">
+                ${error.source ? `<div class="diag-hint diag-code">${icon('file', 'i-sm')} ${Helpers.escapeHtml(error.source)}:${Helpers.escapeHtml(error.line || '?')}</div>` : ''}
+                <div class="diag-card-meta diag-hint">
                     <span>${tx('ui.diag.first', { at: firstSeen })}</span>
                     <span>${tx('ui.diag.last', { at: lastSeen })}</span>
                 </div>
                 ${error.stack ? `
                     <details class="diag-error-stack">
                         <summary>${tx('ui.diag.stack')}</summary>
-                        <pre>${Helpers.escapeHtml(error.stack)}</pre>
+                        <pre class="diag-pre">${Helpers.escapeHtml(error.stack)}</pre>
                     </details>
                 ` : ''}
                 ${error.occurrences && error.occurrences.length > 0 ? `
                     <details class="diag-error-occurrences">
                         <summary>${tx('ui.diag.recent', { count: error.occurrences.length })}</summary>
-                        <ul>
+                        <ul class="diag-list">
                             ${error.occurrences.slice(-5).map(o => `
-                                <li>${formatDateTimeIN(o.timestamp)} - ${Helpers.escapeHtml(o.userName || t('ui.reports.unknown'))}</li>
+                                <li>${Helpers.escapeHtml(formatDateTimeIN(o.timestamp))} - ${Helpers.escapeHtml(o.userName || t('ui.reports.unknown'))}</li>
                             `).join('')}
                         </ul>
                     </details>
@@ -644,33 +625,29 @@ const DiagnosticsManager = {
             filteredLogs = this.auditLogs.filter(log => log.action === this.auditFilter);
         }
 
+        const sel = (v) => (this.auditFilter === v ? 'selected' : '');
         container.innerHTML = `
-            <!-- Controls -->
-            <div class="diagnostics-controls">
-                <select id="auditFilterAction" data-onchange="diagnostics.filterAuditLogs(this.value)">
-                    <option value="" ${this.auditFilter === '' ? 'selected' : ''}>${tx('ui.diag.all_actions')}</option>
-                    <option value="CREATE_BILL" ${this.auditFilter === 'CREATE_BILL' ? 'selected' : ''}>${tx('ui.diag.a_create_bill')}</option>
-                    <option value="DELETE_BILL" ${this.auditFilter === 'DELETE_BILL' ? 'selected' : ''}>${tx('ui.diag.a_delete_bill')}</option>
-                    <option value="CREATE_SALE" ${this.auditFilter === 'CREATE_SALE' ? 'selected' : ''}>${tx('ui.diag.a_create_sale')}</option>
-                    <option value="DELETE_SALE" ${this.auditFilter === 'DELETE_SALE' ? 'selected' : ''}>${tx('ui.diag.a_delete_sale')}</option>
-                    <option value="VOID_BILL" ${this.auditFilter === 'VOID_BILL' ? 'selected' : ''}>${tx('ui.diag.a_void_bill')}</option>
-                    <option value="DELETE_ITEM" ${this.auditFilter === 'DELETE_ITEM' ? 'selected' : ''}>${tx('ui.diag.a_delete_item')}</option>
-                    <option value="UPDATE_PAYMENT" ${this.auditFilter === 'UPDATE_PAYMENT' ? 'selected' : ''}>${tx('ui.diag.a_update_payment')}</option>
-                    <option value="CLEAR_DATA" ${this.auditFilter === 'CLEAR_DATA' ? 'selected' : ''}>${tx('ui.diag.a_clear_data')}</option>
+            <div class="diag-controls">
+                <select id="auditFilterAction" class="input" data-onchange="diagnostics.filterAuditLogs(this.value)">
+                    <option value="" ${sel('')}>${tx('ui.diag.all_actions')}</option>
+                    <option value="CREATE_BILL" ${sel('CREATE_BILL')}>${tx('ui.diag.a_create_bill')}</option>
+                    <option value="DELETE_BILL" ${sel('DELETE_BILL')}>${tx('ui.diag.a_delete_bill')}</option>
+                    <option value="CREATE_SALE" ${sel('CREATE_SALE')}>${tx('ui.diag.a_create_sale')}</option>
+                    <option value="DELETE_SALE" ${sel('DELETE_SALE')}>${tx('ui.diag.a_delete_sale')}</option>
+                    <option value="VOID_BILL" ${sel('VOID_BILL')}>${tx('ui.diag.a_void_bill')}</option>
+                    <option value="DELETE_ITEM" ${sel('DELETE_ITEM')}>${tx('ui.diag.a_delete_item')}</option>
+                    <option value="UPDATE_PAYMENT" ${sel('UPDATE_PAYMENT')}>${tx('ui.diag.a_update_payment')}</option>
+                    <option value="CLEAR_DATA" ${sel('CLEAR_DATA')}>${tx('ui.diag.a_clear_data')}</option>
                 </select>
-                <button data-onclick="diagnostics.loadAuditLogs()" class="diag-btn refresh">🔄</button>
-                <button data-onclick="diagnostics.exportAuditCsv()" class="diag-btn" data-export="audit-csv">${tx('ui.statements.download_csv')}</button>
-                <button data-onclick="diagnostics.printAudit()" class="diag-btn" data-export="audit-print">${tx('ui.statements.print')}</button>
+                <button type="button" data-onclick="diagnostics.loadAuditLogs()" class="btn btn-icon" title="${tx('ui.health.refresh')}" aria-label="${tx('ui.health.refresh')}">${icon('refresh')}</button>
+                <button type="button" data-onclick="diagnostics.exportAuditCsv()" class="btn" data-export="audit-csv">${tx('ui.statements.download_csv')}</button>
+                <button type="button" data-onclick="diagnostics.printAudit()" class="btn" data-export="audit-print">${icon('printer', 'i-sm')} ${tx('ui.statements.print')}</button>
             </div>
 
-            <!-- Audit List -->
             <div class="diagnostics-list">
-                ${filteredLogs.length === 0 ? `
-                    <div class="diag-empty">
-                        <span class="diag-empty-icon">📋</span>
-                        <p>${tx('ui.settings.no_audit_logs')}</p>
-                    </div>
-                ` : filteredLogs.map(log => this.renderAuditCard(log)).join('')}
+                ${filteredLogs.length === 0
+                    ? `<div class="empty diag-empty"><span class="lead-icon">${icon('list')}</span>${tx('ui.settings.no_audit_logs')}</div>`
+                    : filteredLogs.map(log => this.renderAuditCard(log)).join('')}
             </div>
         `;
     },
@@ -688,59 +665,53 @@ const DiagnosticsManager = {
             hour: '2-digit',
             minute: '2-digit'
         });
-        
-        const actionIcon = this.getActionIcon(log.action);
-        const actionColor = this.getActionColor(log.action);
+
+        const tone = this.getActionTone(log.action);
         const details = this.formatDetails(log.details, log.action);
         const who = auditWhoText(auditWho(log, this.auditPeople), Helpers.roleLabel);
 
         return `
-            <div class="diag-audit-card" style="border-left: 4px solid ${actionColor};">
-                <div class="diag-audit-header">
-                    <span class="diag-audit-icon">${actionIcon}</span>
-                    <span class="diag-audit-action" style="color: ${actionColor};">${Helpers.escapeHtml(auditActionLabel(log.action))}</span>
-                    <span class="diag-audit-time">${formattedDate}</span>
+            <div class="panel panel-pad diag-card diag-audit-card">
+                <div class="diag-card-head">
+                    <span class="lead-icon ${Helpers.escapeHtml(tone)}">${this.getActionIcon(log.action)}</span>
+                    <span class="diag-audit-action">${Helpers.escapeHtml(auditActionLabel(log.action))}</span>
+                    <span class="diag-hint diag-audit-time">${Helpers.escapeHtml(formattedDate)}</span>
                 </div>
                 <div class="diag-audit-user">
                     <strong>${Helpers.escapeHtml(who.main)}</strong>${who.note ? ` · <small>${Helpers.escapeHtml(who.note)}</small>` : ''}
                 </div>
-                ${details ? `<div class="diag-audit-details">${Helpers.escapeHtml(details)}</div>` : ''}
+                ${details ? `<div class="diag-hint">${Helpers.escapeHtml(details)}</div>` : ''}
             </div>
         `;
     },
 
     /**
-     * Get action icon
+     * Sprite icon of an audit action
      * @param {string} action - Action type
-     * @returns {string} Emoji icon
+     * @returns {string} icon markup
      */
     getActionIcon(action) {
-        const icons = {
-            'CREATE_BILL': '📥',
-            'DELETE_BILL': '🗑️',
-            'CREATE_SALE': '📤',
-            'DELETE_SALE': '🗑️',
-            'VOID_BILL': '🚫',
-            'DELETE_ITEM': '🗑️',
-            'UPDATE_PAYMENT': '💰',
-            'RECORD_PAYMENT': '💰',
-            'CLEAR_DATA': '⚠️',
-            'LOGIN': '🔑',
-            'LOGOUT': '🚪'
-        };
-        return icons[action] || '📋';
+        if (action === 'CLEAR_DATA') return icon('alert', 'i-sm');
+        if (String(action).includes('DELETE')) return icon('trash', 'i-sm');
+        if (action === 'CREATE_BILL') return icon('arrIn', 'i-sm');
+        if (action === 'CREATE_SALE') return icon('arrOut', 'i-sm');
+        if (action === 'VOID_BILL') return icon('x', 'i-sm');
+        if (action === 'UPDATE_PAYMENT' || action === 'RECORD_PAYMENT') return icon('banknote', 'i-sm');
+        if (action === 'LOGIN' || action === 'LOGOUT') return icon('lock', 'i-sm');
+        return icon('list', 'i-sm');
     },
 
     /**
-     * Get action color
+     * Tone of an audit action's icon (lead-icon modifier)
      * @param {string} action - Action type
-     * @returns {string} Color code
+     * @returns {''|'neg'|'pos'|'accent'}
      */
-    getActionColor(action) {
-        if (action.includes('DELETE') || action === 'CLEAR_DATA') return '#e74c3c';
-        if (action.includes('CREATE')) return '#27ae60';
-        if (action.includes('PAYMENT')) return '#3498db';
-        return '#666';
+    getActionTone(action) {
+        const a = String(action);
+        if (a.includes('DELETE') || a === 'CLEAR_DATA') return 'neg';
+        if (a.includes('CREATE')) return 'pos';
+        if (a.includes('PAYMENT')) return 'accent';
+        return '';
     },
 
     /**

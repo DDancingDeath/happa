@@ -119,7 +119,7 @@ export class SettingsManager {
             const printerSettings = PrinterService.settings();
             bluetoothCheckbox.checked = printerSettings.enabled;
             const section = document.getElementById('bluetoothPrinterSection');
-            if (section) section.hidden = !printerSettings.enabled;
+            if (section) { section.hidden = !printerSettings.enabled; section.style.display = printerSettings.enabled ? '' : 'none'; }
             const preview = document.getElementById('settingPrintPreview');
             if (preview) preview.checked = printerSettings.previewFirst;
         }
@@ -665,7 +665,7 @@ export class SettingsManager {
         this._setPrinterSettings({ ...PrinterService.settings(), enabled });
         
         const section = document.getElementById('bluetoothPrinterSection');
-        if (section) section.hidden = !enabled;
+        if (section) { section.hidden = !enabled; section.style.display = enabled ? '' : 'none'; }
         
         this.updatePrinterStatus();
     }

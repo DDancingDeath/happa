@@ -1710,7 +1710,6 @@ export default {
     'ui.health.unknown_user': "अनजान व्यक्ति",
     'ui.billing.save_draft': "ड्राफ़्ट सेव करें",
     'ui.admin.labour_in_settings': "मज़दूरी सेटिंग्स में सेट होती है, सभी के लिए।",
-    'ui.admin.open_settings': "सेटिंग्स खोलें",
     'ui.auth.forgot_password': "पासवर्ड भूल गए?",
     'ui.auth.show_password': "पासवर्ड दिखाएँ",
     'ui.auth.reset_email_label': "रीसेट लिंक के लिए ईमेल",

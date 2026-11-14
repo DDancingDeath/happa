@@ -1,9 +1,6 @@
 # innerHTML audit baseline (#89): the lines scripts/html-escape-audit.js lists today, each checked by hand.
 # CI fails on a line not here. Fix it (escape / safeUrl) or, once checked, run: npm run check:html-escape -- --update-baseline
-www/js/modules/admin.js: ACTIVITY_RANGES (markup via map(r => `<button type="button" class="filter-btn" data-range="${r}" data-onclick="admin.showActivity('${r}')">${tx(`ui.admin.range_${r}`)}</but))
 www/js/modules/admin.js: col.id
-www/js/modules/admin.js: r
-www/js/modules/admin.js: r
 www/js/modules/admin.js: t('ui.admin.type_word_to_confirm', { word: `<strong>${Helpers.escapeHtml(DELETE_CONFIRM_WORD)}</strong>` })
 www/js/modules/anomalies.js: colorOf(ty) ← TYPE_COLORS[Math.max(0, p.types.indexOf(type)) % TYPE_COLORS.length] {TYPE_COLORS = ['#dc2626', '#2563eb', '#d97706', '#059669', '#7c3aed', '#db2777', '#0891b2', '#}
 www/js/modules/anomalies.js: title
@@ -34,12 +31,6 @@ www/js/modules/day.js: s.purchaseItems ← s = todaySummary({ bills: { purchase:
 www/js/modules/day.js: s.saleItems ← s = todaySummary({ bills: { purchase: AppState.purchaseHistory, wholesale: AppState. (markup via this.renderItemWiseDetails)
 www/js/modules/day.js: type
 www/js/modules/day.js: type
-www/js/modules/diagnostics.js: actionIcon ← icons[action] {icons = { 'CREATE_BILL': '📥', 'DELETE_BILL': '🗑️', 'CREATE_SALE': '📤', 'DELETE_SALE':}
-www/js/modules/diagnostics.js: formatDateTimeIN(o.timestamp)
-www/js/modules/diagnostics.js: formattedDate ← formatDateTimeIN(log.timestamp, { day: '2-digit', month: 'short', year: 'numeric
-www/js/modules/diagnostics.js: stats.byType['console.error'] || 0 ← stats.byType['console.error'] {stats = { total: this.data.length, totalOccurrences: this.data.reduce((sum, d) => sum + }
-www/js/modules/diagnostics.js: typeColors[error.type] || '#666' ← typeColors[error.type] {typeColors = { 'uncaught': '#ef4444', 'unhandledrejection': '#f97316', 'console.error': '#eab}
-www/js/modules/diagnostics.js: typeLabels[error.type] || Helpers.escapeHtml(error.type) ← typeLabels[error.type] {typeLabels = { 'uncaught': `🔴 ${tx('ui.diag.t_uncaught')}`, 'unhandledrejection': `🟠 ${tx('}
 www/js/modules/health.js: html (sink)
 www/js/modules/history.js: (toMoney(item.total) ?? toMoney(item.amount)) === null ? '—' : formatAmount(toMoney(item.total) ?? toMoney(item.amount), { exact: true }) ← formatAmount(toMoney(item.total) ?? toMoney(item.amount), { exact: true })
 www/js/modules/history.js: billTableHtml(bills, { openings: this.pageOpenings, voided: this.pageVoided, typeTags: type === 'sale', onclickFor: (bill) => `history.viewB (sink)

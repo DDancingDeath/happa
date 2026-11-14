@@ -341,7 +341,6 @@ body.dark-mode {
 }
 
 body.dark-mode .bill-item-row,
-body.dark-mode .settings-card,
 body.dark-mode .report-card,
 body.dark-mode .date-filter-card,
 body.dark-mode .popular-item,
@@ -358,11 +357,6 @@ body.dark-mode textarea {
   background: var(--input-bg);
   color: var(--text-primary);
   border-color: var(--border-strong);
-}
-
-body.dark-mode .diag-delete-btn {
-  background: var(--surface-muted);
-  color: var(--text-primary);
 }
 
 body.dark-mode input::placeholder {
@@ -389,12 +383,10 @@ body.dark-mode .modal-box {
   background: var(--surface-muted) !important;
 }
 
-.dark-mode [style*="background: #fff3cd"],
-.dark-mode [style*="background: #fef3c7"] {
+.dark-mode [style*="background: #fff3cd"] {
   background: var(--warning-soft) !important;
 }
 
-.dark-mode [style*="background: #fee2e2"],
 .dark-mode [style*="background: #fef2f2"] {
   background: var(--danger-soft) !important;
 }
@@ -417,38 +409,26 @@ body.dark-mode .modal-box {
 .dark-mode [style^="color: rgb(75, 85, 99)"],
 .dark-mode [style*=" color: rgb(75, 85, 99)"],
 .dark-mode [style^="color: #666"],
-.dark-mode [style*=" color: #666"],
 .dark-mode [style^="color:#666"],
 .dark-mode [style*=" color:#555"],
 .dark-mode [style*=" color: #555"],
 .dark-mode [style*=";color:#555"],
-.dark-mode [style*=" color: #374151"],
-.dark-mode [style^="color:#4b5563"],
-.dark-mode [style*=";color:#4b5563"] {
+.dark-mode [style*=" color: #374151"] {
   color: var(--text-secondary) !important;
 }
 
 .dark-mode [style*=" color: #059669"],
 .dark-mode [style^="color: #15803d"],
 .dark-mode [style*=" color: #15803d"],
-.dark-mode [style^="color:#15803d"],
 .dark-mode [style^="color: #059669"] {
   color: var(--on-success-soft) !important;
 }
 
 .dark-mode [style^="color: #ef4444"],
 .dark-mode [style*=" color: #ef4444"],
-.dark-mode [style*=" color: #991b1b"],
 .dark-mode [style*=" color:#b91c1c"],
-.dark-mode [style^="color: #b91c1c"],
-.dark-mode [style^="color:#b91c1c"],
-.dark-mode [style*=";color:#b91c1c"] {
+.dark-mode [style^="color: #b91c1c"] {
   color: var(--on-danger-soft) !important;
-}
-
-.dark-mode [style*=" color: #92400e"],
-.dark-mode [style^="color:#b45309"] {
-  color: var(--on-warning-soft) !important;
 }
 
 .dark-mode [style*=" color: #7c3aed"],
@@ -9035,58 +9015,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* ---- css/settings.css ---- */
 /* -------------------- SETTINGS -------------------- */
-/* Admin still draws its sections as .settings-card and .danger-btn */
-.settings-card {
-  background: var(--card-bg);
-  padding: var(--sp-5);
-  border-radius: var(--radius-lg);
-  margin-bottom: var(--sp-4);
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border-color);
-  transition: all var(--transition);
-}
-
-.settings-card:hover {
-  box-shadow: var(--shadow-md);
-}
-
-.settings-card h3 {
-  margin: 0 0 var(--sp-4);
-  font-size: 18px;
-  font-weight: var(--w-strong);
-  padding-bottom: var(--sp-3);
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-primary);
-}
-
 .setting-description {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: var(--sp-2) 0 var(--sp-4);
   font-style: italic;
   line-height: 1.6;
-}
-
-.danger-btn {
-  background: var(--btn-danger);
-  color: var(--btn-danger-ink);
-  border: none;
-  padding: var(--sp-4);
-  border-radius: var(--radius-md);
-  font-size: 16px;
-  font-weight: var(--w-strong);
-  cursor: pointer;
-  width: 100%;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition);
-}
-
-.danger-btn:hover {
-  box-shadow: var(--shadow);
-}
-
-.danger-btn:active {
-  transform: scale(0.98);
 }
 
 /* Settings (5.8a): each card is a panel whose parts stack with one gap */
@@ -9108,7 +9042,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .set-printer[hidden],
 .settings-biz-bar[hidden],
 .set-panel > div:empty,
-.set-printer > div:empty,
+.set-printer > div:empty {
+  display: none;
+}
+
+/* Its own rule: an engine without :has() drops only this one */
 .set-actions:not(:has(> :not([hidden]))) {
   display: none;
 }
@@ -11436,6 +11374,270 @@ body.dark-mode .app-sheet-fallback {
 .notif-item.unread .lead-icon {
   background: var(--panel-bg);
   color: var(--info);
+}
+
+/* ---- css/admin.css ---- */
+/* Admin page (5.8b): Users and Data on the shared components (tabs, seg, panel, rows, tags, metrics, notice) */
+.admin-sub,
+.admin-hint {
+  margin: 0 0 var(--sp-3);
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+
+.admin-section {
+  margin-bottom: var(--sp-5);
+}
+
+.admin-section h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-lead);
+  font-weight: var(--w-strong);
+}
+
+.admin-section[hidden] {
+  display: none;
+}
+
+.admin-action {
+  margin-bottom: var(--sp-3);
+}
+
+.admin-user + .admin-user {
+  border-top: 1px var(--rule-style) var(--line);
+}
+
+.admin-user .row-title {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.admin-user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-4) var(--sp-3);
+}
+
+.admin-user-actions > .btn {
+  flex: 1 1 auto;
+}
+
+.admin-role-pick {
+  flex: 1 1 100%;
+}
+
+.admin-range,
+.admin-note {
+  margin-bottom: var(--sp-3);
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-storage {
+  margin-bottom: var(--sp-3);
+}
+
+.backup-result {
+  margin-bottom: var(--sp-3);
+}
+
+.backup-result p,
+.backup-result ul {
+  margin: 0 0 var(--sp-1);
+}
+
+.backup-restore-guide summary {
+  cursor: pointer;
+}
+
+/* Clear data dialogs */
+.admin-clear {
+  text-align: left;
+}
+
+.admin-clear p {
+  margin: 0 0 var(--sp-2);
+}
+
+.admin-clear-all,
+.admin-clear-opt {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--row-h);
+  cursor: pointer;
+}
+
+.admin-clear-all {
+  margin-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--line);
+  font-weight: var(--w-strong);
+}
+
+.admin-clear-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: var(--sp-3);
+  margin-bottom: var(--sp-2);
+}
+
+.admin-clear-list {
+  margin: 0 0 var(--sp-2);
+}
+
+.admin-clear-warn {
+  margin-top: var(--sp-2);
+}
+
+/* ---- css/diagnostics.css ---- */
+/* Diagnostics page (5.8b): Errors, Audit logs, Status and Number checks on the shared components */
+.diag-sub,
+.diag-hint {
+  margin: 0 0 var(--sp-2);
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+
+.diag-tabs,
+.diag-block,
+.diag-metrics,
+.diag-numchecks-intro {
+  margin-bottom: var(--sp-4);
+}
+
+.diag-block > summary {
+  cursor: pointer;
+}
+
+.diag-technical-body {
+  margin-top: var(--sp-2);
+}
+
+.diag-technical-body .diag-block {
+  margin: var(--sp-3) 0 0;
+}
+
+.diag-table-wrap {
+  overflow-x: auto;
+  margin-bottom: var(--sp-2);
+}
+
+.diag-code {
+  font-family: ui-monospace, monospace;
+  overflow-wrap: anywhere;
+}
+
+.diag-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0;
+}
+
+.diag-controls > select {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+.diagnostics-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.diag-card > h3 {
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-lead);
+}
+
+.diag-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+
+.diag-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-4);
+  margin-bottom: var(--sp-1);
+}
+
+.diag-card-head .diag-error-message {
+  margin: 0;
+}
+
+.diag-error-message,
+.diag-audit-action {
+  font-weight: var(--w-strong);
+  overflow-wrap: anywhere;
+}
+
+.diag-error-message {
+  margin-bottom: var(--sp-1);
+}
+
+.diag-delete-btn,
+.diag-audit-time {
+  margin-left: auto;
+}
+
+.diag-audit-time {
+  margin-bottom: 0;
+}
+
+.diag-error-stack,
+.diag-error-occurrences {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-sm);
+}
+
+.diag-error-stack summary,
+.diag-error-occurrences summary {
+  color: var(--accent-text);
+  cursor: pointer;
+}
+
+.diag-pre {
+  max-height: 200px;
+  overflow: auto;
+  margin: var(--sp-2) 0 0;
+  padding: var(--sp-3);
+  border-radius: var(--r-control);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-family: ui-monospace, monospace;
+  font-size: var(--fs-caption);
+}
+
+.diag-list {
+  margin: var(--sp-2) 0 0;
+  padding-left: var(--sp-5);
+  color: var(--ink-2);
+}
+
+.diag-pre-line {
+  white-space: pre-line;
 }
 
 /* ---- css/insights.css ---- */
