@@ -26,6 +26,7 @@ import { AuthManager, authErrorMessage } from '../auth/authentication.js';
 import { UsageView } from '../ui/usage-view.js';
 import { ThemeManager, resolveMode } from '../ui/theme.js';
 import { APPEARANCES, DEFAULT_APPEARANCE, DEFAULT_THEME, THEMES, themeById } from '../ui/themes.js';
+import { icon } from '../ui/icons.js';
 
 const LABOUR_OWNER_ONLY_KEY = 'msg.settings.labour_owner_only';
 const LABOUR_INPUTS = ['settingHeavyWeight', 'settingLaborRate', 'settingLabourPackageKg'];
@@ -118,9 +119,7 @@ export class SettingsManager {
             const printerSettings = PrinterService.settings();
             bluetoothCheckbox.checked = printerSettings.enabled;
             const section = document.getElementById('bluetoothPrinterSection');
-            if (section) {
-                section.style.display = printerSettings.enabled ? 'block' : 'none';
-            }
+            if (section) section.hidden = !printerSettings.enabled;
             const preview = document.getElementById('settingPrintPreview');
             if (preview) preview.checked = printerSettings.previewFirst;
         }
@@ -185,20 +184,23 @@ export class SettingsManager {
         box.replaceChildren(...THEMES.map((th) => {
             const card = document.createElement('button');
             card.type = 'button';
-            card.className = 'theme-card';
+            card.className = 'theme-tile';
             card.dataset.themeChoice = th.id;
             card.setAttribute('data-onclick', `settings.previewTheme('${th.id}')`);
-            const preview = span('theme-card-preview');
+            const preview = span('theme-tile-preview');
             preview.setAttribute('aria-hidden', 'true');
             preview.setAttribute('data-theme', th.id);
             preview.setAttribute('data-mode', resolveMode(ThemeManager.current.appearance, th.kind, systemDark));
-            const panel = span('tcp-panel');
+            const panel = span('tcp-card');
             panel.append(span('tcp-line'), span('tcp-line tcp-line-short'), span('tcp-dots'));
-            preview.append(span('tcp-bar'), panel, span('tcp-btn'));
-            const text = span('theme-card-text');
-            text.append(span('theme-card-name', t(`ui.settings.theme_${th.id}`)), span('theme-card-desc', t(`ui.settings.theme_${th.id}_desc`)));
-            if (th.kind === 'dark') text.append(span('theme-card-badge', t('ui.settings.theme_always_dark')));
-            card.append(preview, text);
+            preview.append(span('tcp-bar'), panel, span('tcp-save'));
+            const check = span('theme-tile-check');
+            check.innerHTML = icon('check', 'i-sm');
+            const text = span('theme-tile-text');
+            const name = span('theme-tile-name', t(`ui.settings.theme_${th.id}`));
+            if (th.kind === 'dark') name.append(' ', span('tag theme-tile-badge', t('ui.settings.theme_always_dark')));
+            text.append(name, span('theme-tile-desc', t(`ui.settings.theme_${th.id}_desc`)));
+            card.append(preview, check, text);
             return card;
         }));
         this.syncTheme();
@@ -480,10 +482,12 @@ export class SettingsManager {
         const e = Helpers.escapeHtml;
         const vals = normalizeThresholds(AppState.settings?.checkThresholds);
         box.innerHTML = CHECK_THRESHOLD_FIELDS.map(([key, label]) => `
+                <div class="field">
                 <label for="settingCheck_${key}">${e(t(label))}</label>
-                <input type="number" inputmode="decimal" min="0" step="any" id="settingCheck_${key}"
+                <input type="number" class="input" inputmode="decimal" min="0" step="any" id="settingCheck_${key}"
                        placeholder="${e(DEFAULT_THRESHOLDS[key])}" value="${e(vals[key])}"${editable ? '' : ' disabled'}
-                       data-onchange="settings.saveCheckThresholds()" />`).join('');
+                       data-onchange="settings.saveCheckThresholds()" />
+                </div>`).join('');
     }
 
     /**
@@ -661,9 +665,7 @@ export class SettingsManager {
         this._setPrinterSettings({ ...PrinterService.settings(), enabled });
         
         const section = document.getElementById('bluetoothPrinterSection');
-        if (section) {
-            section.style.display = enabled ? 'block' : 'none';
-        }
+        if (section) section.hidden = !enabled;
         
         this.updatePrinterStatus();
     }
@@ -833,29 +835,30 @@ export class SettingsManager {
         const { printers, deviceId } = PrinterService.settings();
         container.innerHTML = '';
         if (!printers.length || !PrinterService.isAvailable()) return;
-        const title = document.createElement('div');
-        title.className = 'saved-printers-title';
-        title.innerHTML = `<strong>${Helpers.escapeHtml(t('ui.settings.saved_printers'))}</strong>`;
-        container.appendChild(title);
+        const title = document.createElement('h4');
+        title.className = 'set-subtitle saved-printers-title';
+        title.textContent = t('ui.settings.saved_printers');
+        const list = document.createElement('div');
+        list.className = 'panel set-devices';
+        container.append(title, list);
         printers.forEach((p) => {
             const inUse = p.deviceId === deviceId;
             const row = document.createElement('div');
-            row.className = 'saved-printer';
+            row.className = 'row saved-printer';
             row.dataset.deviceId = p.deviceId;
-            row.style.cssText = 'background: #f5f5f5; padding: 10px 12px; margin: 8px 0; border-radius: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between;';
             const name = p.deviceName || p.deviceId;
             const widths = PAPER_WIDTHS.map(mm => `<option value="${mm}"${p.widthMm === mm ? ' selected' : ''}>${Helpers.escapeHtml(t('ui.settings.paper_mm', { mm }))}</option>`).join('');
             row.innerHTML = `
-                <div><strong>${Helpers.escapeHtml(name)}</strong>${inUse ? ` <small class="saved-printer-in-use">· ${Helpers.escapeHtml(t('ui.settings.printer_in_use'))}</small>` : ''}</div>
-                <div style="display: flex; gap: 6px; align-items: center;">
-                    <select class="saved-printer-width" aria-label="${Helpers.escapeHtml(t('ui.settings.paper_width'))}">${widths}</select>
-                    ${inUse ? '' : `<button type="button" class="filter-btn saved-printer-use">${Helpers.escapeHtml(t('ui.settings.use_printer'))}</button>`}
-                    <button type="button" class="filter-btn saved-printer-forget">${Helpers.escapeHtml(t('ui.settings.forget_printer'))}</button>
+                <div class="row-main"><span class="row-title">${Helpers.escapeHtml(name)}</span>${inUse ? ` <span class="tag pos saved-printer-in-use">${Helpers.escapeHtml(t('ui.settings.printer_in_use'))}</span>` : ''}</div>
+                <div class="set-device-tools">
+                    <select class="input saved-printer-width" aria-label="${Helpers.escapeHtml(t('ui.settings.paper_width'))}">${widths}</select>
+                    ${inUse ? '' : `<button type="button" class="btn btn-sm btn-tonal saved-printer-use">${Helpers.escapeHtml(t('ui.settings.use_printer'))}</button>`}
+                    <button type="button" class="btn btn-sm btn-ghost saved-printer-forget">${Helpers.escapeHtml(t('ui.settings.forget_printer'))}</button>
                 </div>`;
             row.querySelector('.saved-printer-width').addEventListener('change', (e) => this.setPaperWidth(p.deviceId, Number(e.target.value)));
             row.querySelector('.saved-printer-use')?.addEventListener('click', () => this.connectToPrinter(p.deviceId, p.deviceName));
             row.querySelector('.saved-printer-forget').addEventListener('click', () => this.forgetPrinter(p.deviceId));
-            container.appendChild(row);
+            list.appendChild(row);
         });
     }
 
@@ -885,15 +888,18 @@ export class SettingsManager {
         if (!container) return;
         
         if (!devices || devices.length === 0) {
-            container.innerHTML = `<p style="color: #666; padding: 12px;">${Helpers.escapeHtml(t('ui.settings.no_devices_found'))}</p>`;
+            container.innerHTML = `<p class="empty">${Helpers.escapeHtml(t('ui.settings.no_devices_found'))}</p>`;
             return;
         }
         
-        container.innerHTML = `<div style="margin-top: 12px;"><strong>${Helpers.escapeHtml(t('ui.settings.available_devices'))}</strong></div>`;
+        container.innerHTML = `<h4 class="set-subtitle">${Helpers.escapeHtml(t('ui.settings.available_devices'))}</h4>`;
+        const list = document.createElement('div');
+        list.className = 'panel set-devices';
+        container.appendChild(list);
         
         devices.forEach((device, index) => {
             const deviceCard = document.createElement('div');
-            deviceCard.style.cssText = 'background: #f5f5f5; padding: 12px; margin: 8px 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;';
+            deviceCard.className = 'row';
             const address = device.address || device.deviceId || device.id;
             const name = device.name || 'Unknown Device';
             
@@ -902,11 +908,11 @@ export class SettingsManager {
             deviceCard.setAttribute('data-device-name', name);
             
             deviceCard.innerHTML = `
-                <div>
-                    <strong>${Helpers.escapeHtml(name)}</strong><br>
-                    <small style="color: #666;">${Helpers.escapeHtml(address)}</small>
+                <div class="row-main">
+                    <div class="row-title">${Helpers.escapeHtml(name)}</div>
+                    <div class="row-meta">${Helpers.escapeHtml(address)}</div>
                 </div>
-                <button class="add-item-btn" data-device-index="${index}">${Helpers.escapeHtml(t('ui.settings.connect'))}</button>
+                <button type="button" class="btn btn-sm btn-tonal" data-device-index="${index}">${Helpers.escapeHtml(t('ui.settings.connect'))}</button>
             `;
             
             // Add click handler to the button
@@ -915,7 +921,7 @@ export class SettingsManager {
                 this.connectToPrinter(address, name);
             });
             
-            container.appendChild(deviceCard);
+            list.appendChild(deviceCard);
         });
     }
 

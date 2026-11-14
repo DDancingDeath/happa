@@ -34,30 +34,43 @@ export async function mount(el, { editable }) {
     }
     const off = editable ? '' : ' disabled';
     el.innerHTML = `
-        <div class="settings-card" id="rentDefaultsCard">
-            <h3>${esc(t('ui.rentset.defaults_title'))}</h3>
+        <div class="panel panel-pad set-panel" id="rentDefaultsCard">
+            <h3 class="set-title">${esc(t('ui.rentset.defaults_title'))}</h3>
             <p class="setting-description">${esc(t('ui.rentset.defaults_hint'))}</p>
-            <label for="rentSetDueDay">${esc(t('ui.rentset.due_day'))}</label>
-            <input type="number" id="rentSetDueDay" min="1" max="28" step="1" value="${esc(s.dueDay)}"${off}>
-            <label for="rentSetIncrease">${esc(t('ui.rentset.increase_pct'))}</label>
-            <input type="number" id="rentSetIncrease" min="0" max="100" step="0.5" value="${esc(s.increasePct)}"${off}>
-            <label for="rentSetMeterRate">${esc(t('ui.rentset.meter_rate'))}</label>
-            <input type="number" inputmode="decimal" id="rentSetMeterRate" min="0" step="0.01" value="${esc(s.meterRate ?? '')}" placeholder="${esc(t('ui.rentset.meter_rate_none'))}"${off}>
-            <label class="checkbox-label">
-                <input type="checkbox" id="rentSetTenantLink"${s.tenantLink ? ' checked' : ''}${off}>
+            <div class="field">
+                <label for="rentSetDueDay">${esc(t('ui.rentset.due_day'))}</label>
+                <input type="number" class="input" id="rentSetDueDay" min="1" max="28" step="1" value="${esc(s.dueDay)}"${off}>
+            </div>
+            <div class="field">
+                <label for="rentSetIncrease">${esc(t('ui.rentset.increase_pct'))}</label>
+                <input type="number" class="input" id="rentSetIncrease" min="0" max="100" step="0.5" value="${esc(s.increasePct)}"${off}>
+            </div>
+            <div class="field">
+                <label for="rentSetMeterRate">${esc(t('ui.rentset.meter_rate'))}</label>
+                <div class="adorn">
+                    <span class="adorn-pre" aria-hidden="true">₹</span>
+                    <input type="number" class="input" inputmode="decimal" id="rentSetMeterRate" min="0" step="0.01" value="${esc(s.meterRate ?? '')}" placeholder="${esc(t('ui.rentset.meter_rate_none'))}"${off}>
+                </div>
+            </div>
+            <label class="set-toggle">
                 <span>${esc(t('ui.rentset.tenant_link'))}</span>
+                <input type="checkbox" class="switch" id="rentSetTenantLink"${s.tenantLink ? ' checked' : ''}${off}>
             </label>
             <p class="setting-description">${esc(t('ui.rentset.tenant_link_hint'))}</p>
         </div>
-        <div class="settings-card" id="rentReceiptCard">
-            <h3>${esc(t('ui.rentset.receipt_title'))}</h3>
-            <label for="rentSetHeader">${esc(t('ui.rentset.receipt_header'))}</label>
-            <input type="text" id="rentSetHeader" maxlength="${MAX_RECEIPT_HEADER}" value="${esc(s.receiptHeader)}" placeholder="${esc(t('ui.rentset.receipt_header_placeholder'))}"${off}>
-            <label for="rentSetAddress">${esc(t('ui.rentset.receipt_address'))}</label>
-            <input type="text" id="rentSetAddress" maxlength="${MAX_RECEIPT_ADDRESS}" value="${esc(s.receiptAddress)}" placeholder="${esc(t('ui.rentset.receipt_address_placeholder'))}"${off}>
+        <div class="panel panel-pad set-panel" id="rentReceiptCard">
+            <h3 class="set-title">${esc(t('ui.rentset.receipt_title'))}</h3>
+            <div class="field">
+                <label for="rentSetHeader">${esc(t('ui.rentset.receipt_header'))}</label>
+                <input type="text" class="input" id="rentSetHeader" maxlength="${MAX_RECEIPT_HEADER}" value="${esc(s.receiptHeader)}" placeholder="${esc(t('ui.rentset.receipt_header_placeholder'))}"${off}>
+            </div>
+            <div class="field">
+                <label for="rentSetAddress">${esc(t('ui.rentset.receipt_address'))}</label>
+                <input type="text" class="input" id="rentSetAddress" maxlength="${MAX_RECEIPT_ADDRESS}" value="${esc(s.receiptAddress)}" placeholder="${esc(t('ui.rentset.receipt_address_placeholder'))}"${off}>
+            </div>
             <p class="setting-description">${esc(t('ui.rentset.receipt_hint'))}</p>
         </div>
-        ${editable ? `<button type="button" class="add-item-btn" id="rentSetSave" data-onclick="settings.saveRentals()">${esc(t('ui.roles.save'))}</button>`
+        ${editable ? `<div class="set-actions"><button type="button" class="btn btn-primary" id="rentSetSave" data-onclick="settings.saveRentals()">${esc(t('ui.roles.save'))}</button></div>`
             : `<p class="setting-description">${esc(t('ui.rentset.view_only'))}</p>`}`;
 }
 

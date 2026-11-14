@@ -236,6 +236,9 @@ export class AppUpdatesManager {
         const versionText = document.getElementById('appVersionText');
         if (versionText) versionText.textContent = APP_VERSION;
         const nativeShareBtn = document.getElementById('shareAppNativeBtn');
-        if (nativeShareBtn) nativeShareBtn.style.display = this.canNativeShare() ? '' : 'none';
+        if (nativeShareBtn) {
+            nativeShareBtn.hidden = !this.canNativeShare();
+            nativeShareBtn.style.display = this.canNativeShare() ? '' : 'none';
+        }
     }
 }

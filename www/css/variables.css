@@ -377,13 +377,11 @@ body.dark-mode .modal-box {
 }
 
 /* Inline colours written by page scripts stay readable in dark mode */
-.dark-mode [style*="background: rgb(245, 245, 245)"],
 .dark-mode [style*="background: white"],
 .dark-mode [style*="background: #fff"],
 .dark-mode [style*="background: #f8f9fa"],
 .dark-mode [style*="background: #f7fafc"],
-.dark-mode [style*="background: #f3f4f6"],
-.dark-mode [style*="background: #f5f5f5"] {
+.dark-mode [style*="background: #f3f4f6"] {
   background: var(--surface-muted) !important;
 }
 
@@ -427,7 +425,6 @@ body.dark-mode .modal-box {
 .dark-mode [style*=" color: #555"],
 .dark-mode [style*=";color:#555"],
 .dark-mode [style*=" color: #374151"],
-.dark-mode [style*=" color:#4b5563"],
 .dark-mode [style^="color:#4b5563"],
 .dark-mode [style*=";color:#4b5563"],
 .dark-mode [style*=" color: #9ca3af"] {
@@ -454,9 +451,7 @@ body.dark-mode .modal-box {
   color: var(--on-danger-soft) !important;
 }
 
-.dark-mode [style^="color:#92400e"],
 .dark-mode [style*=" color: #92400e"],
-.dark-mode [style^="color: #b45309"],
 .dark-mode [style^="color:#b45309"] {
   color: var(--on-warning-soft) !important;
 }

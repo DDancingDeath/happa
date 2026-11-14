@@ -673,19 +673,19 @@ const PrinterService = {
 
         const noPermission = available && this.permissionState === 'denied';
         let text;
-        let color = '#666';
+        let tone = 'tone-muted';
         if (!available) {
             text = t('ui.settings.printer_android_only');
         } else if (noPermission) {
             text = t('ui.settings.printer_permission_needed');
-            color = '#b45309';
+            tone = 'tone-warn';
         } else if (btOff) {
             text = t('ui.settings.printer_bluetooth_off');
         } else if (connected) {
             text = checkedAt
                 ? t('ui.settings.printer_connected_checked', { deviceName: name, time: clockTime(checkedAt) })
                 : t('ui.settings.printer_connected_to', { deviceName: name });
-            color = '#4CAF50';
+            tone = 'tone-pos';
         } else if (saved.deviceId && name) {
             text = t('ui.settings.printer_saved_not_connected', { deviceName: name });
         } else {
@@ -698,13 +698,14 @@ const PrinterService = {
             detail = t('ui.settings.printer_last_error', { message: this.errorText(lastError), time: clockTime(lastError.at) });
         }
         if (statusText) {
-            statusText.innerHTML = `<span style="color: ${color};">${connected ? '●' : '○'} ${Helpers.escapeHtml(text)}</span>`
+            statusText.innerHTML = `<span class="${tone}">${connected ? '●' : '○'} ${Helpers.escapeHtml(text)}</span>`
                 + (detail ? `<br><small class="printer-status-detail">${Helpers.escapeHtml(detail)}</small>` : '');
             statusText.dataset.state = !available ? 'unavailable' : noPermission ? 'permission' : btOff ? 'bluetooth_off' : connected ? 'connected' : 'disconnected';
         }
-        if (disconnectBtn) disconnectBtn.style.display = connected ? 'block' : 'none';
-        if (testPrintBtn) testPrintBtn.style.display = available && !btOff && (connected || saved.deviceId) ? '' : 'none';
-        if (scanBtn) scanBtn.style.display = available ? '' : 'none';
+        const show = (el, on) => { if (el) { el.hidden = !on; el.style.display = on ? '' : 'none'; } };
+        show(disconnectBtn, connected);
+        show(testPrintBtn, available && !btOff && (connected || saved.deviceId));
+        show(scanBtn, available);
     },
 
     /** Renders the status now, then again once the plugin has checked Bluetooth and the link. */

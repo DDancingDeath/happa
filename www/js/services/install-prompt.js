@@ -62,11 +62,10 @@ export const InstallManager = {
         const card = doc && doc.getElementById('installAppCard');
         if (!card) return;
         const state = this.state();
-        card.style.display = state === 'hidden' ? 'none' : '';
-        const btn = doc.getElementById('installAppBtn');
-        const hint = doc.getElementById('installAppHint');
-        if (btn) btn.style.display = state === 'button' ? '' : 'none';
-        if (hint) hint.style.display = state === 'hint' ? '' : 'none';
+        const show = (el, on) => { if (el) { el.hidden = !on; el.style.display = on ? '' : 'none'; } };
+        show(card, state !== 'hidden');
+        show(doc.getElementById('installAppBtn'), state === 'button');
+        show(doc.getElementById('installAppHint'), state === 'hint');
     },
 
     async prompt() {

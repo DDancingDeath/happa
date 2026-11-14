@@ -27,6 +27,7 @@ import { formatRupees } from '../utils/money.js';
 import { numberCheckFlags } from '../utils/number-check-flags.js';
 import { safeSetItem } from '../utils/storage-full.js';
 import { icon } from '../ui/icons.js';
+import { moneyHtml } from '../ui/components.js';
 
 const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const jsAttr = (v) => Helpers.escapeJsAttr(String(v ?? ''));
@@ -49,8 +50,9 @@ const NUMCHECK_KNOWN_KEY = 'happa.numcheckFlags';
 const NUMCHECK_KNOWN_MAX = 500;
 const NUMCHECK_FLAGS_PER_RUN = 50;
 const PAGE_SIZE = 200;
-const SEV_COLORS = { high: '#b91c1c', medium: '#92400e', low: '#4b5563' };
 const SEV_TONES = { high: 'tone-neg', medium: 'tone-warn', low: 'tone-muted' };
+const SEV_TAGS = { high: 'tag neg', medium: 'tag warn', low: 'tag' };
+// Chart series colours (data, not chrome): the canvas needs real colours, and the legend matches them
 const TYPE_COLORS = ['#dc2626', '#2563eb', '#d97706', '#059669', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#ea580c', '#4f46e5', '#0d9488', '#9333ea', '#be123c', '#15803d', '#1d4ed8', '#a16207'];
 
 const canSee = () => AppState.userRole === 'owner' || AppState.userRole === 'manager';
@@ -420,39 +422,39 @@ export const AnomaliesManager = {
         const allLabel = pending ? t('ui.anom.all_anomalies_pending', { n: pending }) : t('ui.anom.all_anomalies');
         const s = summarizeAnomalies(todays);
 
-        const chips = SEVERITIES.map(sev => `<span class="anomaly-chip anomaly-sev-${sev}">${loc(SEVERITY_LABELS[sev])}: <strong>${s.bySeverity[sev]}</strong></span>`).join('');
-        const types = s.byType.slice(0, 6).map(ty => `<li>${loc(ty)} — <strong>${ty.count}</strong></li>`).join('');
+        const chips = SEVERITIES.map(sev => `<span class="${esc(SEV_TAGS[sev])}">${loc(SEVERITY_LABELS[sev])}: <strong>${esc(s.bySeverity[sev])}</strong></span>`).join('');
+        const types = s.byType.slice(0, 6).map(ty => `<li>${loc(ty)} — <strong>${esc(ty.count)}</strong></li>`).join('');
         const tops = [
-            s.topItems.length ? `<div><span class="anomaly-muted">${esc(t('ui.anom.top_items'))}:</span> ${s.topItems.map(x => `${esc(x.name)} (${x.count})`).join(', ')}</div>` : '',
-            s.topParties.length ? `<div><span class="anomaly-muted">${esc(t('ui.anom.top_parties'))}:</span> ${s.topParties.map(x => `${esc(x.name)} (${x.count})`).join(', ')}</div>` : ''
+            s.topItems.length ? `<div><span class="tone-muted">${esc(t('ui.anom.top_items'))}:</span> ${s.topItems.map(x => `${esc(x.name)} (${esc(x.count)})`).join(', ')}</div>` : '',
+            s.topParties.length ? `<div><span class="tone-muted">${esc(t('ui.anom.top_parties'))}:</span> ${s.topParties.map(x => `${esc(x.name)} (${esc(x.count)})`).join(', ')}</div>` : ''
         ].join('');
 
         const bySev = SEVERITIES.map(sev => {
             const rows = queue.filter(a => a.severity === sev);
             if (!rows.length) return '';
-            return `<div class="anomaly-queue-group"><div class="anomaly-queue-head ${SEV_TONES[sev]}">${loc(SEVERITY_LABELS[sev])} (${rows.length})</div>
-                ${rows.slice(0, 8).map(a => this.rowHtml(a, { compact: true })).join('')}
-                ${rows.length > 8 ? `<div class="anomaly-muted">${esc(t('ui.anom.more', { n: rows.length - 8 }))}</div>` : ''}</div>`;
+            return `<div class="anom-queue-group"><div class="anom-queue-head ${esc(SEV_TONES[sev])}">${loc(SEVERITY_LABELS[sev])} (${esc(rows.length)})</div>
+                <div class="panel anom-list">${rows.slice(0, 8).map(a => this.rowHtml(a, { compact: true })).join('')}</div>
+                ${rows.length > 8 ? `<div class="tone-muted">${esc(t('ui.anom.more', { n: rows.length - 8 }))}</div>` : ''}</div>`;
         }).join('');
 
         card.style.display = 'block';
         card.innerHTML = `
-            <div class="anomaly-card-head">
+            <div class="anom-card-head">
                 <span class="lead-icon${s.bySeverity.high ? ' neg' : ''}">${icon('flag')}</span>
-                <h3 class="anomaly-card-title">${esc(t('ui.anom.day_report'))}</h3>
-                <span class="anomaly-card-tools"><button type="button" class="btn btn-ghost btn-icon btn-sm" title="${esc(t('ui.anom.refresh'))}" aria-label="${esc(t('ui.anom.refresh'))}" data-onclick="anomalies.refreshNow()">${icon('refresh')}</button>
-                <span class="anomaly-count-badge ${s.total ? 'has' : ''}">${s.total}</span></span>
+                <h3 class="anom-card-title">${esc(t('ui.anom.day_report'))}</h3>
+                <span class="anom-card-tools"><button type="button" class="btn btn-ghost btn-icon btn-sm" title="${esc(t('ui.anom.refresh'))}" aria-label="${esc(t('ui.anom.refresh'))}" data-onclick="anomalies.refreshNow()">${icon('refresh')}</button>
+                <span class="tag ${s.total ? 'neg' : 'pos'} anomaly-count-badge">${esc(s.total)}</span></span>
             </div>
-            <div class="anomaly-muted anomaly-card-sub">${esc(formatDayKey(today))} · ${esc(this.cashStatusLine())}</div>
-            <div class="anomaly-chips">${chips}</div>
-            ${s.total ? `<ul class="anomaly-type-list">${types}</ul>${tops}` : `<div class="anomaly-empty">${esc(t('ui.anom.none_today'))}</div>`}
-            <div class="anomaly-queue">
-                <div class="anomaly-queue-title">${esc(t('ui.anom.needs_review', { n: queue.length }))}</div>
-                ${queue.length ? bySev : `<div class="anomaly-empty">${esc(t('ui.anom.nothing_to_review'))}</div>`}
+            <div class="tone-muted anom-card-sub">${esc(formatDayKey(today))} · ${esc(this.cashStatusLine())}</div>
+            <div class="anom-chips">${chips}</div>
+            ${s.total ? `<ul class="anom-types">${types}</ul>${tops}` : `<p class="empty">${esc(t('ui.anom.none_today'))}</p>`}
+            <div class="anom-queue">
+                <div class="anom-queue-title">${esc(t('ui.anom.needs_review', { n: queue.length }))}</div>
+                ${queue.length ? bySev : `<p class="empty">${esc(t('ui.anom.nothing_to_review'))}</p>`}
             </div>
-            <div class="anomaly-actions">
-                <button type="button" class="btn btn-secondary" data-onclick="anomalies.shareDayReport()">${icon('wa')} WhatsApp</button>
-                <button type="button" class="btn btn-secondary" data-onclick="anomalies.printDayReport()">${icon('printer')} ${esc(t('ui.anom.print_image'))}</button>
+            <div class="anom-card-actions">
+                <button type="button" class="btn" data-onclick="anomalies.shareDayReport()">${icon('wa')} WhatsApp</button>
+                <button type="button" class="btn" data-onclick="anomalies.printDayReport()">${icon('printer')} ${esc(t('ui.anom.print_image'))}</button>
                 <button type="button" class="btn btn-tonal" data-onclick="anomalies.openPage()">${icon('search')} ${esc(allLabel)}</button>
             </div>`;
     },
@@ -559,28 +561,28 @@ export const AnomaliesManager = {
         const meta = [
             a.billNumber ? `#${esc(a.billNumber)}` : '',
             a.party ? esc(a.party) : '',
-            a.item ? `📦 ${esc(a.item)}` : '',
-            a.user ? `👤 ${esc(a.user)}` : '',
-            a.amount ? esc(money(a.amount)) : '',
+            a.item ? `${icon('box', 'i-sm')} ${esc(a.item)}` : '',
+            a.user ? `${icon('user', 'i-sm')} ${esc(a.user)}` : '',
+            a.amount ? moneyHtml(a.amount, { exact: true }) : '',
             esc(when)
         ].filter(Boolean).join(' · ');
         const id = jsAttr(a.id);
         const canOpen = a.refKind === 'bill' || a.refKind === 'cash' || a.refKind === 'stock';
-        const statusBadge = status === 'open' ? '' : `<span class="anomaly-status anomaly-status-${esc(status)}">${loc(STATUS_LABELS[status] || STATUS_LABELS.open)}</span>`;
+        const statusBadge = status === 'open' ? '' : `<span class="tag ${status === 'fixed' ? 'info' : 'pos'}">${loc(STATUS_LABELS[status] || STATUS_LABELS.open)}</span>`;
         const review = status === 'open'
-            ? `<button type="button" class="anomaly-btn ok" data-onclick="anomalies.review('${id}', 'ok')">✓ ${esc(t('ui.anom.btn_ok'))}</button>
-               <button type="button" class="anomaly-btn fixed" data-onclick="anomalies.review('${id}', 'fixed')">🔧 ${esc(t('ui.anom.btn_fixed'))}</button>`
-            : `<button type="button" class="anomaly-btn" data-onclick="anomalies.review('${id}', 'open')">↩ ${esc(t('ui.anom.btn_reopen'))}</button>`;
+            ? `<button type="button" class="btn btn-sm btn-tonal" data-onclick="anomalies.review('${id}', 'ok')">${icon('check', 'i-sm')} ${esc(t('ui.anom.btn_ok'))}</button>
+               <button type="button" class="btn btn-sm" data-onclick="anomalies.review('${id}', 'fixed')">${icon('clipCheck', 'i-sm')} ${esc(t('ui.anom.btn_fixed'))}</button>`
+            : `<button type="button" class="btn btn-sm" data-onclick="anomalies.review('${id}', 'open')">${icon('refresh', 'i-sm')} ${esc(t('ui.anom.btn_reopen'))}</button>`;
         return `
-            <div class="anomaly-row sev-${esc(a.severity)}${compact ? ' compact' : ''}">
-                <div class="anomaly-row-main"${canOpen ? ` data-onclick="anomalies.openRef('${id}')" role="button" tabindex="0"` : ''}>
-                    <div class="anomaly-row-title"><span class="anomaly-dot dot-${esc(a.severity)}"></span>${loc(label)} ${statusBadge}</div>
-                    <div class="anomaly-row-why">${loc(a)}</div>
-                    <div class="anomaly-row-meta">${meta}</div>
-                    ${a.note ? `<div class="anomaly-row-note">📝 ${esc(a.note)}${a.reviewedByName ? ` — ${esc(a.reviewedByName)}` : ''}</div>` : ''}
+            <div class="row anom-row sev-${esc(a.severity)}${compact ? ' compact' : ''}">
+                <div class="row-main anom-row-body"${canOpen ? ` data-onclick="anomalies.openRef('${id}')" role="button" tabindex="0"` : ''}>
+                    <div class="anom-row-head"><span class="anom-dot dot-${esc(a.severity)}"></span>${loc(label)} ${statusBadge}</div>
+                    <div class="anom-why">${loc(a)}</div>
+                    <div class="anom-meta">${meta}</div>
+                    ${a.note ? `<div class="anom-note">${icon('file', 'i-sm')} ${esc(a.note)}${a.reviewedByName ? ` — ${esc(a.reviewedByName)}` : ''}</div>` : ''}
                 </div>
-                <div class="anomaly-row-actions">
-                    ${canOpen ? `<button type="button" class="anomaly-btn" data-onclick="anomalies.openRef('${id}')">↗ ${esc(t('ui.anom.btn_open'))}</button>` : ''}
+                <div class="anom-actions">
+                    ${canOpen ? `<button type="button" class="btn btn-sm btn-ghost" data-onclick="anomalies.openRef('${id}')">${icon('chevR', 'i-sm')} ${esc(t('ui.anom.btn_open'))}</button>` : ''}
                     ${review}
                 </div>
             </div>`;
@@ -619,11 +621,13 @@ export const AnomaliesManager = {
         let note = a.note || '';
         if (status !== 'open') {
             const html = `
-                <div style="text-align:left;">
-                    <div style="margin-bottom:6px;"><strong>${loc(typeLabel(a.type))}</strong></div>
-                    <div style="margin-bottom:8px; color:#4b5563;">${loc(a)}</div>
-                    <label for="anomalyReviewNote">${esc(t('ui.anom.note_optional'))}:</label>
-                    <textarea id="anomalyReviewNote" rows="2" maxlength="300" style="width:100%; box-sizing:border-box; padding:6px;">${esc(note)}</textarea>
+                <div class="anom-review">
+                    <strong>${loc(typeLabel(a.type))}</strong>
+                    <p class="tone-muted">${loc(a)}</p>
+                    <div class="field">
+                        <label for="anomalyReviewNote">${esc(t('ui.anom.note_optional'))}</label>
+                        <textarea id="anomalyReviewNote" class="input" rows="2" maxlength="300">${esc(note)}</textarea>
+                    </div>
                 </div>`;
             const title = t(status === 'ok' ? 'msg.anomalies.mark_ok' : 'msg.anomalies.mark_fixed');
             const ok = await UIManager.showModalWithHtml(html, title, true);
@@ -674,13 +678,9 @@ export const AnomaliesManager = {
         if (!root) return;
         const denied = document.getElementById('anomalyDenied');
         const body = document.getElementById('anomalyBody');
-        if (!canSee()) {
-            if (denied) denied.style.display = 'block';
-            if (body) body.style.display = 'none';
-            return;
-        }
-        if (denied) denied.style.display = 'none';
-        if (body) body.style.display = 'block';
+        if (denied) denied.hidden = canSee();
+        if (body) body.hidden = !canSee();
+        if (!canSee()) return;
         this.fillTypeOptions();
         this.syncFilterInputs();
         const loading = this.loadPage(true);
@@ -710,7 +710,7 @@ export const AnomaliesManager = {
 
     /** Language switched: redraw the page and its type list in the new language. */
     refreshForLanguage() {
-        if (document.getElementById('anomalyDenied')?.style.display === 'block') return;
+        if (document.getElementById('anomalyDenied')?.hidden === false) return;
         this.fillTypeOptions(true);
         this.renderPage();
     },
@@ -791,12 +791,16 @@ export const AnomaliesManager = {
 
     showView(view) {
         this.page.view = view === 'patterns' ? 'patterns' : 'list';
-        document.getElementById('anomalyTabList')?.classList.toggle('active', this.page.view === 'list');
-        document.getElementById('anomalyTabPatterns')?.classList.toggle('active', this.page.view === 'patterns');
+        [['anomalyTabList', 'list'], ['anomalyTabPatterns', 'patterns']].forEach(([id, view]) => {
+            const tab = document.getElementById(id);
+            if (!tab) return;
+            tab.classList.toggle('active', this.page.view === view);
+            tab.setAttribute('aria-selected', String(this.page.view === view));
+        });
         const list = document.getElementById('anomalyListView');
         const pat = document.getElementById('anomalyPatternView');
-        if (list) list.style.display = this.page.view === 'list' ? 'block' : 'none';
-        if (pat) pat.style.display = this.page.view === 'patterns' ? 'block' : 'none';
+        if (list) list.hidden = this.page.view !== 'list';
+        if (pat) pat.hidden = this.page.view !== 'patterns';
         this.renderPage();
     },
 
@@ -823,19 +827,19 @@ export const AnomaliesManager = {
         if (summary) {
             const range = this.page.range;
             summary.innerHTML = this.page.loading && !list.length
-                ? `⏳ ${esc(t('ui.anom.loading'))}`
+                ? esc(t('ui.anom.loading'))
                 : `${esc(t('ui.anom.shown', { n: s.total }))}${range ? ` · ${esc(formatDayKey(range.from))} – ${esc(formatDayKey(range.to))}` : ''} · `
-                + SEVERITIES.map(sev => `<span style="color:${SEV_COLORS[sev]}">${loc(SEVERITY_LABELS[sev])} ${s.bySeverity[sev]}</span>`).join(' · ');
+                + SEVERITIES.map(sev => `<span class="${esc(SEV_TONES[sev])}">${loc(SEVERITY_LABELS[sev])} ${esc(s.bySeverity[sev])}</span>`).join(' · ');
         }
         if (this.page.view === 'list') {
             listEl.innerHTML = this.page.loading && !list.length
-                ? `<div class="anomaly-empty">${esc(t('ui.anom.loading'))}</div>`
-                : list.length ? list.map(a => this.rowHtml(a)).join('') : `<div class="anomaly-empty">${esc(t('ui.anom.none_for_filters'))}</div>`;
+                ? `<p class="empty">${esc(t('ui.anom.loading'))}</p>`
+                : list.length ? list.map(a => this.rowHtml(a)).join('') : `<p class="empty">${esc(t('ui.anom.none_for_filters'))}</p>`;
         } else {
             this.renderPatterns(list);
         }
         const more = document.getElementById('anomalyMore');
-        if (more) more.style.display = this.page.more && !this.page.loading ? 'inline-block' : 'none';
+        if (more) more.hidden = !(this.page.more && !this.page.loading);
     },
 
     renderPatterns(list) {
@@ -845,18 +849,18 @@ export const AnomaliesManager = {
         this.drawTrend(p, colorOf);
         const legend = document.getElementById('anomalyTrendLegend');
         if (legend) {
-            legend.innerHTML = p.types.map(ty => `<span class="anomaly-legend"><i style="background:${colorOf(ty)}"></i>${loc(typeLabel(ty))}</span>`).join('');
+            legend.innerHTML = p.types.map(ty => `<span class="anom-legend-item"><i style="--c:${colorOf(ty)}"></i>${loc(typeLabel(ty))}</span>`).join('');
         }
 
         const heat = document.getElementById('anomalyHeat');
         if (heat) {
             if (!p.heat.items.length) {
-                heat.innerHTML = `<div class="anomaly-empty">${esc(t('ui.anom.no_item_data'))}</div>`;
+                heat.innerHTML = `<p class="empty">${esc(t('ui.anom.no_item_data'))}</p>`;
             } else {
                 const max = Math.max(1, ...p.heat.items.flatMap(i => p.heat.types.map(ty => p.heat.cells[i][ty] || 0)));
-                heat.innerHTML = `<div class="anomaly-table-wrap"><table class="anomaly-heat"><thead><tr><th>${esc(t('ui.anom.th_item'))}</th>${p.heat.types.map(ty => `<th title="${loc(typeLabel(ty))}">${loc(typeLabel(ty))}</th>`).join('')}</tr></thead><tbody>${p.heat.items.map(i => `<tr><td>${esc(i)}</td>${p.heat.types.map(ty => {
+                heat.innerHTML = `<div class="anom-scroll"><table class="table anom-heat"><thead><tr><th>${esc(t('ui.anom.th_item'))}</th>${p.heat.types.map(ty => `<th title="${loc(typeLabel(ty))}">${loc(typeLabel(ty))}</th>`).join('')}</tr></thead><tbody>${p.heat.items.map(i => `<tr><td>${esc(i)}</td>${p.heat.types.map(ty => {
                     const n = p.heat.cells[i][ty] || 0;
-                    return `<td style="background:rgba(220,38,38,${n ? (0.15 + 0.75 * n / max).toFixed(2) : 0}); color:${n / max > 0.5 ? '#fff' : 'inherit'}">${n || ''}</td>`;
+                    return `<td${n / max > 0.5 ? ' class="hot"' : ''} style="--a:${n ? (0.15 + 0.75 * n / max).toFixed(2) : 0}">${esc(n || '')}</td>`;
                 }).join('')}</tr>`).join('')}</tbody></table></div>`;
             }
         }
@@ -864,24 +868,24 @@ export const AnomaliesManager = {
         const users = document.getElementById('anomalyByUser');
         if (users) {
             users.innerHTML = p.byUser.length
-                ? `<div class="anomaly-table-wrap"><table class="anomaly-table"><thead><tr><th>${esc(t('ui.anom.th_user'))}</th><th>${esc(t('ui.anom.th_total'))}</th><th>${esc(t('ui.anom.th_high'))}</th><th>${esc(t('ui.anom.th_most_common'))}</th></tr></thead><tbody>${p.byUser.map(u => {
+                ? `<div class="anom-scroll"><table class="table anom-table"><thead><tr><th>${esc(t('ui.anom.th_user'))}</th><th>${esc(t('ui.anom.th_total'))}</th><th>${esc(t('ui.anom.th_high'))}</th><th>${esc(t('ui.anom.th_most_common'))}</th></tr></thead><tbody>${p.byUser.map(u => {
                     const top = Object.entries(u.byType).sort((a, b) => b[1] - a[1])[0];
-                    return `<tr><td>${esc(u.name)}</td><td>${u.count}</td><td>${u.high}</td><td>${top ? `${loc(typeLabel(top[0]))} (${top[1]})` : ''}</td></tr>`;
+                    return `<tr><td>${esc(u.name)}</td><td>${esc(u.count)}</td><td>${esc(u.high)}</td><td>${top ? `${loc(typeLabel(top[0]))} (${esc(top[1])})` : ''}</td></tr>`;
                 }).join('')}</tbody></table></div>`
-                : `<div class="anomaly-empty">${esc(t('ui.anom.no_user_data'))}</div>`;
+                : `<p class="empty">${esc(t('ui.anom.no_user_data'))}</p>`;
         }
 
         const hours = document.getElementById('anomalyByHour');
         if (hours) {
             const max = Math.max(1, ...p.byHour);
-            hours.innerHTML = `<div class="anomaly-hours">${p.byHour.map((n, h) => `<div class="anomaly-hour" title="${h}:00 — ${n}"><div class="bar" style="height:${Math.round(100 * n / max)}%"></div><span>${h % 3 === 0 ? h : ''}</span></div>`).join('')}</div>`;
+            hours.innerHTML = `<div class="anom-hours">${p.byHour.map((n, h) => `<div class="anom-hour" title="${esc(`${h}:00 — ${n}`)}"><div class="bar" style="--h:${Math.round(100 * n / max)}%"></div><span>${esc(h % 3 === 0 ? h : '')}</span></div>`).join('')}</div>`;
         }
 
         const rep = document.getElementById('anomalyRepeat');
         if (rep) {
-            const block = (title, rows) => `<div class="anomaly-repeat-block"><h4>${title}</h4>${rows.length
-                ? `<ul>${rows.map(r => `<li><strong>${esc(r.name)}</strong> — ${esc(t('ui.anom.repeat_times', { count: r.count, days: r.days }))} <span class="anomaly-muted">(${r.types.map(ty => loc(typeLabel(ty))).join(', ')})</span></li>`).join('')}</ul>`
-                : `<div class="anomaly-muted">${esc(t('ui.anom.none'))}</div>`}</div>`;
+            const block = (title, rows) => `<div class="anom-repeat-block"><h4>${title}</h4>${rows.length
+                ? `<ul>${rows.map(r => `<li><strong>${esc(r.name)}</strong> — ${esc(t('ui.anom.repeat_times', { count: r.count, days: r.days }))} <span class="tone-muted">(${r.types.map(ty => loc(typeLabel(ty))).join(', ')})</span></li>`).join('')}</ul>`
+                : `<div class="tone-muted">${esc(t('ui.anom.none'))}</div>`}</div>`;
             rep.innerHTML = block(esc(t('ui.anom.repeat_items')), p.repeat.items) + block(esc(t('ui.anom.repeat_users')), p.repeat.users) + block(esc(t('ui.anom.repeat_parties')), p.repeat.parties);
         }
     },
@@ -902,8 +906,10 @@ export const AnomaliesManager = {
             for (let k = range.from; k <= range.to && days.length < 120; k = addDaysToKey(k, 1)) days.push(k);
         }
         const byDay = new Map(p.days.map(d => [d.dayKey, d]));
+        // Axis text in the theme's muted ink (.anom-chart canvas sets it as the canvas colour)
+        const ink = getComputedStyle(canvas).color;
         if (!days.length || !p.days.length) {
-            ctx.fillStyle = '#4b5563';
+            ctx.fillStyle = ink;
             ctx.font = '14px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText(t('ui.anom.no_data'), canvas.width / 2, canvas.height / 2);
@@ -915,7 +921,7 @@ export const AnomaliesManager = {
         const chartH = canvas.height - bottom - 10;
         const slot = (canvas.width - left - 10) / days.length;
         const barW = Math.max(2, slot * 0.7);
-        ctx.fillStyle = '#4b5563';
+        ctx.fillStyle = ink;
         ctx.font = '11px sans-serif';
         ctx.textAlign = 'right';
         ctx.fillText(String(max), left - 4, 16);
@@ -936,7 +942,7 @@ export const AnomaliesManager = {
             }
             const every = Math.ceil(days.length / 10);
             if (i % every === 0) {
-                ctx.fillStyle = '#4b5563';
+                ctx.fillStyle = ink;
                 ctx.textAlign = 'center';
                 ctx.fillText(d.slice(8, 10) + '/' + d.slice(5, 7), x + barW / 2, canvas.height - 12);
             }
