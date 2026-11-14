@@ -153,9 +153,12 @@ describe('behaviour', () => {
     test('switching tab clears the message', async () => {
         auth.signInWithEmailAndPassword.mockRejectedValue(authError('auth/invalid-credential'));
         await AuthManager.handleLogin();
-        document.querySelectorAll('.auth-tab')[1].click();
+        expect($('loginMessage').classList.contains('neg')).toBe(true);
+        document.querySelector('[data-auth-tab="register"]').click();
         expect($('loginMessage').textContent).toBe('');
         expect($('loginForm').classList.contains('hidden')).toBe(true);
+        expect(document.querySelector('[data-auth-tab="register"]').getAttribute('aria-selected')).toBe('true');
+        expect(document.querySelector('[data-auth-tab="login"]').getAttribute('aria-selected')).toBe('false');
     });
 
     test('message text is never parsed as HTML', () => {
@@ -209,7 +212,7 @@ describe('reset password', () => {
         window.prompt = jest.fn();
         const toggle = $('resetToggle');
         expect(toggle.tagName).toBe('BUTTON');
-        expect(toggle.classList.contains('auth-reset-toggle')).toBe(true);
+        expect(toggle.classList.contains('btn-block')).toBe(true);
         expect($('resetForm').hidden).toBe(true);
         openReset();
         expect($('resetForm').hidden).toBe(false);

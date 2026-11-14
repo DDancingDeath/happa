@@ -39,6 +39,7 @@ function loginWaitText(ms) {
 }
 
 const FORM_IDS = { login: 'loginForm', register: 'registerForm', reset: 'resetForm', googleLink: 'googleLinkForm' };
+const NOTICE_TONE = { error: 'neg', success: 'pos', info: 'info' };
 
 /**
  * Whether "Continue with Google" is offered here (docs/google-sign-in.md): 'native' in the
@@ -155,8 +156,8 @@ const AuthManager = {
             UIManager.showToast(text, 4000);
             return;
         }
-        el.classList.remove('error', 'success', 'info');
-        el.classList.add(kind);
+        el.classList.remove('error', 'success', 'info', 'neg', 'pos');
+        el.classList.add(kind, NOTICE_TONE[kind] || 'neg');
         el.textContent = text;
     },
 
@@ -253,7 +254,7 @@ const AuthManager = {
 
     // Show/Hide authentication tabs
     showAuthTab(tab) {
-        const tabs = document.querySelectorAll('.auth-tab');
+        const tabs = document.querySelectorAll('[data-auth-tab]');
         const loginForm = document.getElementById('loginForm');
         const registerForm = document.getElementById('registerForm');
         
@@ -268,8 +269,9 @@ const AuthManager = {
         }
         
         // Remove active from all tabs and hide all forms
-        tabs.forEach((t, i) => {
-            t.classList.remove('active');
+        tabs.forEach((t) => {
+            t.classList.remove('on');
+            t.setAttribute('aria-selected', 'false');
         });
         loginForm.classList.add('hidden');
         registerForm.classList.add('hidden');
@@ -279,10 +281,12 @@ const AuthManager = {
         
         // Show selected tab
         if (tab === 'login') {
-            tabs[0].classList.add('active');
+            tabs[0].classList.add('on');
+            tabs[0].setAttribute('aria-selected', 'true');
             loginForm.classList.remove('hidden');
         } else if (tab === 'register') {
-            tabs[1].classList.add('active');
+            tabs[1].classList.add('on');
+            tabs[1].setAttribute('aria-selected', 'true');
             registerForm.classList.remove('hidden');
         }
         
@@ -291,7 +295,7 @@ const AuthManager = {
 
     // Initialize auth tab switching
     initAuthTabs() {
-        const tabs = document.querySelectorAll('.auth-tab');
+        const tabs = document.querySelectorAll('[data-auth-tab]');
         if (tabs.length === 0) {
             setTimeout(() => this.initAuthTabs(), 10);
             return;

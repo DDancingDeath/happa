@@ -282,6 +282,11 @@
   --dur-1: 120ms;
   --dur-2: 200ms;
   --dur-3: 280ms;
+  /* Layers */
+  --z-bell: 1000;
+  --z-notif-scrim: 1002;
+  --z-notif: 1003;
+  --z-auth: 10000;
 
   --transition-fast: var(--dur-1) var(--ease);
   --transition: var(--dur-2) var(--ease);
@@ -290,7 +295,6 @@
   --radius: var(--r-control);
   --radius-md: var(--r-panel);
   --radius-lg: var(--r-panel);
-  --radius-xl: var(--r-sheet);
   --radius-full: var(--r-full);
   --space-xs: var(--sp-1);
   --space-sm: var(--sp-2);
@@ -375,9 +379,7 @@ body.dark-mode .modal-box {
 .dark-mode [style*="background: rgb(245, 245, 245)"],
 .dark-mode [style*="background: white"],
 .dark-mode [style*="background: #fff"],
-.dark-mode [style*="background: #f8f9fa"],
 .dark-mode [style*="background: #f7fafc"],
-.dark-mode [style*="background: #f3f4f6"],
 .dark-mode [style*="background: #f5f5f5"] {
   background: var(--surface-muted) !important;
 }
@@ -403,33 +405,24 @@ body.dark-mode .modal-box {
 
 .dark-mode [style^="color: rgb(102, 102, 102)"],
 .dark-mode [style*=" color: rgb(102, 102, 102)"],
-.dark-mode [style^="color: rgb(108, 117, 125)"],
-.dark-mode [style*=" color: rgb(108, 117, 125)"],
 .dark-mode [style^="color: rgb(85, 85, 85)"],
 .dark-mode [style*=" color: rgb(85, 85, 85)"],
 .dark-mode [style^="color: rgb(75, 85, 99)"],
 .dark-mode [style*=" color: rgb(75, 85, 99)"],
-.dark-mode [style^="color: #64748b"],
-.dark-mode [style*=" color: #64748b"],
 .dark-mode [style^="color: #666"],
 .dark-mode [style^="color:#666"],
-.dark-mode [style^="color: #6c757d"],
-.dark-mode [style*=" color: #6c757d"],
 .dark-mode [style*=" color:#555"],
 .dark-mode [style*=" color: #555"],
 .dark-mode [style*=";color:#555"],
 .dark-mode [style*=" color: #374151"],
 .dark-mode [style*=" color:#4b5563"],
-.dark-mode [style^="color:#4b5563"],
-.dark-mode [style*=" color: #9ca3af"] {
+.dark-mode [style^="color:#4b5563"] {
   color: var(--text-secondary) !important;
 }
 
 .dark-mode [style*=" color: #059669"],
 .dark-mode [style^="color: #15803d"],
 .dark-mode [style*=" color: #15803d"],
-.dark-mode [style*=" color: #1c7430"],
-.dark-mode [style*=" color: #2e7d32"],
 .dark-mode [style^="color: #059669"] {
   color: var(--on-success-soft) !important;
 }
@@ -456,16 +449,6 @@ body.dark-mode .modal-box {
 .dark-mode [style*=" color: #0058b8"],
 .dark-mode [style^="color: #3b82f6"] {
   color: var(--on-info-soft) !important;
-}
-
-.dark-mode [style*="linear-gradient(135deg, #e3f2fd"] {
-  background: var(--info-soft) !important;
-}
-
-/* The old purple brand gradient still written inline by a few templates */
-[style*="linear-gradient(135deg, #5560d6"],
-[style*="linear-gradient(135deg, rgb(85, 96, 214)"] {
-  background: var(--primary-gradient) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

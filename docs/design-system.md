@@ -28,7 +28,7 @@ layer-2 tokens. Nothing else changes per theme.
 
 **Not per theme** (on `:root`): the type scale `--fs-caption|sm|body|lead|title|display|hero`,
 `--lh-body`, `--w-label`, spacing `--sp-1…10`, `--gutter`,
-`--section-gap`, `--row-h`, `--control-h(-sm)`, motion `--ease`, `--dur-1…3`. Layouts are therefore
+`--section-gap`, `--row-h`, `--control-h(-sm)`, motion `--ease`, `--dur-1…3`, layers `--z-*` (the bell, the notifications sheet, the sign-in screen). Layouts are therefore
 identical in every theme. Hindi (`html[lang="hi"]`) raises `--fs-sm` / `--fs-body` and `--lh-body`,
 makes `--w-label` 400, and turns off a theme's italic titles and display tracking (`--title-style`, `--tracking-display`); the Android app (`html.platform-android`) uses weight 500.
 
@@ -72,7 +72,7 @@ fills (a pale accent, a light green sale fill), so white text there is unreadabl
 | `--btn-sale-bg` / `--mode-sale` | `--btn-sale-ink` (`--on-mode-sale`) |
 | `--mode-wholesale` | `--on-mode-wholesale` |
 | `--btn-danger-bg` / `--negative-fill` | `--btn-danger-ink` |
-| `--accent-strong` (hero cards, menu header, login button) | `--on-accent-strong` |
+| `--accent-strong` (hero cards, menu header, sign-in header) | `--on-accent-strong` |
 | `--caution-soft` | `--on-caution-soft` |
 | `--toast-bg` | `--toast-ink` |
 
@@ -157,6 +157,14 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   entries, number checks and the error-report test are panels (`.diag-card`) whose type / result is a `.tag` (audit actions a
   tinted `.lead-icon`), not a coloured stripe; timings, reads, status and differences are `.table`s (differences via `moneyHtml`);
   controls are `.btn`s (refresh an icon button). Copied / shared status text and the error report are unchanged plain text.
+- **Sign-in, notifications, /download (5.10)**: Login | Register is a `.tabs` (`data-auth-tab` is the hook, `.on` and
+  `aria-selected` mark the open card); each card is `.field`s with `.input`s, one `.btn-primary` (Forgot password and Not now are
+  `.btn-ghost`), the show-password eye a `.btn-icon`, and "Continue with Google" a `.btn.btn-google` in Google's own colours. The
+  result above the button (also "pending approval") is a `.notice`: `showMessage` adds `.neg` / `.pos` / `.info` beside its
+  `error` / `success` / `info` hook. The bell's inbox is a `.sheet` over a `.scrim` with `.row`s (`.notif-item`, a sprite
+  `.lead-icon` per type, unread rows tinted `--info-soft` with an `--info` edge) and an `.empty`; its close button has
+  `data-dismiss`. `/download` is standalone (`variables.css` pins `html` / `body` for the app shell), so its `<style>` copies the
+  tokens it uses; `tests/ci/download-tokens.test.js` keeps them equal to `variables.css` and its rules free of raw colours.
 - **Feedback** `.notice` (`.pos/.neg/.warn/.info`), `.empty`, `.skel`, `.toast` (near-black; light in the
   Dark theme), `.dialog` / `.sheet` / `.scrim` (old `.modal-overlay > .modal-box`), `.spinner` (blocking
   saves only). Dialog buttons: Cancel (ghost) on the left, one primary on the right, labelled with a verb; a destructive

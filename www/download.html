@@ -9,32 +9,69 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
     <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
     <style>
+        /* Design tokens copied from css/variables.css (Modern light; tests/ci/download-tokens.test.js keeps them equal).
+           This page can't link variables.css or app.css: they pin html / body (position: fixed) for the app shell. */
+        :root {
+            --bg: #f7f7f9;
+            --surface: #ffffff;
+            --line: #e6e6eb;
+            --ink: #16161d;
+            --ink-2: #4a4a56;
+            --accent-strong: #4338ca;
+            --on-accent-strong: #ffffff;
+            --accent-text: #4338ca;
+            --mode-sale: #047857;
+            --on-mode-sale: #ffffff;
+            --state-hover: rgba(16, 16, 29, 0.05);
+            --focus: 0 0 0 3px rgba(79, 70, 229, 0.24);
+            --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Noto Sans", "Helvetica Neue", Arial, "Noto Sans Devanagari", "Nirmala UI", sans-serif;
+            --w-regular: 400;
+            --w-strong: 600;
+            --r-control: 8px;
+            --r-panel: 12px;
+            --fs-caption: 12px;
+            --fs-sm: 13px;
+            --fs-body: 15px;
+            --fs-lead: 17px;
+            --fs-title: 20px;
+            --fs-display: 28px;
+            --sp-1: 4px;
+            --sp-2: 8px;
+            --sp-3: 12px;
+            --sp-4: 16px;
+            --sp-5: 20px;
+            --sp-6: 24px;
+        }
+        html[lang="hi"] { --fs-sm: 14px; --fs-body: 16px; }
         * { box-sizing: border-box; }
-        body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Devanagari", Arial, sans-serif; background: #f3f4f6; color: #111827; line-height: 1.5; }
-        header { background: linear-gradient(135deg, #5560d6 0%, #764ba2 100%); color: #fff; padding: 24px 16px; text-align: center; }
-        header h1 { margin: 0 0 4px; font-size: 1.6rem; }
-        header p { margin: 0; opacity: 0.9; }
-        main { max-width: 640px; margin: 0 auto; padding: 16px; }
-        section { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-        h2 { font-size: 1.15rem; margin: 0 0 8px; }
-        h3 { font-size: 0.95rem; margin: 12px 0 4px; color: #4b5563; }
-        ul, ol { margin: 4px 0; padding-left: 22px; }
-        li { margin: 4px 0; }
-        .download-btn { display: block; text-align: center; background: #10b981; color: #fff; text-decoration: none; font-size: 1.2rem; font-weight: 700; padding: 16px; border-radius: 12px; margin: 12px 0 8px; }
-        .download-btn:active { background: #059669; }
-        .muted { color: #4b5563; font-size: 0.9rem; }
-        .version { font-weight: 600; }
+        body { margin: 0; font-family: var(--font-ui); font-size: var(--fs-body); background: var(--bg); color: var(--ink); line-height: 1.5; }
+        header { background: var(--accent-strong); color: var(--on-accent-strong); padding: var(--sp-6) var(--sp-4); text-align: center; }
+        header h1 { margin: 0 0 var(--sp-1); font-size: var(--fs-display); font-weight: var(--w-strong); }
+        header p { margin: 0; }
+        main { max-width: 640px; margin: 0 auto; padding: var(--sp-4); }
+        section { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); padding: var(--sp-4); margin-bottom: var(--sp-4); }
+        h2 { font-size: var(--fs-title); font-weight: var(--w-strong); margin: 0 0 var(--sp-2); }
+        ul, ol { margin: var(--sp-1) 0; padding-left: var(--sp-6); }
+        li { margin: var(--sp-1) 0; }
+        .download-btn { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: 52px; background: var(--mode-sale); color: var(--on-mode-sale); text-decoration: none; font-size: var(--fs-lead); font-weight: var(--w-strong); padding: var(--sp-3) var(--sp-4); border-radius: var(--r-control); margin: var(--sp-3) 0 var(--sp-2); }
+        .download-btn:active { background-image: linear-gradient(var(--state-hover), var(--state-hover)); }
+        .download-btn:focus-visible, .lang-switch button:focus-visible { outline: none; box-shadow: var(--focus); }
+        .download-btn svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .muted { color: var(--ink-2); font-size: var(--fs-sm); }
+        .facts { margin: 0; color: var(--ink-2); font-size: var(--fs-sm); }
+        .facts div { display: flex; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-1) 0; }
+        .facts dd { margin: 0; color: var(--ink); font-weight: var(--w-strong); text-align: right; }
         .qr { text-align: center; }
         .qr img { width: 200px; height: 200px; image-rendering: pixelated; }
-        a { color: #4f46e5; }
-        footer { text-align: center; color: #4b5563; font-size: 0.85rem; padding: 8px 16px 24px; }
-        .lang-switch { margin-top: 10px; font-size: 0.95rem; }
-        .lang-switch button { appearance: none; background: transparent; border: 0; color: #fff; font: inherit; min-height: 36px; padding: 6px 10px; cursor: pointer; text-decoration: underline; opacity: 0.85; }
-        .lang-switch button[aria-pressed="true"] { font-weight: 700; text-decoration: none; opacity: 1; }
-        .steps-art { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 4px 0 12px; }
+        a { color: var(--accent-text); }
+        footer { text-align: center; color: var(--ink-2); font-size: var(--fs-sm); padding: var(--sp-2) var(--sp-4) var(--sp-6); }
+        .lang-switch { margin-top: var(--sp-2); font-size: var(--fs-body); }
+        .lang-switch button { appearance: none; background: transparent; border: 0; border-radius: var(--r-control); color: inherit; font: inherit; min-height: 44px; padding: var(--sp-1) var(--sp-3); cursor: pointer; text-decoration: underline; }
+        .lang-switch button[aria-pressed="true"] { font-weight: var(--w-strong); text-decoration: none; }
+        .steps-art { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--sp-2); margin: var(--sp-1) 0 var(--sp-3); }
         .steps-art figure { margin: 0; text-align: center; }
         .steps-art svg { width: 100%; max-width: 96px; height: auto; }
-        .steps-art figcaption { font-weight: 700; color: #4f46e5; }
+        .steps-art figcaption { font-weight: var(--w-strong); color: var(--accent-text); }
         html[lang="en"] .hi, html[lang="hi"] .en { display: none; }
     </style>
     <script src="/js/boot/download-lang.js"></script>
@@ -54,9 +91,11 @@
         <section>
             <h2 class="en">Download the Android app</h2>
             <h2 class="hi">Android ऐप डाउनलोड करें</h2>
-            <p class="muted"><span class="en">Latest version:</span><span class="hi">नया वर्ज़न:</span> <span class="version" id="latestVersion">—</span> <span id="latestDate"></span></p>
-            <a class="download-btn" id="downloadBtn" href="https://github.com/DDancingDeath/happa/releases/latest/download/happa.apk" data-happa-href="apkDownloadUrl" rel="noopener"><span class="en">⬇️ Download Android app</span><span class="hi">⬇️ डाउनलोड करें</span></a>
-            <p class="muted"><span class="en">File name:</span><span class="hi">फ़ाइल का नाम:</span> <span data-happa="apkFile">happa.apk</span></p>
+            <a class="download-btn" id="downloadBtn" href="https://github.com/DDancingDeath/happa/releases/latest/download/happa.apk" data-happa-href="apkDownloadUrl" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v11m-5-5 5 5 5-5M5 19.5h14"/></svg><span class="en">Download Android app</span><span class="hi">डाउनलोड करें</span></a>
+            <dl class="facts">
+                <div><dt><span class="en">Latest version</span><span class="hi">नया वर्ज़न</span></dt><dd><span class="version" id="latestVersion">—</span> <span id="latestDate"></span></dd></div>
+                <div><dt><span class="en">File name</span><span class="hi">फ़ाइल का नाम</span></dt><dd data-happa="apkFile">happa.apk</dd></div>
+            </dl>
         </section>
 
         <section id="notesSection" hidden>
