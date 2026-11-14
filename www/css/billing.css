@@ -634,19 +634,30 @@ input[type="number"] {
 .bill-weights {
   margin-bottom: var(--sp-2);
   padding: var(--sp-3);
-  border-left: 4px solid var(--mode-purchase);
   border-radius: var(--r-control);
   background: var(--surface-2);
-}
-
-.bill-weights-sale {
-  border-left-color: var(--mode-sale);
 }
 
 .bill-weights-title {
   margin-bottom: 6px;
   color: var(--ink);
   font-weight: var(--w-strong);
+}
+
+/* The bill's mode as a dot, not a stripe */
+.bill-weights-title::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--sp-2);
+  border-radius: var(--r-full);
+  background: var(--mode-purchase);
+  vertical-align: 0.1em;
+}
+
+.bill-weights-sale .bill-weights-title::before {
+  background: var(--mode-sale);
 }
 
 .bill-weights-list {

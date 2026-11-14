@@ -10,10 +10,9 @@
 .rb-list .row-trail .row-meta, .rb-detail .row-meta { white-space: normal; }
 .rb-form, .rb-detail { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }
 .rb-form .notice { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
-.rb-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
-.rb-table th, .rb-table td { padding: var(--sp-2); border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
-.rb-table th { color: var(--ink-3); font-weight: var(--w-regular); }
-.rb-table .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; text-align: right; }
+.rb-table { font-size: var(--fs-sm); }
+.rb-table th, .rb-table td { white-space: nowrap; }
+.rb-table .num { font-family: var(--font-num); }
 
 @media (min-width: 1024px) {
     .rb-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }

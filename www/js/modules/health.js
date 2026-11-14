@@ -209,13 +209,15 @@ export const HealthManager = {
     failuresHtml(failures) {
         if (!failures || !failures.length) return '';
         const reasons = tipReasons();
-        return `<div class="hl-failures">${failures.map(f => {
+        return `<div class="panel hl-failures">${failures.map(f => {
             const when = Number(f.at) ? Helpers.formatDateTime(Number(f.at)) : '';
             const resultKey = RESULT_LABEL_KEYS[f.result];
             const flags = Object.entries(f.flags || {}).map(([k, v]) => `${k}=${v}`).join(', ');
-            return `<div class="hl-failure">
-                <div><strong>${esc(testLabel(f.test))}</strong> · ${esc(resultKey ? t(resultKey) : f.result)} · ${esc(prettyReason(f.reasonName || reasonName(f.test, f.reason, reasons)))}</div>
-                <div class="hl-muted">${esc(when)} · ${esc(f.appVersion)} · ${esc(platformLabel(f.platform))} · <code>${esc(f.deviceId)}</code>${flags ? ` · ${esc(flags)}` : ''}</div>
+            return `<div class="row hl-failure">
+                <div class="row-main">
+                    <div class="hl-failure-head"><strong>${esc(testLabel(f.test))}</strong> <span class="tag neg">${esc(resultKey ? t(resultKey) : f.result)}</span> ${esc(prettyReason(f.reasonName || reasonName(f.test, f.reason, reasons)))}</div>
+                    <div class="hl-muted">${esc(when)} · ${esc(f.appVersion)} · ${esc(platformLabel(f.platform))} · <code>${esc(f.deviceId)}</code>${flags ? ` · ${esc(flags)}` : ''}</div>
+                </div>
             </div>`;
         }).join('')}</div>`;
     },

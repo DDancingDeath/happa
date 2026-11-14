@@ -784,7 +784,7 @@ export const RateTrendsManager = {
                 <td class="${r?.margin < 0 ? 'rt-neg' : ''}">${rupees(r ? r.margin : null)}</td>
                 <td>${kgText(r?.kgBought)}</td><td>${kgText(r?.kgSold)}</td><td>${r ? r.bills : 0}</td></tr>`;
         }).join('');
-        el.innerHTML = `<table class="rt-table"><thead><tr>
+        el.innerHTML = `<table class="table rt-table"><thead><tr>
             <th>${esc(t(this.period === 'week' ? 'ui.trends.th_week' : 'ui.trends.th_month'))}</th><th>${esc(t('ui.trends.purchase'))}</th><th>${esc(t('ui.trends.wholesale'))}</th>
             <th>${esc(t('ui.trends.retail'))}</th><th>${esc(t('ui.trends.rate_source'))}</th><th>${esc(t('ui.trends.margin_kg'))}</th>
             <th>${esc(t('ui.trends.bought'))}</th><th>${esc(t('ui.trends.sold'))}</th><th>${esc(t('ui.trends.bills'))}</th></tr></thead>
@@ -806,7 +806,7 @@ export const RateTrendsManager = {
             el.innerHTML = `${head}<div class="rt-empty">${esc(t('ui.trends.no_items_changes', { date: dateText(cutoff) }))}</div>`;
             return;
         }
-        el.innerHTML = `${head}<table class="rt-table"><thead><tr><th>${esc(t('ui.trends.th_date'))}</th><th>${esc(t('ui.trends.th_rate'))}</th>
+        el.innerHTML = `${head}<table class="table rt-table"><thead><tr><th>${esc(t('ui.trends.th_date'))}</th><th>${esc(t('ui.trends.th_rate'))}</th>
             <th>${esc(t('ui.trends.th_change'))}</th></tr></thead><tbody>
             ${rows.map(r => `<tr><td>${esc(dateText(r.at))}</td><td>${esc(t(KIND_KEYS[r.kind]))}</td><td>${rupees(r.from)} → ${rupees(r.to)}</td></tr>`).join('')}
             </tbody></table>`;
@@ -1127,7 +1127,7 @@ export const RateTrendsManager = {
         const lang = getLang();
         const label = (w) => `${Number(w.slice(8, 10))} ${monthLabel(w.slice(0, 7), lang)}`;
         const cell = (s) => (s.kg > 0 ? `${kgText(s.kg)} <span class="rt-muted">(${s.bills})</span>` : '—');
-        el.innerHTML = `<table class="rt-table"><thead><tr><th>${esc(t('ui.trends.th_week'))}</th><th>${esc(t('ui.trends.th_total_kg'))}</th>
+        el.innerHTML = `<table class="table rt-table"><thead><tr><th>${esc(t('ui.trends.th_week'))}</th><th>${esc(t('ui.trends.th_total_kg'))}</th>
             ${TRAFFIC_KINDS.map(k => `<th>${esc(t(KIND_KEYS[k]))}</th>`).join('')}</tr></thead><tbody>
             ${rows.map(r => `<tr><td>${esc(t('ui.trends.week_of', { date: label(r.week) }))}</td><td>${r.kg > 0 ? `<strong>${kgText(r.kg)}</strong>` : '—'}</td>
                 ${TRAFFIC_KINDS.map(k => `<td>${cell(r[k])}</td>`).join('')}</tr>`).join('')}
@@ -1161,7 +1161,7 @@ export const RateTrendsManager = {
                 <td>${r.bills}</td><td>${esc(wholeRupees(r.amount))}</td>
                 <td class="${r.vsPrev < 0 ? 'rt-neg' : ''}">${pctText(r.vsPrev)}</td>
                 <td class="${r.vsLastYear < 0 ? 'rt-neg' : ''}">${pctText(r.vsLastYear)}</td></tr>`).join('');
-            el.innerHTML = `<table class="rt-table"><thead><tr><th>${esc(t('ui.trends.th_item'))}</th><th>${esc(t('ui.trends.th_total_kg'))}</th>
+            el.innerHTML = `<table class="table rt-table"><thead><tr><th>${esc(t('ui.trends.th_item'))}</th><th>${esc(t('ui.trends.th_total_kg'))}</th>
                 ${TRAFFIC_KINDS.map(k => `<th>${esc(t(KIND_KEYS[k]))}</th>`).join('')}
                 <th>${esc(t('ui.trends.bills'))}</th><th>${esc(t('ui.trends.th_amount'))}</th>
                 <th>${esc(t('ui.trends.vs_month', { month: monthLabel(prev, lang) }))}</th>
@@ -1189,7 +1189,7 @@ export const RateTrendsManager = {
             const row = this.traffic?.month === month ? this.traffic.rows.find(r => r.itemId === itemId) : null;
             const total = row || { purchase: { kg: 0, bills: 0 }, wholesale: { kg: 0, bills: 0 }, retail: { kg: 0, bills: 0 } };
             el.innerHTML = `<div class="rt-note">${esc(t('ui.trends.daily_unavailable'))}</div>
-                <table class="rt-table"><thead>${head}</thead><tbody><tr><td>${esc(monthLabel(month, lang))}</td>${cells(total)}</tr></tbody></table>`;
+                <table class="table rt-table"><thead>${head}</thead><tbody><tr><td>${esc(monthLabel(month, lang))}</td>${cells(total)}</tr></tbody></table>`;
             return;
         }
         const d = dailyTraffic(loadedBills(), AppState.items || [], itemId, month);
@@ -1201,7 +1201,7 @@ export const RateTrendsManager = {
         const weekRows = d.weeks.map(w => `<tr class="rt-week"><td>${esc(t('ui.trends.week_n', { n: w.week, from: w.from, to: w.to }))}</td>${cells(w)}</tr>`).join('');
         const dayRows = d.days.filter(moved).map(x => `<tr><td>${esc(`${Number(x.day.slice(8, 10))} ${monthLabel(month, lang, false)}`)}</td>${cells(x)}</tr>`).join('');
         el.innerHTML = `<div class="rt-muted">${esc(t('ui.trends.daily_hint'))}</div>
-            <table class="rt-table"><thead>${head}</thead><tbody>${weekRows}
+            <table class="table rt-table"><thead>${head}</thead><tbody>${weekRows}
             <tr class="rt-total"><td>${esc(t('ui.trends.total'))}</td>${cells(d.total)}</tr>
             ${dayRows}</tbody></table>`;
     }

@@ -295,7 +295,7 @@ export class OutstandingManager {
         const partyName = (p) => (p.name ? esc(p.name) : `<em>${tt('ui.outstanding.no_name')}</em>`);
 
         const buckets = aging.buckets.map((b, i) => `
-            <button type="button" class="aging-bucket aging-b${i}${this.agingBucket === b.key ? ' active' : ''}"
+            <button type="button" class="aging-bucket aging-b${i}${b.total > 0 ? '' : ' is-zero'}${this.agingBucket === b.key ? ' active' : ''}"
                 aria-pressed="${this.agingBucket === b.key}"
                 data-onclick="outstanding.setAgingBucket('${attr(b.key)}')">
                 <span class="aging-dot" aria-hidden="true"></span>

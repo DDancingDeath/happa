@@ -66,7 +66,7 @@
   min-width: 120px;
 }
 
-/* Rows (card and page): a severity stripe, the reason and who / what, then the review buttons */
+/* Rows (card and page): the severity dot, the reason and who / what, then the review buttons */
 .anom-list {
   overflow: hidden;
 }
@@ -76,15 +76,6 @@
   align-items: flex-start;
   padding-top: var(--sp-3);
   padding-bottom: var(--sp-3);
-  border-left: 3px solid transparent;
-}
-
-.anom-row.sev-high {
-  border-left-color: var(--negative);
-}
-
-.anom-row.sev-medium {
-  border-left-color: var(--warning-dot);
 }
 
 .anom-row-body {

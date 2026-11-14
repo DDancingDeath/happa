@@ -16,7 +16,7 @@ import { AppState } from '../utils/state.js';
 import { HistoryManager } from '../modules/history.js';
 import { WholesaleSalesManager } from '../modules/wholesale-sales.js';
 import { HISTORY_TAB_KEY, HISTORY_FILTER_KEY } from '../utils/history-filters.js';
-import { BILL_ROW_SLOTS } from '../ui/bill-row.js';
+import { BILL_ROW_SLOTS, paymentChipsHtml } from '../ui/bill-row.js';
 import { resolveRoute } from '../ui/navigation.js';
 import en from '../i18n/en.js';
 import hi from '../i18n/hi.js';
@@ -195,6 +195,17 @@ describe('aligned bill row', () => {
         // The "Old app" chip sits in the chips slot, never next to the amount.
         expect(old.querySelector('.bill-row__chips .old-app-chip')).not.toBeNull();
         expect(old.querySelector('.bill-row__amount').textContent).toBe('₹2,500');
+    });
+
+    test('the Due tag is ink, amber after 30 days and red after 90', () => {
+        const DAY = 86400000;
+        const tone = (days) => {
+            const el = document.createElement('div');
+            el.innerHTML = paymentChipsHtml({ id: 'x', timestamp: Date.now() - days * DAY, payment: { total: 100, cash: 40, online: 0, due: 60 } });
+            const due = el.querySelector('.payment-due');
+            return ['warn', 'neg'].find(c => due.classList.contains(c)) || 'ink';
+        };
+        expect([tone(2), tone(45), tone(120)]).toEqual(['ink', 'warn', 'neg']);
     });
 
     test('Wholesale › History uses the same row component and lists only wholesale bills', () => {

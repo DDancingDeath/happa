@@ -18,6 +18,7 @@ import {
     paySummary, balanceParts, checkEntry, checkWorker, isMonthKey, payDueMonths
 } from '../utils/worker-pay.js';
 import { savePayDue } from '../utils/pay-reminder.js';
+import { ageInDays, dueTone } from '../utils/aging.js';
 
 const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const js = (v) => Helpers.escapeJsAttr(v);
@@ -42,19 +43,27 @@ const state = {
     rejoining: false
 };
 
-const STATE_TAGS = { paid: 'pos', part: 'warn', due: 'neg' };
+const STATE_TAGS = { paid: 'pos' };
+
+/** Days since a month's pay fell due (the 1st of the next month); 0 until then. */
+function monthAgeDays(month) {
+    if (!isMonthKey(month)) return null;
+    return ageInDays(new Date(`${addMonthKey(month, 1)}-01T00:00:00`));
+}
 
 function stateTag(row) {
     if (!row?.state) return '';
     const text = row.state === 'part'
         ? t('ui.workers.state_part', { paid: formatRupees(row.covered), of: formatRupees(row.owed) })
         : row.state === 'due' ? t('ui.workers.state_due', { amount: formatRupees(row.owed) }) : t('ui.workers.state_paid');
-    return `<span class="tag ${esc(STATE_TAGS[row.state])}" data-wp-state="${esc(row.state)}">${esc(text)}</span>`;
+    const left = row.state === 'part' ? Number(row.owed) - Number(row.covered) : Number(row.owed);
+    const tone = STATE_TAGS[row.state] || dueTone(monthAgeDays(row.month || state.month), left);
+    return `<span class="tag${tone ? ` ${esc(tone)}` : ''}" data-wp-state="${esc(row.state)}">${esc(text)}</span>`;
 }
 
 function balanceLine(balance) {
     const { left, advance } = balanceParts(balance);
-    if (left > 0) return `<span class="tone-neg">${et('ui.workers.balance_left', { amount: formatRupees(left) })}</span>`;
+    if (left > 0) return `<span class="wp-left">${et('ui.workers.balance_left', { amount: formatRupees(left) })}</span>`;
     if (advance > 0) return `<span class="tone-info">${et('ui.workers.advance_carried', { amount: formatRupees(advance) })}</span>`;
     return `<span class="tone-muted">${et('ui.workers.nothing_left')}</span>`;
 }
@@ -163,7 +172,7 @@ function renderMonths(months) {
             <td>${stateTag(r)}</td>
             <td>${balanceLine(r.closing)}</td>
         </tr>`).join('');
-    return `<div class="scroll-cue"><div class="scroll-cue-inner"><table class="wp-table">
+    return `<div class="scroll-cue"><div class="scroll-cue-inner"><table class="table wp-table">
             <thead><tr><th>${et('ui.workers.month')}</th><th>${et('ui.workers.col_pay')}</th><th>${et('ui.workers.col_paid')}</th><th>${et('ui.workers.col_advance')}</th><th>${et('ui.workers.col_state')}</th><th>${et('ui.workers.col_balance')}</th></tr></thead>
             <tbody>${rows}</tbody></table></div></div>`;
 }

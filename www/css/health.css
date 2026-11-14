@@ -90,19 +90,14 @@
   margin-top: var(--sp-1);
 }
 
-.hl-failures {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-}
-
 .hl-failure {
-  padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--negative);
-  border-radius: var(--r-control);
+  align-items: flex-start;
   font-size: var(--fs-sm);
   overflow-wrap: anywhere;
+}
+
+.hl-failure .tag {
+  margin: 0 var(--sp-1);
 }
 
 .hl-policies {

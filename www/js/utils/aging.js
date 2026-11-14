@@ -88,6 +88,18 @@ export function bucketIndex(days) {
     return AGING_BUCKETS.findIndex(b => days <= b.max);
 }
 
+/**
+ * The colour of a due (DIRECTION 3.1): ink ('') up to 30 days, amber ('warn') after 30, red
+ * ('neg') after 90. An amount of ₹0 or less, or an unknown age, is always ink.
+ * @param {?number} days
+ * @param {number} amount
+ * @returns {''|'warn'|'neg'}
+ */
+export function dueTone(days, amount) {
+    if (!(Number(amount) > DUE_EPSILON) || days === null || days === undefined || !Number.isFinite(days)) return '';
+    return days > LONG_OVERDUE_DAYS ? 'neg' : days > OVERDUE_DAYS ? 'warn' : '';
+}
+
 // The PARTY rule lives in utils/parties.js; these names stay for existing importers.
 export { partyNameKey as normalizePartyName, pickPartyName, partyDisplayNames } from './parties.js';
 
