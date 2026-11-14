@@ -87,7 +87,8 @@ html {
 }
 
 .app-dialog > .grabber,
-.app-dialog [hidden] {
+.app-dialog [hidden],
+.app-dialog .modal-header[hidden] {
   display: none;
 }
 

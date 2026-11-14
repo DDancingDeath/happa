@@ -66,7 +66,7 @@ export function askPendingLine({ label, line }) {
             return b;
         };
         button('btn btn-ghost', 'ui.modals.cancel', 'cancel');
-        button('btn pending-line-discard', 'ui.billing.pending_line_discard', 'discard');
+        button('btn btn-danger-outline pending-line-discard', 'ui.billing.pending_line_discard', 'discard');
         const add = button('btn btn-primary', 'ui.billing.pending_line_add', 'add');
 
         box.append(header, body, footer);

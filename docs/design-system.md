@@ -94,8 +94,8 @@ fills, the toast.
 Class names and states are in the first lines of `forms.css` and `surfaces.css`. Older classes are
 kept as hooks (JS and E2E use them) and share the new look; they are listed beside the new one.
 
-- **Buttons** `.btn` + `-primary` / `-tonal` / `-ghost` / `-danger` / `-success`, `-sm`, `-icon`,
-  `-block`. One primary button per screen. Hover is a veil over the button's own colour; a busy
+- **Buttons** `.btn` + `-primary` / `-tonal` / `-ghost` / `-danger` / `-danger-outline` / `-success`, `-sm`, `-icon`,
+  `-block` (`-danger-outline`: a risky choice that is not the main action, e.g. Discard the line, Save anyway at a rate check). One primary button per screen. Hover is a veil over the button's own colour; a busy
   save sets `aria-busy` (the `runExclusive` lock). Every button, `-sm` too, and the payment actions
   (`[data-record-payment]`, `[data-mark-cleared]`) are at least 44 px tall. No page has a button class with its own
   look (C2): Billing and Wholesale use Save `-primary`, Print and Share (`-icon`) the default, Add to bill and

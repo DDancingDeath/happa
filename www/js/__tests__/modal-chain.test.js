@@ -84,6 +84,19 @@ describe('one dialog controller (C5a)', () => {
         await expect(inside).resolves.toBe(false);
     });
 
+    test('a drag from a field that ends on the scrim keeps the dialog and its typed text', async () => {
+        const asked = UIManager.showModalWithHtml('<input id="reasonInput">', 'Why?', true);
+        const field = document.getElementById('reasonInput');
+        field.value = 'typed';
+        field.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+        overlay().click();
+        expect(overlay().classList.contains('active')).toBe(true);
+        expect(document.getElementById('reasonInput').value).toBe('typed');
+        overlay().dispatchEvent(new Event('pointerdown', { bubbles: true }));
+        overlay().click();
+        await expect(asked).resolves.toBe(false);
+    });
+
     test('a double tap answers once and never the dialog opened after it', async () => {
         const next = [];
         const first = UIManager.showModal('first', 'First', true).then((v) => {

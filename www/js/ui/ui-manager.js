@@ -73,8 +73,13 @@ function bindModalController(overlay, box) {
             e.preventDefault();
         }
     }, true);
+    // A press that starts in the dialog (selecting text in a field) and ends on the scrim is not a scrim tap
+    let pressOnScrim = null;
+    overlay.addEventListener('pointerdown', (e) => { pressOnScrim = e.target === overlay; });
     overlay.addEventListener('click', (e) => {
-        if (e.target === overlay && overlay.classList.contains('active')) closeTopDialog();
+        const pressed = pressOnScrim;
+        pressOnScrim = null;
+        if (e.target === overlay && pressed !== false && overlay.classList.contains('active')) closeTopDialog();
     });
     overlay.addEventListener('keydown', (e) => {
         if (e.key === 'Tab') trapFocus(e, box);
