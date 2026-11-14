@@ -1,11 +1,12 @@
 /* ==================== RATE TRENDS (#65) ==================== */
 
 .rt-page { padding: 16px; }
-.rt-card { margin-bottom: 12px; }
-.rt-card h3 { margin: 0 0 8px; font-size: var(--fs-body); }
-.rt-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.rt-card-head h3 { margin: 0; }
-.rt-card-head select { width: auto; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: var(--fs-input); }
+.rt-panel { margin-bottom: var(--sp-3); }
+.rt-panel:empty { display: none; }
+.rt-panel h3 { margin: 0 0 var(--sp-2); font-size: var(--fs-body); }
+.rt-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-2); }
+.rt-head h3 { margin: 0; }
+.rt-head select { width: auto; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: var(--fs-input); }
 .rt-sub { margin-top: 12px !important; }
 .rt-muted { color: var(--text-secondary); font-size: var(--fs-caption); margin-top: 6px; }
 .rt-empty { color: var(--text-secondary); padding: 12px; text-align: center; font-size: var(--fs-sm); }

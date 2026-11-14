@@ -1,17 +1,17 @@
 {
   "_readme": "Design-system ratchet (tests/ci/ds-guard.test.js, docs/design-system.md §7). Per-file counts may only go down; lower them with DS_BASELINE=lower npx jest ds-guard. Files in \"strict\" are pinned at 0 on every metric.",
   "totals": {
-    "spacing": 345,
+    "spacing": 341,
     "radius": 55,
     "shadow": 24,
     "zIndex": 29,
     "important": 30,
-    "idSelector": 186,
+    "idSelector": 184,
     "themeSelector": 6,
     "inlineStyle": 36,
     "emoji": 12,
     "titleCase": 17,
-    "legacyClass": 329
+    "legacyClass": 291
   },
   "strict": [
     "www/css/admin.css",
@@ -77,7 +77,7 @@
       "www/css/forms.css": 16,
       "www/css/history.css": 61,
       "www/css/overlay.css": 5,
-      "www/css/rate-trends.css": 29,
+      "www/css/rate-trends.css": 25,
       "www/css/surfaces.css": 14,
       "www/css/tables.css": 6,
       "www/css/tabs.css": 5,
@@ -150,7 +150,7 @@
       "www/css/billing.css": 24,
       "www/css/buttons.css": 1,
       "www/css/charts.css": 6,
-      "www/css/day.css": 4,
+      "www/css/day.css": 2,
       "www/css/desktop.css": 32,
       "www/css/finance.css": 3,
       "www/css/forms.css": 3,
@@ -194,7 +194,7 @@
     },
     "legacyClass": {
       "www/js/modules/ask.js": 5,
-      "www/js/modules/billing.js": 10,
+      "www/js/modules/billing.js": 3,
       "www/js/modules/day.js": 11,
       "www/js/modules/insights.js": 2,
       "www/js/modules/money.js": 6,
@@ -203,7 +203,7 @@
       "www/js/modules/rate-trends.js": 16,
       "www/js/modules/recurring-bills.js": 1,
       "www/js/modules/retail-sale.js": 2,
-      "www/js/modules/statements.js": 6,
+      "www/js/modules/statements.js": 5,
       "www/js/modules/stock.js": 4,
       "www/js/modules/voice-billing.js": 1,
       "www/js/modules/wholesale-sales.js": 1,
@@ -221,13 +221,13 @@
       "www/js/utils/history-window.js": 1,
       "www/js/utils/keyboard-shortcuts.js": 1,
       "www/templates/billing.html": 81,
-      "www/templates/day.html": 12,
+      "www/templates/day.html": 9,
       "www/templates/expenses.html": 1,
       "www/templates/insights.html": 1,
       "www/templates/modals.html": 27,
-      "www/templates/money.html": 5,
+      "www/templates/money.html": 1,
       "www/templates/navigation.html": 5,
-      "www/templates/rate-trends.html": 29,
+      "www/templates/rate-trends.html": 6,
       "www/templates/wholesale-sales.html": 31
     }
   }

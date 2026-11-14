@@ -3,9 +3,9 @@
         <div id="rtDenied" class="rt-empty" style="display: none;" data-i18n="ui.trends.denied">Only the owner or a manager can see this page.</div>
         <div id="rtBody">
             <div id="rtRatesSection">
-                <div class="card rt-card" id="rtStatus"></div>
+                <div class="panel panel-pad rt-panel" id="rtStatus"></div>
 
-                <div class="card rt-card">
+                <div class="panel panel-pad rt-panel">
                     <div class="rt-controls">
                         <label><span data-i18n="ui.trends.item">Item</span>
                             <select id="rtItem" data-onchange="rateTrends.selectItem(this.value)"></select>
@@ -34,8 +34,8 @@
                     <div id="rtSourceNote" class="rt-muted"></div>
                 </div>
 
-                <div class="card rt-card" id="rtOutlookCard">
-                    <div class="rt-card-head">
+                <div class="panel panel-pad rt-panel" id="rtOutlookCard">
+                    <div class="rt-head">
                         <h3 data-i18n="ui.trends.next_weeks">Next weeks (estimate)</h3>
                         <select id="rtWeeks" data-onchange="rateTrends.setWeeks(this.value)" aria-label="Weeks" data-i18n-aria-label="ui.trends.weeks">
                             <option value="4" data-i18n="ui.trends.weeks_4">4 weeks</option>
@@ -48,7 +48,7 @@
                 </div>
 
                 <div id="rtChartView">
-                    <div class="card rt-card">
+                    <div class="panel panel-pad rt-panel">
                         <h3 data-i18n="ui.trends.avg_rate_title">Average rate per kg (₹/kg)</h3>
                         <div class="rt-chart-wrap"><canvas id="rtRateChart"></canvas></div>
                         <div class="rt-legend">
@@ -68,8 +68,8 @@
                         </div>
                     </div>
 
-                    <div class="card rt-card">
-                        <div class="rt-card-head">
+                    <div class="panel panel-pad rt-panel">
+                        <div class="rt-head">
                             <h3 data-i18n="ui.trends.same_months">Same months in earlier years (from bills)</h3>
                             <select id="rtCompareKind" data-onchange="rateTrends.setCompareKind(this.value)" aria-label="Rate" data-i18n-aria-label="ui.trends.rate">
                                 <option value="purchase" data-i18n="ui.trends.purchase">Purchase</option>
@@ -82,10 +82,10 @@
                 </div>
 
                 <div id="rtTableView" style="display: none;">
-                    <div class="card rt-card">
+                    <div class="panel panel-pad rt-panel">
                         <div class="rt-table-wrap" id="rtTable"></div>
                     </div>
-                    <div class="card rt-card">
+                    <div class="panel panel-pad rt-panel">
                         <h3 data-i18n="ui.trends.items_changes">Rate changes on the Rates page</h3>
                         <div class="rt-table-wrap" id="rtSteps"></div>
                     </div>
@@ -93,7 +93,7 @@
             </div>
 
             <div id="rtTrafficSection" style="display: none;">
-                <div class="card rt-card">
+                <div class="panel panel-pad rt-panel">
                     <div class="rt-controls">
                         <label><span data-i18n="ui.trends.month">Month</span>
                             <select id="rtTrafficMonth" data-onchange="rateTrends.setTrafficMonth(this.value)"></select>
@@ -103,7 +103,7 @@
                     <div class="rt-table-wrap" id="rtTrafficTable"></div>
                     <div class="rt-muted" data-i18n="ui.trends.traffic_note">From bills: kg = purchase + wholesale + retail kg; amount = kg × bill rate. Tap an item for day-by-day detail.</div>
                 </div>
-                <div class="card rt-card">
+                <div class="panel panel-pad rt-panel">
                     <h3 data-i18n="ui.trends.within_month">Day by day in the month</h3>
                     <div class="rt-controls">
                         <label><span data-i18n="ui.trends.item">Item</span>
@@ -112,8 +112,8 @@
                     </div>
                     <div class="rt-table-wrap" id="rtDaily"></div>
                 </div>
-                <div class="card rt-card">
-                    <div class="rt-card-head">
+                <div class="panel panel-pad rt-panel">
+                    <div class="rt-head">
                         <h3 data-i18n="ui.trends.weekly_title">Week by week</h3>
                         <select id="rtTrafficWeeks" data-onchange="rateTrends.setTrafficWeeks(this.value)" aria-label="Weeks" data-i18n-aria-label="ui.trends.weeks"></select>
                     </div>
