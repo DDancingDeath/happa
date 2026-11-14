@@ -28,6 +28,13 @@
     border-color: var(--warning-line);
 }
 
+/* Phone and tablet: a stuck banner covers the weight list as the bill scrolls */
+@media (max-width: 1023.98px) {
+    .bill-check-notice {
+        position: static;
+    }
+}
+
 .bill-check-notice-head {
     display: block;
     width: 100%;

@@ -424,7 +424,7 @@ export const BillChecksUI = {
 
         const confirmList = [...autoOverride, ...warns];
         if (confirmList.length) {
-            const list = confirmList.map(w => `${ICON.warn} ${text(w)}`).join('\n');
+            const list = confirmList.map(w => text(w)).join('\n');
             const ok = await UIManager.showModal(
                 t('msg.checks.save_anyway_list', { list }),
                 t('msg.checks.check_before_saving'),

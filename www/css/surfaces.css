@@ -439,6 +439,11 @@ a.row:active {
 }
 
 /* ---------- Scrim, dialog, sheet ---------- */
+/* A plain-text dialog message keeps its line breaks (UIManager.showModal) */
+.dialog-lines {
+  white-space: pre-line;
+}
+
 .scrim {
   background: var(--scrim);
   -webkit-backdrop-filter: none;
