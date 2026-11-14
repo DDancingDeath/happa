@@ -9,6 +9,8 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { todayLocalISO, localISODaysAgo } from '../utils/dates.js';
 import { formatINR } from '../utils/due-reminder.js';
+import { moneyHtml, moneyInText } from '../ui/components.js';
+import { icon } from '../ui/icons.js';
 import { t } from '../i18n/index.js';
 import { AuditService } from '../services/audit.js';
 import * as store from './rent-store.js';
@@ -22,12 +24,12 @@ import {
 
 const esc = (v) => Helpers.escapeHtml(v);
 const js = (v) => Helpers.escapeJsAttr(v);
-const money = (n) => esc(formatINR(n));
+const money = (n) => { const h = moneyHtml(n); return h === '—' ? esc(formatINR(n)) : h; };
 const et = (key, p) => esc(t(key, p));
 const byId = (id) => document.getElementById(id);
 const fail = (key, p) => UIManager.showToast(t(key, p), 'error');
-const btn = (cls, fn, args, key, icon = '', attrs = '') => `<button type="button" class="rent-btn${cls}"${attrs} data-onclick="rentals.${fn}(${args})">${icon}${et(key)}</button>`;
-const lbl = (key, field) => `<label class="rent-label">${et(key)}${field}</label>`;
+const btn = (cls, fn, args, key, icon = '', attrs = '') => `<button type="button" class="btn${cls}"${attrs} data-onclick="rentals.${fn}(${args})">${icon}${et(key)}</button>`;
+const lbl = (key, field) => `<label class="field rent-label">${et(key)}${field}</label>`;
 const val = (id) => (byId(id)?.value ?? '').trim();
 
 const kindLabel = (k) => t(`ui.rent.kind_${PROPERTY_KINDS.includes(k) ? k : 'other'}`);
@@ -62,8 +64,8 @@ let c = null;
 /** Electricity choice of a lease (and the tenant's own meter number when that is chosen). */
 function elecFieldsHtml(mode, meterNo = '') {
     return `${lbl('ui.rent.elec_mode', `
-            <select id="rentTElec" data-onchange="rentals.tenantElec(this)">${ELEC_MODES.map(m => `<option value="${m}"${m === mode ? ' selected' : ''}>${et(`ui.rent.elec_${m}`)}</option>`).join('')}</select>`)}
-        <div id="rentTOwnBox"${mode === 'own' ? '' : ' hidden'}>${lbl('ui.rent.own_meter_no', `<input id="rentTMeterNo" type="text" maxlength="40" value="${esc(meterNo)}">`)}</div>`;
+            <select class="input" id="rentTElec" data-onchange="rentals.tenantElec(this)">${ELEC_MODES.map(m => `<option value="${m}"${m === mode ? ' selected' : ''}>${et(`ui.rent.elec_${m}`)}</option>`).join('')}</select>`)}
+        <div id="rentTOwnBox"${mode === 'own' ? '' : ' hidden'}>${lbl('ui.rent.own_meter_no', `<input class="input" id="rentTMeterNo" type="text" maxlength="40" value="${esc(meterNo)}">`)}</div>`;
 }
 
 /**
@@ -78,35 +80,35 @@ function tenantSectionHtml({ toggle = false, rent = 0, fixedTenant = null, newUn
     const rate = meterRate !== '' && meterRate != null ? meterRate : (defs.meterRate ?? '');
     const mode = elec || (rate !== '' && rate != null ? 'meter' : 'included');
     const who = fixedTenant
-        ? `<input type="hidden" id="rentTPick" value="${esc(fixedTenant.id)}"><p class="rent-name">${esc(fixedTenant.name)}</p>`
-        : `${lbl('ui.rent.tenant_pick', `<select id="rentTPick" data-onchange="rentals.tenantPick(this)">
+        ? `<input type="hidden" id="rentTPick" value="${esc(fixedTenant.id)}"><p class="rent-detail-title">${esc(fixedTenant.name)}</p>`
+        : `${lbl('ui.rent.tenant_pick', `<select class="input" id="rentTPick" data-onchange="rentals.tenantPick(this)">
                 <option value="">${et('ui.rent.tenant_new')}</option>${free.map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select>`)}
             <div id="rentTNewBox">
-                ${lbl('ui.rent.tenant_name', `<input id="rentTName" type="text" maxlength="80">`)}
-                ${lbl('ui.rent.phone_required', `<input id="rentTPhone" type="tel" maxlength="20" inputmode="tel">`)}
+                ${lbl('ui.rent.tenant_name', `<input class="input" id="rentTName" type="text" maxlength="80">`)}
+                ${lbl('ui.rent.phone_required', `<input class="input" id="rentTPhone" type="tel" maxlength="20" inputmode="tel">`)}
             </div>`;
-    const phone2 = fixedTenant ? '' : `<div id="rentTNewBox2">${lbl('ui.rent.phone2', `<input id="rentTPhone2" type="tel" maxlength="20" inputmode="tel">`)}</div>`;
+    const phone2 = fixedTenant ? '' : `<div id="rentTNewBox2">${lbl('ui.rent.phone2', `<input class="input" id="rentTPhone2" type="tel" maxlength="20" inputmode="tel">`)}</div>`;
     const box = `<div id="rentTBox" class="rent-tenant-section"${toggle ? ' hidden' : ''}>
         <h4 class="rent-group-title">${et('ui.rent.tenant_if_occupied')}</h4>
         ${who}
-        ${lbl('ui.rent.monthly_rent', `<input id="rentTRent" type="number" inputmode="decimal" min="0" step="1" value="${esc(rent || 0)}">`)}
-        ${lbl('ui.rent.start_date', `<input id="rentTDate" type="date" value="${esc(todayLocalISO())}">`)}
-        ${lbl('ui.rent.deposit', `<input id="rentTDeposit" type="number" inputmode="decimal" min="0" step="1" value="${esc(deposit)}">`)}
+        ${lbl('ui.rent.monthly_rent', `<input class="input" id="rentTRent" type="number" inputmode="decimal" min="0" step="1" value="${esc(rent || 0)}">`)}
+        ${lbl('ui.rent.start_date', `<input class="input" id="rentTDate" type="date" value="${esc(todayLocalISO())}">`)}
+        ${lbl('ui.rent.deposit', `<input class="input" id="rentTDeposit" type="number" inputmode="decimal" min="0" step="1" value="${esc(deposit)}">`)}
         <p class="rent-help">${et('ui.rent.deposit_note')}</p>
         <details class="rent-more" id="rentTMore"><summary>${et('ui.rent.more_tenancy')}</summary>
         ${phone2}
         <label class="rent-check"><input id="rentTProRate" type="checkbox"> ${et('ui.rent.pro_rate_first')}</label>
-        ${lbl('ui.rent.due_day', `<input id="rentTDay" type="number" min="1" max="28" step="1" value="${esc(defs.dueDay)}">`)}
-        ${lbl('ui.rent.increase_pct', `<input id="rentTPct" type="number" min="0" max="100" step="0.5" value="${esc(defs.increasePct)}">`)}
+        ${lbl('ui.rent.due_day', `<input class="input" id="rentTDay" type="number" min="1" max="28" step="1" value="${esc(defs.dueDay)}">`)}
+        ${lbl('ui.rent.increase_pct', `<input class="input" id="rentTPct" type="number" min="0" max="100" step="0.5" value="${esc(defs.increasePct)}">`)}
         ${elecFieldsHtml(mode)}
         ${newUnit ? `<div id="rentTMeterBox"${mode === 'meter' ? '' : ' hidden'}>
-            ${lbl('ui.rent.opening_reading', `<input id="rentTOpen" type="number" inputmode="decimal" min="0" step="0.01">`)}
-            ${lbl('ui.rent.meter_rate', `<input id="rentTRate" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(rate)}">`)}
+            ${lbl('ui.rent.opening_reading', `<input class="input" id="rentTOpen" type="number" inputmode="decimal" min="0" step="0.01">`)}
+            ${lbl('ui.rent.meter_rate', `<input class="input" id="rentTRate" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(rate)}">`)}
         </div>` : ''}
         </details>
         <p id="rentTError" class="rent-field-error" role="alert" hidden></p>
     </div>`;
-    return (toggle ? `<label class="rent-check rent-occupied-toggle"><input id="rentTOn" type="checkbox" data-onchange="rentals.tenantToggle(this)"> ${et('ui.rent.occupied_add_tenant')}</label>` : '') + box;
+    return (toggle ? `<label class="rent-check rent-occupied"><input id="rentTOn" type="checkbox" data-onchange="rentals.tenantToggle(this)"> ${et('ui.rent.occupied_add_tenant')}</label>` : '') + box;
 }
 
 function tenantToggle(cb) {
@@ -227,21 +229,21 @@ export function propertyRows({ properties = [], units = [], leases = [] }, tRows
     });
 }
 
-const menuHtml = (items, label) => (items.length ? `<details class="rent-menu"><summary aria-label="${esc(label)}">⋯</summary><div class="rent-menu-list">${items.join('')}</div></details>` : '');
+const menuHtml = (items, label) => (items.length ? `<details class="rent-menu"><summary class="btn btn-ghost btn-icon" aria-label="${esc(label)}">${icon('dots')}</summary><div class="panel rent-menu-list">${items.join('')}</div></details>` : '');
 
 /** Properties A–Z: units, how many are let and what is owed there; tap opens the property. */
 function renderProperties(d) {
     const adv = c.state.mode === 'advanced';
-    const add = c.canWrite ? btn(' rent-btn-primary', 'addProperty', '', 'ui.rent.add_property', '+ ') : '';
+    const add = c.canWrite ? btn(' btn-primary', 'addProperty', '', 'ui.rent.add_property', icon('plus', 'i-sm')) : '';
     const rows = propertyRows(d, tenantRows(d, c.state.month)).map(({ property: p, units, let: n, owed, late }) => `
-        <button type="button" class="rent-row rent-prop-card" data-property="${esc(p.id)}" data-onclick="rentals.showProperty('${js(p.id)}')">
-            <span class="rent-row-head"><span><span class="rent-name">${esc(p.name)}</span>
-                <span class="rent-sub">${units.length ? et(units.length === 1 ? 'ui.rent.prop_unit_let' : 'ui.rent.prop_units_let', { units: units.length, n }) : et('ui.rent.no_units')}</span>
-                ${adv ? `<span class="rent-sub">${esc([p.address, kindLabel(p.kind)].filter(Boolean).join(' · '))}</span>` : ''}</span>
-            <span class="rent-row-right">${owed > 0 ? `<span class="rent-due">${et('ui.rent.owed', { amount: formatINR(owed) })}</span>` : ''}${late ? c.badge('late', 'ui.rent.status_late') : ''}</span></span>
+        <button type="button" class="row rent-entry" data-property="${esc(p.id)}" data-onclick="rentals.showProperty('${js(p.id)}')">
+            <span class="rent-entry-head"><span class="row-main"><span class="row-title">${esc(p.name)}</span>
+                <span class="row-meta">${units.length ? et(units.length === 1 ? 'ui.rent.prop_unit_let' : 'ui.rent.prop_units_let', { units: units.length, n }) : et('ui.rent.no_units')}</span>
+                ${adv ? `<span class="row-meta">${esc([p.address, kindLabel(p.kind)].filter(Boolean).join(' · '))}</span>` : ''}</span>
+            <span class="row-trail">${owed > 0 ? `<span class="row-amt">${moneyInText(t('ui.rent.owed', { amount: formatINR(owed) }), owed)}</span>` : ''}${late ? c.badge('late', 'ui.rent.status_late') : ''}</span></span>
         </button>`).join('');
     return `<div class="rent-toolbar">${add}</div>
-        ${rows || `<p class="rent-empty">${et(c.canWrite ? 'ui.rent.start_hint' : 'ui.rent.no_properties')}</p>`}`;
+        ${rows ? `<div class="panel">${rows}</div>` : `<p class="empty">${et(c.canWrite ? 'ui.rent.start_hint' : 'ui.rent.no_properties')}</p>`}`;
 }
 
 /** A property: its units with the tenant (tap opens them) or Vacant (Let out); Advanced adds Expenses and This month. */
@@ -261,24 +263,24 @@ function renderProperty(d, id) {
         const uid = js(u.id);
         const size = adv ? [u.floor ? t('ui.rent.floor_value', { floor: u.floor }) : '', Number.isFinite(u.area) ? t('ui.rent.area_value', { area: u.area }) : ''].filter(Boolean).join(' · ') : '';
         const sub = [lease ? names.get(lease.tenantId) || t('ui.rent.occupied') : t('ui.rent.vacant'), size].filter(Boolean).join(' · ');
-        const right = `<span class="rent-row-right"><span class="rent-due">${money(lease ? lease.rent : u.rent || 0)}</span>${r?.dues.total > 0 ? c.badge(r.late ? 'late' : 'due', r.late ? 'ui.rent.status_late' : 'ui.rent.status_due') : ''}</span>`;
-        const main = `<span class="rent-row-head"><span><span class="rent-name">${esc(typedPlace(c.typeWord(unitType(u)), u.label, ''))}</span><span class="rent-sub">${esc(sub)}</span></span>${right}</span>`;
-        const menu = w ? menuHtml([btn('', 'editUnit', `'${uid}'`, 'ui.rent.edit'), u.leaseId || lease ? '' : btn(' rent-btn-danger', 'archiveUnit', `'${uid}'`, 'ui.rent.remove')].filter(Boolean), t('ui.rent.more_actions')) : '';
-        return `<div class="rent-list-row rent-unit-row" data-unit="${esc(u.id)}">
+        const right = `<span class="row-trail"><span class="row-amt">${money(lease ? lease.rent : u.rent || 0)}</span>${r?.dues.total > 0 ? c.badge(r.late ? 'late' : 'due', r.late ? 'ui.rent.status_late' : 'ui.rent.status_due') : ''}</span>`;
+        const main = `<span class="rent-entry-head"><span class="row-main"><span class="row-title">${esc(typedPlace(c.typeWord(unitType(u)), u.label, ''))}</span><span class="row-meta">${esc(sub)}</span></span>${right}</span>`;
+        const menu = w ? menuHtml([btn(' btn-ghost', 'editUnit', `'${uid}'`, 'ui.rent.edit'), u.leaseId || lease ? '' : btn(' btn-ghost tone-neg', 'archiveUnit', `'${uid}'`, 'ui.rent.remove')].filter(Boolean), t('ui.rent.more_actions')) : '';
+        return `<div class="row" data-unit="${esc(u.id)}">
             ${lease ? `<button type="button" class="rent-tap" data-onclick="rentals.openTenant('${js(lease.tenantId)}')">${main}</button>` : `<div class="rent-tap">${main}</div>`}
-            ${!lease && !u.leaseId && w ? btn(' rent-btn-small', 'addTenantToUnit', `'${uid}'`, 'ui.rent.let_out') : ''}${menu}
+            ${!lease && !u.leaseId && w ? btn(' btn-sm', 'addTenantToUnit', `'${uid}'`, 'ui.rent.let_out') : ''}${menu}
         </div>`;
     }).join('');
     const occupied = units.some(u => u.leaseId || leases.has(u.id));
-    const menu = w ? menuHtml([btn('', 'editProperty', `'${pid}'`, 'ui.rent.edit'), occupied ? '' : btn(' rent-btn-danger', 'archiveProperty', `'${pid}'`, 'ui.rent.remove')].filter(Boolean), t('ui.rent.more_actions')) : '';
+    const menu = w ? menuHtml([btn(' btn-ghost', 'editProperty', `'${pid}'`, 'ui.rent.edit'), occupied ? '' : btn(' btn-ghost tone-neg', 'archiveProperty', `'${pid}'`, 'ui.rent.remove')].filter(Boolean), t('ui.rent.more_actions')) : '';
     const more = adv ? `<div class="rent-actions">${w ? btn('', 'expenses', `'${pid}'`, 'ui.rent.exp_btn') : ''}${btn('', 'propertyMonth', `'${pid}'`, 'ui.nav.rent')}</div>` : '';
     return `<div class="rent-detail" data-property-detail="${esc(id)}">
-        <div class="rent-detail-bar">${btn(' rent-btn-small', 'back', '', 'ui.nav.properties', '← ')}${menu}</div>
-        <h3 class="rent-name" id="rentDetailTitle" tabindex="-1">${esc(p.name)}</h3>
+        <div class="rent-detail-bar">${btn(' btn-ghost btn-sm', 'back', '', 'ui.nav.properties', icon('chevL', 'i-sm'))}${menu}</div>
+        <h3 class="rent-detail-title" id="rentDetailTitle" tabindex="-1">${esc(p.name)}</h3>
         <div class="rent-sub">${esc([p.address, kindLabel(p.kind)].filter(Boolean).join(' · '))}</div>
         ${more}
-        <div class="rent-section-title"><span>${et('ui.rent.units')}</span>${w ? btn(' rent-btn-primary', 'addUnit', `'${pid}'`, 'ui.rent.add_unit', '+ ') : ''}</div>
-        <div class="rent-list">${rows || `<p class="rent-empty">${et('ui.rent.no_units')}</p>`}</div>
+        <div class="rent-section-title"><span>${et('ui.rent.units')}</span>${w ? btn(' btn-primary btn-sm', 'addUnit', `'${pid}'`, 'ui.rent.add_unit', icon('plus', 'i-sm')) : ''}</div>
+        ${rows ? `<div class="panel">${rows}</div>` : `<p class="empty">${et('ui.rent.no_units')}</p>`}
     </div>`;
 }
 
@@ -289,9 +291,9 @@ async function addProperty() {
         return fail('msg.rent.max_properties', { max: MAX_PROPERTIES });
     }
     const ok = await c.dialog(`<h3>${et('ui.rent.add_property')}</h3>
-        ${lbl('ui.rent.property_name', '<input id="rentPropName" type="text" maxlength="80">')}
-        ${lbl('ui.rent.address', '<input id="rentPropAddress" type="text" maxlength="200">')}
-        ${lbl('ui.rent.kind', `<select id="rentPropKind">${kindOptions('')}</select>`)}`);
+        ${lbl('ui.rent.property_name', '<input class="input" id="rentPropName" type="text" maxlength="80">')}
+        ${lbl('ui.rent.address', '<input class="input" id="rentPropAddress" type="text" maxlength="200">')}
+        ${lbl('ui.rent.kind', `<select class="input" id="rentPropKind">${kindOptions('')}</select>`)}`);
     if (!ok) return;
     const kind = val('rentPropKind');
     const p = { name: val('rentPropName'), address: val('rentPropAddress'), kind: PROPERTY_KINDS.includes(kind) ? kind : 'other', notes: '' };
@@ -304,9 +306,9 @@ async function editProperty(id) {
     const p = store.snapshot().properties.find(x => x.id === id);
     if (!p) return;
     const ok = await c.dialog(`<h3>${et('ui.rent.edit')}</h3>
-        ${lbl('ui.rent.property_name', `<input id="rentEditPropName" type="text" maxlength="80" value="${esc(p.name)}">`)}
-        ${lbl('ui.rent.address', `<input id="rentEditPropAddress" type="text" maxlength="200" value="${esc(p.address || '')}">`)}
-        ${lbl('ui.rent.kind', `<select id="rentEditPropKind">${kindOptions(p.kind)}</select>`)}`);
+        ${lbl('ui.rent.property_name', `<input class="input" id="rentEditPropName" type="text" maxlength="80" value="${esc(p.name)}">`)}
+        ${lbl('ui.rent.address', `<input class="input" id="rentEditPropAddress" type="text" maxlength="200" value="${esc(p.address || '')}">`)}
+        ${lbl('ui.rent.kind', `<select class="input" id="rentEditPropKind">${kindOptions(p.kind)}</select>`)}`);
     if (!ok) return;
     const kind = val('rentEditPropKind');
     const next = { name: val('rentEditPropName'), address: val('rentEditPropAddress'), kind: PROPERTY_KINDS.includes(kind) ? kind : 'other' };
@@ -347,12 +349,12 @@ function tenantCheck() {
 
 async function unitDialog(title, unit, { withTenant = false, defs = null } = {}) {
     const ok = await c.dialog(`<h3>${esc(title)}</h3>
-        ${lbl('ui.rent.unit_label', `<input id="rentUnitLabel" type="text" maxlength="60" value="${esc(unit?.label || '')}">`)}
-        ${lbl('ui.rent.unit_type', `<select id="rentUnitType">${UNIT_TYPES.map(k => `<option value="${k}"${k === unitType(unit) ? ' selected' : ''}>${esc(c.typeLabel(k))}</option>`).join('')}</select>`)}
-        ${lbl('ui.rent.monthly_rent', `<input id="rentUnitRent" type="number" inputmode="decimal" min="0" step="1" value="${esc(unit?.rent ?? 0)}">`)}
+        ${lbl('ui.rent.unit_label', `<input class="input" id="rentUnitLabel" type="text" maxlength="60" value="${esc(unit?.label || '')}">`)}
+        ${lbl('ui.rent.unit_type', `<select class="input" id="rentUnitType">${UNIT_TYPES.map(k => `<option value="${k}"${k === unitType(unit) ? ' selected' : ''}>${esc(c.typeLabel(k))}</option>`).join('')}</select>`)}
+        ${lbl('ui.rent.monthly_rent', `<input class="input" id="rentUnitRent" type="number" inputmode="decimal" min="0" step="1" value="${esc(unit?.rent ?? 0)}">`)}
         <details class="rent-more"${unit?.floor || Number.isFinite(unit?.area) ? ' open' : ''}><summary>${et('ui.rent.more_unit')}</summary>
-        ${lbl('ui.rent.unit_area', `<input id="rentUnitArea" type="number" inputmode="decimal" min="0" step="1" value="${esc(unit?.area ?? '')}">`)}
-        ${lbl('ui.rent.unit_floor', `<input id="rentUnitFloor" type="text" maxlength="20" value="${esc(unit?.floor || '')}">`)}</details>
+        ${lbl('ui.rent.unit_area', `<input class="input" id="rentUnitArea" type="number" inputmode="decimal" min="0" step="1" value="${esc(unit?.area ?? '')}">`)}
+        ${lbl('ui.rent.unit_floor', `<input class="input" id="rentUnitFloor" type="text" maxlength="20" value="${esc(unit?.floor || '')}">`)}</details>
         ${withTenant ? tenantSectionHtml({ toggle: true, rent: unit?.rent ?? 0, newUnit: true, defs: defs || undefined }) : ''}`, withTenant ? { check: tenantCheck } : {});
     if (!ok) return null;
     const area = val('rentUnitArea');

@@ -127,7 +127,7 @@ function findOpenModal() {
     // children of <body> with no shared class; appended last, they sit on top.
     const generic = [...document.body.children].filter(isBodyOverlay);
     const top = generic[generic.length - 1] ||
-        [...document.querySelectorAll('.bill-details-overlay, .modal')].filter(isShown).pop();
+        [...document.querySelectorAll('.bill-details-overlay, .modal, .sheet[aria-modal="true"]')].filter(isShown).pop();
     if (top) {
         const btn = findCloseControl(top);
         if (btn) return { closer: () => btn.click() };

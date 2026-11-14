@@ -385,12 +385,10 @@ www/js/rentals/rent-unit.js: c.tenantSectionHtml({ rent: shown.rent, meterRate: 
 www/js/rentals/rent-unit.js: id
 www/js/rentals/rent-unit.js: id
 www/js/rentals/rent-unit.js: id (markup via unitPickHtml)
-www/js/rentals/rentals.js: PAYMENT_MODES (markup via map(m => `<button type="button" class="rent-seg-btn${m === v.mode ? ' active' : ''}" aria-pressed="${m === v.mode ? 'true' : 'false'}" data-pay-))
 www/js/rentals/rentals.js: TemplateLoader.loadTemplate('rentals') (sink)
 www/js/rentals/rentals.js: args
 www/js/rentals/rentals.js: args
 www/js/rentals/rentals.js: attrs
-www/js/rentals/rentals.js: cls
 www/js/rentals/rentals.js: cls
 www/js/rentals/rentals.js: field
 www/js/rentals/rentals.js: fn
@@ -402,7 +400,6 @@ www/js/rentals/rentals.js: lazyMods.pages.renderProperties(unitCtx(), d) (sink)
 www/js/rentals/rentals.js: lazyMods.pages.renderProperty(unitCtx(), d, state.detail) (sink)
 www/js/rentals/rentals.js: lazyMods.pages.renderTenant(unitCtx(), d, state.detail) (sink)
 www/js/rentals/rentals.js: lazyMods.pages.renderTenants(unitCtx(), d) (sink)
-www/js/rentals/rentals.js: m
 www/js/services/exporter.js: html
 www/js/ui/bill-highlight.js: ICON.block ← ICON = { block: '⛔', warn: '⚠️' }
 www/js/ui/bill-row.js: link ← onclick

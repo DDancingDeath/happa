@@ -41,13 +41,13 @@ const SNAP = {
     charges: [{ id: `L1_${MONTH}`, leaseId: 'L1', unitId: 'U1', tenantId: 'T1', month: MONTH, dueDay: 10, rent: 5000, amount: 5000, paid: 3000, payments: [] }],
     expenses: [{ id: 'E1', propertyId: 'P1', amount: 1200, month: MONTH }, { id: 'E2', propertyId: 'P2', amount: 800, month: MONTH }]
 };
-const cards = (root) => [...root.querySelector('.rent-cards').children].map(c => [...c.children].map(x => x.textContent.trim()).join(' '));
+const cards = (root) => [...root.querySelector('.rent-metrics').children].map(c => [...c.children].map(x => x.textContent.trim()).join(' '));
 const body = () => document.getElementById('rentDialogBody');
 
 beforeEach(() => {
     jest.clearAllMocks();
     document.body.innerHTML = `<div id="rentals" class="tab active"><div id="rentalsNotice"></div><div id="rentalsBody"></div>
-        <div id="rentDialog" hidden><div id="rentDialogBody"></div><div class="rent-dialog-actions"><button class="rent-btn rent-btn-primary">Save</button></div></div></div>`;
+        <div id="rentDialog" hidden><div id="rentDialogBody"></div><div><button id="rentDialogCancel" class="btn btn-ghost">Cancel</button><button id="rentDialogSave" class="btn btn-primary">Save</button></div></div></div>`;
     store.snapshot.mockReturnValue(SNAP);
     es.listExpenses.mockResolvedValue([{ id: 'E1', propertyId: 'P1', unitId: 'U1', category: 'repairs', amount: 1200, date: `${MONTH}-03`, mode: 'cash', note: 'Tap', byName: 'Hitesh' }]);
     rentalsRole.mockReturnValue('member');

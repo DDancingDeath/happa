@@ -11,7 +11,8 @@ import { UIManager } from '../ui/ui-manager.js';
 import { AuditService } from '../services/audit.js';
 import { AppState } from '../utils/state.js';
 import { t, getLang } from '../i18n/index.js';
-import { formatINR } from '../utils/due-reminder.js';
+import { moneyHtml } from '../ui/components.js';
+import { icon } from '../ui/icons.js';
 import { toCsv, csvLanguage, readCsvEnglish } from '../utils/statements.js';
 import { saveLeaseReminders } from '../utils/reminders.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
@@ -22,7 +23,7 @@ import { agreementError, leaseReminders, noticeBy, reportMonths, yearReport, MAX
 
 const fail = (key) => UIManager.showToast(t(key), 'error');
 const propName = (p, lang = getLang()) => p.name || `${t('ui.rent.yr_no_property', undefined, lang)} · ${String(p.id).slice(0, 6)}`;
-const lbl = (c, key, field) => `<label class="rent-label">${c.esc(t(key))}${field}</label>`;
+const lbl = (c, key, field) => `<label class="field rent-label">${c.esc(t(key))}${field}</label>`;
 const FIELDS = ['rent', 'collected', 'due', 'expenses', 'tax', 'net'];
 const report = { year: null, fy: true, data: null, seq: 0, cache: new Map() };
 /** A year's charges and expenses are read again after this (switching year or kind reuses them). */
@@ -36,10 +37,10 @@ export async function editAgreement(c, leaseId) {
     const lease = store.snapshot().leases.find(l => l.id === leaseId);
     if (!lease || !c.isManager) return;
     const lang = getLang();
-    const ok = await c.dialog(`<h3>📄 ${c.esc(t('ui.rent.agr_title'))}</h3>
+    const ok = await c.dialog(`<h3>${c.esc(t('ui.rent.agr_title'))}</h3>
         <p class="rent-help">${c.esc(t('ui.rent.agr_start', { month: monthLabel(lease.startMonth, lang) }))} · ${c.esc(t('ui.rent.agr_increase', { pct: Number.isFinite(lease.increasePct) ? lease.increasePct : 5 }))}</p>
-        ${lbl(c, 'ui.rent.agr_end', `<input id="rentAgrEnd" type="month" min="${c.esc(lease.startMonth)}" value="${c.esc(lease.agreementEnd || '')}">`)}
-        ${lbl(c, 'ui.rent.agr_notice', `<input id="rentAgrNotice" type="number" inputmode="numeric" min="0" max="${MAX_NOTICE_MONTHS}" step="1" value="${c.esc(lease.noticeMonths ?? 0)}">`)}
+        ${lbl(c, 'ui.rent.agr_end', `<input class="input" id="rentAgrEnd" type="month" min="${c.esc(lease.startMonth)}" value="${c.esc(lease.agreementEnd || '')}">`)}
+        ${lbl(c, 'ui.rent.agr_notice', `<input class="input" id="rentAgrNotice" type="number" inputmode="numeric" min="0" max="${MAX_NOTICE_MONTHS}" step="1" value="${c.esc(lease.noticeMonths ?? 0)}">`)}
         <p class="rent-help">${c.esc(t('ui.rent.agr_help'))}</p>`);
     if (!ok) return;
     const terms = { agreementEnd: c.val('rentAgrEnd'), noticeMonths: Number(c.val('rentAgrNotice') || 0) };
@@ -78,23 +79,23 @@ function reportHtml(c) {
     const lang = getLang();
     const r = yearReport(report.data, reportMonths(report.year, report.fy));
     const head = `<tr><th></th>${FIELDS.map(f => `<th class="num">${c.esc(t(`ui.rent.yr_${f}`))}</th>`).join('')}</tr>`;
-    const line = (label, x, cls = '') => `<tr${cls}><td>${c.esc(label)}</td>${FIELDS.map(f => `<td class="num">${c.esc(formatINR(x[f]))}</td>`).join('')}</tr>`;
-    const props = r.rows.map(p => `<h4>${c.esc(propName(p))}</h4><div class="rent-scroll"><table class="rent-table">${head}`
+    const line = (label, x, cls = '') => `<tr${cls}><td>${c.esc(label)}</td>${FIELDS.map(f => `<td class="num">${moneyHtml(x[f])}</td>`).join('')}</tr>`;
+    const props = r.rows.map(p => `<h4>${c.esc(propName(p))}</h4><div class="rent-scroll"><table class="table">${head}`
         + r.months.map(m => line(monthLabel(m, lang), p.months[m])).join('')
         + line(t('ui.rent.yr_total'), p.total, ' class="rent-total"') + '</table></div>').join('');
     const base = report.fy ? fyOf(c.month) : Number(c.month.slice(0, 4));
     const years = [...new Set([base, base - 1, base - 2, base - 3, report.year])].sort((a, b) => b - a);
     const yearLabel = (y) => (report.fy ? t('ui.money.fy_label', { years: `${y}-${String((y + 1) % 100).padStart(2, '0')}` }) : String(y));
     const picker = `<div class="rent-actions">
-        <select data-onchange="rentals.reportAction('year', this.value)" aria-label="${c.esc(t('ui.rent.yr_year'))}">${years
+        <select class="input" data-onchange="rentals.reportAction('year', this.value)" aria-label="${c.esc(t('ui.rent.yr_year'))}">${years
         .map(y => `<option value="${y}"${y === report.year ? ' selected' : ''}>${c.esc(yearLabel(y))}</option>`).join('')}</select>
-        <button type="button" class="rent-btn" data-onclick="rentals.reportAction('kind')">${c.esc(t(report.fy ? 'ui.rent.yr_calendar' : 'ui.rent.yr_fy'))}</button>
-        ${c.isOwner ? `<button type="button" class="rent-btn" data-onclick="rentals.reportAction('csv')">⬇ ${c.esc(t('ui.rent.yr_csv'))}</button>` : ''}</div>`;
-    return `<h3>📊 ${c.esc(t('ui.rent.yr_title', { year: yearLabel(report.year) }))}</h3>${picker}
-        <div class="rent-cards">${[['ui.rent.yr_collected', r.total.collected], ['ui.rent.yr_expenses', r.total.expenses], ['ui.rent.yr_net', r.total.net]]
-        .map(([k, v]) => `<div class="rent-card"><div class="rent-card-label">${c.esc(t(k))}</div><div class="rent-card-value">${c.esc(formatINR(v))}</div></div>`).join('')}</div>
-        ${report.data.cut ? `<p class="rent-help">⚠ ${c.esc(t('msg.rent.yr_cut', { count: REPORT_LIMIT }))}</p>` : ''}
-        <p class="rent-help">${c.esc(t('ui.rent.yr_help'))}</p>${props || `<p class="rent-empty">${c.esc(t('ui.rent.yr_none'))}</p>`}`;
+        <button type="button" class="btn btn-sm" data-onclick="rentals.reportAction('kind')">${c.esc(t(report.fy ? 'ui.rent.yr_calendar' : 'ui.rent.yr_fy'))}</button>
+        ${c.isOwner ? `<button type="button" class="btn btn-sm" data-onclick="rentals.reportAction('csv')">${icon('file', 'i-sm')}${c.esc(t('ui.rent.yr_csv'))}</button>` : ''}</div>`;
+    return `<h3>${c.esc(t('ui.rent.yr_title', { year: yearLabel(report.year) }))}</h3>${picker}
+        <div class="panel metrics rent-metrics">${[['ui.rent.yr_collected', r.total.collected], ['ui.rent.yr_expenses', r.total.expenses], ['ui.rent.yr_net', r.total.net]]
+        .map(([k, v]) => `<div class="metric"><div class="metric-label">${c.esc(t(k))}</div><div class="metric-value">${moneyHtml(v)}</div></div>`).join('')}</div>
+        ${report.data.cut ? `<p class="notice warn">${icon('alert', 'i-sm')}<span class="grow">${c.esc(t('msg.rent.yr_cut', { count: REPORT_LIMIT }))}</span></p>` : ''}
+        <p class="rent-help">${c.esc(t('ui.rent.yr_help'))}</p>${props || `<p class="empty">${c.esc(t('ui.rent.yr_none'))}</p>`}`;
 }
 
 async function load(c) {

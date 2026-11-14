@@ -1,32 +1,34 @@
 <!-- Rentals (#170). Loaded on demand by js/rentals/rentals.js, not by TemplateLoader.loadAllTemplates(). -->
-<div id="rentals" class="tab rentals-tab">
+<div id="rentals" class="tab">
     <header class="page-head"><h2 data-i18n="ui.rent.title">Rentals</h2></header>
     <div class="rent-head">
-        <div class="rent-seg" role="group" data-i18n-aria-label="ui.rent.view_mode" aria-label="View">
-            <button type="button" class="rent-seg-btn" data-rent-mode="simple" aria-pressed="true" data-onclick="rentals.setMode('simple')" data-i18n="ui.rent.view_simple">Simple</button>
-            <button type="button" class="rent-seg-btn" data-rent-mode="advanced" aria-pressed="false" data-onclick="rentals.setMode('advanced')" data-i18n="ui.rent.view_advanced">Advanced</button>
+        <div class="seg rent-mode" role="group" data-i18n-aria-label="ui.rent.view_mode" aria-label="View">
+            <button type="button" data-rent-mode="simple" aria-pressed="true" data-onclick="rentals.setMode('simple')" data-i18n="ui.rent.view_simple">Simple</button>
+            <button type="button" data-rent-mode="advanced" aria-pressed="false" data-onclick="rentals.setMode('advanced')" data-i18n="ui.rent.view_advanced">Advanced</button>
         </div>
     </div>
-    <div class="rent-subnav">
-        <button type="button" class="filter-btn" data-rent-page="rent" data-onclick="rentals.page('rent')" data-i18n="ui.nav.rent">This month</button>
-        <button type="button" class="filter-btn" data-rent-page="tenants" data-onclick="rentals.page('tenants')" data-i18n="ui.nav.tenants">Tenants</button>
-        <button type="button" class="filter-btn" data-rent-page="properties" data-onclick="rentals.page('properties')" data-i18n="ui.nav.properties">Properties</button>
-        <button type="button" id="rentReportsTab" class="filter-btn" data-rent-page="reports" data-onclick="rentals.page('reports')" data-i18n="ui.rent.reports" hidden>Reports</button>
+    <div class="rent-nav">
+        <div class="tabs" role="tablist">
+            <button type="button" role="tab" aria-selected="false" data-rent-page="rent" data-onclick="rentals.page('rent')" data-i18n="ui.nav.rent">This month</button>
+            <button type="button" role="tab" aria-selected="false" data-rent-page="tenants" data-onclick="rentals.page('tenants')" data-i18n="ui.nav.tenants">Tenants</button>
+            <button type="button" role="tab" aria-selected="false" data-rent-page="properties" data-onclick="rentals.page('properties')" data-i18n="ui.nav.properties">Properties</button>
+            <button type="button" role="tab" aria-selected="false" id="rentReportsTab" data-rent-page="reports" data-onclick="rentals.page('reports')" data-i18n="ui.rent.reports" hidden>Reports</button>
+        </div>
         <span id="rentSettingsLinks" class="rent-settings-links" hidden>
-            <button type="button" class="rent-link" data-onclick="rentals.settings('rentals')" data-i18n="ui.settings.section_rentals">Rentals settings</button>
-            <button type="button" id="rentRolesLink" class="rent-link" data-onclick="rentals.settings('roles')" data-i18n="ui.roles.title" hidden>Roles &amp; access</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-onclick="rentals.settings('rentals')" data-i18n="ui.settings.section_rentals">Rentals settings</button>
+            <button type="button" id="rentRolesLink" class="btn btn-ghost btn-sm" data-onclick="rentals.settings('roles')" data-i18n="ui.roles.title" hidden>Roles &amp; access</button>
         </span>
     </div>
-    <div id="rentalsNotice" class="rent-notice" role="status" hidden></div>
+    <div id="rentalsNotice" class="notice warn rent-notice-bar" role="status" hidden></div>
     <div id="rentalsBody" class="rent-body"></div>
 
-    <div id="rentDialog" class="rent-dialog" role="dialog" aria-modal="true" hidden>
-        <div class="rent-dialog-box">
-            <div id="rentDialogBody"></div>
-            <div class="rent-dialog-actions">
-                <button type="button" class="rent-btn" data-dismiss data-onclick="rentals.dialogClose(false)" data-i18n="ui.modals.cancel">Cancel</button>
-                <button type="button" class="rent-btn rent-btn-primary" data-onclick="rentals.dialogClose(true)" data-i18n="ui.common.save">Save</button>
-            </div>
+    <div id="rentDialogScrim" class="scrim rent-scrim" hidden></div>
+    <div id="rentDialog" class="sheet rent-sheet" role="dialog" aria-modal="true" hidden>
+        <div class="grabber" aria-hidden="true"></div>
+        <div id="rentDialogBody"></div>
+        <div class="rent-sheet-actions">
+            <button type="button" id="rentDialogCancel" class="btn btn-ghost" data-dismiss data-onclick="rentals.dialogClose(false)" data-i18n="ui.modals.cancel">Cancel</button>
+            <button type="button" id="rentDialogSave" class="btn btn-primary" data-onclick="rentals.dialogClose(true)" data-i18n="ui.common.save">Save</button>
         </div>
     </div>
 </div>

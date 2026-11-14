@@ -40,13 +40,13 @@ const LEDGER = {
     ]
 };
 const body = () => document.getElementById('rentDialogBody').textContent.replace(/\s+/g, ' ');
-const cards = () => [...document.querySelectorAll('#rentDialogBody .rent-card')].map(c => [...c.children].map(x => x.textContent.trim()).join(' '));
+const cards = () => [...document.querySelectorAll('#rentDialogBody .metric')].map(c => [...c.children].map(x => x.textContent.trim()).join(' '));
 const buttons = () => [...document.querySelectorAll('#rentDialogBody button')].map(b => b.textContent.trim());
 
 beforeEach(() => {
     jest.clearAllMocks();
     document.body.innerHTML = `<div id="rentals" class="tab active"><div id="rentalsNotice"></div><div id="rentalsBody"></div>
-        <div id="rentDialog" hidden><div id="rentDialogBody"></div><div class="rent-dialog-actions"><button class="rent-btn rent-btn-primary">Save</button></div></div></div>`;
+        <div id="rentDialog" hidden><div id="rentDialogBody"></div><div><button id="rentDialogCancel" class="btn btn-ghost">Cancel</button><button id="rentDialogSave" class="btn btn-primary">Save</button></div></div></div>`;
     store.snapshot.mockReturnValue(SNAP);
     ds.loadDeposit.mockResolvedValue(LEDGER);
     ds.addDepositEntry.mockResolvedValue({ amount: 4000, held: 3000 });

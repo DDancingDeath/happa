@@ -6,6 +6,7 @@
  */
 
 import { UIManager } from '../ui/ui-manager.js';
+import { icon } from '../ui/icons.js';
 import { t } from '../i18n/index.js';
 import { AuditService } from '../services/audit.js';
 import { openExternal } from '../utils/open-external.js';
@@ -22,14 +23,14 @@ export async function shareLink(c, leaseId) {
     if (!lease) return;
     const url = c.linkFor(lease);
     const id = c.js(leaseId);
-    const btn = (action, key, cls = '') => `<button type="button" class="rent-btn${cls}" data-onclick="rentals.linkAction('${action}', '${id}')">${c.esc(t(key))}</button>`;
+    const btn = (action, key, cls = '') => `<button type="button" class="btn${cls}" data-onclick="rentals.linkAction('${action}', '${id}')">${action === 'send' ? icon('wa', 'i-sm') : ''}${c.esc(t(key))}</button>`;
     const body = url
         ? `<p class="rent-help">${c.esc(t('ui.rent.link_help'))}</p>
-           <input id="rentLinkUrl" type="text" readonly value="${c.esc(url)}">
-           <div class="rent-actions">${btn('send', 'ui.rent.link_send', ' rent-btn-wa')}${btn('copy', 'ui.rent.link_copy')}${btn('new', 'ui.rent.link_new')}${btn('off', 'ui.rent.link_off')}</div>`
+           <input class="input" id="rentLinkUrl" type="text" readonly value="${c.esc(url)}">
+           <div class="rent-actions">${btn('send', 'ui.rent.link_send', ' btn-success')}${btn('copy', 'ui.rent.link_copy')}${btn('new', 'ui.rent.link_new')}${btn('off', 'ui.rent.link_off')}</div>`
         : `<p class="rent-help">${c.esc(t('ui.rent.link_help'))}</p>
-           <div class="rent-actions">${btn('make', 'ui.rent.link_make', ' rent-btn-primary')}</div>`;
-    await c.dialog(`<h3>🔗 ${c.esc(t('ui.rent.link_title'))}</h3>${body}`);
+           <div class="rent-actions">${btn('make', 'ui.rent.link_make', ' btn-primary')}</div>`;
+    await c.dialog(`<h3>${c.esc(t('ui.rent.link_title'))}</h3>${body}`);
 }
 
 export async function linkAction(c, action, leaseId) {

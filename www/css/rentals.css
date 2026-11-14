@@ -1,113 +1,83 @@
-/* Rentals (#170). Loaded on demand by js/rentals/rentals.js, not linked from index.html. */
-.rentals-tab { max-width: 900px; }
-.rent-subnav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-.rent-notice { background: var(--warning-soft); color: var(--on-warning-soft); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
-.rent-month-title { margin: 4px 0 10px; font-size: 18px; }
-.rent-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
-.rent-card { background: var(--surface-muted); border-radius: 10px; padding: 12px; }
-.rent-card-label { font-size: 13px; color: var(--text-secondary); }
-.rent-card-value { font-size: 20px; font-weight: 700; margin-top: 4px; }
-.rent-row { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
-.rent-row-head { display: flex; justify-content: space-between; gap: 10px; }
-.rent-row-right { text-align: right; }
-.rent-name { font-weight: 600; font-size: 16px; }
-.rent-sub { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
-.rent-due { font-weight: 700; font-size: 17px; margin-top: 4px; }
-.rent-months, .rent-units { margin: 8px 0 0; padding-left: 18px; font-size: 14px; }
-.rent-unit { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; }
-.rent-kind { font-size: 12px; font-weight: 500; background: var(--surface-muted); color: var(--text-secondary); border-radius: 10px; padding: 2px 8px; margin-left: 6px; }
-.rent-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.rent-btn { border: 1px solid var(--border-color); background: var(--surface-muted); color: inherit; border-radius: 8px; padding: 8px 12px; font-size: 14px; cursor: pointer; }
-.rent-btn-primary { background: var(--btn-primary); border-color: var(--btn-primary); color: var(--btn-primary-ink); }
-.rent-btn-wa { background: var(--success-soft); border-color: var(--success-soft); color: var(--on-success-soft); }
-.rent-btn-small { padding: 4px 8px; font-size: 12px; }
-.rent-badge { display: inline-block; border-radius: 10px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
-.rent-badge-paid { background: var(--success-soft); color: var(--on-success-soft); }
-.rent-badge-partial { background: var(--warning-soft); color: var(--on-warning-soft); }
-.rent-badge-due { background: var(--seg-bg); color: var(--text-primary); }
-.rent-badge-late { background: var(--danger-soft); color: var(--on-danger-soft); }
-.rent-form { display: grid; gap: 8px; background: var(--surface-muted); border-radius: 10px; padding: 12px; margin-bottom: 14px; }
-.rent-form h3 { margin: 0; font-size: 16px; }
-.rent-form input, .rent-form select, .rent-label input, .rent-label select, .rent-access-row select { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 16px; box-sizing: border-box; }
-.rent-label { display: block; font-size: 13px; margin-top: 10px; }
-.rent-access-row { display: grid; grid-template-columns: 1fr 160px; gap: 10px; align-items: center; }
-.rent-empty, .rent-help { color: var(--text-secondary); font-size: 14px; }
-.rent-dialog { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 16px; }
-.rent-dialog[hidden] { display: none; }
-.rent-dialog-box { background: var(--card-bg); color: inherit; border-radius: 12px; padding: 16px; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; }
-.rent-dialog-box h3 { margin: 0 0 4px; font-size: 17px; }
-.rent-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
-body.dark-mode .rent-card, body.dark-mode .rent-form { background: #2d3748; }
-body.dark-mode .rent-row, body.dark-mode .rent-dialog-box { background: #1a202c; border-color: #4a5568; }
-@media (min-width: 1024px) { .rent-cards { grid-template-columns: repeat(4, 1fr); } }
-.rent-dialog-box input[readonly] { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; margin: 8px 0; box-sizing: border-box; }
+/* Rentals (#170, 5.9): page layout on the shared components (forms.css, surfaces.css). Loaded on demand by
+   js/rentals/rentals.js, not linked from index.html; desktop rules are in desktop.css (higher specificity). */
+.rent-head { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+.rent-mode > button { flex: none; }
+.rent-nav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-4); }
+.rent-nav > .tabs { flex: 1 1 auto; }
+.rent-settings-links { display: inline-flex; flex-wrap: wrap; gap: var(--sp-1); margin-left: auto; }
+.rent-settings-links[hidden] { display: none; }
+.rent-notice-bar { margin-bottom: var(--sp-3); }
+.rent-body > .panel, .rent-detail > .panel { margin-bottom: var(--sp-4); }
+.rent-month-title { margin: var(--sp-1) 0 var(--sp-3); font-family: var(--font-display); font-size: var(--fs-lead); font-weight: var(--w-strong); }
+.rent-section-title { display: flex; align-items: center; gap: var(--sp-2); margin: var(--sp-4) 0 var(--sp-2); font-family: var(--font-display); font-size: var(--fs-body); font-weight: var(--w-strong); }
+.rent-section-title > .btn { margin-left: auto; }
+.rent-group-title { margin: var(--sp-4) 0 var(--sp-2); color: var(--ink-3); font-size: var(--fs-sm); font-weight: var(--w-label); }
+.rent-sub { margin-top: calc(var(--sp-1) / 2); color: var(--ink-3); font-size: var(--fs-sm); }
+.rent-help { color: var(--ink-3); font-size: var(--fs-sm); }
+.rent-field-error { margin: var(--sp-1) 0 0; color: var(--negative); font-size: var(--fs-sm); }
 
-/* Property wise / unit wise (#170) */
-.rent-viewswitch { display: flex; gap: 8px; margin-bottom: 12px; }
-.rent-prop-card { display: block; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
-.rent-group-title { margin: 14px 0 6px; font-size: 15px; color: var(--text-secondary); }
-.rent-detail-head { margin-bottom: 10px; }
-.rent-detail-head .rent-name { margin: 8px 0 2px; }
-.rent-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
-.rent-filters select, .rent-filters input { width: 100%; padding: 9px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 15px; box-sizing: border-box; }
-.rent-badge-vacant { background: var(--surface-muted); color: var(--text-secondary); }
-@media (min-width: 1024px) { .rent-filters { grid-template-columns: repeat(5, auto); } }
+/* Simple: what came in this month */
+.rent-collect-line { font-size: var(--fs-lead); font-weight: var(--w-strong); }
+.rent-progress { width: 100%; height: var(--sp-2); margin: var(--sp-2) 0 var(--sp-1); accent-color: var(--mode-rentals); }
+.rent-attn > .rent-section-title { margin: 0; padding: var(--sp-3) var(--sp-4) var(--sp-1); }
+.rent-attn-more { padding: 0 var(--sp-4) var(--sp-3); }
+.rent-vacant { margin-top: var(--sp-2); }
+.rent-sticky { position: sticky; bottom: var(--sp-3); margin-top: var(--sp-4); }
 
-/* Tenant section in Add unit / Move in, electricity tag */
-.rent-check { display: flex; gap: 8px; align-items: center; font-size: 14px; margin-top: 10px; }
-.rent-tenant-section .rent-field-error { color: var(--danger-color); font-size: 13px; margin: 4px 0 0; }
-.rent-occupied-toggle { font-weight: 600; margin-top: 14px; }
-.rent-tenant-section { border-top: 1px solid var(--border-color); margin-top: 10px; padding-top: 4px; }
-.rent-tag { display: inline-block; font-size: 12px; background: var(--warning-soft); color: var(--on-warning-soft); border-radius: 10px; padding: 1px 7px; }
-
-/* Simple / Advanced, This month (#157 UX redesign) */
-.rent-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
-/* Desktop: the page title is in the header bar, so the view switch sits on the right (DIRECTION.md, page header) */
-@media (min-width: 1024px) { .rent-head { justify-content: flex-end; } }
-.rent-seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--seg-bg); border-radius: var(--radius-full); }
-.rent-seg-btn { border: 0; background: transparent; color: var(--text-secondary); border-radius: var(--radius-full); padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
-.rent-seg-btn.active { background: var(--card-bg); color: var(--text-primary); box-shadow: var(--shadow-sm); }
-.rent-settings-links { display: inline-flex; flex-wrap: wrap; gap: 10px; margin-left: auto; }
-.rent-link { border: 0; background: none; color: var(--primary-color); font: inherit; font-size: 14px; padding: 6px 2px; cursor: pointer; }
-.rent-summary, .rent-attn, .rent-list { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 0 12px; }
-.rent-summary { padding: 12px; margin-bottom: 14px; }
-.rent-progress { width: 100%; height: 10px; margin: 8px 0 4px; accent-color: var(--primary-color); }
-.rent-section-title { display: flex; align-items: center; gap: 8px; margin: 16px 0 8px; font-size: 16px; }
-.rent-attn .rent-section-title { margin: 10px 0 2px; }
-.rent-attn-row { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; width: 100%; padding: 10px 0; border: 0; border-top: 1px solid var(--border-color); background: none; color: inherit; font: inherit; text-align: left; }
-button.rent-attn-row { cursor: pointer; }
-.rent-list-row { padding: 12px 0; border-top: 1px solid var(--border-color); }
-.rent-list-row:first-child { border-top: 0; }
-.rent-more { margin-top: 12px; }
-.rent-more summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
-.rent-sticky { position: sticky; bottom: 12px; margin-top: 16px; }
-.rent-btn-block { width: 100%; padding: 12px; font-size: 16px; }
-.rent-btn-danger { background: transparent; border-color: var(--danger-border); color: var(--danger-color); }
-
-/* Record payment (#157 UX redesign) */
-.rent-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.rent-chip { border: 1px solid var(--border-color); background: var(--surface-muted); color: inherit; border-radius: var(--radius-full); padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
-.rent-seg-wide { display: flex; margin-top: 6px; }
-.rent-seg-wide .rent-seg-btn { flex: 1; padding: 8px 6px; }
-.rent-field-error { color: var(--danger-color); font-size: 13px; margin: 4px 0 0; }
-
-/* Tenants list and the tenant's screen (#157 UX redesign) */
-.rent-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
-.rent-toolbar input[type=search] { flex: 1 1 200px; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 16px; }
-.rent-toolbar .rent-btn-primary { margin-left: auto; }
-.rent-tenant-row { display: block; width: 100%; border: 0; border-top: 1px solid var(--border-color); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.rent-list > .rent-tenant-row:first-child { border-top: 0; }
-.rent-tenant-row .rent-name, .rent-tenant-row .rent-sub, .rent-tenant-row .rent-due,
-.rent-prop-card .rent-name, .rent-prop-card .rent-sub, .rent-prop-card .rent-due, .rent-tap .rent-name, .rent-tap .rent-sub, .rent-tap .rent-due { display: block; }
-.rent-unit-row { display: flex; align-items: center; gap: 8px; }
+/* A row holding several lines (tenant, unit, property): title and figure on top, then details and actions */
+.row.rent-entry { flex-direction: column; align-items: stretch; gap: var(--sp-1); padding-top: var(--sp-3); padding-bottom: var(--sp-3); }
+.rent-entry-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-3); }
+.rent-entry .row-meta, .rent-tap .row-meta, .row.rent-entry > .row-title { white-space: normal; }
+.rent-entry-head .row-main > *, .rent-tap .row-main > *, .rent-entry-head .row-trail > * { display: block; }
+.rent-entry-head .row-trail { display: flex; flex-direction: column; align-items: flex-end; gap: var(--sp-1); }
+.rent-entry-head .row-amt { font-size: var(--fs-lead); }
 .rent-tap { flex: 1; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
 button.rent-tap { cursor: pointer; }
-.rent-section-title .rent-btn-primary { margin-left: auto; }
-.rent-detail-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.rent-detail .rent-summary { margin-top: 12px; }
-.rent-menu { position: relative; }
-.rent-menu summary { list-style: none; cursor: pointer; font-size: 22px; line-height: 1; padding: 4px 12px; border-radius: var(--radius); }
-.rent-menu summary::-webkit-details-marker { display: none; }
-.rent-menu-list { position: absolute; right: 0; z-index: 5; display: flex; flex-direction: column; gap: 4px; min-width: 180px; padding: 6px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
-.rent-menu-list .rent-btn { text-align: left; }
+.rent-tap > .rent-entry-head { display: flex; }
+.rent-months { margin: var(--sp-1) 0 0; padding-left: var(--sp-5); font-size: var(--fs-sm); }
+.rent-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
+.rent-increase { align-items: center; flex-wrap: wrap; margin-top: var(--sp-2); }
+.rent-metrics { margin-bottom: var(--sp-4); }
+.rent-viewswitch { margin-bottom: var(--sp-3); }
+.rent-filters { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); margin-bottom: var(--sp-3); }
 
+/* Tenants and properties: toolbar, a tenant's or property's screen and its ⋯ menu */
+.rent-toolbar { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; margin-bottom: var(--sp-3); }
+.rent-toolbar > .input { flex: 1 1 200px; width: auto; }
+.rent-toolbar > .btn-primary { margin-left: auto; }
+.rent-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-2) 0; }
+.rent-tenant-list { margin-bottom: var(--sp-4); }
+.rent-detail-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-2); }
+.rent-detail-head { margin-bottom: var(--sp-3); }
+.rent-detail-title { margin: var(--sp-2) 0 calc(var(--sp-1) / 2); font-family: var(--font-display); font-size: var(--fs-title); font-weight: var(--w-strong); }
+.rent-box { margin-top: var(--sp-3); }
+.rent-box > .rent-section-title { margin-top: 0; }
+.rent-owes { font-size: var(--fs-lead); font-weight: var(--w-strong); }
+.rent-menu { position: relative; }
+.rent-menu > summary { list-style: none; }
+.rent-menu > summary::-webkit-details-marker { display: none; }
+.rent-menu-list { position: absolute; right: 0; z-index: var(--z-menu); display: flex; flex-direction: column; min-width: 180px; padding: var(--sp-1); box-shadow: var(--e2); }
+.rent-menu-list > .btn { justify-content: flex-start; }
+.rent-more { margin-top: var(--sp-3); }
+.rent-more > summary { padding: var(--sp-2) 0; font-weight: var(--w-strong); cursor: pointer; }
+
+/* Forms: a label above each field (the label wraps its input) */
+.rent-label { margin-top: var(--sp-3); color: var(--ink-2); font-size: var(--fs-sm); font-weight: var(--w-label); }
+.rent-check { display: flex; gap: var(--sp-2); align-items: center; margin-top: var(--sp-3); font-size: var(--fs-sm); }
+.rent-occupied { font-weight: var(--w-strong); }
+.rent-tenant-section { margin-top: var(--sp-3); padding-top: var(--sp-1); border-top: 1px solid var(--line); }
+
+/* The form sheet (.sheet over .scrim): its own layer above the page; Cancel on the left, one primary on the right */
+.rent-scrim { position: fixed; inset: 0; z-index: var(--z-dialog); }
+.rent-sheet { z-index: var(--z-dialog); }
+.rent-scrim[hidden], .rent-sheet[hidden] { display: none; }
+.rent-sheet h3 { margin: 0 0 var(--sp-1); font-family: var(--font-display); font-size: var(--fs-lead); font-weight: var(--w-strong); }
+.rent-sheet-actions { display: flex; justify-content: space-between; gap: var(--sp-2); margin-top: var(--sp-4); }
+.rent-sheet-actions > .btn-primary { margin-left: auto; }
+.rent-sheet .rent-metrics { margin: var(--sp-3) 0; }
+.rent-scroll { overflow-x: auto; }
+.rent-results { margin: var(--sp-2) 0 0; padding: 0; list-style: none; }
+.rent-results > li { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1) 0; }
+
+/* Receipts list (rent-receipt.js; the receipt itself is styled by rent-receipt.css) */
+.rent-name { font-weight: var(--w-strong); }
