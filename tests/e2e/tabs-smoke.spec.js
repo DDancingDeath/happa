@@ -112,7 +112,7 @@ const ROUTE_READY = {
     day: '#day .sub-tab.active',
     billing: '#purchaseSection',
     'wholesale-sales': '#salesEntrySection',
-    history: '#history .history-type-filter .filter-btn.active',
+    history: '#history .history-type-filter .active',
     stock: '#currentStockSection',
     due: '#due .filter-purchase.active',
     anomalies: '#anomalies .sub-tab.active',

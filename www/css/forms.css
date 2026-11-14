@@ -371,9 +371,7 @@ input[type="checkbox"].switch:focus-visible,
   box-shadow: var(--focus);
 }
 
-/* Mode dot: purchase / sale segments show the mode colour (Billing's on both segments) */
-.filter-buttons .filter-btn.active.filter-purchase::before,
-.filter-buttons .filter-btn.active.filter-sale::before,
+/* Mode dot: Billing's purchase / sale segments show the mode colour on both */
 #purchaseModeBtn::before,
 #saleModeBtn::before {
   content: '';
@@ -384,7 +382,6 @@ input[type="checkbox"].switch:focus-visible,
   background: var(--mode-purchase);
 }
 
-.filter-buttons .filter-btn.active.filter-sale::before,
 #saleModeBtn::before {
   background: var(--mode-sale);
 }

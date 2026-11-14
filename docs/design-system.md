@@ -136,8 +136,9 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   and its tones read `--bill-tone-text / -soft / -fill / -ink`, which `.bill-page` sets to the wholesale mode (violet fills and
   soft, ink text). Sales | History | Outstanding is a `.seg`; stock and average rate are `.metrics`; Outstanding bills are
   Outstanding's `.due-bill` panels; a bill opened from a list is panels of `.row`s and a `.table`.
-  `moneyInText(text, amount, opts)` (`components.js`) draws the figure inside a translated sentence with `moneyHtml`
-  (`opts` as `formatRupees`, e.g. `{ decimals: 2 }` for a rate; a missing amount leaves the text as it is).
+  `moneyInText(text, amounts, opts)` (`components.js`) draws the figure (or an array of figures, found in order) inside a
+  translated sentence with `moneyHtml` (`opts` as `formatRupees`, e.g. `{ decimals: 2 }` for a rate; a missing amount
+  leaves its text as it is).
 - **Rates and Stock (5.6)**: Rates is a `.table` in a panel (purchase / retail / wholesale headers carry their `.mode-dot`,
   rates in ink), Export / Import / Add item as buttons (Add item primary), a `.search-field`, archived items a `.tag`.
   Stock: Current | Adjustment | Not selling is a `.seg`; the summary is `.metrics`; items and dead stock are `.row`s

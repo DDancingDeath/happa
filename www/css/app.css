@@ -399,21 +399,14 @@ body.dark-mode .modal-box {
   background: var(--danger-soft) !important;
 }
 
-.dark-mode [style*="background: #d1fae5"],
-.dark-mode [style*="background: #d1e7dd"] {
+.dark-mode [style*="background: #d1fae5"] {
   background: var(--success-soft) !important;
-}
-
-.dark-mode [style*="background: #cfe2ff"] {
-  background: var(--info-soft) !important;
 }
 
 .dark-mode [style^="color: rgb(51, 51, 51)"],
 .dark-mode [style*=" color: rgb(51, 51, 51)"],
 .dark-mode [style^="color: #333"],
-.dark-mode [style*=" color: #333"],
-.dark-mode [style^="color: #212529"],
-.dark-mode [style*=" color: #212529"] {
+.dark-mode [style*=" color: #333"] {
   color: var(--text-primary) !important;
 }
 
@@ -432,12 +425,10 @@ body.dark-mode .modal-box {
 .dark-mode [style^="color:#666"],
 .dark-mode [style^="color: #6c757d"],
 .dark-mode [style*=" color: #6c757d"],
-.dark-mode [style*=" color: #495057"],
 .dark-mode [style*=" color:#555"],
 .dark-mode [style*=" color: #555"],
 .dark-mode [style*=";color:#555"],
 .dark-mode [style*=" color: #374151"],
-.dark-mode [style^="color: #595959"],
 .dark-mode [style*=" color:#4b5563"],
 .dark-mode [style^="color:#4b5563"],
 .dark-mode [style*=";color:#4b5563"],
@@ -450,7 +441,6 @@ body.dark-mode .modal-box {
 .dark-mode [style*=" color: #15803d"],
 .dark-mode [style^="color:#15803d"],
 .dark-mode [style*=" color: #1c7430"],
-.dark-mode [style*=" color: #0f5132"],
 .dark-mode [style*=" color: #2e7d32"],
 .dark-mode [style^="color: #059669"] {
   color: var(--on-success-soft) !important;
@@ -469,8 +459,7 @@ body.dark-mode .modal-box {
 .dark-mode [style^="color:#92400e"],
 .dark-mode [style*=" color: #92400e"],
 .dark-mode [style^="color: #b45309"],
-.dark-mode [style^="color:#b45309"],
-.dark-mode [style*=" color: #997404"] {
+.dark-mode [style^="color:#b45309"] {
   color: var(--on-warning-soft) !important;
 }
 
@@ -481,10 +470,7 @@ body.dark-mode .modal-box {
 
 .dark-mode [style^="color: #2563eb"],
 .dark-mode [style*=" color: #2563eb"],
-.dark-mode [style^="color: #1976d2"],
-.dark-mode [style*=" color: #1976d2"],
 .dark-mode [style*=" color: #0058b8"],
-.dark-mode [style*=" color: #084298"],
 .dark-mode [style^="color: #3b82f6"] {
   color: var(--on-info-soft) !important;
 }
@@ -1575,9 +1561,7 @@ input[type="checkbox"].switch:focus-visible,
   box-shadow: var(--focus);
 }
 
-/* Mode dot: purchase / sale segments show the mode colour (Billing's on both segments) */
-.filter-buttons .filter-btn.active.filter-purchase::before,
-.filter-buttons .filter-btn.active.filter-sale::before,
+/* Mode dot: Billing's purchase / sale segments show the mode colour on both */
 #purchaseModeBtn::before,
 #saleModeBtn::before {
   content: '';
@@ -1588,7 +1572,6 @@ input[type="checkbox"].switch:focus-visible,
   background: var(--mode-purchase);
 }
 
-.filter-buttons .filter-btn.active.filter-sale::before,
 #saleModeBtn::before {
   background: var(--mode-sale);
 }
@@ -5009,7 +4992,8 @@ input[type="number"] {
   text-align: center;
 }
 
-.ws-search {
+.ws-search,
+.history-search {
   position: relative;
   display: flex;
   align-items: center;
@@ -5017,7 +5001,8 @@ input[type="number"] {
   margin-bottom: var(--sp-3);
 }
 
-.ws-search > .i {
+.ws-search > .i,
+.history-search > .i {
   position: absolute;
   top: 50%;
   left: var(--sp-3);
@@ -5026,13 +5011,15 @@ input[type="number"] {
   pointer-events: none;
 }
 
-.ws-search > .input {
+.ws-search > .input,
+.history-search > .input {
   flex: 1;
   min-width: 0;
   padding-left: var(--sp-10);
 }
 
-.ws-search > .btn {
+.ws-search > .btn,
+.history-search > .btn {
   flex: none;
 }
 
@@ -6120,18 +6107,63 @@ body.dark-mode .party-due-line.party-due-old {
 .print-chip--uncertain { background: var(--warning-soft); color: var(--on-warning-soft); }
 
 .bill-print-status {
-  margin: 0 16px 16px;
-  padding: 10px;
-  background: var(--surface-muted);
-  border-radius: 8px;
+  margin: 0 var(--sp-4) var(--sp-4);
+  padding: var(--sp-3);
+  background: var(--surface-2);
+  border-radius: var(--r-control);
   font-size: var(--fs-sm);
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--sp-2);
   align-items: center;
 }
 
 .bill-print-status__text { flex: 1 1 180px; }
+
+/* History bill details (with billing.css .bill-view) */
+.bill-view-no {
+  color: var(--accent-text);
+}
+
+.bill-view.is-sale .bill-view-no {
+  color: var(--positive);
+}
+
+.bill-view-weights {
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+
+.bill-view-packets {
+  padding: var(--sp-2) 0;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  text-align: right;
+}
+
+.bill-view-packets > strong {
+  color: var(--ink);
+  font-size: var(--fs-body);
+}
+
+.bill-view-grand {
+  background: var(--accent-soft);
+}
+
+.bill-trace {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.bill-trace > code {
+  font-size: var(--fs-caption);
+}
+
+.bill-window-note {
+  margin: 0 var(--sp-4) var(--sp-4);
+}
 
 .history-items-detail {
   margin-top: 12px;
@@ -6195,12 +6227,17 @@ body.dark-mode .party-due-line.party-due-old {
 }
 
 .history-search-footer {
-  margin: 8px 0 16px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--primary-soft);
-  color: var(--text-secondary);
+  margin: var(--sp-2) 0 var(--sp-4);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-control);
+  background: var(--accent-soft);
+  color: var(--ink-2);
   font-size: var(--fs-sm);
+  text-align: center;
+}
+
+.history-show-more {
+  padding: var(--sp-3);
   text-align: center;
 }
 
@@ -6247,40 +6284,45 @@ body.dark-mode .party-due-line.party-due-old {
 }
 
 /* ==================== TYPE + DATE FILTERS (#160) ==================== */
-.filter-buttons.history-type-filter .filter-btn {
-  min-width: 0;
-  padding: 12px 6px;
+.history-type-filter {
+  margin-bottom: var(--sp-3);
 }
 
+.history-type-filter > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Date filter: History and Wholesale › History */
 .history-date-filter {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
 }
 
 .history-date-label {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: var(--w-label);
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 
-#historyDatePreset {
+.history-date-filter > select {
   flex: 1 1 180px;
+  width: auto;
   min-width: 0;
-  padding: 10px 36px 10px 12px;
-  border: 2px solid var(--border-color);
-  border-radius: 8px;
-  font-size: var(--fs-body);
-  background-color: var(--card-bg);
 }
 
 .history-custom-range {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   flex: 1 1 100%;
 }
 
@@ -6289,38 +6331,27 @@ body.dark-mode .party-due-line.party-due-old {
   display: none;
 }
 
-.history-custom-range input[type="date"] {
+.history-custom-range > .input {
   flex: 1 1 0;
+  width: auto;
   min-width: 0;
-  padding: 8px 10px;
-  border: 2px solid var(--border-color);
-  border-radius: 8px;
-  font-size: var(--fs-body);
 }
 
 .history-range-label {
   flex: 1 1 100%;
-  font-size: 14px;
-  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
 }
 
 .history-apply-range {
-  flex: 0 0 auto;
-  padding: 9px 12px;
-  border: none;
-  border-radius: 8px;
-  background: var(--btn-primary);
-  color: var(--btn-primary-ink);
-  font-weight: var(--w-strong);
-  font-size: 14px;
-  cursor: pointer;
+  flex: none;
   white-space: nowrap;
 }
 
 .history-range-hint {
   flex: 1 1 100%;
-  font-size: 14px;
-  color: var(--on-danger-soft);
+  font-size: var(--fs-sm);
+  color: var(--negative);
 }
 
 .history-range-hint[hidden] {
@@ -6490,42 +6521,6 @@ body.dark-mode .party-due-line.party-due-old {
   box-shadow: none;
 }
 
-/* Search row + Table View (standard secondary button) */
-.history-search-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-  align-items: center;
-}
-
-.history-search-input {
-  flex: 1;
-  min-width: 0;
-  padding: 12px;
-  border: 2px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 16px;
-}
-
-.history-view-toggle {
-  flex: 0 0 auto;
-  min-height: 44px;
-  padding: 10px 14px;
-  border: 2px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--card-bg);
-  color: var(--text-primary);
-  font-weight: var(--w-strong);
-  font-size: 14px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.history-view-toggle:hover {
-  border-color: var(--primary-dark);
-  color: var(--primary-dark);
-}
-
 /* "Bills older than … aren't updated live" — one subtle line */
 .history-stale-hint {
   display: flex;
@@ -6663,7 +6658,6 @@ body.dark-mode .party-due-line.party-due-old {
 @media (max-width: 480px) {
   .history-apply-range {
     flex: 1 1 100%;
-    background: var(--btn-primary);
   }
 
   .bill-details-footer .bill-action-btn {
@@ -9103,27 +9097,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     padding: 10px 12px;
     font-size: 14px;
   }
-}
-
-.bill-info-section {
-  margin-bottom: 24px;
-}
-
-.bill-info-row {
-  display: flex;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.bill-info-label {
-  font-weight: var(--w-label);
-  color: var(--text-muted);
-  min-width: 140px;
-}
-
-.bill-info-value {
-  color: var(--dark-color);
-  flex: 1;
 }
 
 .bill-items-table {
@@ -11958,10 +11931,6 @@ div.ins-wide,
   .bill-row .payment-badge {
     padding: 3px 8px;
     font-size: var(--fs-caption);
-  }
-
-  .history-view-toggle {
-    min-height: 40px;
   }
 
   /* ---------- Today: hero strip, the day's figures | needs attention (redesign 5.1) ---------- */

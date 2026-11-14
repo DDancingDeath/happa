@@ -42,4 +42,25 @@ describe('moneyInText', () => {
     test('a missing amount leaves the text as it is ("₹0.00" stays, never "—")', () => {
         expect(moneyInText('Rate: ₹0.00/kg', undefined, { decimals: 2 })).toBe('Rate: ₹0.00/kg');
     });
+
+    test('several figures, in order; one not in the text, or missing, is skipped', () => {
+        const d = document.createElement('div');
+        const figures = () => [...d.querySelectorAll('.money')].map(m => m.textContent);
+        d.innerHTML = moneyInText('cash ₹1,500 · online ₹500', [1500, 500]);
+        expect(d.textContent).toBe('cash ₹1,500 · online ₹500');
+        expect(figures()).toEqual(['₹1,500', '₹500']);
+        d.innerHTML = moneyInText('cash ₹1,500 · online ₹500', [7, 500]);
+        expect(d.textContent).toBe('cash ₹1,500 · online ₹500');
+        expect(figures()).toEqual(['₹500']);
+        d.innerHTML = moneyInText('cash ₹0 · online ₹500', [null, 500]);
+        expect(d.textContent).toBe('cash ₹0 · online ₹500');
+        expect(figures()).toEqual(['₹500']);
+    });
+
+    test('an array of figures with opts', () => {
+        const d = document.createElement('div');
+        d.innerHTML = moneyInText('₹12.50/kg → ₹13.00/kg', [12.5, 13], { decimals: 2 });
+        expect(d.textContent).toBe('₹12.50/kg → ₹13.00/kg');
+        expect([...d.querySelectorAll('.money')].map(m => m.textContent)).toEqual(['₹12.50', '₹13.00']);
+    });
 });

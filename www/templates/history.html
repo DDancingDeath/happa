@@ -1,9 +1,9 @@
 <div id="history" class="tab">
     <header class="page-head"><h2 data-i18n="ui.nav.history">History</h2></header>
-        
-        <div class="filter-buttons history-type-filter" role="group" aria-label="Bill type" style="margin-bottom: 10px;" data-i18n-aria-label="ui.history.bill_type">
-            <button type="button" class="filter-btn filter-purchase active" data-type="purchase" data-onclick="history.filterHistory('purchase')" data-i18n="ui.history.tab_purchase">Purchase</button>
-            <button type="button" class="filter-btn filter-sale" data-type="sale" data-onclick="history.filterHistory('sale')" data-i18n="ui.history.tab_sale">Sale</button>
+
+        <div class="seg history-type-filter" role="group" aria-label="Bill type" data-i18n-aria-label="ui.history.bill_type">
+            <button type="button" class="filter-purchase active" aria-pressed="true" data-type="purchase" data-onclick="history.filterHistory('purchase')"><span class="mode-dot" aria-hidden="true"></span><span data-i18n="ui.history.tab_purchase">Purchase</span></button>
+            <button type="button" class="filter-sale" aria-pressed="false" data-type="sale" data-onclick="history.filterHistory('sale')"><span class="mode-dot sale" aria-hidden="true"></span><span data-i18n="ui.history.tab_sale">Sale</span></button>
         </div>
 
         <div class="history-date-filter">
@@ -18,23 +18,24 @@
                 <option value="custom" data-i18n="ui.history.custom">Custom</option>
             </select>
             <div id="historyCustomRange" class="history-custom-range" hidden>
-                <input type="date" id="historyFromDate" aria-label="From date" min="2020-01-01" data-i18n-aria-label="ui.history.from_date">
+                <input type="date" id="historyFromDate" class="input" aria-label="From date" min="2020-01-01" data-i18n-aria-label="ui.history.from_date">
                 <span aria-hidden="true">–</span>
-                <input type="date" id="historyToDate" aria-label="To date" min="2020-01-01" data-i18n-aria-label="ui.history.to_date">
-                <button type="button" class="history-apply-range" data-onclick="history.applyCustomRange()" data-i18n="ui.history.apply">Apply</button>
+                <input type="date" id="historyToDate" class="input" aria-label="To date" min="2020-01-01" data-i18n-aria-label="ui.history.to_date">
+                <button type="button" class="btn btn-primary btn-sm history-apply-range" data-onclick="history.applyCustomRange()" data-i18n="ui.history.apply">Apply</button>
             </div>
             <div id="historyRangeHint" class="history-range-hint" role="alert" hidden></div>
             <div id="historyRangeLabel" class="history-range-label" hidden></div>
         </div>
 
-        <div class="history-search-row">
-            <input type="text" id="historySearch" class="history-search-input" placeholder="Search by bill number, customer, or item…"
-                   data-oninput="history.searchHistory(this.value)" data-i18n-placeholder="ui.history.search_bill_number_customer"/>
-            <button type="button" data-onclick="history.toggleView()" id="historyViewToggle" class="history-view-toggle" data-i18n="ui.history.table_view">Table view</button>
+        <div class="history-search">
+            <svg class="i" aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
+            <input type="text" id="historySearch" class="input" placeholder="Search by bill number, customer, or item…" aria-label="Search by bill number, customer, or item…"
+                   data-oninput="history.searchHistory(this.value)" data-i18n-placeholder="ui.history.search_bill_number_customer" data-i18n-aria-label="ui.history.search_bill_number_customer"/>
+            <button type="button" data-onclick="history.toggleView()" id="historyViewToggle" class="btn btn-sm" data-i18n="ui.history.table_view">Table view</button>
         </div>
 
         <div id="historyList">
-            <p style="text-align: center; color: #666; margin-top: 40px;" data-i18n="ui.history.no_billing_history_yet">No billing history yet</p>
+            <p class="empty" data-i18n="ui.history.no_billing_history_yet">No billing history yet</p>
         </div>
-        <div id="historySearchFooter" class="history-search-footer" style="display: none;"></div>
+        <div id="historySearchFooter" class="history-search-footer" hidden></div>
     </div>

@@ -508,27 +508,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 }
 
-.bill-info-section {
-  margin-bottom: 24px;
-}
-
-.bill-info-row {
-  display: flex;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.bill-info-label {
-  font-weight: var(--w-label);
-  color: var(--text-muted);
-  min-width: 140px;
-}
-
-.bill-info-value {
-  color: var(--dark-color);
-  flex: 1;
-}
-
 .bill-items-table {
   width: 100%;
   margin: 20px 0;
