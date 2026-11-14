@@ -47,11 +47,7 @@
   overflow-wrap: anywhere;
 }
 
-/* A stock bucket with no catalogue item: its tone (tone-neg / tone-warn) marks the stripe, note and kg */
-.stock-orphan {
-  border-left: 3px solid currentColor;
-}
-
+/* A stock bucket with no catalogue item: its tone (tone-neg / tone-warn) marks the note and kg, not the title */
 .stock-orphan .row-title {
   color: var(--ink);
 }
@@ -145,7 +141,7 @@
   background: var(--surface-2);
 }
 
-/* The .history-item hook (tests) keeps History's card rules; these undo its stripe and hover */
+/* .history-item is the hook (tests) */
 .history-item.stock-adj {
   margin-bottom: var(--sp-3);
   padding: var(--sp-4);
@@ -153,11 +149,6 @@
   border-radius: var(--r-panel);
   background: var(--panel-bg);
   box-shadow: var(--panel-shadow);
-}
-
-.history-item.stock-adj:hover {
-  box-shadow: var(--panel-shadow);
-  transform: none;
 }
 
 .stock-adj .history-header {

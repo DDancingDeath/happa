@@ -46,6 +46,8 @@ test('the owner reads once per open; the month shows part-paid and the cards', a
     await W.init();
     expect(repo.loadWorkers).toHaveBeenCalledTimes(2);
     expect(body().querySelector('[data-worker="w1"] [data-wp-state]').textContent).toBe('Part-paid, ₹3,000 of ₹9,000');
+    expect(body().querySelector('[data-worker="w1"] [data-wp-state]').className).toBe('tag');
+    expect(body().querySelector('[data-worker="w1"] .tone-neg')).toBeNull();
     const card = (id) => body().querySelector(`[data-wp="${id}"]`).textContent;
     expect([card('WP-7'), card('WP-8'), card('WP-9'), card('WP-10')]).toEqual(['₹9,000', '₹3,000', '₹6,000', '₹0']);
     W.step(-1);

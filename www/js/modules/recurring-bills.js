@@ -178,7 +178,7 @@ function renderPeriods(v) {
             <td>${stateTag(r)}</td>
             <td>${balanceLine(r.closing)}</td>
         </tr>`).join('');
-    return `<div class="scroll-cue"><div class="scroll-cue-inner"><table class="rb-table">
+    return `<div class="scroll-cue"><div class="scroll-cue-inner"><table class="table">
             <thead><tr><th>${et('ui.rbills.period')}</th><th>${et('ui.rbills.col_due')}</th><th>${et('ui.rbills.col_bill')}</th><th>${et('ui.rbills.col_paid')}</th><th>${et('ui.rbills.col_carried_in')}</th><th>${et('ui.rbills.col_state')}</th><th>${et('ui.rbills.col_balance')}</th></tr></thead>
             <tbody>${rows}</tbody></table></div></div>`;
 }

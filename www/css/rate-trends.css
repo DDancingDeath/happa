@@ -40,9 +40,9 @@
 .rt-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
 
 .rt-table-wrap { overflow-x: auto; }
-.rt-table { border-collapse: collapse; width: 100%; font-size: var(--fs-caption); }
-.rt-table th, .rt-table td { border: 1px solid var(--border-color); padding: 6px; text-align: right; white-space: nowrap; }
-.rt-table th { font-weight: var(--w-label); font-size: var(--fs-caption); text-align: center; }
+.rt-table { font-size: var(--fs-caption); }
+.rt-table th, .rt-table td { height: auto; padding: 6px; text-align: right; white-space: nowrap; }
+.rt-table th { text-align: center; }
 .rt-table td:first-child { text-align: left; font-weight: var(--w-strong); }
 .rt-neg { color: var(--on-danger-soft); }
 

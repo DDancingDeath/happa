@@ -4490,19 +4490,30 @@ input[type="number"] {
 .bill-weights {
   margin-bottom: var(--sp-2);
   padding: var(--sp-3);
-  border-left: 4px solid var(--mode-purchase);
   border-radius: var(--r-control);
   background: var(--surface-2);
-}
-
-.bill-weights-sale {
-  border-left-color: var(--mode-sale);
 }
 
 .bill-weights-title {
   margin-bottom: 6px;
   color: var(--ink);
   font-weight: var(--w-strong);
+}
+
+/* The bill's mode as a dot, not a stripe */
+.bill-weights-title::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--sp-2);
+  border-radius: var(--r-full);
+  background: var(--mode-purchase);
+  vertical-align: 0.1em;
+}
+
+.bill-weights-sale .bill-weights-title::before {
+  background: var(--mode-sale);
 }
 
 .bill-weights-list {
@@ -5662,29 +5673,7 @@ body.dark-mode .party-due-line.party-due-old {
 }
 
 /* ---- css/history.css ---- */
-.history-item {
-  background: var(--card-bg);
-  padding: 18px;
-  border-radius: var(--radius-lg);
-  margin-bottom: 16px;
-  box-shadow: var(--shadow);
-  border-left: 4px solid var(--primary-color);
-  transition: all var(--transition);
-}
-
-.history-item:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateX(4px);
-}
-
-.history-item[data-type="purchase"] {
-  border-left-color: var(--purchase-color);
-}
-
-.history-item[data-type="sale"] {
-  border-left-color: var(--sale-color);
-}
-
+/* .history-item is a hook (tests, oracle, Outstanding, Stock); the look comes from .row / .due-bill / .stock-adj */
 .history-header {
   display: flex;
   justify-content: space-between;
@@ -5715,28 +5704,9 @@ body.dark-mode .party-due-line.party-due-old {
   flex-wrap: wrap;
 }
 
+/* Online / cash / due: .tag; a due is ink, amber after 30 days and red after 90 (DIRECTION 3.1) */
 .payment-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 12px;
-  border-radius: var(--radius);
-  font-weight: var(--w-strong);
-  font-size: var(--fs-sm);
-}
-
-.payment-online {
-  background: var(--info-light);
-  color: var(--info-dark);
-}
-
-.payment-cash {
-  background: var(--success-light);
-  color: var(--success-dark);
-}
-
-.payment-due {
-  background: var(--warning-light);
-  color: var(--warning-dark);
+  font-variant-numeric: tabular-nums;
 }
 
 .old-app-chip {
@@ -6000,17 +5970,26 @@ body.dark-mode .party-due-line.party-due-old {
   align-items: baseline;
   column-gap: 10px;
   row-gap: 4px;
-  padding: 10px 12px;
-  margin-bottom: 8px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--r-panel);
+  background: var(--panel-bg);
 }
 
-.history-item.bill-row:hover {
-  transform: none;
+/* Consecutive rows join into one panel; .row + .row::before draws the hairline */
+.history-item.bill-row + .history-item.bill-row {
+  border-top: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 
-.history-item.bill-row[data-type="retail"],
-.history-item.bill-row[data-type="wholesale"] {
-  border-left-color: var(--sale-color);
+.history-item.bill-row:has(+ .history-item.bill-row) {
+  border-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.history-item.bill-row + :not(.history-item) {
+  margin-top: var(--sp-3);
 }
 
 .bill-row__no,
@@ -6029,19 +6008,22 @@ body.dark-mode .party-due-line.party-due-old {
   font-size: var(--fs-body);
 }
 
+.bill-row__no > .mode-dot {
+  display: inline-block;
+  margin-right: var(--sp-2);
+  vertical-align: 0.1em;
+}
+
 .bill-row[role="button"] {
   cursor: pointer;
 }
 
-.bill-row__link {
-  cursor: pointer;
-  text-decoration: underline;
-  color: var(--purchase-dark);
+.bill-row[role="button"]:hover {
+  background: var(--surface-2);
 }
 
-.bill-row[data-type="retail"] .bill-row__link,
-.bill-row[data-type="wholesale"] .bill-row__link {
-  color: var(--sale-color);
+.bill-row__link {
+  cursor: pointer;
 }
 
 .bill-row__party {
@@ -6057,12 +6039,7 @@ body.dark-mode .party-due-line.party-due-old {
   font-weight: var(--w-strong);
   font-size: var(--fs-body);
   font-variant-numeric: tabular-nums;
-  color: var(--purchase-dark);
-}
-
-.bill-row[data-type="retail"] .bill-row__amount,
-.bill-row[data-type="wholesale"] .bill-row__amount {
-  color: var(--sale-color);
+  color: var(--ink);
 }
 
 .bill-row__meta {
@@ -6103,9 +6080,8 @@ body.dark-mode .party-due-line.party-due-old {
   font-size: var(--fs-caption);
 }
 
-.bill-row .payment-badge {
-  padding: 2px 6px;
-  font-size: var(--fs-sm);
+.payment-due:not(.warn, .neg) {
+  color: var(--ink);
 }
 
 .bill-row .old-app-chip {
@@ -6130,11 +6106,6 @@ body.dark-mode .party-due-line.party-due-old {
   font-size: var(--fs-caption);
   font-weight: var(--w-strong);
   color: var(--on-primary-soft);
-}
-
-.bill-group--opening .history-item.bill-row {
-  border-left-color: var(--primary-light);
-  box-shadow: none;
 }
 
 /* "Bills older than … aren't updated live" — one subtle line */
@@ -6171,40 +6142,21 @@ body.dark-mode .party-due-line.party-due-old {
 }
 
 .bill-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--card-bg);
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
   font-size: var(--fs-sm);
 }
 
 .bill-table thead th {
-  padding: 10px 8px;
-  background: var(--surface-muted);
-  color: var(--text-secondary);
-  font-weight: var(--w-label);
-  text-align: left;
-  border-bottom: 1px solid var(--border-color);
   white-space: nowrap;
-  font-size: var(--fs-caption);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 .bill-table td {
-  padding: 10px 8px;
-  border-bottom: 1px solid var(--border-color);
+  padding-top: var(--sp-2);
+  padding-bottom: var(--sp-2);
   vertical-align: top;
 }
 
 .bill-table__row {
   cursor: pointer;
-}
-
-.bill-table__row:hover {
-  background: var(--light-bg);
 }
 
 .bill-table__no {
@@ -6230,8 +6182,6 @@ body.dark-mode .party-due-line.party-due-old {
 
 .bill-table__chips .payment-badge {
   margin: 0 4px 4px 0;
-  padding: 2px 8px;
-  font-size: var(--fs-sm);
 }
 
 .bill-table__group th {
@@ -6723,6 +6673,15 @@ body.dark-mode .party-due-line.party-due-old {
     color: var(--negative);
 }
 
+/* No amount, no age colour: ₹0 is never red */
+.aging-bucket.is-zero > .aging-dot {
+    background: var(--line-strong);
+}
+
+.aging-bucket.is-zero .aging-bucket-amount {
+    color: var(--ink-3);
+}
+
 .aging-bucket-count {
     grid-column: 2 / -1;
     color: var(--ink-3);
@@ -6832,8 +6791,7 @@ body.dark-mode .party-due-line.party-due-old {
     margin-bottom: var(--sp-3);
 }
 
-/* ---------- Bills: one panel per open bill (BILL-DUE) ---------- */
-/* The .history-item hook (tests, search) keeps History's card rules; these undo its stripe and hover */
+/* ---------- Bills: one panel per open bill (BILL-DUE); .history-item is the hook (tests, search) ---------- */
 .history-item.due-bill {
     margin-bottom: var(--sp-3);
     padding: var(--sp-4);
@@ -6841,11 +6799,6 @@ body.dark-mode .party-due-line.party-due-old {
     border-radius: var(--r-panel);
     background: var(--panel-bg);
     box-shadow: var(--panel-shadow);
-}
-
-.history-item.due-bill:hover {
-    box-shadow: var(--panel-shadow);
-    transform: none;
 }
 
 .due-bill .history-header {
@@ -7047,11 +7000,7 @@ body.dark-mode .party-due-line.party-due-old {
   overflow-wrap: anywhere;
 }
 
-/* A stock bucket with no catalogue item: its tone (tone-neg / tone-warn) marks the stripe, note and kg */
-.stock-orphan {
-  border-left: 3px solid currentColor;
-}
-
+/* A stock bucket with no catalogue item: its tone (tone-neg / tone-warn) marks the note and kg, not the title */
 .stock-orphan .row-title {
   color: var(--ink);
 }
@@ -7145,7 +7094,7 @@ body.dark-mode .party-due-line.party-due-old {
   background: var(--surface-2);
 }
 
-/* The .history-item hook (tests) keeps History's card rules; these undo its stripe and hover */
+/* .history-item is the hook (tests) */
 .history-item.stock-adj {
   margin-bottom: var(--sp-3);
   padding: var(--sp-4);
@@ -7153,11 +7102,6 @@ body.dark-mode .party-due-line.party-due-old {
   border-radius: var(--r-panel);
   background: var(--panel-bg);
   box-shadow: var(--panel-shadow);
-}
-
-.history-item.stock-adj:hover {
-  box-shadow: var(--panel-shadow);
-  transform: none;
 }
 
 .stock-adj .history-header {
@@ -8147,15 +8091,11 @@ body.no-perm-contacts [data-perm~="contacts"] {
 }
 
 .labour-breakdown-table {
-  width: 100%;
-  border-collapse: collapse;
   font-size: var(--fs-sm);
 }
 
 .labour-breakdown-table th,
 .labour-breakdown-table td {
-  padding: 6px 4px;
-  border-bottom: 1px solid var(--border-color);
   text-align: right;
 }
 
@@ -8419,7 +8359,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
   min-width: 120px;
 }
 
-/* Rows (card and page): a severity stripe, the reason and who / what, then the review buttons */
+/* Rows (card and page): the severity dot, the reason and who / what, then the review buttons */
 .anom-list {
   overflow: hidden;
 }
@@ -8429,15 +8369,6 @@ body.no-perm-contacts [data-perm~="contacts"] {
   align-items: flex-start;
   padding-top: var(--sp-3);
   padding-bottom: var(--sp-3);
-  border-left: 3px solid transparent;
-}
-
-.anom-row.sev-high {
-  border-left-color: var(--negative);
-}
-
-.anom-row.sev-medium {
-  border-left-color: var(--warning-dot);
 }
 
 .anom-row-body {
@@ -8979,9 +8910,9 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .rt-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
 
 .rt-table-wrap { overflow-x: auto; }
-.rt-table { border-collapse: collapse; width: 100%; font-size: var(--fs-caption); }
-.rt-table th, .rt-table td { border: 1px solid var(--border-color); padding: 6px; text-align: right; white-space: nowrap; }
-.rt-table th { font-weight: var(--w-label); font-size: var(--fs-caption); text-align: center; }
+.rt-table { font-size: var(--fs-caption); }
+.rt-table th, .rt-table td { height: auto; padding: 6px; text-align: right; white-space: nowrap; }
+.rt-table th { text-align: center; }
 .rt-table td:first-child { text-align: left; font-weight: var(--w-strong); }
 .rt-neg { color: var(--on-danger-soft); }
 
@@ -9087,19 +9018,14 @@ body.no-perm-contacts [data-perm~="contacts"] {
   margin-top: var(--sp-1);
 }
 
-.hl-failures {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-}
-
 .hl-failure {
-  padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--negative);
-  border-radius: var(--r-control);
+  align-items: flex-start;
   font-size: var(--fs-sm);
   overflow-wrap: anywhere;
+}
+
+.hl-failure .tag {
+  margin: 0 var(--sp-1);
 }
 
 .hl-policies {
@@ -10322,14 +10248,6 @@ div.ins-wide,
     align-items: center;
     column-gap: 12px;
     padding: 8px 16px;
-    margin-bottom: 6px;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-xs);
-  }
-
-  .history-item.bill-row:hover {
-    transform: none;
-    box-shadow: var(--shadow-sm);
   }
 
   .history-item.bill-row > *,

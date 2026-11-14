@@ -137,7 +137,7 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
 - **Outstanding (5.3)**: the owed total is the hero figure, with a `.meter` and its legend (the age groups,
   still buttons that filter). Age colours: up to 30 days `--ink-3`, 31–60 `--warning-dot`, 61–90
   `--on-caution-soft`, 90+ `--negative`; dues themselves stay in ink, and ages are `.tag` (`.warn` after 30
-  days, `.neg` after 90). Party rows are `.row`s in a panel with an initials avatar drawn from
+  days, `.neg` after 90). The rule is `dueTone(days, amount)` in `utils/aging.js` (History's Due tag and Workers' dues use it too): ₹0 is never coloured, so an empty age group shows a muted dot and amount. Party rows are `.row`s in a panel with an initials avatar drawn from
   `data-initials` (CSS, so the row's text is unchanged); bills are panels.
 - **Today › Cash (5.2a)**: Available cash is the hero figure, the day's other figures a `.metrics` panel (each figure draws its
   own hairlines, so the grid holds whichever ones show); Open, Record and Close are panels of `.field`s with ₹ as an `.adorn-pre`,
@@ -156,9 +156,10 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
 - **Rates and Stock (5.6)**: Rates is a `.table` in a panel (purchase / retail / wholesale headers carry their `.mode-dot`,
   rates in ink), Export / Import / Add item as buttons (Add item primary), a `.search-field`, archived items a `.tag`.
   Stock: Current | Adjustment | Not selling is a `.seg`; the summary is `.metrics`; items and dead stock are `.row`s
-  in a panel (`.stock-item` stays as the hook; an unmatched bucket takes a tone stripe); the low-stock list is a
+  in a panel (`.stock-item` stays as the hook; an unmatched bucket takes a tone on its note and kg); the low-stock list is a
   `.notice`; the adjustment form is a panel of `.field`s with kg and ₹ … /kg as `.adorn`, current stock and average
   rate as `.metrics`; adjustments are panels (`.history-item` hook). Sections switch with `hidden`.
+- **History (5.4a, C4)**: a bill is a `.row` (`.history-item.bill-row` stays as the hook, also on Wholesale › History); consecutive rows join into one panel with hairlines. The bill number has its `.mode-dot` (no side stripe), number and amount in ink; online / cash / due are `.tag`s (the Due tag ages with `dueTone`). Table View and the other desktop lists (Day labour, Rate trends, Recurring bills, Workers) are `.table`s.
 - **Expenses (5.4b)**: Business | Personal is a `.seg`; each form is a `.panel` of `.field`s (₹ as an `.adorn`) with a primary
   Save and a tonal Print; a section's list is a `.panel` of `.row`s (amount in `.row-trail`, voided rows `.is-voided` with a
   `.tag`), "Show voided" is a `.switch` and the quick-fill templates are `.chip`s. Expense details: the amount as a
@@ -172,7 +173,7 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   native share button start `hidden`; their scripts set `hidden` with `style.display`. App health: sections are panels,
   tables `.table`, pass rates tinted cells, and Today's below-target banner a `.notice.neg`. Anomalies: filters are
   `.field`s in a panel with a `.search-field`, List | Patterns are `.tabs`, rows (also on Today's Day report) are `.row`s
-  with a severity stripe, `.tag` status and `.btn-sm` review buttons, amounts `moneyHtml()`; the heat map and the
+  with a severity dot (no stripe), `.tag` status and `.btn-sm` review buttons, amounts `moneyHtml()`; the heat map and the
   by-hour bars draw from `--a` / `--h` custom properties and the trend chart's axis text from the theme's muted ink.
 - **Admin (5.8b)**: Users | Data are `.tabs` (Aadhat settings is a ghost button beside them); each list of people is a `.panel`
   of `.row`s (name, email, a `.tag` for the role or status) with small `.btn`s below; the activity range is a `.seg` and the
