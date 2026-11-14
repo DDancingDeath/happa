@@ -23,15 +23,34 @@ layer-2 tokens. Nothing else changes per theme.
 | Layer | What | Tokens | Set by |
 |---|---|---|---|
 | **1. Semantic** | Colours by meaning, elevation, focus | `--bg`, `--surface`, `--surface-2`, `--surface-3`, `--line`, `--line-strong`, `--ink`, `--ink-2`, `--ink-3`, `--ink-placeholder`, `--scrim`; `--accent`, `--accent-hover`, `--accent-strong`, `--accent-text`, `--accent-soft`, `--accent-line`; `--mode-sale`, `--mode-wholesale`, `--mode-rentals` (+ `-soft`); `--positive`, `--negative`, `--warning`, `--info` (+ `-soft`, `-line`), `--negative-fill`, `--warning-dot`, `--caution-soft`; the **inks** `--on-accent`, `--on-accent-strong`, `--on-mode-sale`, `--on-mode-wholesale`, `--on-caution-soft`; `--e1`…`--e3`, `--highlight`, `--focus`, `--state-hover` | every theme (a light block, and a dark block unless it is always dark) |
-| **2. Component** | Shape and type roles (declared beside layer 1, on `:root, [data-theme]`); materials and button inks derived from layer 1 (on `:root, [data-theme], [data-mode]`) | `--r-xs`, `--r-sm`, `--r-control`, `--r-panel`, `--r-chip`, `--r-sheet`, `--r-full`, `--rule-style`; `--font-ui`, `--font-display`, `--font-num`, `--font-hero`, `--w-regular`, `--w-strong`, `--w-display`, `--tracking-display`, `--title-style`, `--hero-nums`; `--page-bg`, `--panel-bg`, `--panel-border`, `--panel-shadow`, `--input-bg`, `--input-border`, `--bar-bg`, `--bar-border`, `--seg-track`, `--seg-on`, `--table-rule`, `--btn-primary-bg`, `--btn-primary-ink`, `--btn-primary-shadow`, `--btn-sale-bg`, `--btn-sale-ink`, `--btn-danger-bg`, `--btn-danger-ink`, `--toast-bg`, `--toast-ink`, `--toast-pos/-neg/-warn/-info`, `--preview-apply-line`, `--mode-purchase` | defaults in `variables.css`; a theme overrides only what makes it different |
+| **2. Component** | Shape and type roles (declared beside layer 1, on `:root, [data-theme]`); materials and button inks derived from layer 1 (on `:root, [data-theme], [data-mode]`) | `--r-2xs`, `--r-xs`, `--r-sm`, `--r-control`, `--r-md` (control + 2px), `--r-panel`, `--r-lg` (panel + 2px), `--r-chip`, `--r-sheet`, `--r-full`, `--r-round` (50%), `--rule-style`; `--font-ui`, `--font-display`, `--font-num`, `--font-hero`, `--w-regular`, `--w-strong`, `--w-display`, `--tracking-display`, `--title-style`, `--hero-nums`; `--page-bg`, `--panel-bg`, `--panel-border`, `--panel-shadow`, `--input-bg`, `--input-border`, `--bar-bg`, `--bar-border`, `--seg-track`, `--seg-on`, `--table-rule`, `--btn-primary-bg`, `--btn-primary-ink`, `--btn-primary-shadow`, `--btn-sale-bg`, `--btn-sale-ink`, `--btn-danger-bg`, `--btn-danger-ink`, `--toast-bg`, `--toast-ink`, `--toast-pos/-neg/-warn/-info`, `--preview-apply-line`, `--mode-purchase` | defaults in `variables.css`; a theme overrides only what makes it different |
 | **3. Components** | `.btn`, `.field`, `.seg`, `.panel`, `.row`, `.notice` … (§3) | read tokens, never raw colours | base CSS only |
 
 **Not per theme** (on `:root`): the type scale `--fs-caption|sm|body|lead|title|display|hero` (plus `--fs-input`, a fixed 16px for text fields so iOS does not zoom on focus),
 `--lh-body`, `--w-label`, spacing `--sp-1…10`, `--gutter`,
-`--section-gap`, `--row-h`, `--control-h(-sm)`, motion `--ease`, `--dur-1…3`, layers `--z-*` (a page's pop-up menu, the bell, the notifications sheet, page dialogs `--z-dialog`, the saving spinner `--z-busy`, confirms `--z-modal`, the sign-in screen). Layouts are therefore
+`--section-gap`, `--row-h`, `--control-h(-sm)`, motion `--ease`, `--dur-1…3`, layers `--z-*` (below), edge stripes `--stripe` / `--stripe-sm` (`box-shadow: var(--stripe) <colour>`) and the validation rings `--ring-danger` / `--ring-warning`. Layouts are therefore
 identical in every theme. Desktop (≥1024 px, `desktop.css`) sets `--control-h` 36, `--row-h` 44 and the desktop type scale (body 14, lead 16,
 title 18, display 26, hero 30). Hindi (`html[lang="hi"]`) raises `--fs-sm` / `--fs-body` and `--lh-body`,
 makes `--w-label` 400, and turns off a theme's italic titles and display tracking (`--title-style`, `--tracking-display`); the Android app (`html.platform-android`) uses weight 500.
+
+**Layers (`--z-*`), low to high.** Use a token; a step inside a band is a `calc()` offset of the band's token, so
+the stacking order stays exact. `ds-guard` counts any numeric `z-index`.
+
+| Token | Value | Used by |
+|---|---|---|
+| `--z-base` | 1 | Billing's Fill tick box over its label |
+| `--z-raised` | 2 | desktop Billing summary's sticky totals and actions |
+| `--z-sticky` (`--z-menu`) | 5 | sticky page heads (Insights), the bill-check notice, a page's pop-up menu |
+| `--z-popover` | 30 | the party name suggestions |
+| `--z-nav` | 900 | desktop sidebar; the phone's canvas band under the app bar |
+| `--z-appbar` | 950 | app bar (desktop), bottom tab bar; −10 Billing's action bar, +10 pull-to-refresh, +40 the phone app bar |
+| `--z-drawer` (`--z-bell`) | 1000 | the old `.modal`, the bell; −1 the menu scrim (`.overlay`), +1 the phone side menu and the sync pill, +2 / +3 the notifications scrim / sheet |
+| `--z-sheet` | 9000 | floating notices (printer permission, theme preview bar); −1 the update banner, +1 the clock notice |
+| `--z-dialog` (`--z-auth`) | 10000 | page dialogs (`.app-scrim.page-sheet`, + `--sheet-layer`, the stack depth), the sign-in screen, Rentals sheets |
+| `--z-busy` | 15000 | the saving spinner: above any stack of page dialogs, below the confirms |
+| `--z-modal` | 20000 | confirms and alerts (`.app-scrim`, + `--sheet-layer`) over any of the above |
+| `--z-toast` | 100000 | toasts; −2 the storage-full banner (`quota-guard.js`) |
+| `--z-max` | 2147483647 | reserved: nothing may sit above it |
 
 **Old names** (`--primary-color`, `--card-bg`, `--white`, `--success-color`, `--btn-primary`,
 `--shadow-md`, `--radius`, …) are aliases of the tokens above, so older stylesheets follow every

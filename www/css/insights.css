@@ -8,7 +8,7 @@
 .ins-head {
     position: sticky;
     top: 0;
-    z-index: 5;
+    z-index: var(--z-sticky);
     padding: var(--sp-1) 0 var(--sp-2);
     background: inherit;
 }

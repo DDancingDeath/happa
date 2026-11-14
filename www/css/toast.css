@@ -2,7 +2,7 @@
   position: fixed;
   bottom: 80px;
   left: 50%;
-  z-index: 100000;
+  z-index: var(--z-toast);
   opacity: 0;
   pointer-events: none;
   max-width: 85%;
@@ -20,7 +20,7 @@
   top: 22px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1001;
+  z-index: calc(var(--z-drawer) + 1);
   max-width: calc(100% - 140px);
   padding: var(--sp-1) var(--sp-3);
   border-radius: var(--r-full);
@@ -85,7 +85,7 @@ html[data-updating] .updating-mark {
 .sync-chip {
   display: inline-block;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: var(--r-full);
   font-size: var(--fs-caption);
   font-weight: var(--w-label);
   background: var(--warning-soft);

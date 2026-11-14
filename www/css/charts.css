@@ -197,7 +197,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   min-width: 22px;
   flex-shrink: 0;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   border: 2px solid var(--border-color);
   margin: 0;
   accent-color: var(--primary-color);

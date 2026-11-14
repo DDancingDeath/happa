@@ -3,7 +3,7 @@
 .workers-page h2, .workers-page h3, .workers-page h4 { margin: 0; }
 .workers-page .row-title, .workers-page .row-meta { display: block; }
 /* The open worker is marked with a bar: on the soft accent fill some themes' meta text loses contrast */
-.wp-list .row.selected { background: none; box-shadow: inset 3px 0 0 var(--accent); }
+.wp-list .row.selected { background: none; box-shadow: var(--stripe-sm) var(--accent); }
 .wp-month { display: flex; align-items: center; gap: var(--sp-2); }
 .wp-counts { margin: 0; font-size: var(--fs-sm); }
 .wp-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }

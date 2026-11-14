@@ -21,7 +21,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: var(--z-drawer);
     padding: 20px;
 }
 
@@ -114,7 +114,7 @@
 .fin-term {
     border: 1px solid var(--border-color);
     background: var(--light-bg);
-    border-radius: 14px;
+    border-radius: var(--r-lg);
     padding: 2px 10px;
     font-size: var(--fs-sm);
     cursor: pointer;

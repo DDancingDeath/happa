@@ -147,7 +147,7 @@
 .today-bill-party, .today-bill-kind { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .today-bill-party { font-weight: var(--w-strong); }
 .today-bill-kind { color: var(--ink-3); font-size: var(--fs-sm); }
-.today-bill-kind::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--mode-purchase); }
+.today-bill-kind::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: var(--r-round); background: var(--mode-purchase); }
 .today-bill-retail .today-bill-kind::before { background: var(--mode-sale); }
 .today-bill-wholesale .today-bill-kind::before { background: var(--mode-wholesale); }
 .today-bill-total { flex: none; }
@@ -180,7 +180,7 @@
 .ask-examples { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
 .ask-example { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .ask-answers { display: flex; flex-direction: column; gap: 10px; }
-.ask-answer { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; }
+.ask-answer { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--r-md); padding: 10px 12px; }
 .ask-question { font-weight: var(--w-strong); margin-bottom: 4px; }
 .ask-line { margin: 2px 0; }
 .ask-answer .ask-open { margin-top: 6px; }

@@ -2,9 +2,9 @@
   "_readme": "Design-system ratchet (tests/ci/ds-guard.test.js, docs/design-system.md §7). Per-file counts may only go down; lower them with DS_BASELINE=lower npx jest ds-guard. Files in \"strict\" are pinned at 0 on every metric.",
   "totals": {
     "spacing": 257,
-    "radius": 33,
-    "shadow": 12,
-    "zIndex": 23,
+    "radius": 2,
+    "shadow": 0,
+    "zIndex": 0,
     "important": 30,
     "idSelector": 159,
     "themeSelector": 4,
@@ -86,43 +86,11 @@
       "www/js/utils/quota-guard.js": 2
     },
     "radius": {
-      "www/css/bill-checks.css": 2,
-      "www/css/charts.css": 1,
-      "www/css/day.css": 2,
-      "www/css/finance.css": 1,
-      "www/css/forms.css": 2,
-      "www/css/history.css": 7,
-      "www/css/overlay.css": 1,
-      "www/css/rate-trends.css": 7,
-      "www/css/surfaces.css": 6,
-      "www/css/tables.css": 1,
-      "www/css/toast.css": 1,
       "www/js/main.js": 1,
       "www/js/services/exporter.js": 1
     },
-    "shadow": {
-      "www/css/bill-checks.css": 4,
-      "www/css/billing.css": 1,
-      "www/css/recurring-bills.css": 1,
-      "www/css/surfaces.css": 4,
-      "www/css/workers.css": 1,
-      "www/js/utils/quota-guard.js": 1
-    },
-    "zIndex": {
-      "www/css/app-updates.css": 1,
-      "www/css/bill-checks.css": 1,
-      "www/css/billing.css": 1,
-      "www/css/desktop.css": 4,
-      "www/css/finance.css": 1,
-      "www/css/hamburger.css": 2,
-      "www/css/insights.css": 1,
-      "www/css/navigation.css": 3,
-      "www/css/overlay.css": 2,
-      "www/css/settings.css": 2,
-      "www/css/toast.css": 2,
-      "www/css/totals.css": 2,
-      "www/js/utils/quota-guard.js": 1
-    },
+    "shadow": {},
+    "zIndex": {},
     "important": {
       "www/css/auth.css": 1,
       "www/css/bill-checks.css": 4,

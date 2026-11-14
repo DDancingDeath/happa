@@ -226,6 +226,6 @@
   font-weight: var(--w-strong);
   color: var(--text-secondary);
   background: linear-gradient(to right, transparent, var(--card-bg) 70%);
-  border-radius: 0 12px 12px 0;
+  border-radius: 0 var(--r-panel) var(--r-panel) 0;
   pointer-events: none;
 }

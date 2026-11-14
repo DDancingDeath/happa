@@ -37,7 +37,7 @@
 .old-app-chip {
   display: inline-block;
   padding: 1px 8px;
-  border-radius: 10px;
+  border-radius: var(--r-md);
   font-size: var(--fs-caption);
   font-weight: var(--w-label);
   background: var(--primary-soft);
@@ -49,7 +49,7 @@
 .print-chip {
   display: inline-block;
   padding: 1px 8px;
-  border-radius: 10px;
+  border-radius: var(--r-md);
   font-size: var(--fs-caption);
   font-weight: var(--w-label);
   vertical-align: middle;
@@ -137,7 +137,7 @@
   margin-left: 6px;
   padding: 6px 14px;
   border: 1px solid var(--primary-border);
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   background: var(--card-bg);
   color: var(--on-primary-soft);
   font-weight: var(--w-strong);
@@ -181,7 +181,7 @@
   vertical-align: -2px;
   border: 2px solid currentColor;
   border-right-color: transparent;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   animation: historyRangeSpin 0.8s linear infinite;
 }
 
@@ -503,7 +503,7 @@
 .voided-chip {
   display: inline-block;
   padding: 1px 8px;
-  border-radius: 10px;
+  border-radius: var(--r-md);
   font-size: var(--fs-caption);
   font-weight: var(--w-strong);
   background: var(--surface-muted);
@@ -576,7 +576,7 @@
 .bill-edit {
   margin-bottom: 8px;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--r-control);
   background: var(--surface-muted);
   color: var(--text-primary);
 }
@@ -750,7 +750,7 @@
   display: inline-block;
   margin-left: 4px;
   padding: 1px 6px;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   font-size: var(--fs-caption);
   font-weight: var(--w-strong);
   background: var(--danger-soft);

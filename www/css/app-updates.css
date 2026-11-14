@@ -10,7 +10,7 @@
   left: var(--sp-2);
   right: var(--sp-2);
   bottom: calc(var(--sp-2) + env(safe-area-inset-bottom, 0px));
-  z-index: 8999;
+  z-index: calc(var(--z-sheet) - 1);
   flex-wrap: wrap;
   align-items: center;
   box-shadow: var(--e3);

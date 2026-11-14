@@ -81,6 +81,8 @@
   --r-chip: 999px;
   --r-sheet: 16px;
   --r-full: 999px;
+  --r-2xs: 2px;
+  --r-round: 50%;
   --rule-style: solid;
 }
 
@@ -115,6 +117,8 @@
   --btn-danger-bg: var(--negative-fill);
   --btn-danger-ink: #ffffff;
   --preview-apply-line: transparent;
+  --r-md: calc(var(--r-control) + 2px);
+  --r-lg: calc(var(--r-panel) + 2px);
 
   /* Old names (32 stylesheets and script-written styles use them); new code uses the tokens above */
   --primary-color: var(--accent-text);
@@ -283,15 +287,30 @@
   --dur-1: 120ms;
   --dur-2: 200ms;
   --dur-3: 280ms;
-  /* Layers */
-  --z-menu: 5;
-  --z-bell: 1000;
-  --z-notif-scrim: 1002;
-  --z-notif: 1003;
+  /* Layers, low to high (docs/design-system.md has the map). A step inside a band is a calc() offset of its token */
+  --z-base: 1;
+  --z-raised: 2;
+  --z-sticky: 5;
+  --z-popover: 30;
+  --z-nav: 900;
+  --z-appbar: 950;
+  --z-drawer: 1000;
+  --z-sheet: 9000;
   --z-dialog: 10000;
   --z-busy: 15000;
   --z-modal: 20000;
-  --z-auth: 10000;
+  --z-toast: 100000;
+  --z-max: 2147483647;
+  --z-menu: var(--z-sticky);
+  --z-bell: var(--z-drawer);
+  --z-notif-scrim: calc(var(--z-drawer) + 2);
+  --z-notif: calc(var(--z-drawer) + 3);
+  --z-auth: var(--z-dialog);
+  /* Edge stripes (box-shadow: var(--stripe) <colour>) and validation rings */
+  --stripe: inset 4px 0 0;
+  --stripe-sm: inset 3px 0 0;
+  --ring-danger: 0 0 0 2px rgba(220, 38, 38, 0.25);
+  --ring-warning: 0 0 0 2px rgba(217, 119, 6, 0.25);
 
   --transition-fast: var(--dur-1) var(--ease);
   --transition: var(--dur-2) var(--ease);

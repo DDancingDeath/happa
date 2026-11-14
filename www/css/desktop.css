@@ -37,7 +37,7 @@
     top: 0;
     left: var(--desktop-nav-width);
     right: 0;
-    z-index: 950;
+    z-index: var(--z-appbar);
     display: flex;
     align-items: center;
     gap: var(--sp-3);
@@ -125,7 +125,7 @@
     background: var(--surface-2);
     color: var(--ink);
     transition: none;
-    z-index: 900;
+    z-index: var(--z-nav);
   }
 
   .nav-header {
@@ -733,7 +733,7 @@
   .bill-col-summary > .bill-totals:first-child {
     position: sticky;
     top: 0;
-    z-index: 2;
+    z-index: var(--z-raised);
   }
 
   /* The Save / Print row is the column's footer: it reaches the bottom of the screen (over the
@@ -741,7 +741,7 @@
   .bill-col-summary > .bill-actions:last-child {
     position: sticky;
     bottom: calc(-1 * var(--desktop-tab-end));
-    z-index: 2;
+    z-index: var(--z-raised);
     margin-top: auto !important;
     padding: var(--sp-3) 0;
     border-top: 1px solid var(--line);
