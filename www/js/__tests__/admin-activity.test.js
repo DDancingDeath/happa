@@ -102,7 +102,7 @@ describe('Admin › Users page', () => {
         expect(since).toHaveBeenCalledWith(today.from, today.to, 300);
         const row = document.querySelector('#adminActivity tr[data-uid="m1"]');
         expect([...row.cells].slice(0, 6).map(c => c.textContent)).toEqual(['Mohan', '1', '₹1,234', '1', '0', '0']);
-        expect(document.querySelector('#adminActivityRange .active').dataset.range).toBe('today');
+        expect(document.querySelector('#adminActivityRange [aria-pressed="true"]').dataset.range).toBe('today');
     });
 
     test('a later tap wins over a slower earlier one', async () => {

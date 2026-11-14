@@ -1,23 +1,25 @@
 {
   "_readme": "Design-system ratchet (tests/ci/ds-guard.test.js, docs/design-system.md §7). Per-file counts may only go down; lower them with DS_BASELINE=lower npx jest ds-guard. Files in \"strict\" are pinned at 0 on every metric.",
   "totals": {
-    "spacing": 806,
-    "radius": 123,
-    "shadow": 31,
+    "spacing": 755,
+    "radius": 112,
+    "shadow": 30,
     "zIndex": 31,
     "important": 41,
     "idSelector": 191,
     "themeSelector": 19,
-    "inlineStyle": 165,
+    "inlineStyle": 119,
     "emoji": 14,
-    "titleCase": 19,
-    "legacyClass": 585
+    "titleCase": 18,
+    "legacyClass": 566
   },
   "strict": [
+    "www/css/admin.css",
     "www/css/items.css",
     "www/css/notifications.css",
     "www/css/outstanding.css",
     "www/css/stock.css",
+    "www/js/modules/admin.js",
     "www/js/modules/cash-management.js",
     "www/js/modules/history.js",
     "www/js/modules/items.js",
@@ -25,6 +27,7 @@
     "www/js/modules/notifications.js",
     "www/js/ui/bill-date-input.js",
     "www/js/ui/components.js",
+    "www/templates/admin.html",
     "www/templates/auth.html",
     "www/templates/cash-management.html",
     "www/templates/due.html",
@@ -61,13 +64,11 @@
       "www/css/toast.css": 4,
       "www/css/totals.css": 24,
       "www/js/main.js": 1,
-      "www/js/modules/admin.js": 30,
       "www/js/modules/anomalies.js": 3,
       "www/js/modules/diagnostics.js": 23,
       "www/js/modules/settings.js": 8,
       "www/js/services/exporter.js": 6,
       "www/js/utils/quota-guard.js": 2,
-      "www/templates/admin.html": 21,
       "www/templates/anomalies.html": 1,
       "www/templates/diagnostics.html": 31,
       "www/templates/settings.html": 6
@@ -92,10 +93,8 @@
       "www/css/tables.css": 1,
       "www/css/toast.css": 1,
       "www/js/main.js": 1,
-      "www/js/modules/admin.js": 5,
       "www/js/modules/settings.js": 2,
       "www/js/services/exporter.js": 1,
-      "www/templates/admin.html": 6,
       "www/templates/diagnostics.html": 11,
       "www/templates/settings.html": 1
     },
@@ -115,7 +114,6 @@
       "www/css/tables.css": 1,
       "www/css/workers.css": 1,
       "www/js/utils/quota-guard.js": 1,
-      "www/templates/admin.html": 1,
       "www/templates/diagnostics.html": 3
     },
     "zIndex": {
@@ -168,7 +166,6 @@
     },
     "inlineStyle": {
       "www/js/auth/authentication.js": 2,
-      "www/js/modules/admin.js": 46,
       "www/js/modules/anomalies.js": 8,
       "www/js/modules/diagnostics.js": 51,
       "www/js/modules/purchase.js": 4,
@@ -194,7 +191,6 @@
       "www/js/i18n/hi.js#ui.rent": 4
     },
     "titleCase": {
-      "www/js/i18n/en.js#ui.admin": 1,
       "www/js/i18n/en.js#ui.ask": 3,
       "www/js/i18n/en.js#ui.billing": 1,
       "www/js/i18n/en.js#ui.history": 1,
@@ -206,7 +202,6 @@
       "www/js/i18n/en.js#ui.workers": 1
     },
     "legacyClass": {
-      "www/js/modules/admin.js": 19,
       "www/js/modules/anomalies.js": 24,
       "www/js/modules/ask.js": 5,
       "www/js/modules/billing.js": 10,

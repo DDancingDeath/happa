@@ -391,12 +391,10 @@ body.dark-mode .modal-box {
   background: var(--surface-muted) !important;
 }
 
-.dark-mode [style*="background: #fff3cd"],
-.dark-mode [style*="background: #fef3c7"] {
+.dark-mode [style*="background: #fff3cd"] {
   background: var(--warning-soft) !important;
 }
 
-.dark-mode [style*="background: #fee2e2"],
 .dark-mode [style*="background: #fef2f2"] {
   background: var(--danger-soft) !important;
 }
@@ -419,7 +417,6 @@ body.dark-mode .modal-box {
 .dark-mode [style^="color: rgb(75, 85, 99)"],
 .dark-mode [style*=" color: rgb(75, 85, 99)"],
 .dark-mode [style^="color: #666"],
-.dark-mode [style*=" color: #666"],
 .dark-mode [style^="color:#666"],
 .dark-mode [style*=" color:#555"],
 .dark-mode [style*=" color: #555"],
@@ -441,7 +438,6 @@ body.dark-mode .modal-box {
 
 .dark-mode [style^="color: #ef4444"],
 .dark-mode [style*=" color: #ef4444"],
-.dark-mode [style*=" color: #991b1b"],
 .dark-mode [style*=" color:#b91c1c"],
 .dark-mode [style^="color: #b91c1c"],
 .dark-mode [style^="color:#b91c1c"],
@@ -450,7 +446,6 @@ body.dark-mode .modal-box {
 }
 
 .dark-mode [style^="color:#92400e"],
-.dark-mode [style*=" color: #92400e"],
 .dark-mode [style^="color: #b45309"],
 .dark-mode [style^="color:#b45309"] {
   color: var(--on-warning-soft) !important;
@@ -10984,6 +10979,134 @@ body.dark-mode .app-sheet-fallback {
 .notif-item.unread .lead-icon {
   background: var(--panel-bg);
   color: var(--info);
+}
+
+/* ---- css/admin.css ---- */
+/* Admin page (5.8b): Users and Data on the shared components (tabs, seg, panel, rows, tags, metrics, notice) */
+.admin-sub,
+.admin-hint {
+  margin: 0 0 var(--sp-3);
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+
+.admin-section {
+  margin-bottom: var(--sp-5);
+}
+
+.admin-section h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-lead);
+  font-weight: var(--w-strong);
+}
+
+.admin-section[hidden] {
+  display: none;
+}
+
+.admin-action {
+  margin-bottom: var(--sp-3);
+}
+
+.admin-user + .admin-user {
+  border-top: 1px var(--rule-style) var(--line);
+}
+
+.admin-user .row-title {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.admin-user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-4) var(--sp-3);
+}
+
+.admin-user-actions > .btn {
+  flex: 1 1 auto;
+}
+
+.admin-role-pick {
+  flex: 1 1 100%;
+}
+
+.admin-range,
+.admin-note {
+  margin-bottom: var(--sp-3);
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-storage {
+  margin-bottom: var(--sp-3);
+}
+
+.backup-result {
+  margin-bottom: var(--sp-3);
+}
+
+.backup-result p,
+.backup-result ul {
+  margin: 0 0 var(--sp-1);
+}
+
+.backup-restore-guide summary {
+  cursor: pointer;
+}
+
+/* Clear data dialogs */
+.admin-clear {
+  text-align: left;
+}
+
+.admin-clear p {
+  margin: 0 0 var(--sp-2);
+}
+
+.admin-clear-all,
+.admin-clear-opt {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--row-h);
+  cursor: pointer;
+}
+
+.admin-clear-all {
+  margin-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--line);
+  font-weight: var(--w-strong);
+}
+
+.admin-clear-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: var(--sp-3);
+  margin-bottom: var(--sp-2);
+}
+
+.admin-clear-list {
+  margin: 0 0 var(--sp-2);
+}
+
+.admin-clear-warn {
+  margin-top: var(--sp-2);
 }
 
 /* ---- css/insights.css ---- */

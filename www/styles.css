@@ -53,6 +53,7 @@
 @import url('css/health.css');
 @import url('css/app-updates.css');
 @import url('css/notifications.css');
+@import url('css/admin.css');
 
 /* Desktop layout (min-width media queries only) */
 @import url('css/insights.css');
