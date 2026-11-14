@@ -28,6 +28,7 @@ import { figuresFromSnapshot, monthKeyOf, monthKeysBetween, snapshotCustomers as
 import { MoneyManager } from './money.js';
 import { moneyHtml, emptyState } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
+import { attachScrollCue } from '../ui/scroll-cue.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import {
@@ -357,6 +358,7 @@ export const InsightsManager = {
                 + (cmpB === null ? '' : `<td class="num">${esc(cmpB)}</td>`) + '</tr>';
         }).join('');
         this.html('insightsItemsTable', rows.length ? head + `<tbody>${body}</tbody>` : `<tr><td>${esc(t('ui.insights.no_sales'))}</td></tr>`);
+        attachScrollCue(document.getElementById('insightsItemsTable')?.parentElement);
         const known = rows.filter(x => x.itemKey && x.profit !== null);
         const best = known.slice().sort((a, b) => b.profit - a.profit)[0];
         const weak = known.filter(x => x.sales >= this.cfg().lowMarginMinSales).sort((a, b) => a.per100 - b.per100)[0];

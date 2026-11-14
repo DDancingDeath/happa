@@ -46,6 +46,19 @@ test('a confirm can carry its own verb and the danger style, and the next dialog
     await expect(plain).resolves.toBe(true);
 });
 
+test('a plain-text message keeps its line breaks; the next HTML dialog does not', async () => {
+    const msg = document.getElementById('modalMessage');
+    const lines = UIManager.showModal('Rate far from usual\n\nSave anyway?', 'Check', true);
+    expect(msg.textContent).toBe('Rate far from usual\n\nSave anyway?');
+    expect(msg.classList.contains('dialog-lines')).toBe(true);
+    document.getElementById('modalConfirm').click();
+    await expect(lines).resolves.toBe(true);
+    const html = UIManager.showModalWithHtml('<p>x</p>', 'X', true);
+    expect(msg.classList.contains('dialog-lines')).toBe(false);
+    document.getElementById('modalConfirm').click();
+    await expect(html).resolves.toBe(true);
+});
+
 // A real click runs queued promise callbacks between two click handlers, so a
 // second handler closed the dialog that the first one's caller had just opened.
 // jsdom can't reproduce that ordering, hence the source check.

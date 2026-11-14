@@ -609,16 +609,16 @@
   }
 
   /* Today's side column is too narrow for one line: the review buttons go under the reason */
-  .day-report-card .anom-row {
+  .day-report .anom-row {
     flex-wrap: wrap;
     align-items: flex-start;
   }
 
-  .day-report-card .anom-row-body {
+  .day-report .anom-row-body {
     flex-basis: 100%;
   }
 
-  .day-report-card .anom-actions {
+  .day-report .anom-actions {
     justify-content: flex-start;
   }
 

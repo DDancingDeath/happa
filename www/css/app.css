@@ -2342,6 +2342,11 @@ a.row:active {
 }
 
 /* ---------- Scrim, dialog, sheet ---------- */
+/* A plain-text dialog message keeps its line breaks (UIManager.showModal) */
+.dialog-lines {
+  white-space: pre-line;
+}
+
 .scrim {
   background: var(--scrim);
   -webkit-backdrop-filter: none;
@@ -5192,6 +5197,13 @@ input[type="number"] {
 
 .bill-check-notice.warn {
     border-color: var(--warning-line);
+}
+
+/* Phone and tablet: a stuck banner covers the weight list as the bill scrolls */
+@media (max-width: 1023.98px) {
+    .bill-check-notice {
+        position: static;
+    }
 }
 
 .bill-check-notice-head {
@@ -8943,6 +8955,13 @@ div.ins-wide,
 .ins-page .table tr[data-item], .ins-page .table tr[data-party] { cursor: pointer; }
 .ins-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
+/* Items table on phone: tighter columns and a wrapping header; the rest scrolls behind the cue */
+@media (max-width: 599.98px) {
+  .ins-items-table th,
+  .ins-items-table td { padding-left: var(--sp-2); padding-right: var(--sp-2); }
+  .ins-page .ins-items-table th.num { white-space: normal; }
+}
+
 /* Insights "To do": a row with an icon tile and its action */
 .ins-action { align-items: flex-start; }
 .ins-action .btn { margin-top: var(--sp-2); }
@@ -9620,16 +9639,16 @@ div.ins-wide,
   }
 
   /* Today's side column is too narrow for one line: the review buttons go under the reason */
-  .day-report-card .anom-row {
+  .day-report .anom-row {
     flex-wrap: wrap;
     align-items: flex-start;
   }
 
-  .day-report-card .anom-row-body {
+  .day-report .anom-row-body {
     flex-basis: 100%;
   }
 
-  .day-report-card .anom-actions {
+  .day-report .anom-actions {
     justify-content: flex-start;
   }
 

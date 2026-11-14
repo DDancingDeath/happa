@@ -212,7 +212,7 @@ describe('save gate', () => {
         $('cash').value = '900';
         const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(false);
         expect((await BillChecksUI.confirmSave('test')).ok).toBe(false);
-        expect(modal).toHaveBeenCalledWith(expect.stringMatching(/Rate ₹90 is 2\.3× .*\n\nSave anyway\?$/), 'Check before saving', true, { confirmLabel: 'Save anyway' });
+        expect(modal).toHaveBeenCalledWith(expect.stringMatching(/^Rate ₹90 is 2\.3× .*\n\nSave anyway\?$/), 'Check before saving', true, { confirmLabel: 'Save anyway' });
         modal.mockResolvedValue(true);
         const ok = await BillChecksUI.confirmSave('test');
         expect(ok.ok).toBe(true);
