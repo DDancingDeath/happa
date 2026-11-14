@@ -556,7 +556,7 @@ export const AnomaliesManager = {
         const label = typeLabel(a.type);
         const status = a.status || 'open';
         const when = Number.isFinite(Number(a.at)) && Number(a.at) > 0
-            ? Helpers.formatDateTime(Number(a.at))
+            ? formatDate(Number(a.at), 'datetime')
             : formatDate(a.dayKey);
         const meta = [
             a.billNumber ? `#${esc(a.billNumber)}` : '',
