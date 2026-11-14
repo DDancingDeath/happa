@@ -16,7 +16,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { SyncStatus } from '../ui/sync-status.js';
 import { FinanceBreakdownSheet } from '../ui/finance-breakdown-sheet.js';
 import { t, tn, getLang } from '../i18n/index.js';
-import { formatRupees, formatAmount, normalizeLabourSettings, moneyText } from '../utils/money.js';
+import { formatRupees, formatAmount, normalizeLabourSettings, moneyText, screenMinus } from '../utils/money.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import { labourSummary, labourToPayByDay, labourCalcText, periodLabourGap, labourPaidGap } from '../utils/labour.js';
 import { formatMonth, formatDay, toLocalISODate, parseAnyBillDate, monthStart, addLocalDays, periodBounds, localDayKeys, endUpToNow, daysInMonth } from '../utils/dates.js';
@@ -81,7 +81,7 @@ export function takeawayParams(params) {
 /** Renders takeaways as escaped sentences; a link becomes a small button. */
 export function takeawayHtml(list) {
     return (list || []).map(x => {
-        const text = esc(t(x.key, takeawayParams(x.params)));
+        const text = esc(screenMinus(t(x.key, takeawayParams(x.params))));
         const link = x.link && routeAvailable(x.link) ? ` <button type="button" class="btn btn-ghost btn-sm" data-go="${esc(x.link)}">${esc(t('ui.money.open'))} ›</button>` : '';
         return `<p>${text}${link}</p>`;
     }).join('');
@@ -565,7 +565,7 @@ export const MoneyManager = {
         const list = (m.caveats || []).filter(c => c.ids.some(id => ids.includes(id)));
         return list.map(c => {
             const params = { qty: c.qty, amount: formatAmount(c.estimate ?? c.amount ?? c.gap ?? 0) };
-            return `<div class="notice warn ins-caveat">${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>${esc(t(`ui.money.caveat_${c.key}`, params))}</span></div>`;
+            return `<div class="notice warn ins-caveat">${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>${esc(screenMinus(t(`ui.money.caveat_${c.key}`, params)))}</span></div>`;
         }).join('');
     },
 
@@ -595,7 +595,7 @@ export const MoneyManager = {
             ? ` <button type="button" class="btn btn-ghost btn-sm" data-go="insights-items" data-metric-ref="I2">${esc(t('ui.money.split_link'))} ›</button>` : '';
         this.html('moneySalesSplit', `<span data-metric-ref="M1">${esc(tn('ui.money.bills', m.M1.count))}</span>${splitLink}`);
         this.html('moneyCogs', moneyHtml(m.M2, TM));
-        this.html('moneyGross', m.M3.total === null ? '—' : `${moneyHtml(m.M3.total, TM)}${m.M3.per100 !== null ? esc(` · ${t('ui.money.per100', { value: roundTo(m.M3.per100, 1) })}`) : ''}`);
+        this.html('moneyGross', m.M3.total === null ? '—' : `${moneyHtml(m.M3.total, TM)}${m.M3.per100 !== null ? esc(` · ${screenMinus(t('ui.money.per100', { value: formatAmount(roundTo(m.M3.per100, 1), 'rate') }))}`) : ''}`);
         this.html('moneyBusinessTerm', moneyHtml(m.M4.total, TM));
         this.html('moneyBadDebts', moneyHtml(m.M5, TM));
         this.html('moneyProfitTerm', moneyHtml(m.M6.total, TM));
@@ -625,7 +625,7 @@ export const MoneyManager = {
             + row('ui.money.cogs_minus', s.cogs, 'cogs')
             + row('ui.money.corrections', s.adjustments, 'stockAdjustments')
             + row('ui.money.closing_stock', s.closing, 'stockClosing')
-            + (Math.abs(s.gap) > 1 ? `<div class="notice warn ins-caveat ins-stock-note ins-tap" data-breakdown="stockCheck" role="button" tabindex="0">${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>${esc(t('ui.money.caveat_gap', { amount: formatAmount(s.gap) }))}</span></div>` : `<div class="notice pos ins-stock-note">${icon('check', 'i-sm')}<span class="grow"><span class="sr-only">✓ </span>${esc(t('ui.money.check_ok'))}</span></div>`));
+            + (Math.abs(s.gap) > 1 ? `<div class="notice warn ins-caveat ins-stock-note ins-tap" data-breakdown="stockCheck" role="button" tabindex="0">${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>${esc(screenMinus(t('ui.money.caveat_gap', { amount: formatAmount(s.gap) })))}</span></div>` : `<div class="notice pos ins-stock-note">${icon('check', 'i-sm')}<span class="grow"><span class="sr-only">✓ </span>${esc(t('ui.money.check_ok'))}</span></div>`));
     },
 
     /** M11: 13 months of profit, last year as a faint line. */

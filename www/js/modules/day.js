@@ -17,7 +17,7 @@ import { overdueReminder, rentReminder, leaseReminder, leaseReminderText } from 
 import { drillReminder } from '../utils/backup-verify.js';
 import { billsForKind } from '../utils/party-due.js';
 import { rentalsRole } from '../ui/business-switcher.js';
-import { formatRate, formatRupees } from '../utils/money.js';
+import { formatRate, moneyText } from '../utils/money.js';
 import { ManualReminders } from '../ui/manual-reminders.js';
 import { icon } from '../ui/icons.js';
 import { payDueReminder, billsDueReminder } from '../utils/pay-reminder.js';
@@ -181,22 +181,22 @@ export const DayManager = {
         this.renderReminders();
 
         // Update UI - Main Stats
-        this.updateElement('todayTotalPurchases', formatRupees(s.purchases));
+        this.updateElement('todayTotalPurchases', moneyText(s.purchases));
         this.updateElement('todayPurchaseCount', tn('ui.today.bills_count', s.purchaseCount));
-        this.updateElement('todayTotalSales', formatRupees(s.sales));
+        this.updateElement('todayTotalSales', moneyText(s.sales));
         this.updateElement('todaySaleCount', tn('ui.today.bills_count', s.saleCount));
-        this.updateElement('todayLaborCost', formatRupees(labour.deducted.amount));
+        this.updateElement('todayLaborCost', moneyText(labour.deducted.amount));
         this.renderLabour(labour);
         
         // Expenses breakdown
-        this.updateElement('todayBusinessExpenses', formatRupees(s.businessExpenses));
+        this.updateElement('todayBusinessExpenses', moneyText(s.businessExpenses));
         this.updateElement('todayBusinessExpenseCount', tn('ui.today.entries_count', s.businessExpenseCount));
-        this.updateElement('todayPersonalExpenses', formatRupees(s.personalExpenses));
+        this.updateElement('todayPersonalExpenses', moneyText(s.personalExpenses));
         this.updateElement('todayPersonalExpenseCount', tn('ui.today.entries_count', s.personalExpenseCount));
         
         // Total In and Total Out for hero card
-        this.updateElement('todayTotalIn', formatRupees(s.totalIn));
-        this.updateElement('todayTotalOut', formatRupees(s.totalOut));
+        this.updateElement('todayTotalIn', moneyText(s.totalIn));
+        this.updateElement('todayTotalOut', moneyText(s.totalOut));
         
         // Net outflow with color coding
         const cashFlowLabel = document.getElementById('todayCashFlowLabel');
@@ -204,25 +204,25 @@ export const DayManager = {
             cashFlowLabel.textContent = t(s.isOutflow ? 'ui.today.net_outflow' : 'ui.today.net_inflow');
         }
         
-        this.updateElement('todayNetCashFlow', formatRupees(s.netAmount));
+        this.updateElement('todayNetCashFlow', moneyText(s.netAmount));
 
         // Payment summary
-        this.updateElement('todayCashReceived', formatRupees(s.cashIn));
-        this.updateElement('todayOnlineReceived', formatRupees(s.onlineIn));
-        this.updateElement('todayCashPaid', formatRupees(s.cashOut));
-        this.updateElement('todayOnlinePaid', formatRupees(s.onlineOut));
+        this.updateElement('todayCashReceived', moneyText(s.cashIn));
+        this.updateElement('todayOnlineReceived', moneyText(s.onlineIn));
+        this.updateElement('todayCashPaid', moneyText(s.cashOut));
+        this.updateElement('todayOnlinePaid', moneyText(s.onlineOut));
         
         // Total cash flow with color
         const totalCashFlowEl = document.getElementById('todayTotalCashFlow');
         if (totalCashFlowEl) {
-            totalCashFlowEl.textContent = (s.net >= 0 ? '+' : '') + formatRupees(s.net);
+            totalCashFlowEl.textContent = (s.net >= 0 ? '+' : '') + moneyText(s.net);
         }
 
         // Due summary
-        this.updateElement('todayDueReceived', formatRupees(s.dueReceived));
-        this.updateElement('todayDuePaid', formatRupees(s.duePaid));
-        this.updateElement('todayDueToReceive', formatRupees(s.dueToReceive));
-        this.updateElement('todayDueToPay', formatRupees(s.dueToPay));
+        this.updateElement('todayDueReceived', moneyText(s.dueReceived));
+        this.updateElement('todayDuePaid', moneyText(s.duePaid));
+        this.updateElement('todayDueToReceive', moneyText(s.dueToReceive));
+        this.updateElement('todayDueToPay', moneyText(s.dueToPay));
 
         const showWholesale = this.canSeeWholesale();
         this.renderChannels(s.channels, showWholesale);
@@ -264,12 +264,12 @@ export const DayManager = {
             const card = document.getElementById(`todayCh${k}`);
             if (card) card.hidden = type === 'wholesale' && !showWholesale;
             this.updateElement(`todayCh${k}Count`, tn('ui.today.bills_count', c.count));
-            this.updateElement(`todayCh${k}Total`, formatRupees(c.total));
-            this.updateElement(`todayCh${k}Cash`, formatRupees(c.cash));
-            this.updateElement(`todayCh${k}Online`, formatRupees(c.online));
-            this.updateElement(`todayCh${k}PaidLater`, formatRupees(c.paidLater));
-            this.updateElement(`todayCh${k}Due`, formatRupees(c.due));
-            this.updateElement(`todayCh${k}WrittenOff`, formatRupees(c.writtenOff));
+            this.updateElement(`todayCh${k}Total`, moneyText(c.total));
+            this.updateElement(`todayCh${k}Cash`, moneyText(c.cash));
+            this.updateElement(`todayCh${k}Online`, moneyText(c.online));
+            this.updateElement(`todayCh${k}PaidLater`, moneyText(c.paidLater));
+            this.updateElement(`todayCh${k}Due`, moneyText(c.due));
+            this.updateElement(`todayCh${k}WrittenOff`, moneyText(c.writtenOff));
             const off = document.getElementById(`todayCh${k}WrittenOffRow`);
             if (off) off.hidden = !(c.writtenOff > 0);
         });
@@ -289,13 +289,13 @@ export const DayManager = {
         const canWholesale = this.canSeeWholesale();
         const e = Helpers.escapeHtml;
         const party = (p) => `<li class="today-reminder-party"><span>${e(p.name || t('ui.reports.unknown'))}</span>`
-            + ` <strong>${e(formatRupees(p.total))}</strong>`
-            + ` <span class="today-reminder-days">${e([t('ui.outstanding.party_overdue', { amount: formatRupees(p.overdue) }),
+            + ` <strong>${e(moneyText(p.total))}</strong>`
+            + ` <span class="today-reminder-days">${e([t('ui.outstanding.party_overdue', { amount: moneyText(p.overdue) }),
                 ...(p.oldestDays !== null && p.oldestDays !== undefined ? [t('ui.today.reminder_days', { count: p.oldestDays })] : [])].join(' · '))}</span>`
             + '</li>';
         const block = (kind, r, open) => reminderOpen(kind)
-            + `<div class="today-reminder-head"><strong>${e(t(`ui.today.reminder_${kind}`))}</strong> ${e(formatRupees(r.total))}</div>`
-            + `<div class="today-reminder-more" data-overdue>${e(t('ui.today.reminder_overdue', { amount: formatRupees(r.overdue) }))}</div>`
+            + `<div class="today-reminder-head"><strong>${e(t(`ui.today.reminder_${kind}`))}</strong> ${e(moneyText(r.total))}</div>`
+            + `<div class="today-reminder-more" data-overdue>${e(t('ui.today.reminder_overdue', { amount: moneyText(r.overdue) }))}</div>`
             + `<ul>${r.parties.map(party).join('')}</ul>`
             + (r.more ? `<div class="today-reminder-more">${e(t('ui.today.reminder_more', { count: r.more }))}</div>` : '')
             + `<button type="button" class="filter-btn" data-onclick="${open}">${e(t('ui.today.reminder_open_dues'))}</button></div></div>`;
@@ -315,7 +315,7 @@ export const DayManager = {
             let rent = null;
             try { rent = rentReminder(localStorage, AppState.currentUser?.uid, toLocalISODate(now).slice(0, 7)); } catch (_) { rent = null; }
             if (rent) {
-                parts.push(`${reminderOpen('rent')}<div class="today-reminder-head"><strong>${e(t('ui.today.reminder_rent'))}</strong> ${e(formatRupees(rent.due))}</div>`
+                parts.push(`${reminderOpen('rent')}<div class="today-reminder-head"><strong>${e(t('ui.today.reminder_rent'))}</strong> ${e(moneyText(rent.due))}</div>`
                     + `<div>${e(t('ui.today.reminder_rent_units', { count: rent.dueUnits, late: rent.late }))}</div>`
                     + `<div class="today-reminder-more">${e(t('ui.today.reminder_as_of', { time: formatDayTime(rent.at, { lang: getLang() }) }))}</div>`
                     + `<button type="button" class="filter-btn" data-onclick="rentals.open('rent', event)">${e(t('ui.today.reminder_open_rent'))}</button></div></div>`);
@@ -337,7 +337,7 @@ export const DayManager = {
             let pay = null;
             try { pay = payDueReminder(localStorage, AppState.currentUser?.uid, toLocalISODate(now).slice(0, 7)); } catch (_) { pay = null; }
             if (pay) {
-                parts.push(`${reminderOpen('salaries')}<div class="today-reminder-head"><strong>${e(t('ui.today.reminder_salaries'))}</strong> ${e(formatRupees(pay.due))}</div>`
+                parts.push(`${reminderOpen('salaries')}<div class="today-reminder-head"><strong>${e(t('ui.today.reminder_salaries'))}</strong> ${e(moneyText(pay.due))}</div>`
                     + `<div>${e(tn('ui.today.reminder_salaries_workers', pay.count))}</div>`
                     + `<div class="today-reminder-more">${e(t('ui.today.reminder_salaries_as_of', { time: formatDayTime(pay.at, { lang: getLang() }) }))}</div>`
                     + `<button type="button" class="filter-btn" data-onclick="nav.showTab('workers')">${e(t('ui.today.reminder_open_workers'))}</button></div></div>`);
@@ -346,7 +346,7 @@ export const DayManager = {
             let bills = null;
             try { bills = billsDueReminder(localStorage, AppState.currentUser?.uid, toLocalISODate(now)); } catch (_) { bills = null; }
             if (bills) {
-                parts.push(`${reminderOpen('bills')}<div class="today-reminder-head"><strong>${e(t('ui.today.reminder_bills', { count: bills.count, amount: formatRupees(bills.due) }))}</strong></div>`
+                parts.push(`${reminderOpen('bills')}<div class="today-reminder-head"><strong>${e(t('ui.today.reminder_bills', { count: bills.count, amount: moneyText(bills.due) }))}</strong></div>`
                     + (bills.nobill ? `<div>${e(t('ui.today.reminder_bills_nobill', { count: bills.nobill }))}</div>` : '')
                     + `<div class="today-reminder-more">${e(t('ui.today.reminder_bills_as_of', { time: formatDayTime(bills.at, { lang: getLang() }) }))}</div>`
                     + `<button type="button" class="filter-btn" data-onclick="nav.showTab('recurring')">${e(t('ui.today.reminder_open_bills'))}</button></div></div>`);
@@ -406,7 +406,7 @@ export const DayManager = {
                 return `<button type="button" class="today-bill-row today-bill-${type}" data-onclick="history.viewBill('${ref}', '${type}')" aria-label="${esc(t('ui.today.bill_open_aria', { bill: [t(BILL_KIND_KEYS[type]), no, party].filter(Boolean).join(' ') }))}">
                     <span class="today-bill-time">${esc(at ? Helpers.formatTime(new Date(at)) : '')}</span>
                     <span class="today-bill-main"><span class="today-bill-party">${esc(party || no)}</span><span class="today-bill-kind">${esc([t(BILL_KIND_KEYS[type]), party ? no : ''].filter(Boolean).join(' · '))}</span></span>
-                    <strong class="today-bill-total">${esc(formatRupees(total))}</strong>
+                    <strong class="today-bill-total">${esc(moneyText(total))}</strong>
                 </button>`;
             }).join('');
         }
@@ -455,7 +455,7 @@ export const DayManager = {
                 <div class="row today-item">
                     <div class="row-main">
                         <div class="row-title">${Helpers.escapeHtml(item.name)}</div>
-                        <div class="row-meta">${label(countKey)} <strong>${item.count}x</strong> · ${label('ui.today.qty_label')} <strong>${formatKg(item.quantity)} kg</strong> · ${label('ui.billing.total_colon')} <strong class="row-amt">${formatRupees(item.totalValue)}</strong> · ${label('ui.today.avg_rate_label')} <strong>${formatRate(item.avgRate ?? 0)}/kg</strong></div>
+                        <div class="row-meta">${label(countKey)} <strong>${item.count}x</strong> · ${label('ui.today.qty_label')} <strong>${formatKg(item.quantity)} kg</strong> · ${label('ui.billing.total_colon')} <strong class="row-amt">${moneyText(item.totalValue)}</strong> · ${label('ui.today.avg_rate_label')} <strong>${formatRate(item.avgRate ?? 0)}/kg</strong></div>
                     </div>
                 </div>`).join('');
     },
@@ -495,13 +495,13 @@ export const DayManager = {
         const { deducted, toPay, gap, paid, paidGap } = labour;
         this.updateElement('todayLabourDeductedBills', tn('ui.today.labour_deducted_bills', deducted.bills));
         if (paid) {
-            this.updateElement('todayLabourPaid', formatRupees(paid.amount));
+            this.updateElement('todayLabourPaid', moneyText(paid.amount));
             this.updateElement('todayLabourPaidCount', tn('ui.today.labour_paid_count', paid.count));
-            this.updateElement('todayLabourPaidDiff', t(LABOUR_PAID_KEYS[paidGap.kind], { amount: formatRupees(paidGap.amount) }));
+            this.updateElement('todayLabourPaidDiff', t(LABOUR_PAID_KEYS[paidGap.kind], { amount: moneyText(paidGap.amount) }));
         }
-        this.updateElement('todayLabourToPay', formatRupees(toPay.amount));
+        this.updateElement('todayLabourToPay', moneyText(toPay.amount));
         this.updateElement('todayLabourToPayCalc', labourCalcText(toPay, 'ui.today.labour_to_pay_calc'));
-        this.updateElement('todayLabourDiff', t(LABOUR_GAP_KEYS[gap.kind], { amount: formatRupees(gap.amount) }));
+        this.updateElement('todayLabourDiff', t(LABOUR_GAP_KEYS[gap.kind], { amount: moneyText(gap.amount) }));
     },
 
     /** Tap on the Labour card: today's purchase bills with kg, packets and labour deducted. */
@@ -512,15 +512,15 @@ export const DayManager = {
         const { deducted, toPay, rows, packets } = labour;
         const body = rows.length ? rows.map(({ bill, kg, packets, labour: amount }) => {
             const name = [bill.billNumber ? `#${bill.billNumber}` : '', bill.customerName || bill.seller || ''].filter(Boolean).join(' ');
-            return `<tr><td>${esc(name || t('ui.reports.unknown'))}</td><td>${esc(formatKg(kg))}</td><td>${esc(packets)}</td><td>${esc(formatRupees(amount))}</td></tr>`;
+            return `<tr><td>${esc(name || t('ui.reports.unknown'))}</td><td>${esc(formatKg(kg))}</td><td>${esc(packets)}</td><td>${esc(moneyText(amount))}</td></tr>`;
         }).join('') : `<tr><td colspan="4">${esc(t('ui.today.no_purchases_today'))}</td></tr>`;
         const html = `
             <table class="labour-breakdown-table">
                 <thead><tr><th>${esc(t('ui.today.labour_col_bill'))}</th><th>${esc(t('ui.today.labour_col_kg'))}</th><th>${esc(t('ui.today.labour_col_packets'))}</th><th>${esc(t('ui.today.labour_col_deducted'))}</th></tr></thead>
                 <tbody>${body}</tbody>
-                <tfoot><tr><th>${esc(t('ui.today.labour_total'))}</th><th>${esc(formatKg(toPay.kg))}</th><th>${esc(packets)}</th><th>${esc(formatRupees(deducted.amount))}</th></tr></tfoot>
+                <tfoot><tr><th>${esc(t('ui.today.labour_total'))}</th><th>${esc(formatKg(toPay.kg))}</th><th>${esc(packets)}</th><th>${esc(moneyText(deducted.amount))}</th></tr></tfoot>
             </table>
-            <p class="labour-breakdown-note"><strong>${esc(t('ui.today.labour_to_pay'))}</strong> ${esc(formatRupees(toPay.amount))} ${esc(labourCalcText(toPay, 'ui.today.labour_to_pay_calc'))}</p>
+            <p class="labour-breakdown-note"><strong>${esc(t('ui.today.labour_to_pay'))}</strong> ${esc(moneyText(toPay.amount))} ${esc(labourCalcText(toPay, 'ui.today.labour_to_pay_calc'))}</p>
             <p class="labour-breakdown-note">${esc(t('ui.today.labour_note'))}</p>`;
         return UIManager.showModalWithHtml(html, t('ui.today.labour_breakdown_title'));
     },

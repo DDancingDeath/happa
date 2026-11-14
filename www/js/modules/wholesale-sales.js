@@ -273,7 +273,7 @@ export class WholesaleSalesManager {
             totalEl.textContent = '0';
             this.showBarTotal();
             if (expensesInput) expensesInput.value = '0';
-            if (profitEl) profitEl.textContent = '0';
+            if (profitEl) this.showProfit(profitEl, 0);
             if (profitPercentEl) profitPercentEl.textContent = '0';
             shownProfit = 0;
             this.updatePaymentTotal();
@@ -320,13 +320,25 @@ export class WholesaleSalesManager {
         return AppState.stockReady === false ? {} : AppState.stock;
     }
 
+    /**
+     * Profit as shown: grouped, a loss with the true minus before the template's ₹ (`#salesProfitSign`).
+     * @param {HTMLElement} el
+     * @param {?number} profit
+     */
+    static showProfit(el, profit) {
+        const sign = document.getElementById('salesProfitSign');
+        const loss = profit !== null && profit < 0;
+        if (sign) sign.textContent = loss ? '−' : '';
+        el.textContent = profit === null ? '—' : `${loss && !sign ? '−' : ''}${formatAmount(Math.abs(profit), 'exact')}`;
+    }
+
     static updateProfitCalculation() {
         const profitEl = document.getElementById('salesProfitAmount');
         const profitPercentEl = document.getElementById('salesProfitPercent');
         const live = wholesaleLiveProfit(wholesaleSaleItems, this.costStock(), Helpers.getInputNumber('salesExpensesAmount'), AppState.items);
         
         // Cost of a line not known (#102): profit is not known either, never counted at cost ₹0
-        if (profitEl) profitEl.textContent = live.shownProfit === null ? '—' : formatAmount(live.shownProfit, 'exact');
+        if (profitEl) this.showProfit(profitEl, live.shownProfit);
         shownProfit = profitEl ? live.shownProfit : 0;
         if (profitPercentEl) profitPercentEl.textContent = live.profitPercent === null ? '—' : live.profitPercent.toFixed(1);
         this.updatePaymentTotal();

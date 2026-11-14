@@ -138,14 +138,25 @@ export function isMissingAmount(amount) {
 }
 
 /**
- * An amount as screen text: formatRupees(amount, opts), and UNKNOWN_AMOUNT ("—") for a missing amount.
+ * An amount as screen text: formatRupees(amount, opts) with the true minus before ₹ ("−₹1,303.50"; preset
+ * `plain` keeps the hyphen), and UNKNOWN_AMOUNT ("—") for a missing amount.
  * @param {*} amount
  * @param {MoneyPreset|MoneyOpts} [opts]
  * @returns {string}
  */
 export function moneyText(amount, opts) {
     if (isMissingAmount(amount)) return UNKNOWN_AMOUNT;
-    return formatRupees(Number(amount), opts);
+    return formatRupees(Number(amount), { trueMinus: true, ...moneyOpts(opts) });
+}
+
+/**
+ * Screen text of a catalogue sentence whose "₹{x}" holds a negative formatAmount(): "₹-18,272" becomes
+ * "−₹18,272" (one on-screen minus, MONEY-TEXT).
+ * @param {*} text
+ * @returns {string}
+ */
+export function screenMinus(text) {
+    return String(text ?? '').replace(/₹-(?=\d)/g, '−₹');
 }
 
 /**

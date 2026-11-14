@@ -1,15 +1,15 @@
 /** @jest-environment jsdom */
 import { moneyHtml, moneyInText } from '../ui/components.js';
-import { formatRupees } from '../utils/money.js';
+import { moneyText } from '../utils/money.js';
 
 describe('moneyHtml', () => {
     const textOf = (html) => { const d = document.createElement('div'); d.innerHTML = html; return d.textContent; };
 
     test.each([
         [0, undefined], [250000, undefined], [12456789, undefined], [987.5, { exact: true }], [-500, undefined], [-500, { trueMinus: true }], [0.4, { small: true }]
-    ])('%p %p: text equals formatRupees, ₹ in .cur, minus outside it', (amount, opts) => {
+    ])('%p %p: text equals moneyText (the true minus), ₹ in .cur, minus outside it', (amount, opts) => {
         const html = moneyHtml(amount, opts);
-        expect(textOf(html)).toBe(formatRupees(amount, opts));
+        expect(textOf(html)).toBe(moneyText(amount, opts));
         const d = document.createElement('div');
         d.innerHTML = html;
         expect(d.querySelector('.money > .cur').textContent).toBe('₹');
@@ -33,6 +33,13 @@ describe('moneyInText', () => {
         d.innerHTML = moneyInText('Rate: ₹32.00/kg', 32, { decimals: 2 });
         expect(d.textContent).toBe('Rate: ₹32.00/kg');
         expect(d.querySelector('.money').textContent).toBe('₹32.00');
+    });
+
+    test('a negative figure written with the hyphen gets the true minus before ₹', () => {
+        const d = document.createElement('div');
+        d.innerHTML = moneyInText('You are worth -₹18,272.', -18272);
+        expect(d.textContent).toBe('You are worth −₹18,272.');
+        expect(d.querySelector('.money').textContent).toBe('−₹18,272');
     });
 
     test('text without the figure is only escaped', () => {

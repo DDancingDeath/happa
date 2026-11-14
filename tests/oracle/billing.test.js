@@ -18,8 +18,8 @@ import { AppState } from '../../www/js/utils/state.js';
 import { sampleItems } from '../fixtures/sample-items.js';
 
 const text = (id) => document.getElementById(id).textContent;
-/** A total as the forms show it: Indian grouping (MONEY-TEXT). */
-const shown = (n) => n.toLocaleString('en-IN');
+/** A total as the forms show it: Indian grouping, a loss with the true minus (MONEY-TEXT). */
+const shown = (n) => n.toLocaleString('en-IN').replace('-', '−');
 const setVal = (id, v) => { document.getElementById(id).value = String(v); };
 const lineAmounts = (selector) => [...document.querySelectorAll(`${selector} tbody tr`)].map(tr => Number(tr.children[3].textContent.replace(/[₹,]/g, '')));
 const RUNS = Number(process.env.FC_RUNS) || 200;

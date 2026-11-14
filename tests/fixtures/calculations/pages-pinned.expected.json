@@ -258,13 +258,13 @@
       "insightsActionsTitle": "To do: Jan 2027",
       "insightsActionsDues": "8 parties owe you ₹48,112 overdue (bills more than 30 days old).Open Outstanding ›You owe 8 parties ₹1,29,448 overdue (bills more than 30 days old).Open Outstanding ›",
       "insightsActionsLinks": "Check open anomalies.Open Anomalies ›",
-      "insightsItemsTakeaway": "Mustard earned the most profit (₹921).Wheat sold well but earned only ₹11.6 per ₹100.",
-      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearMustard₹5,914₹92115.6▲ 2%Wheat₹7,704₹89211.6▲ 89%Rice₹3,582₹63217.6▲ 15%Gram₹3,524₹46013.1▼ 49%Maize₹2,395₹45519▲ 172%",
+      "insightsItemsTakeaway": "Mustard earned the most profit (₹921).Wheat sold well but earned only ₹11.60 per ₹100.",
+      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearMustard₹5,914₹921₹15.60▲ 2%Wheat₹7,704₹892₹11.60▲ 89%Rice₹3,582₹632₹17.60▲ 15%Gram₹3,524₹460₹13.10▼ 49%Maize₹2,395₹455₹19▲ 172%",
       "insightsSplit": "Retail₹17,501 · 76%Wholesale₹5,618 · 24%",
       "insightsBoughtTable": "ItemkgBought forMustard61₹3,532Rice92₹3,208",
       "insightsChecks": "✓ Items and parties add up to Money's sales"
     },
-    "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearMustard₹5,914₹92115.6▲ 2%Rice₹3,582₹63217.6▲ 15%Gram₹3,524₹46013.1▼ 49%Maize₹2,395₹45519▲ 172%Wheat₹2,086₹37718.1▲ 2%",
+    "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearMustard₹5,914₹921₹15.60▲ 2%Rice₹3,582₹632₹17.60▲ 15%Gram₹3,524₹460₹13.10▼ 49%Maize₹2,395₹455₹19▲ 172%Wheat₹2,086₹377₹18.10▲ 2%",
     "customers": {
       "insightsCmpToggle": "Compare",
       "insightsPeriodLabel": "Jan 2027",
@@ -274,7 +274,7 @@
       "insightsActionsDues": "8 parties owe you ₹48,112 overdue (bills more than 30 days old).Open Outstanding ›You owe 8 parties ₹1,29,448 overdue (bills more than 30 days old).Open Outstanding ›",
       "insightsActionsLinks": "Check open anomalies.Open Anomalies ›",
       "insightsItemsTakeaway": "Mustard earned the most profit (₹921).",
-      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearMustard₹5,914₹92115.6▲ 2%Rice₹3,582₹63217.6▲ 15%Gram₹3,524₹46013.1▼ 49%Maize₹2,395₹45519▲ 172%Wheat₹2,086₹37718.1▲ 2%",
+      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearMustard₹5,914₹921₹15.60▲ 2%Rice₹3,582₹632₹17.60▲ 15%Gram₹3,524₹460₹13.10▼ 49%Maize₹2,395₹455₹19▲ 172%Wheat₹2,086₹377₹18.10▲ 2%",
       "insightsSplit": "Retail₹17,501 · 76%Wholesale₹5,618 · 24%",
       "insightsBoughtTable": "ItemkgBought forMustard61₹3,532Rice92₹3,208",
       "insightsPartiesTakeaway": "Top 5 customers gave 85% of sales.",
@@ -326,12 +326,12 @@
       "insightsActionsDues": "8 parties owe you ₹35,876 overdue (bills more than 30 days old).Open Outstanding ›You owe 8 parties ₹1,75,361 overdue (bills more than 30 days old).Open Outstanding ›",
       "insightsActionsLinks": "Check open anomalies.Open Anomalies ›",
       "insightsItemsTakeaway": "Mustard earned the most profit (₹1,645).",
-      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearMustard₹20,710₹1,6458▲ 313%Rice₹5,788₹69011.9▲ 254%Gram₹3,886₹59815.4▲ 87%Maize₹6,117₹5749.4▲ 199%Wheat₹1,399₹19614▼ 68%",
+      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearMustard₹20,710₹1,645₹8▲ 313%Rice₹5,788₹690₹11.90▲ 254%Gram₹3,886₹598₹15.40▲ 87%Maize₹6,117₹574₹9.40▲ 199%Wheat₹1,399₹196₹14▼ 68%",
       "insightsSplit": "Retail₹9,665 · 26%Wholesale₹28,235 · 74%",
       "insightsBoughtTable": "ItemkgBought forMustard681₹35,507Gram86₹4,331Maize53₹922",
       "insightsChecks": "✓ Items and parties add up to Money's sales"
     },
-    "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearGram₹3,886₹59815.4▲ 87%Maize₹2,157₹35416.4▲ 6%Rice₹1,238₹25620.7▼ 24%Wheat₹1,399₹19614▼ 55%Mustard₹985₹18318.6▼ 80%",
+    "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearGram₹3,886₹598₹15.40▲ 87%Maize₹2,157₹354₹16.40▲ 6%Rice₹1,238₹256₹20.70▼ 24%Wheat₹1,399₹196₹14▼ 55%Mustard₹985₹183₹18.60▼ 80%",
     "customers": {
       "insightsCmpToggle": "Compare",
       "insightsPeriodLabel": "Feb 2028",
@@ -341,7 +341,7 @@
       "insightsActionsDues": "8 parties owe you ₹35,876 overdue (bills more than 30 days old).Open Outstanding ›You owe 8 parties ₹1,75,361 overdue (bills more than 30 days old).Open Outstanding ›",
       "insightsActionsLinks": "Check open anomalies.Open Anomalies ›",
       "insightsItemsTakeaway": "Gram earned the most profit (₹598).",
-      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹3,886₹59815.4▲ 87%Maize₹2,157₹35416.4▲ 6%Rice₹1,238₹25620.7▼ 24%Wheat₹1,399₹19614▼ 55%Mustard₹985₹18318.6▼ 80%",
+      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹3,886₹598₹15.40▲ 87%Maize₹2,157₹354₹16.40▲ 6%Rice₹1,238₹256₹20.70▼ 24%Wheat₹1,399₹196₹14▼ 55%Mustard₹985₹183₹18.60▼ 80%",
       "insightsSplit": "Retail₹9,665 · 26%Wholesale₹28,235 · 74%",
       "insightsBoughtTable": "ItemkgBought forMustard681₹35,507Gram86₹4,331Maize53₹922",
       "insightsPartiesTakeaway": "Top 5 customers gave 88% of sales.",
@@ -392,13 +392,13 @@
       "insightsActionsTitle": "To do: Mar 2027",
       "insightsActionsDues": "8 parties owe you ₹44,473 overdue (bills more than 30 days old).Open Outstanding ›You owe 8 parties ₹1,43,474 overdue (bills more than 30 days old).Open Outstanding ›",
       "insightsActionsLinks": "Check open anomalies.Open Anomalies ›",
-      "insightsItemsTakeaway": "Gram earned the most profit (₹1,128).Mustard sold well but earned only ₹10.9 per ₹100.",
-      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹8,166₹1,12813.8▲ 36%Mustard₹8,873₹96310.9▲ 143%Rice₹4,242₹49611.7▲ 130%Wheat₹1,826₹31517.2▼ 56%Maize₹1,870₹28915.5▲ 50%",
+      "insightsItemsTakeaway": "Gram earned the most profit (₹1,128).Mustard sold well but earned only ₹10.90 per ₹100.",
+      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹8,166₹1,128₹13.80▲ 36%Mustard₹8,873₹963₹10.90▲ 143%Rice₹4,242₹496₹11.70▲ 130%Wheat₹1,826₹315₹17.20▼ 56%Maize₹1,870₹289₹15.50▲ 50%",
       "insightsSplit": "Retail₹17,718 · 71%Wholesale₹7,259 · 29%",
       "insightsBoughtTable": "ItemkgBought forMustard1,590₹85,450Gram1,262₹60,122Maize92₹1,874",
       "insightsChecks": "✓ Items and parties add up to Money's sales"
     },
-    "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearGram₹5,922₹94616▼ 2%Mustard₹3,858₹61716▲ 6%Rice₹4,242₹49611.7▲ 130%Wheat₹1,826₹31517.2▲ 59%Maize₹1,870₹28915.5▲ 50%",
+    "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearGram₹5,922₹946₹16▼ 2%Mustard₹3,858₹617₹16▲ 6%Rice₹4,242₹496₹11.70▲ 130%Wheat₹1,826₹315₹17.20▲ 59%Maize₹1,870₹289₹15.50▲ 50%",
     "customers": {
       "insightsCmpToggle": "Compare",
       "insightsPeriodLabel": "Mar 2027",
@@ -408,7 +408,7 @@
       "insightsActionsDues": "8 parties owe you ₹44,473 overdue (bills more than 30 days old).Open Outstanding ›You owe 8 parties ₹1,43,474 overdue (bills more than 30 days old).Open Outstanding ›",
       "insightsActionsLinks": "Check open anomalies.Open Anomalies ›",
       "insightsItemsTakeaway": "Gram earned the most profit (₹946).",
-      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹5,922₹94616▼ 2%Mustard₹3,858₹61716▲ 6%Rice₹4,242₹49611.7▲ 130%Wheat₹1,826₹31517.2▲ 59%Maize₹1,870₹28915.5▲ 50%",
+      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹5,922₹946₹16▼ 2%Mustard₹3,858₹617₹16▲ 6%Rice₹4,242₹496₹11.70▲ 130%Wheat₹1,826₹315₹17.20▲ 59%Maize₹1,870₹289₹15.50▲ 50%",
       "insightsSplit": "Retail₹17,718 · 71%Wholesale₹7,259 · 29%",
       "insightsBoughtTable": "ItemkgBought forMustard1,590₹85,450Gram1,262₹60,122Maize92₹1,874",
       "insightsPartiesTakeaway": "Top 5 customers gave 89% of sales.",
@@ -460,12 +460,12 @@
       "insightsActionsDues": "8 parties owe you ₹34,678 overdue (bills more than 30 days old).Open Outstanding ›You owe 8 parties ₹1,34,230 overdue (bills more than 30 days old).Open Outstanding ›",
       "insightsActionsLinks": "Check open anomalies.Open Anomalies ›",
       "insightsItemsTakeaway": "Gram earned the most profit (₹177).",
-      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹1,183₹17714.9▲ 225%Wheat₹644₹9614.9—",
+      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹1,183₹177₹14.90▲ 225%Wheat₹644₹96₹14.90—",
       "insightsSplit": "Retail₹1,827 · 100%Wholesale₹0 · 0%",
       "insightsBoughtTable": "No purchases in this period.",
       "insightsChecks": "✓ Items and parties add up to Money's sales"
     },
-    "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearGram₹1,183₹17714.9▲ 225%Wheat₹644₹9614.9—",
+    "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearGram₹1,183₹177₹14.90▲ 225%Wheat₹644₹96₹14.90—",
     "customers": {
       "insightsCmpToggle": "Compare",
       "insightsPeriodLabel": "Jan 2027",
@@ -475,7 +475,7 @@
       "insightsActionsDues": "8 parties owe you ₹34,678 overdue (bills more than 30 days old).Open Outstanding ›You owe 8 parties ₹1,34,230 overdue (bills more than 30 days old).Open Outstanding ›",
       "insightsActionsLinks": "Check open anomalies.Open Anomalies ›",
       "insightsItemsTakeaway": "Gram earned the most profit (₹177).",
-      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹1,183₹17714.9▲ 225%Wheat₹644₹9614.9—",
+      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹1,183₹177₹14.90▲ 225%Wheat₹644₹96₹14.90—",
       "insightsSplit": "Retail₹1,827 · 100%Wholesale₹0 · 0%",
       "insightsBoughtTable": "No purchases in this period.",
       "insightsPartiesTakeaway": "Top 5 customers gave 100% of sales.",
@@ -821,7 +821,7 @@
       "moneySales": "₹23,119",
       "moneySalesSplit": "16 bills",
       "moneyCogs": "₹19,760",
-      "moneyGross": "₹3,359 · ₹14.5 per ₹100 sold",
+      "moneyGross": "₹3,359 · ₹14.50 per ₹100 sold",
       "moneyBusinessTerm": "₹16,100",
       "moneyBadDebts": "₹444",
       "moneyProfitEqLabel": "= Profit",
@@ -887,7 +887,7 @@
       "moneySales": "₹37,900",
       "moneySalesSplit": "17 bills",
       "moneyCogs": "₹34,196",
-      "moneyGross": "₹3,704 · ₹9.8 per ₹100 sold",
+      "moneyGross": "₹3,704 · ₹9.80 per ₹100 sold",
       "moneyBusinessTerm": "₹10,750",
       "moneyBadDebts": "₹218",
       "moneyProfitEqLabel": "= Profit",
@@ -953,7 +953,7 @@
       "moneySales": "₹24,977",
       "moneySalesSplit": "21 bills",
       "moneyCogs": "₹21,786",
-      "moneyGross": "₹3,191 · ₹12.8 per ₹100 sold",
+      "moneyGross": "₹3,191 · ₹12.80 per ₹100 sold",
       "moneyBusinessTerm": "₹16,775",
       "moneyBadDebts": "₹672",
       "moneyProfitEqLabel": "= Profit",
@@ -1019,7 +1019,7 @@
       "moneySales": "₹1,827",
       "moneySalesSplit": "1 bill",
       "moneyCogs": "₹1,554",
-      "moneyGross": "₹273 · ₹14.9 per ₹100 sold",
+      "moneyGross": "₹273 · ₹14.90 per ₹100 sold",
       "moneyBusinessTerm": "₹750",
       "moneyBadDebts": "₹166",
       "moneyProfitEqLabel": "= Profit",
@@ -2500,7 +2500,7 @@
     "month": {
       "title": "Month statement · Jan 2027",
       "share": "Month statement · Jan 2027\nSales: ₹23,119\nCost of what was sold: ₹19,760\nProfit on goods: ₹3,359\nBusiness expenses: ₹16,100\nDues written off: ₹0\nProfit: -₹12,741\nLabour on purchases (not in cost): ₹18\nPersonal expenses: ₹2,000\nWithdrawals: ₹0\nKept in business: -₹14,741\nMoney in: ₹17,865\nMoney out: ₹25,544\nNet money in: -₹7,679\nBought: ₹6,740\nStock at the start: ₹8,63,662\nStock at the end: ₹8,50,661",
-      "text": "Month statement · Jan 2027Sales₹23,119− Cost of what was sold₹19,760= Profit on goods₹3,359− Business expenses₹16,100− Dues written off₹0= Profit-₹12,741Labour on purchases (not in cost)₹18Personal expenses₹2,000Withdrawals₹0Kept in business-₹14,741Money in₹17,865Money out₹25,544Net money in-₹7,679Bought₹6,740Stock at the start₹8,63,662= Stock at the end₹8,50,661⚠ ₹1,050 of expenses have no type; they count as business.",
+      "text": "Month statement · Jan 2027Sales₹23,119− Cost of what was sold₹19,760= Profit on goods₹3,359− Business expenses₹16,100− Dues written off₹0= Profit−₹12,741Labour on purchases (not in cost)₹18Personal expenses₹2,000Withdrawals₹0Kept in business−₹14,741Money in₹17,865Money out₹25,544Net money in−₹7,679Bought₹6,740Stock at the start₹8,63,662= Stock at the end₹8,50,661⚠ ₹1,050 of expenses have no type; they count as business.",
       "rows": 16,
       "first": [
         [
@@ -2742,7 +2742,7 @@
     "month": {
       "title": "Month statement · Feb 2028",
       "share": "Month statement · Feb 2028\nSales: ₹37,494\nCost of what was sold: ₹33,847\nProfit on goods: ₹3,647\nBusiness expenses: ₹10,750\nDues written off: ₹218\nProfit: -₹7,321\nLabour on purchases (not in cost): ₹102\nPersonal expenses: ₹1,400\nWithdrawals: ₹17,000\nKept in business: -₹25,721\nMoney in: ₹36,650\nMoney out: ₹52,910\nNet money in: -₹16,260\nBought: ₹40,760\nStock at the start: ₹11,60,466\nStock at the end: ₹11,67,481",
-      "text": "Month statement · Feb 2028Sales₹37,494− Cost of what was sold₹33,847= Profit on goods₹3,647− Business expenses₹10,750− Dues written off₹218= Profit-₹7,321Labour on purchases (not in cost)₹102Personal expenses₹1,400Withdrawals₹17,000Kept in business-₹25,721Money in₹36,650Money out₹52,910Net money in-₹16,260Bought₹40,760Stock at the start₹11,60,466= Stock at the end₹11,67,481⚠ ₹250 of expenses have no type; they count as business.",
+      "text": "Month statement · Feb 2028Sales₹37,494− Cost of what was sold₹33,847= Profit on goods₹3,647− Business expenses₹10,750− Dues written off₹218= Profit−₹7,321Labour on purchases (not in cost)₹102Personal expenses₹1,400Withdrawals₹17,000Kept in business−₹25,721Money in₹36,650Money out₹52,910Net money in−₹16,260Bought₹40,760Stock at the start₹11,60,466= Stock at the end₹11,67,481⚠ ₹250 of expenses have no type; they count as business.",
       "rows": 16,
       "first": [
         [
@@ -3060,7 +3060,7 @@
     "month": {
       "title": "Month statement · Mar 2027",
       "share": "Month statement · Mar 2027\nSales: ₹24,095\nCost of what was sold: ₹20,998\nProfit on goods: ₹3,097\nBusiness expenses: ₹16,775\nDues written off: ₹0\nProfit: -₹13,678\nLabour on purchases (not in cost): ₹240\nPersonal expenses: ₹5,400\nWithdrawals: ₹15,000\nKept in business: -₹34,078\nMoney in: ₹21,442\nMoney out: ₹1,40,242\nNet money in: -₹1,18,800\nBought: ₹1,47,446\nStock at the start: ₹6,67,244\nStock at the end: ₹7,94,101",
-      "text": "Month statement · Mar 2027Sales₹24,095− Cost of what was sold₹20,998= Profit on goods₹3,097− Business expenses₹16,775− Dues written off₹0= Profit-₹13,678Labour on purchases (not in cost)₹240Personal expenses₹5,400Withdrawals₹15,000Kept in business-₹34,078Money in₹21,442Money out₹1,40,242Net money in-₹1,18,800Bought₹1,47,446Stock at the start₹6,67,244= Stock at the end₹7,94,101⚠ ₹1,000 of expenses have no type; they count as business.",
+      "text": "Month statement · Mar 2027Sales₹24,095− Cost of what was sold₹20,998= Profit on goods₹3,097− Business expenses₹16,775− Dues written off₹0= Profit−₹13,678Labour on purchases (not in cost)₹240Personal expenses₹5,400Withdrawals₹15,000Kept in business−₹34,078Money in₹21,442Money out₹1,40,242Net money in−₹1,18,800Bought₹1,47,446Stock at the start₹6,67,244= Stock at the end₹7,94,101⚠ ₹1,000 of expenses have no type; they count as business.",
       "rows": 16,
       "first": [
         [
@@ -3422,7 +3422,7 @@
     "month": {
       "title": "Month statement · Jan 2027",
       "share": "Month statement · Jan 2027\nSales: ₹0\nCost of what was sold: ₹0\nProfit on goods: ₹0\nBusiness expenses: ₹750\nDues written off: ₹0\nProfit: -₹750\nLabour on purchases (not in cost): ₹0\nPersonal expenses: ₹0\nWithdrawals: ₹11,500\nKept in business: -₹12,250\nMoney in: ₹0\nMoney out: ₹750\nNet money in: -₹750\nBought: ₹0\nStock at the start: ₹8,36,137\nStock at the end: ₹8,36,137",
-      "text": "Month statement · Jan 2027Sales₹0− Cost of what was sold₹0= Profit on goods₹0− Business expenses₹750− Dues written off₹0= Profit-₹750Labour on purchases (not in cost)₹0Personal expenses₹0Withdrawals₹11,500Kept in business-₹12,250Money in₹0Money out₹750Net money in-₹750Bought₹0Stock at the start₹8,36,137= Stock at the end₹8,36,137",
+      "text": "Month statement · Jan 2027Sales₹0− Cost of what was sold₹0= Profit on goods₹0− Business expenses₹750− Dues written off₹0= Profit−₹750Labour on purchases (not in cost)₹0Personal expenses₹0Withdrawals₹11,500Kept in business−₹12,250Money in₹0Money out₹750Net money in−₹750Bought₹0Stock at the start₹8,36,137= Stock at the end₹8,36,137",
       "rows": 16,
       "first": [
         [

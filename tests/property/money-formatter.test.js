@@ -2,10 +2,11 @@
  * @fileoverview F0 (one money formatter): every local wrapper and alias that was replaced by
  * formatRupees / moneyText / moneyHtml with a named preset gives the same text as before, for
  * generated amounts (0, missing, negatives, paise, ₹1,24,56,789 and huge values). The only
- * differences are the deliberate ones (MONEY-TEXT): a missing amount is "—" on screen.
+ * differences are the deliberate ones (MONEY-TEXT): on screen the true minus before ₹ and "—" for a missing amount;
+ * rates on screen without ".00".
  */
 import fc from 'fast-check';
-import { formatRupees, formatRate, moneyText, MONEY_PRESETS, UNKNOWN_AMOUNT } from '../../www/js/utils/money.js';
+import { formatRupees, formatRate, moneyText, screenMinus, MONEY_PRESETS, UNKNOWN_AMOUNT } from '../../www/js/utils/money.js';
 import { moneyHtml } from '../../www/js/ui/components.js';
 
 const RUNS = Number(process.env.FC_RUNS) || 500;
@@ -28,28 +29,29 @@ function oldRupees(amount, opts) {
 const oldMissing = (n) => n === null || n === undefined || n === '' || !Number.isFinite(Number(n));
 const textOf = (html) => html.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&');
 
-// Each replaced wrapper: [where it was, old body, new call]
+// Each replaced wrapper: [where it was, old body, new call, on screen]. On screen the only change for a finite amount
+// is the true minus before ₹ ("-₹500" → "−₹500"); print, share and stored texts keep the hyphen.
 const WRAPPERS = [
-    ['due-reminder formatINR', (n) => oldRupees(n), (n) => formatRupees(n)],
-    ['Helpers.formatCurrency', (n) => oldRupees(n), (n) => formatRupees(n)],
-    ['day.js formatCurrency', (n) => oldRupees(n), (n) => formatRupees(n)],
-    ['receipt-drawing rupees', (n) => oldRupees(n), (n) => formatRupees(n)],
-    ['bill-share money', (n) => oldRupees(n), (n) => formatRupees(n)],
-    ['rent-receipt inr', (n) => oldRupees(n, { exact: true }), (n) => formatRupees(n, 'exact')],
-    ['formatRate on receipts and share text', (n) => oldRupees(n, { decimals: 2 }), (n) => formatRupees(n, 'ratePaise')],
-    ['money.js money', (v) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : oldRupees(v, { trueMinus: true })), (v) => moneyText(v, 'signed')],
-    ['period-compare rupees', (v) => (v === null ? '—' : oldRupees(v, { trueMinus: true })), (v) => moneyText(v, 'signed')],
-    ['period-compare textRupees', (v) => (v === null ? '—' : oldRupees(v)), (v) => moneyText(v, 'plain')],
-    ['rate-trends wholeRupees', (n) => (n === null || n === undefined ? '—' : oldRupees(n)), (n) => moneyText(n)],
-    ['finance-breakdown rupees', (n) => (n === null || n === undefined || !Number.isFinite(n) ? '—' : oldRupees(n, { exact: false, trueMinus: true })), (n) => moneyText(n, 'signed')],
-    ['finance-breakdown rupees (paise)', (n) => (n === null || n === undefined || !Number.isFinite(n) ? '—' : oldRupees(n, { exact: true, trueMinus: true })), (n) => moneyText(n, { exact: true, trueMinus: true })],
-    ['Anomalies page money', (n) => oldRupees(n, { exact: true }), (n) => moneyText(n, 'exact')],
-    ['stored check / anomaly text: bill-checks fmtRs, anomalies inr', (n) => oldRupees(n, { exact: true }), (n) => formatRupees(n, 'exact')],
-    ['stored check / anomaly text: formatRate', (n) => oldRupees(n, { decimals: 2 }), (n) => formatRupees(n, 'ratePaise')],
-    ['recurring-bills / workers money', (n) => oldRupees(n), (n) => moneyText(n)],
-    ['history / wholesale / rentals money', (n) => (oldMissing(n) ? oldRupees(n) : textOf(moneyHtml(n))), (n) => textOf(moneyHtml(n))]
+    ['due-reminder formatINR (WhatsApp text)', (n) => oldRupees(n), (n) => formatRupees(n), false],
+    ['Helpers.formatCurrency (toasts, restore prompts)', (n) => oldRupees(n), (n) => formatRupees(n), false],
+    ['day.js formatCurrency', (n) => oldRupees(n), (n) => moneyText(n), true],
+    ['receipt-drawing rupees', (n) => oldRupees(n), (n) => formatRupees(n), false],
+    ['bill-share money', (n) => oldRupees(n), (n) => formatRupees(n), false],
+    ['rent-receipt inr', (n) => oldRupees(n, { exact: true }), (n) => formatRupees(n, 'exact'), false],
+    ['formatRate on receipts and share text', (n) => oldRupees(n, { decimals: 2 }), (n) => formatRupees(n, 'ratePaise'), false],
+    ['money.js money', (v) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : oldRupees(v, { trueMinus: true })), (v) => moneyText(v), true],
+    ['period-compare rupees', (v) => (v === null ? '—' : oldRupees(v, { trueMinus: true })), (v) => moneyText(v), true],
+    ['period-compare textRupees (share image text)', (v) => (v === null ? '—' : oldRupees(v)), (v) => moneyText(v, 'plain'), false],
+    ['rate-trends wholeRupees', (n) => (n === null || n === undefined ? '—' : oldRupees(n)), (n) => moneyText(n), true],
+    ['finance-breakdown rupees', (n) => (n === null || n === undefined || !Number.isFinite(n) ? '—' : oldRupees(n, { exact: false, trueMinus: true })), (n) => moneyText(n), true],
+    ['finance-breakdown rupees (paise)', (n) => (n === null || n === undefined || !Number.isFinite(n) ? '—' : oldRupees(n, { exact: true, trueMinus: true })), (n) => moneyText(n, 'exact'), true],
+    ['Anomalies page money', (n) => oldRupees(n, { exact: true }), (n) => moneyText(n, 'exact'), true],
+    ['stored check / anomaly text: bill-checks fmtRs, anomalies inr', (n) => oldRupees(n, { exact: true }), (n) => formatRupees(n, 'exact'), false],
+    ['stored check / anomaly text: formatRate', (n) => oldRupees(n, { decimals: 2 }), (n) => formatRupees(n, 'ratePaise'), false],
+    ['recurring-bills / workers money', (n) => oldRupees(n), (n) => moneyText(n), true],
+    ['history / wholesale / rentals money (moneyHtml)', (n) => oldRupees(n), (n) => textOf(moneyHtml(n)), true]
 ];
-
+const onScreen = (text) => text.replace(/^-₹/, '−₹');
 const FIXED = [0, -0, 0.4, 0.5, 1, 9.99, 99.5, 100, 987.5, 987.49, 1000, 1953, 1303.5, -1303.5, -500, -0.2, -18272, 12456789, -12456789,
     1245678.9, 628782, 1e12, -1e12, 9007199254740991, 24.5, 2400, 2400.004, 0.005, 1.005];
 const amounts = fc.oneof(
@@ -61,8 +63,8 @@ const amounts = fc.oneof(
 const missing = [null, undefined, '', NaN, 'x', Infinity];
 
 describe('F0: replaced money wrappers keep their text', () => {
-    test.each(WRAPPERS)('%s: same text for every finite amount', (_name, before, after) => {
-        fc.assert(fc.property(amounts, (n) => after(n) === before(n)), { numRuns: RUNS });
+    test.each(WRAPPERS)('%s: same text for every finite amount (true minus on screen)', (_name, before, after, screen) => {
+        fc.assert(fc.property(amounts, (n) => after(n) === (screen ? onScreen(before(n)) : before(n))), { numRuns: RUNS });
     });
 
     test.each(WRAPPERS)('%s: a missing amount is "—" on screen, or as before', (_name, before, after) => {
@@ -82,15 +84,17 @@ describe('F0: replaced money wrappers keep their text', () => {
         expect(Object.isFrozen(MONEY_PRESETS)).toBe(true);
     });
 
-    test('moneyHtml text is formatRupees text, ₹1,24,56,789 included', () => {
-        fc.assert(fc.property(amounts, (n) => textOf(moneyHtml(n)) === formatRupees(n)), { numRuns: RUNS });
+    test('moneyHtml text is moneyText text, ₹1,24,56,789 included; one on-screen minus', () => {
+        fc.assert(fc.property(amounts, (n) => textOf(moneyHtml(n)) === moneyText(n) && moneyText(n) === onScreen(formatRupees(n))), { numRuns: RUNS });
         expect(textOf(moneyHtml(12456789))).toBe('₹1,24,56,789');
+        expect([moneyText(-1303.5, 'rate'), moneyText(-18272), formatRupees(-18272), moneyText(-500, 'plain')]).toEqual(['−₹1,303.50', '−₹18,272', '-₹18,272', '-₹500']);
+        expect(screenMinus('You are worth ₹-18,272.')).toBe('You are worth −₹18,272.');
         expect(moneyHtml(null)).toBe(UNKNOWN_AMOUNT);
     });
 
     test('rates on screen (preset rate) show paise only when they have them: ₹2,400.00 → ₹2,400, ₹24.50 stays', () => {
         const before = (n) => oldRupees(n, { decimals: 2 });
-        const rateTrends = (n) => moneyText(n, 'rate');
+        const rateTrends = (n) => moneyText(n, 'rate').replace('−', '-');
         fc.assert(fc.property(amounts, (n) => {
             const old = before(n);
             const want = old.endsWith('.00') ? old.slice(0, -3) : old;

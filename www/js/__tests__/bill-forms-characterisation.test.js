@@ -481,7 +481,7 @@ describe('wholesale sale form', () => {
         setVal('salesExpensesAmount', 10);
         WholesaleSalesManager.updateProfitCalculation();
         // #129: cost 73.92 → ₹74, profit −18 → −18 ÷ 66 = −27.3% (was −17.92, −27.2%)
-        expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['66', '-18', '-27.3']);
+        expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['66', '−18', '-27.3']);
         WholesaleSalesManager.removeWholesaleItem(0);
         expect([text('salesTotalAmount'), $('salesExpensesAmount').value, text('salesProfitAmount'), text('salesProfitPercent')])
             .toEqual(['0', '0', '0', '0']);

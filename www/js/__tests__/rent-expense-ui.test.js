@@ -67,7 +67,7 @@ test('Rent page (Advanced): expenses and net this month in all; each property ca
     expect(root.textContent).toContain('expenses ₹1,200');
     RentalsModule.api.openProperty('P2');
     expect(cards(document.getElementById('rentalsBody'))).toContain('Expenses this month ₹800');
-    expect(cards(document.getElementById('rentalsBody'))).toContain('Net this month -₹800');
+    expect(cards(document.getElementById('rentalsBody'))).toContain('Net this month −₹800');
 });
 
 test('Property › Expenses (Advanced): the list (no edit for a member), then Add saves a whole-rupee expense for a unit', async () => {
