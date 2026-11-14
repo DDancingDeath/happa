@@ -336,9 +336,9 @@ counts toward the 1.5 KB. A look that tokens can't express needs a new token in 
 
 | Test | Fails on |
 |---|---|
-| `tests/ci/colour-guard.test.js` | a file gaining a hard-coded colour (baseline `tests/colour-baseline.json`, may only go down: `COLOUR_BASELINE=lower`) |
-| `tests/ci/type-guard.test.js` | a raw `font-size` / `font-weight` (baseline `tests/type-baseline.json`, `TYPE_BASELINE=lower`) |
-| `tests/ci/ds-guard.test.js` | a file gaining raw spacing, radius, shadow or z-index, `!important`, an `#id` or `.dark-mode` / `[data-theme]` selector, an inline style, an emoji, a Title Case label or a legacy component class (baseline `tests/ds-baseline.json`, `DS_BASELINE=lower`; see "Ratchets" below) |
+| `tests/ci/colour-guard.test.js` | a hard-coded colour outside the allowlist (see "Strict guards" below) |
+| `tests/ci/type-guard.test.js` | a raw `font-size` / `font-weight` outside the allowlist |
+| `tests/ci/ds-guard.test.js` | raw spacing, radius, shadow or z-index, `!important`, an `#id` or `.dark-mode` / `[data-theme]` selector, an inline style, an emoji, a Title Case label or a legacy component class outside the allowlist; an allowlist entry without a known list or a reason |
 | `tests/ci/themes.test.js` | a theme missing from the registry, `styles.css` or i18n; a non-token rule or a colour outside `@media screen` in a theme file; a theme over 1.5 KB gzip; a rule in `www/css` or a template `<style>` that sets an accent, sale, wholesale, positive or negative fill and white text together |
 | `tests/ci/theme-contrast.test.js` | a text / background pair under 4.5:1 in any theme × mode |
 | `tests/ci/icon-sprite.test.js` | a missing `#i-*` symbol, or the sprite growing too large |
@@ -347,21 +347,21 @@ counts toward the 1.5 KB. A look that tokens can't express needs a new token in 
 | `tests/e2e/app-shell.spec.js` | the phone app bar title (en, hi), one `main`, the More sheet's focus, Tab, Esc and Back; the desktop page header title per page (en, hi), one banner / nav / main, the grouped sidebar per role, Tab order, Alt+1…9 and the 1024 px rail |
 | `tests/e2e/a11y-contrast.spec.js`, `billing-fold.spec.js` | contrast on the main pages (en, hi); Save / Print above the fold |
 
-### Ratchets
+### Strict guards
 
-Why: the app looks inconsistent because every screen grew its own spacing, radii, shadows, inline styles, emoji icons, Title Case labels and
-component classes. Fixing that takes many page PRs; the ratchets make sure nothing new drifts in meanwhile, so the counts can only fall.
-Each guard keeps a per-file count in a committed baseline. CI fails when:
+Why: the app looked inconsistent because every screen grew its own spacing, radii, shadows, inline styles, emoji icons, Title Case labels and
+component classes. The guards started as ratchets (counts could only fall); since K4 (Nov 2026) they are strict: every metric is 0 in every
+file, except for the entries in `tests/ds-allowlist.json`. CI fails when:
 
-* a file's count goes **up** (use the token, class or icon the message names);
-* a file's count goes **down** but its baseline doesn't. A fix must be locked in, or it can be spent on new drift later;
-* a baseline row is higher than on the PR base (checked against `origin/<base>`), or a `strict` file is dropped.
+* a file has a count but no entry, or more than its entry (use the token, class or icon the message names);
+* a file's count is **below** its entry. Lower the entry in the same PR, so the fix can't be spent on new drift later;
+* an entry names an unknown metric or list, has no reason, or is listed twice.
 
-| Guard | Baseline | Counts, per file |
+| Guard (metric) | Allowlist | Counts, per file |
 |---|---|---|
-| `colour-guard` | `tests/colour-baseline.json` | hex / `rgb()` / `hsl()` / colour names |
-| `type-guard` | `tests/type-baseline.json` | raw `font-size` / `font-weight` |
-| `ds-guard` `spacing` | `tests/ds-baseline.json` | `margin` / `padding` / `gap` with a non-zero px / rem / em (use `--sp-*`) |
+| `colour-guard` (`colour`) | `tests/ds-allowlist.json` | hex / `rgb()` / `hsl()` / colour names |
+| `type-guard` (`type`) | 〃 | raw `font-size` / `font-weight` |
+| `ds-guard` `spacing` | 〃 | `margin` / `padding` / `gap` with a non-zero px / rem / em (use `--sp-*`) |
 | `ds-guard` `radius`, `shadow`, `zIndex` | 〃 | raw `border-radius` (`--r-*`), `box-shadow` / `text-shadow` (`--e1`…`--e3`), numeric `z-index` |
 | `ds-guard` `important`, `idSelector`, `themeSelector` | 〃 | `!important`; selectors with `#id`; `.dark-mode` / `[data-theme]` / `[data-mode]` outside `variables.css` and `themes/` |
 | `ds-guard` `inlineStyle` | 〃 | template `style="…"`, `style="…"` in JS strings, `.style.x =` writes other than `display`, `setAttribute('style')`. A style holding only custom properties (`style="--w:42%"`) is allowed |
@@ -372,12 +372,35 @@ Each guard keeps a per-file count in a committed baseline. CI fails when:
 Scope: `www/css` (not `app.css`, `variables.css` or `themes/`), `www/index.html`, `www/templates`, `www/js`. `@media print` and the receipt files
 (`rent-receipt.css`, `printer.js`, `receipt-drawing.js`, `rent-receipt.js`) stay out.
 
-Updating a baseline, after you removed drift (never to allow new drift; CI refuses a raised row):
+The lists (`"lists"` in the file) say which kinds of exception are legitimate:
+
+| List | For |
+|---|---|
+| `print` | thermal-printer and printable-image canvases (black on white), like `@media print` and the receipt files the guards skip |
+| `canvas` | chart colours drawn on `<canvas>` and the legend swatches that key them |
+| `share-text` | text that leaves the app (WhatsApp day report, due reminders) where an emoji is part of the message |
+| `standalone` | output that can't load `app.css` tokens: the exported HTML file, DevTools console styles, the self-styled quota banner |
+| `js-state` | a template's initial `style="display:…"` that JS and tests read through `element.style` (the remaining test hooks) |
+| `proper-noun` | Title Case that names a page or a theme |
+| `off-scale` | a raw value with no exact token: a nearer token would change the look, so it waits for the page PR that owns the screen |
+| `cascade` | an `!important` or `#id` selector that decides which rule wins today (the `#billing` layer); removing it needs its own cascade-checked PR |
+| `visible-fix` | drift whose fix is a visible change (an emoji to swap for a sprite icon), left for the page PR |
+
+Adding an entry is the exception, not the fix: first use the token, class or icon. When the drift is legitimate, add one line to `"entries"`:
 
 ```
-DS_BASELINE=lower npx jest ds-guard          # also COLOUR_BASELINE=lower colour-guard, TYPE_BASELINE=lower type-guard
+{"metric":"colour","file":"www/js/ui/new-chart.js","count":4,"list":"canvas","reason":"series colours drawn on the canvas"}
 ```
 
-Commit the lowered JSON in the same PR. A PR that deletes a stylesheet and moves its rules lists the move in the baseline's `"moved"` map (`"www/css/old.css": ["www/css/new.css"]`): a destination row may then rise by at most the source's row at the PR base, per metric. The source must be a `.css` file that existed at the base and is deleted in the PR; strict files never rise and no total rises. Nothing else may raise a row. `DS_BASELINE=reset` rewrites the baseline from scratch (local only, for a new metric).
-A page that meets the Definition of Done joins the `strict` list in `tests/ds-baseline.json`: its files are then pinned at 0 on every metric,
-and the list may only grow.
+* `metric` is a ds-guard metric, `colour` or `type`; `file` is the path the failure message prints (i18n rows are `www/js/i18n/en.js#ui.<area>`);
+* `count` is the file's exact count, from the failure message;
+* `list` is one of the lists above. A new kind of exception adds a list with a description, in the same reviewed PR;
+* `reason` (20+ characters) says why this file needs it: which values, which output, why no token fits.
+
+Reviewers treat a new or raised entry like new drift that needs a justification. After you remove drift, lower the entries (an entry at 0 is dropped):
+
+```
+DS_ALLOWLIST=lower npx jest -i ds-guard colour-guard type-guard
+```
+
+Commit the lowered JSON in the same PR. Moving rules between stylesheets moves their entry with them (one PR, same counts).

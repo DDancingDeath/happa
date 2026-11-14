@@ -37,6 +37,12 @@
 .rt-chart-wrap canvas { width: 100%; display: block; }
 .rt-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; font-size: var(--fs-caption); }
 .rt-legend i { display: inline-block; width: 10px; height: 10px; border-radius: var(--r-2xs); margin-right: var(--sp-1); vertical-align: middle; }
+.rt-legend .rt-sw-purchase { background: #2563eb; }
+.rt-legend .rt-sw-retail { background: #059669; }
+.rt-legend .rt-sw-wholesale { background: #92400e; }
+.rt-legend .rt-sw-bought { background: #93c5fd; }
+.rt-legend .rt-sw-sold { background: #6ee7b7; }
+.rt-legend .rt-sw-year { background: var(--c); }
 
 .rt-scroll { overflow-x: auto; }
 [data-rt-table] { font-size: var(--fs-caption); }

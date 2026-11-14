@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 /**
- * Design-system ratchet (UX audit 2026-11-13, G1; docs/design-system.md §7). Counts, per file, the
+ * Design-system guard (UX audit 2026-11-13, G1; docs/design-system.md §7). Counts, per file, the
  * UI drift that the colour and type guards don't cover:
  *   spacing    raw margin / padding / gap lengths (use --sp-*)
  *   radius     raw border-radius (use --r-*)
@@ -19,18 +19,14 @@
  * Scope: www/css (not app.css, variables.css, themes/), www/index.html, www/templates, www/js;
  * @media print and the receipt files stay out, as in colour-guard.
  *
- * Counts may only go down, and the baseline must follow them down, so a fix can't be spent on a
- * new drift later. A PR that deletes a stylesheet and moves its rules lists the move in the baseline's
- * "moved" map (source -> destinations); see raisedRows(). DS_BASELINE=lower npx jest ds-guard lowers tests/ds-baseline.json. Files in its
- * "strict" list are pinned at 0 on every metric; the list may only grow.
+ * Strict: every metric is 0 outside tests/ds-allowlist.json, whose entries (metric, file, count,
+ * list, reason) hold the documented exceptions at their exact counts (see ds-allowlist.js).
  */
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { load, compare, invalid, expectAllowed } = require('./ds-allowlist');
 
 const ROOT = path.join(__dirname, '..', '..');
-const BASELINE_REL = 'tests/ds-baseline.json';
-const BASELINE_FILE = path.join(ROOT, BASELINE_REL);
 const LEGACY = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests/ds-legacy-classes.json'), 'utf8')).classes;
 const SKIP = new Set([
     'www/css/app.css', 'www/css/variables.css', 'www/css/rent-receipt.css',
@@ -176,7 +172,7 @@ const isUpper = (w) => w === w.toUpperCase() && w !== w.toLowerCase();
 
 /** A short label (2-7 words) whose every significant word after the first is capitalised. */
 function isTitleCase(value) {
-    const s = value.replace(/\{[^}]*\}/g, 'X').replace(EMOJI_ANY, '').trim();
+    const s = value.replace(/\{[^}]*\}/g, ' X ').replace(EMOJI_ANY, '').trim();
     const words = s.match(/[A-Za-z][A-Za-z'’-]*/g) || [];
     if (words.length > 7 || (/[.?!]$/.test(s) && words.length > 4) || words.length < 2) return false;
     const sig = words.slice(1).filter((w) => !SMALL.has(w.toLowerCase()) && !PROPER.has(w) && !(isUpper(w) && w.length > 1) && w !== 'X');
@@ -210,176 +206,38 @@ function scan() {
         ...walk('www/js').filter((f) => f.endsWith('.js')),
     ].filter((f) => !SKIP.has(f)).sort();
     const result = Object.fromEntries(METRICS.map((k) => [k, {}]));
-    const perFile = {};
     for (const f of files) {
         const text = fs.readFileSync(path.join(ROOT, f), 'utf8');
         const m = f.endsWith('.css') ? cssMetrics(text) : f.endsWith('.html') ? htmlMetrics(text) : jsMetrics(text);
-        perFile[f] = m;
         for (const k of METRICS) if (m[k]) result[k][f] = m[k];
         if (I18N.includes(f)) i18nMetrics(f, text, result);
     }
     for (const k of METRICS) result[k] = Object.fromEntries(Object.entries(result[k]).sort(([a], [b]) => a.localeCompare(b)));
-    return { result, perFile };
+    return { result };
 }
 
-const diff = (current, base) => {
-    const up = [];
-    const down = [];
-    for (const f of new Set([...Object.keys(current), ...Object.keys(base)])) {
-        const n = current[f] || 0;
-        const b = base[f] || 0;
-        if (n > b) up.push(`  ${f}: ${b} -> ${n}${b ? '' : ' (new row)'}`);
-        else if (n < b) down.push(`  ${f}: ${b} -> ${n}`);
-    }
-    return { up: up.sort(), down: down.sort() };
-};
-const sum = (rows) => Object.values(rows).reduce((a, b) => a + b, 0);
+describe('design-system guard (strict outside tests/ds-allowlist.json)', () => {
+    const { result: current } = scan();
 
-function writeBaseline(metrics, strict, moved) {
-    const doc = {
-        _readme: 'Design-system ratchet (tests/ci/ds-guard.test.js, docs/design-system.md §7). Per-file counts may only go down; lower them with DS_BASELINE=lower npx jest ds-guard. Files in "strict" are pinned at 0 on every metric.',
-        totals: Object.fromEntries(METRICS.map((k) => [k, sum(metrics[k] || {})])),
-        strict: [...strict].sort(),
-        ...(moved && Object.keys(moved).length ? { moved } : {}),
-        metrics: Object.fromEntries(METRICS.map((k) => [k, metrics[k] || {}])),
-    };
-    fs.writeFileSync(BASELINE_FILE, `${JSON.stringify(doc, null, 2)}\n`);
-}
-
-/**
- * Rows of `now` above the PR base `prior`, as "metric  file: a -> b". A row may rise only as the
- * destination of an explicit move (now.moved: { "www/css/old.css": ["www/css/new.css", ...] }) whose
- * source is a .css file that existed at the base and is deleted now (`deletedAtBase`); each source's
- * base row is the budget its destinations share, per metric. Strict files never rise; no total rises.
- */
-function raisedRows(prior, now, deletedAtBase) {
-    const strict = new Set([...(prior.strict || []), ...(now.strict || [])]);
-    const moves = Object.entries(now.moved || {})
-        .map(([src, dst]) => [src, [].concat(dst)])
-        .filter(([src]) => src.endsWith('.css') && deletedAtBase(src));
-    const raised = [];
-    for (const k of METRICS) {
-        if (!prior.metrics?.[k]) continue;
-        const base = prior.metrics[k];
-        const rows = now.metrics?.[k] || {};
-        const budget = new Map(moves.map(([src]) => [src, rows[src] ? 0 : base[src] || 0]));
-        const up = diff(rows, base).up;
-        for (const f of Object.keys(rows).sort()) {
-            let rise = rows[f] - (base[f] || 0);
-            if (rise <= 0) continue;
-            if (!strict.has(f)) {
-                for (const [src, dst] of moves) {
-                    if (!dst.includes(f)) continue;
-                    const take = Math.min(rise, budget.get(src));
-                    budget.set(src, budget.get(src) - take);
-                    rise -= take;
-                }
-            }
-            if (rise > 0) raised.push(...up.filter((r) => r.startsWith(`  ${f}:`)).map((r) => `${k}${r}`));
-        }
-        if (sum(rows) > sum(base)) raised.push(`${k}  total: ${sum(base)} -> ${sum(rows)}`);
-    }
-    return raised;
-}
-
-function priorBaseline() {
-    const ref = process.env.ARCH_BASE_REF || `origin/${process.env.GITHUB_BASE_REF || 'main'}`;
-    const git = (args) => execFileSync('git', args, { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'], encoding: 'utf8' });
-    try {
-        git(['rev-parse', '--verify', `${ref}^{commit}`]);
-    } catch {
-        if (process.env.ARCH_REQUIRE_BASE === '1') throw new Error(`Cannot compare ${BASELINE_REL} with the PR base: ${ref} is missing.`);
-        return null;
-    }
-    try {
-        const doc = JSON.parse(git(['show', `${ref}:${BASELINE_REL}`]));
-        const atBase = (f) => { try { git(['cat-file', '-e', `${ref}:${f}`]); return true; } catch { return false; } };
-        return { doc, deletedAtBase: (f) => atBase(f) && !fs.existsSync(path.join(ROOT, f)) };
-    } catch {
-        return null;
-    }
-}
-
-describe('design-system ratchet (counts only go down)', () => {
-    const { result: current, perFile } = scan();
-    if (process.env.DS_BASELINE === 'reset' && !process.env.CI) {
-        const old = fs.existsSync(BASELINE_FILE) ? JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8')) : {};
-        writeBaseline(current, old.strict || [], old.moved);
-    }
-    const baseline = JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8'));
-
-    test.each(METRICS)('%s: no row goes up, and the baseline follows every drop', (k) => {
-        const base = baseline.metrics[k] || {};
-        const { up, down } = diff(current[k], base);
-        if (up.length) throw new Error([`More ${k} than tests/ds-baseline.json allows: ${HINT[k]}.`, ...up].join('\n'));
-        if (down.length && process.env.DS_BASELINE === 'lower') {
-            const latest = JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8'));
-            latest.metrics[k] = current[k];
-            writeBaseline(latest.metrics, latest.strict, latest.moved);
-            return;
-        }
-        if (down.length) {
-            throw new Error([`${k} went down — well done. Lower the baseline to lock it in: DS_BASELINE=lower npx jest ds-guard`, ...down].join('\n'));
-        }
+    test.each(METRICS)('%s: every row is allowlisted, at its exact count', (k) => {
+        expectAllowed(k, current[k], HINT[k]);
     });
 
-    test('strict files are at 0 on every metric', () => {
-        const bad = [];
-        for (const f of baseline.strict) {
-            if (!perFile[f]) { bad.push(`  ${f}: not scanned (renamed or deleted? update "strict")`); continue; }
-            for (const k of METRICS) if (perFile[f][k]) bad.push(`  ${f}: ${k} ${perFile[f][k]}`);
-        }
-        expect(bad).toEqual([]);
+    test('every allowlist entry names a known metric and list, and gives a reason', () => {
+        expect(invalid(load(), [...METRICS, 'colour', 'type'])).toEqual([]);
     });
 
-    test('the baseline is no higher than the PR base, and strict files stay strict', () => {
-        const base = priorBaseline();
-        if (!base) return;
-        const prior = base.doc;
-        expect(raisedRows(prior, baseline, base.deletedAtBase)).toEqual([]);
-        expect((prior.strict || []).filter((f) => !baseline.strict.includes(f) && fs.existsSync(path.join(ROOT, f)))).toEqual([]);
+    test('compare: a row over its entry or without one fails, an entry over its row asks for lowering', () => {
+        expect(compare({ 'a.css': 3, 'b.css': 1 }, { 'a.css': 2 }).over).toEqual(['  a.css: 3 (allowlisted 2)', '  b.css: 1 (not allowlisted)']);
+        expect(compare({ 'a.css': 1 }, { 'a.css': 2, 'c.css': 4 })).toEqual({ over: [], under: ['  a.css: allowlisted 2, now 1', '  c.css: allowlisted 4, now 0'] });
     });
 
-    describe('raisedRows (PR base check)', () => {
-        const doc = (rows, extra = {}) => ({ strict: [], ...extra, metrics: { spacing: rows.spacing || {}, emoji: rows.emoji || {} } });
-        const gone = (f) => f === 'www/css/old.css';
-        const none = () => false;
-        const BASE = doc({ spacing: { 'www/css/old.css': 5, 'www/css/a.css': 2, 'www/css/b.css': 3 }, emoji: { 'www/js/i18n/en.js#ui.today': 2, 'www/js/i18n/en.js#ui.cash': 1 } });
-
-        test('an explicit move from a deleted sheet may raise its destinations, within the source row', () => {
-            const now = doc({ spacing: { 'www/css/a.css': 6, 'www/css/b.css': 4 }, emoji: BASE.metrics.emoji }, { moved: { 'www/css/old.css': ['www/css/a.css', 'www/css/b.css'] } });
-            expect(raisedRows(BASE, now, gone)).toEqual([]);
-            const over = doc({ spacing: { 'www/css/a.css': 7, 'www/css/b.css': 4 }, emoji: BASE.metrics.emoji }, { moved: { 'www/css/old.css': ['www/css/a.css', 'www/css/b.css'] } });
-            expect(raisedRows(BASE, over, gone)).not.toEqual([]);
-        });
-
-        test('a deleted sheet does not cover an unrelated rise', () => {
-            const now = doc({ spacing: { 'www/css/a.css': 2, 'www/css/b.css': 3, 'www/css/c.css': 4 }, emoji: BASE.metrics.emoji });
-            expect(raisedRows(BASE, now, gone)).toEqual(['spacing  www/css/c.css: 0 -> 4 (new row)']);
-            const listed = doc({ spacing: { 'www/css/a.css': 2, 'www/css/b.css': 3, 'www/css/c.css': 4 }, emoji: BASE.metrics.emoji }, { moved: { 'www/css/old.css': 'www/css/a.css' } });
-            expect(raisedRows(BASE, listed, gone)).toEqual(['spacing  www/css/c.css: 0 -> 4 (new row)']);
-        });
-
-        test('i18n rows cannot shift between areas (keys are not files, so never a deleted source)', () => {
-            const emoji = { 'www/js/i18n/en.js#ui.today': 1, 'www/js/i18n/en.js#ui.cash': 2 };
-            const now = doc({ spacing: BASE.metrics.spacing, emoji }, { moved: { 'www/js/i18n/en.js#ui.today': 'www/js/i18n/en.js#ui.cash' } });
-            expect(raisedRows(BASE, now, (f) => !f.startsWith('www/css/'))).toEqual(['emoji  www/js/i18n/en.js#ui.cash: 1 -> 2']);
-        });
-
-        test('a strict file never rises, even as a move destination', () => {
-            const now = doc({ spacing: { 'www/css/a.css': 7, 'www/css/b.css': 3 }, emoji: BASE.metrics.emoji }, { strict: ['www/css/a.css'], moved: { 'www/css/old.css': 'www/css/a.css' } });
-            expect(raisedRows(BASE, now, gone)).toEqual(['spacing  www/css/a.css: 2 -> 7']);
-        });
-
-        test('a PR without deletions: any rise fails, drops pass', () => {
-            const base = doc({ spacing: { 'www/css/a.css': 2, 'www/css/b.css': 3 } });
-            expect(raisedRows(base, doc({ spacing: { 'www/css/a.css': 1, 'www/css/b.css': 3 } }), none)).toEqual([]);
-            expect(raisedRows(base, doc({ spacing: { 'www/css/a.css': 1, 'www/css/b.css': 4 } }), none)).toEqual(['spacing  www/css/b.css: 3 -> 4']);
-        });
-    });
-
-    test('the baseline totals match their rows', () => {
-        for (const k of METRICS) expect([k, baseline.totals[k]]).toEqual([k, sum(baseline.metrics[k] || {})]);
+    test('invalid: an entry needs a known list and a reason', () => {
+        const doc = { lists: { 'off-scale': 'A raw value with no exact token.' }, entries: [
+            { metric: 'spacing', file: 'a.css', count: 2, list: 'off-scale', reason: '6px and 10px gaps have no token' },
+            { metric: 'spacing', file: 'b.css', count: 1, list: 'misc', reason: '' },
+        ] };
+        expect(invalid(doc, METRICS)).toEqual(['spacing b.css: unknown list "misc"', 'spacing b.css: give a reason']);
     });
 
     test.each([
@@ -414,7 +272,7 @@ describe('design-system ratchet (counts only go down)', () => {
 
     test.each([
         ['Total Paid', true], ['Add new item', false], ['Save', false], ['Share on WhatsApp', false],
-        ['Open UPI QR', false], ['📲 Install App', true], ['This is a full sentence that Explains Things.', false], ['{count} Bills', true],
+        ['Open UPI QR', false], ['📲 Install App', true], ['This is a full sentence that Explains Things.', false], ['{count} Bills', true], ['1 packet, {kg}kg', false],
     ])('isTitleCase(%s) = %s', (label, expected) => {
         expect(isTitleCase(label)).toBe(expected);
     });

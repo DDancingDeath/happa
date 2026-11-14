@@ -9,15 +9,14 @@
  * template's style="…" / <style>, and in style text or .style.fontSize / .fontWeight in www/js.
  * Not counted: app.css (built), @media print and the receipt output (black on white, own layout).
  *
- * Counts may only go down. TYPE_BASELINE=lower npx jest type-guard lowers tests/type-baseline.json.
+ * Strict: a raw size or weight fails unless tests/ds-allowlist.json has an entry (metric "type")
+ * for the file at that count, with a reason (ds-allowlist.js).
  */
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { expectAllowed } = require('./ds-allowlist');
 
 const ROOT = path.join(__dirname, '..', '..');
-const BASELINE_REL = 'tests/type-baseline.json';
-const BASELINE_FILE = path.join(ROOT, BASELINE_REL);
 const SKIP = new Set(['www/css/app.css', 'www/css/rent-receipt.css', 'www/js/services/printer.js', 'www/js/services/receipt-drawing.js', 'www/js/rentals/rent-receipt.js']);
 
 const FREE = /^\s*(var\(|inherit|initial|unset|revert)/i;
@@ -77,52 +76,11 @@ function scan() {
     return result;
 }
 
-const raisedAgainst = (current, base) => Object.entries(current)
-    .filter(([f, n]) => n > (base[f] || 0))
-    .map(([f, n]) => `  ${f}: ${base[f] || 0} -> ${n}${base[f] ? '' : ' (new file)'}`);
-
-function writeBaseline(files) {
-    const doc = {
-        _readme: 'Type ratchet (tests/ci/type-guard.test.js). Counts may only go down: TYPE_BASELINE=lower npx jest type-guard. Use --fs-* and --w-* tokens (www/css/variables.css).',
-        total: Object.values(files).reduce((a, b) => a + b, 0),
-        files,
-    };
-    fs.writeFileSync(BASELINE_FILE, `${JSON.stringify(doc, null, 2)}\n`);
-}
-
 describe('font sizes and weights come from the type tokens', () => {
     const current = scan();
-    if (process.env.TYPE_BASELINE === 'reset' && !process.env.CI) writeBaseline(current);
-    const baseline = JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8'));
-    const base = baseline.files;
 
-    test('no file gains a raw font size or weight', () => {
-        const raised = raisedAgainst(current, base);
-        if (!raised.length && process.env.TYPE_BASELINE === 'lower') {
-            writeBaseline(Object.fromEntries(Object.entries(base).filter(([f]) => current[f]).map(([f, n]) => [f, Math.min(n, current[f])])));
-        }
-        if (raised.length) {
-            throw new Error(['Raw font sizes / weights: use --fs-* / --w-* tokens from www/css/variables.css.', ...raised].join('\n'));
-        }
-        const lowered = Object.entries(base).filter(([f, n]) => (current[f] || 0) < n).map(([f, n]) => `  ${f}: ${n} -> ${current[f] || 0}`);
-        if (lowered.length && process.env.TYPE_BASELINE !== 'lower') {
-            throw new Error(['Fewer raw font sizes / weights: lock it in with TYPE_BASELINE=lower npx jest type-guard', ...lowered].join('\n'));
-        }
-    });
-
-    test('the baseline is no higher than the PR base', () => {
-        const ref = process.env.ARCH_BASE_REF || `origin/${process.env.GITHUB_BASE_REF || 'main'}`;
-        let prior;
-        try {
-            prior = JSON.parse(execFileSync('git', ['show', `${ref}:${BASELINE_REL}`], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'], encoding: 'utf8' }));
-        } catch {
-            return;
-        }
-        expect(raisedAgainst(base, prior.files)).toEqual([]);
-    });
-
-    test('the baseline total matches its rows', () => {
-        expect(baseline.total).toBe(Object.values(base).reduce((a, b) => a + b, 0));
+    test('every file is at 0 or at its allowlist entry (tests/ds-allowlist.json)', () => {
+        expectAllowed('type', current, 'use --fs-* / --w-* tokens from www/css/variables.css');
     });
 
     test.each([

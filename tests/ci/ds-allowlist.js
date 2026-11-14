@@ -1,0 +1,76 @@
+/**
+ * The design-system allowlist (tests/ds-allowlist.json, docs/design-system.md §7), shared by
+ * ds-guard, colour-guard and type-guard. Every metric is strict: a file may hold drift only up to
+ * the count of its allowlist entry, and each entry names a list and gives a reason. A count below
+ * its entry fails too, until DS_ALLOWLIST=lower writes the lower count (or drops the entry at 0).
+ */
+const fs = require('fs');
+const path = require('path');
+
+const REL = 'tests/ds-allowlist.json';
+const FILE = path.join(__dirname, '..', '..', REL);
+const MIN_REASON = 20;
+
+const load = () => JSON.parse(fs.readFileSync(FILE, 'utf8'));
+
+/** { file: count } allowed for one metric. */
+const allowed = (doc, metric) => Object.fromEntries(doc.entries.filter((e) => e.metric === metric).map((e) => [e.file, e.count]));
+
+/** Rows above their entry ("over") and entries above the current count ("under"). */
+function compare(current, allow) {
+    const over = [];
+    const under = [];
+    for (const f of new Set([...Object.keys(current), ...Object.keys(allow)])) {
+        const n = current[f] || 0;
+        const a = allow[f] || 0;
+        if (n > a) over.push(`  ${f}: ${n}${a ? ` (allowlisted ${a})` : ' (not allowlisted)'}`);
+        else if (n < a) under.push(`  ${f}: allowlisted ${a}, now ${n}`);
+    }
+    return { over: over.sort(), under: under.sort() };
+}
+
+/** Problems with the file itself: unknown metric or list, missing reason, duplicate or empty entry. */
+function invalid(doc, metrics) {
+    const bad = [];
+    const seen = new Set();
+    for (const [name, why] of Object.entries(doc.lists || {})) if (typeof why !== 'string' || why.length < MIN_REASON) bad.push(`list ${name}: describe it`);
+    for (const e of doc.entries || []) {
+        const id = `${e.metric} ${e.file}`;
+        if (!metrics.includes(e.metric)) bad.push(`${id}: unknown metric`);
+        if (!Object.hasOwn(doc.lists || {}, e.list)) bad.push(`${id}: unknown list "${e.list}"`);
+        if (typeof e.reason !== 'string' || e.reason.trim().length < MIN_REASON) bad.push(`${id}: give a reason`);
+        if (!Number.isInteger(e.count) || e.count < 1) bad.push(`${id}: count must be a positive integer`);
+        if (seen.has(id)) bad.push(`${id}: listed twice`);
+        seen.add(id);
+    }
+    return bad;
+}
+
+function write(doc) {
+    const line = (e) => `    ${JSON.stringify({ metric: e.metric, file: e.file, count: e.count, list: e.list, reason: e.reason })}`;
+    const lists = Object.entries(doc.lists).map(([k, v]) => `    ${JSON.stringify(k)}: ${JSON.stringify(v)}`);
+    const text = ['{', `  "_readme": ${JSON.stringify(doc._readme)},`, '  "lists": {', lists.join(',\n'), '  },', '  "entries": [',
+        doc.entries.map(line).join(',\n'), '  ]', '}', ''].join('\n');
+    fs.writeFileSync(FILE, text);
+}
+
+/** DS_ALLOWLIST=lower: lowers this metric's entries to the current counts; an entry at 0 is dropped. */
+function lower(metric, current) {
+    const doc = load();
+    doc.entries = doc.entries
+        .map((e) => (e.metric === metric ? { ...e, count: Math.min(e.count, current[e.file] || 0) } : e))
+        .filter((e) => e.count > 0);
+    write(doc);
+}
+
+/** Throws unless every row of `current` matches its entry (DS_ALLOWLIST=lower writes drops). */
+function expectAllowed(metric, current, hint) {
+    const { over, under } = compare(current, allowed(load(), metric));
+    if (over.length) {
+        throw new Error([`${metric} outside ${REL}: ${hint}. Only a legitimate exception gets an entry, with a list and a reason (docs/design-system.md §7).`, ...over].join('\n'));
+    }
+    if (under.length && process.env.DS_ALLOWLIST === 'lower' && !process.env.CI) { lower(metric, current); return; }
+    if (under.length) throw new Error([`${metric} went down. Lower the allowlist: DS_ALLOWLIST=lower npx jest -i ds-guard colour-guard type-guard`, ...under].join('\n'));
+}
+
+module.exports = { REL, load, allowed, compare, invalid, write, lower, expectAllowed };
