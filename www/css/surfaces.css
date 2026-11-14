@@ -178,6 +178,47 @@ a.row:active {
   font-size: var(--fs-display);
 }
 
+/* Hero figure: caption, the figure, then its in/out or compare line, plain on the page (no fill) */
+.hero {
+  padding: var(--sp-2) 0 var(--sp-1);
+  color: var(--ink);
+}
+
+.hero > .hero-label {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--ink-3);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
+  letter-spacing: normal;
+}
+
+.hero > .hero-label::after {
+  content: none;
+}
+
+.hero > .hero-num,
+.hero > .hero-value {
+  margin-top: var(--sp-1);
+  color: var(--ink);
+}
+
+/* A panel that opens something when tapped */
+.panel-tap {
+  cursor: pointer;
+}
+
+.panel-tap:hover {
+  background: var(--surface-2);
+}
+
+.panel-tap:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
 /* Money figure: the ₹ sign smaller and muted beside the digits (<span class="cur">₹</span>) */
 .money {
   font-variant-numeric: tabular-nums;
