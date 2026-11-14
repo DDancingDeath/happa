@@ -355,6 +355,18 @@ describe('Billing mode (D-5)', () => {
         jest.advanceTimersByTime(1000);
         expect(BillingManager.currentMode).toBe('sale');
     });
+
+    test('loading a sale draft while on Purchase moves the pressed button to Retail sale (no event)', () => {
+        ['setSaleItems', 'setSaleWeights', 'setPendingBill', 'renderSalesBill', 'renderSaleWeights']
+            .forEach(m => jest.spyOn(RetailSaleManager, m).mockImplementation(() => {}));
+        jest.spyOn(PurchaseManager, 'updateTotals').mockImplementation(() => {});
+        BillingManager.applyDraft({ mode: 'sale', items: [], weights: [] });
+        expect($('saleSection').style.display).toBe('block');
+        expect($('saleModeBtn').getAttribute('aria-pressed')).toBe('true');
+        expect($('saleModeBtn').classList.contains('active')).toBe(true);
+        expect($('purchaseModeBtn').getAttribute('aria-pressed')).toBe('false');
+        expect($('purchaseModeBtn').classList.contains('active')).toBe(false);
+    });
 });
 
 describe('WhatsApp on the bill form shares a draft (S-10)', () => {
