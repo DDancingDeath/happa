@@ -200,4 +200,24 @@ describe('one dialog controller (C5a)', () => {
         document.getElementById('modalConfirm').click();
         await expect(plain).resolves.toBe(true);
     });
+
+    test('with the desktop shortcuts on too, one Esc closes only the top dialog', async () => {
+        const original = window.matchMedia;
+        window.matchMedia = (q) => ({ matches: !q.includes('max-width'), media: q, addEventListener() {} });
+        try {
+            jest.isolateModules(() => { require('../utils/keyboard-shortcuts.js'); });
+            document.body.insertAdjacentHTML('afterbegin', '<div id="appContent"><div class="tab active" id="billing"></div></div>');
+            const { askPendingLine } = await import('../ui/pending-line.js');
+            const under = UIManager.showModal('under', 'Under', true);
+            const line = askPendingLine({ label: 'Wheat', line: { rate: 30, qty: 4, total: 120 } });
+            document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+            await expect(line).resolves.toBe('cancel');
+            expect(overlay().classList.contains('active')).toBe(true);
+            document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+            await expect(under).resolves.toBe(false);
+        } finally {
+            window.matchMedia = original;
+            delete window.__aadhatShortcutsInstalled;
+        }
+    });
 });

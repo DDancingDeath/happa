@@ -164,6 +164,15 @@ describe('purchase: a line typed but not added (S-1, BF-PENDING)', () => {
         expect(document.activeElement.id).toBe('newWeight');
     });
 
+    test('Esc on a narrow screen is Cancel', async () => {
+        const saving = PurchaseManager.saveBillToHistory();
+        for (let i = 0; i < 50 && !dialog(); i++) await new Promise(r => setTimeout(r, 0));
+        document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+        expect(await saving).toBeUndefined();
+        expect(FirebaseService.savePurchase).not.toHaveBeenCalled();
+        expect(dialog()).toBeNull();
+    });
+
     test('Print with only a typed line asks too (it no longer says "no items")', async () => {
         PurchaseManager.setBillItems([]);
         jest.spyOn(PrinterService, 'printBill').mockResolvedValue(false);
