@@ -160,6 +160,17 @@ export function screenMinus(text) {
 }
 
 /**
+ * Print text or markup made from screen figures, with the hyphen back before ₹ (MONEY-TEXT: prints keep `-₹500`):
+ * `−₹500` and moneyHtml's `−<span class="cur">₹</span>500` become `-₹500` / `-<span class="cur">₹</span>500`.
+ * A `−` that is not before ₹ (a label such as "− Cost of what was sold") stays.
+ * @param {*} text
+ * @returns {string}
+ */
+export function printMinus(text) {
+    return String(text ?? '').replace(/−(?=(?:<[^>]*>)*₹)/g, '-');
+}
+
+/**
  * A rate (₹ per kg, labour rate) on screen: paise only when it has them, "₹2,400", "₹24.50" (MONEY-TEXT,
  * preset `rate`). Receipts and share text keep the paise: formatRupees(rate, 'ratePaise').
  * @param {*} rate

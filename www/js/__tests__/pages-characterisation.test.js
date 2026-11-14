@@ -462,4 +462,26 @@ describe('Statements periods, pinned (day book, month, CSV)', () => {
         got.csvJanToMar = docOf();
         pin(`statements.${name}`, got);
     });
+
+    test('item statement: the closing rate drops a whole-rupee .00 on screen; the shared text keeps it (MONEY-TEXT)', () => {
+        document.body.innerHTML = TEMPLATES.statements;
+        jest.setSystemTime(new Date(NOWS[Object.keys(NOWS)[0]]));
+        loadShop(shopFor(Object.keys(NOWS)[0]));
+        const bill = (id, itemId, rate) => ({ ...AppState.purchaseHistory[0], id, items: [{ itemId, name: itemId, qty: 10, rate, total: 10 * rate }] });
+        AppState.items = [{ id: 'lah', name: 'Lah' }, { id: 'seed', name: 'Seed' }];
+        AppState.purchaseHistory = [bill('p-lah', 'lah', 2400), bill('p-seed', 'seed', 24.5)];
+        Object.assign(AppState, { salesHistory: [], retailSalesHistory: [], stockAdjustments: [] });
+        Object.assign(StatementsManager, { kind: null, partyKind: 'customer', partyKey: null, itemKey: null, current: null });
+        const closing = (id) => {
+            StatementsManager.open('item');
+            StatementsManager.set('itemKey', id);
+            return { share: StatementsManager.current.share.split('\n')[1], screen: squash(document.getElementById('statementsDoc').textContent) };
+        };
+        const lah = closing('lah');
+        expect(lah.share).toBe('10 kg at ₹2,400.00/kg = ₹24,000');
+        expect(lah.screen).toContain('10 kg at ₹2,400/kg = ₹24,000');
+        const seed = closing('seed');
+        expect(seed.share).toBe('10 kg at ₹24.50/kg = ₹245');
+        expect(seed.screen).toContain('10 kg at ₹24.50/kg = ₹245');
+    });
 });
