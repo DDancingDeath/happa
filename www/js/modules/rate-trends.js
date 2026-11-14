@@ -984,7 +984,7 @@ export const RateTrendsManager = {
         const labels = Array.from({ length: 12 }, (_, i) => monthLabel(`2000-${String(i + 1).padStart(2, '0')}`, lang, false));
         this.drawLines(c, labels, years.map((y, i) => ({ values: overlay[y], color: YEAR_COLORS[i], width: y === thisYear ? 3.5 : 2 })));
         const legend = document.getElementById('rtYearLegend');
-        if (legend) legend.innerHTML = years.map((y, i) => `<span><i style="background:${YEAR_COLORS[i]}"></i>${y}</span>`).join('');
+        if (legend) legend.innerHTML = years.map((y, i) => `<span><i class="rt-sw-year" style="--c:${YEAR_COLORS[i]}"></i>${y}</span>`).join('');
     },
 
     // ---------- product traffic ----------

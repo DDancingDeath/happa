@@ -172,12 +172,12 @@ In order:
   `--ink`, `--accent`, `--positive`…, component tokens; one name per token, no aliases),
   so every theme and dark mode restyle them. A hard-coded colour
   (hex, `rgb()`, a colour name) in `www/css`, a template's `style=` / `<style>` or `www/js` fails
-  `tests/ci/colour-guard.test.js` (per-file baseline `tests/colour-baseline.json`, which may only
-  go down: `COLOUR_BASELINE=lower npx jest colour-guard`). Print and receipt output is exempt.
+  `tests/ci/colour-guard.test.js`. Print and receipt output is exempt.
   Spacing, radius, shadow, z-index, `!important`, `#id` / `.dark-mode` selectors, inline styles, emoji,
-  Title Case `ui.*` labels and legacy component classes are ratcheted the same way by `tests/ci/ds-guard.test.js`
-  (`tests/ds-baseline.json`, `DS_BASELINE=lower npx jest ds-guard`; docs/design-system.md §7). Every ratchet also fails
-  when a count drops until you lower its baseline in the same PR.
+  Title Case `ui.*` labels and legacy component classes fail `tests/ci/ds-guard.test.js` the same way. All three guards
+  are strict: 0 outside `tests/ds-allowlist.json`, whose entries (metric, file, exact count, list, reason) are the
+  documented exceptions (canvas charts, print, share text, standalone output, off-scale values, …; docs/design-system.md §7).
+  A count that drops fails until you lower its entry: `DS_ALLOWLIST=lower npx jest -i ds-guard colour-guard type-guard`.
   Light / Dark / System and the visual theme are per device (`js/ui/theme.js` ThemeManager, keys
   `happa.theme` / `happa.appearance`); `<html>` carries `data-theme`, `data-appearance` and `data-mode`, and CSS keys on
   `[data-mode="dark"]` (there is no `body.dark-mode` class). The pre-paint `#themeBoot` reads the same keys; it is data-only, so a new
@@ -188,8 +188,8 @@ In order:
   dark themes have a light accent. The gallery preview (`ThemeManager.preview`) never saves; leaving Settings cancels it.
 - **Type comes from tokens too**: font sizes `--fs-caption|sm|body|lead|title|display|hero` and weights
   `--w-regular|label|strong` (400/600 only; labels go regular in Hindi, `--w-strong` is 500 on the Android app).
-  A new raw `font-size` / `font-weight` fails `tests/ci/type-guard.test.js` (baseline `tests/type-baseline.json`,
-  `TYPE_BASELINE=lower`). Off-scale sizes still raw are counted there; print CSS is exempt.
+  A new raw `font-size` / `font-weight` fails `tests/ci/type-guard.test.js` (strict outside `tests/ds-allowlist.json`,
+  metric `type`); print CSS is exempt.
 - **Icons are line icons, not emoji**: `<svg class="i" aria-hidden="true" focusable="false"><use href="#i-name"/></svg>`
   (`i-sm` 16, default 20, `i-lg` 24; `currentColor`). The symbols are the sprite at the top of
   `templates/navigation.html`; `tests/ci/icon-sprite.test.js` checks every `#i-*` exists and the sprite size.

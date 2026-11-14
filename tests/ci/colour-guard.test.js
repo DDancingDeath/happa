@@ -12,16 +12,14 @@
  * print / receipt output (rent-receipt.css, services/printer.js, services/receipt-drawing.js, rentals/rent-receipt.js), which
  * stay black on white in every theme.
  *
- * Counts may only go down. COLOUR_BASELINE=lower npx jest colour-guard lowers
- * tests/colour-baseline.json; a new colour uses a token (var(--…)) instead.
+ * Strict: a file with a hard-coded colour fails unless tests/ds-allowlist.json has an entry
+ * (metric "colour") for it at that count, with a reason (canvas charts, standalone pages; ds-allowlist.js).
  */
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { expectAllowed } = require('./ds-allowlist');
 
 const ROOT = path.join(__dirname, '..', '..');
-const BASELINE_REL = 'tests/colour-baseline.json';
-const BASELINE_FILE = path.join(ROOT, BASELINE_REL);
 const SKIP = new Set([
     'www/css/app.css', 'www/css/variables.css', 'www/css/rent-receipt.css',
     'www/js/services/printer.js', 'www/js/services/receipt-drawing.js', 'www/js/rentals/rent-receipt.js',
@@ -105,55 +103,11 @@ function scan() {
     return result;
 }
 
-const raisedAgainst = (current, base) => Object.entries(current)
-    .filter(([f, n]) => n > (base[f] || 0))
-    .map(([f, n]) => `  ${f}: ${base[f] || 0} -> ${n}${base[f] ? '' : ' (new file)'}`);
-
-function writeBaseline(files) {
-    const total = Object.values(files).reduce((a, b) => a + b, 0);
-    const doc = {
-        _readme: 'Hard-coded colour ratchet (tests/ci/colour-guard.test.js). Counts may only go down: COLOUR_BASELINE=lower npx jest colour-guard. Use a design token (var(--…), www/css/variables.css) for a new colour.',
-        total,
-        files,
-    };
-    fs.writeFileSync(BASELINE_FILE, `${JSON.stringify(doc, null, 2)}\n`);
-}
-
 describe('hard-coded colours (design tokens only)', () => {
     const current = scan();
 
-    if (process.env.COLOUR_BASELINE === 'reset' && !process.env.CI) writeBaseline(current);
-    const baseline = JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8'));
-    const base = baseline.files;
-
-    test('no file gains a hard-coded colour', () => {
-        const raised = raisedAgainst(current, base);
-        if (!raised.length && process.env.COLOUR_BASELINE === 'lower') {
-            writeBaseline(Object.fromEntries(Object.entries(base)
-                .filter(([f]) => current[f]).map(([f, n]) => [f, Math.min(n, current[f])])));
-        }
-        if (raised.length) {
-            throw new Error(['New hard-coded colours: use a design token (var(--…)) from www/css/variables.css.', ...raised].join('\n'));
-        }
-        const lowered = Object.entries(base).filter(([f, n]) => (current[f] || 0) < n).map(([f, n]) => `  ${f}: ${n} -> ${current[f] || 0}`);
-        if (lowered.length && process.env.COLOUR_BASELINE !== 'lower') {
-            throw new Error(['Fewer hard-coded colours: lock it in with COLOUR_BASELINE=lower npx jest colour-guard', ...lowered].join('\n'));
-        }
-    });
-
-    test('the baseline is no higher than the PR base', () => {
-        const ref = process.env.ARCH_BASE_REF || `origin/${process.env.GITHUB_BASE_REF || 'main'}`;
-        let prior;
-        try {
-            prior = JSON.parse(execFileSync('git', ['show', `${ref}:${BASELINE_REL}`], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'], encoding: 'utf8' }));
-        } catch {
-            return;
-        }
-        expect(raisedAgainst(base, prior.files)).toEqual([]);
-    });
-
-    test('the baseline total matches its rows', () => {
-        expect(baseline.total).toBe(Object.values(base).reduce((a, b) => a + b, 0));
+    test('every file is at 0 or at its allowlist entry (tests/ds-allowlist.json)', () => {
+        expectAllowed('colour', current, 'use a design token (var(--…)) from www/css/variables.css');
     });
 
     test.each([
