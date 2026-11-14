@@ -378,6 +378,6 @@ Updating a baseline, after you removed drift (never to allow new drift; CI refus
 DS_BASELINE=lower npx jest ds-guard          # also COLOUR_BASELINE=lower colour-guard, TYPE_BASELINE=lower type-guard
 ```
 
-Commit the lowered JSON in the same PR. Rules moved out of a deleted stylesheet may move its rows to their new file, as long as the metric's total does not rise. `DS_BASELINE=reset` rewrites the baseline from scratch (local only, for a new metric).
+Commit the lowered JSON in the same PR. A PR that deletes a stylesheet and moves its rules lists the move in the baseline's `"moved"` map (`"www/css/old.css": ["www/css/new.css"]`): a destination row may then rise by at most the source's row at the PR base, per metric. The source must be a `.css` file that existed at the base and is deleted in the PR; strict files never rise and no total rises. Nothing else may raise a row. `DS_BASELINE=reset` rewrites the baseline from scratch (local only, for a new metric).
 A page that meets the Definition of Done joins the `strict` list in `tests/ds-baseline.json`: its files are then pinned at 0 on every metric,
 and the list may only grow.

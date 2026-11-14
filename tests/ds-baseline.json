@@ -64,6 +64,18 @@
     "www/templates/stock.html",
     "www/templates/workers.html"
   ],
+  "moved": {
+    "www/css/buttons.css": [
+      "www/css/forms.css"
+    ],
+    "www/css/tables.css": [
+      "www/css/billing.css",
+      "www/css/surfaces.css"
+    ],
+    "www/css/tabs.css": [
+      "www/css/navigation.css"
+    ]
+  },
   "metrics": {
     "spacing": {
       "www/css/bill-checks.css": 10,
