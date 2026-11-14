@@ -346,7 +346,7 @@ input[type="number"] {
 }
 
 /* ---------- Billing entry (redesign 3.1a): labels above, ₹ / kg in the field, one line panel ---------- */
-#billing > .filter-buttons {
+.bill-mode {
   margin-bottom: var(--sp-3);
 }
 
@@ -731,11 +731,6 @@ input[type="number"] {
 
 .ws-seg {
   margin-bottom: var(--sp-3);
-}
-
-.ws-seg > button {
-  font-family: inherit;
-  cursor: pointer;
 }
 
 .ws-stock {

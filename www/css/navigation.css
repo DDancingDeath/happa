@@ -125,33 +125,14 @@
 
 /* Business switcher (#149): a segmented control in the More sheet and the desktop sidebar; the menu shows only the current business's pages */
 .biz-switch {
-  display: flex;
   margin-top: var(--sp-3);
-  padding: var(--sp-1);
-  border-radius: var(--r-control);
-  background: var(--seg-track);
 }
-.biz-switch[hidden] { display: none; }
 .biz-switch button {
-  flex: 1 1 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sp-2);
   min-height: 40px;
   padding: var(--sp-1) var(--sp-3);
-  border: 0;
   border-radius: var(--r-sm);
-  background: transparent;
-  color: var(--ink-2);
   font-size: var(--fs-body);
   font-weight: var(--w-strong);
-  cursor: pointer;
-}
-.biz-switch button.active {
-  background: var(--seg-on);
-  color: var(--ink);
-  box-shadow: var(--e1);
 }
 .nav-menu a[hidden],
 .nav-menu a[data-biz="rentals"] { display: none; }

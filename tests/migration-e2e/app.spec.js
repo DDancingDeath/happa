@@ -187,12 +187,12 @@ test('migrated owner: original password, carried dues, periods, rates, seasons, 
         await showTab(page, 'history');
         await page.evaluate(() => window.app.history.filterHistory('sale'));
         const saleDues = retailBills.length + wholesaleBills.length;
-        const toggle = page.locator('#history .opening-toggle-chip');
+        const toggle = page.locator('#history [data-group-toggle="opening"]');
         await expect(toggle).toHaveText(`Show dues carried from old app (${saleDues})`);
         await expect(page.locator('#historyList .old-app-chip')).toHaveCount(0);
         await toggle.click();
         await expect(page.locator('#historyList .old-app-chip')).toHaveCount(saleDues);
-        await page.locator('#history .opening-toggle-chip').click();
+        await page.locator('#history [data-group-toggle="opening"]').click();
         await expect(page.locator('#historyList .old-app-chip')).toHaveCount(0);
     });
 

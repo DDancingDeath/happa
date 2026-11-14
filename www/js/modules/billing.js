@@ -220,10 +220,12 @@ const BillingManager = {
         
         // Update button states
         if (event) {
-            purchaseBtn.classList.remove('active');
-            saleBtn.classList.remove('active');
-            // The tab for this mode (a delegated click's currentTarget is the document, #89)
-            (mode === 'sale' ? saleBtn : purchaseBtn).classList.add('active');
+            // The button for this mode (a delegated click's currentTarget is the document, #89)
+            [purchaseBtn, saleBtn].forEach(btn => {
+                const on = btn === (mode === 'sale' ? saleBtn : purchaseBtn);
+                btn.classList.toggle('active', on);
+                btn.setAttribute('aria-pressed', String(on));
+            });
         }
         
         if (mode === 'sale') {

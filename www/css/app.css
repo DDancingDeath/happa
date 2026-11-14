@@ -1118,8 +1118,7 @@ input[type="number"],
 .draft-btn,
 .add-to-bill-btn,
 .quick-add-btn-inline,
-.split-rest-btn,
-.filter-btn {
+.split-rest-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1198,8 +1197,7 @@ input[type="number"],
 .draft-btn:hover:not(:disabled),
 .add-to-bill-btn:hover:not(:disabled),
 .quick-add-btn-inline:hover:not(:disabled),
-.split-rest-btn:hover:not(:disabled),
-.filter-btn:hover:not(:disabled):not(.active) {
+.split-rest-btn:hover:not(:disabled) {
   background-image: linear-gradient(var(--state-hover), var(--state-hover));
 }
 
@@ -1209,8 +1207,7 @@ input[type="number"],
 .draft-btn:active:not(:disabled),
 .add-to-bill-btn:active:not(:disabled),
 .quick-add-btn-inline:active:not(:disabled),
-.split-rest-btn:active:not(:disabled),
-.filter-btn:active:not(:disabled) {
+.split-rest-btn:active:not(:disabled) {
   transform: scale(0.98);
 }
 
@@ -1220,9 +1217,7 @@ input[type="number"],
 .draft-btn:focus-visible,
 .add-to-bill-btn:focus-visible,
 .quick-add-btn-inline:focus-visible,
-.split-rest-btn:focus-visible,
-.filter-btn:focus-visible,
-.sub-tab:focus-visible {
+.split-rest-btn:focus-visible {
   outline: none;
   box-shadow: var(--focus);
 }
@@ -1234,8 +1229,7 @@ input[type="number"],
 .draft-btn:disabled,
 .add-to-bill-btn:disabled,
 .quick-add-btn-inline:disabled,
-.split-rest-btn:disabled,
-.filter-btn:disabled {
+.split-rest-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
   box-shadow: none;
@@ -1434,9 +1428,8 @@ input[type="checkbox"].switch:focus-visible,
   box-shadow: var(--focus);
 }
 
-/* ---------- Segmented control: .seg (old: .filter-buttons > .filter-btn) ---------- */
-.seg,
-.filter-buttons {
+/* ---------- Segmented control: .seg, aria-pressed (modes and filters) ---------- */
+.seg {
   display: flex;
   gap: 2px;
   padding: 3px;
@@ -1444,8 +1437,11 @@ input[type="checkbox"].switch:focus-visible,
   background: var(--seg-track);
 }
 
-.seg > button,
-.filter-buttons .filter-btn {
+.seg > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
   flex: 1;
   min-width: 0;
   min-height: 44px;
@@ -1455,60 +1451,41 @@ input[type="checkbox"].switch:focus-visible,
   background-color: transparent;
   box-shadow: none;
   color: var(--ink-2);
+  font-family: inherit;
   font-size: var(--fs-sm);
   font-weight: var(--w-label);
+  cursor: pointer;
 }
 
 .seg > .on,
 .seg > [aria-pressed="true"],
-.seg > [aria-selected="true"],
-.filter-buttons .filter-btn.active {
+.seg > [aria-selected="true"] {
   background-color: var(--seg-on);
   color: var(--ink);
   box-shadow: var(--e1);
 }
 
-.seg > button:focus-visible,
-.filter-buttons .filter-btn:focus-visible {
+.seg > button:focus-visible {
   outline: none;
   box-shadow: var(--focus);
 }
 
-/* Mode dot: Billing's purchase / sale segments show the mode colour on both */
-#purchaseModeBtn::before,
-#saleModeBtn::before {
-  content: '';
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--mode-purchase);
-}
-
-#saleModeBtn::before {
-  background: var(--mode-sale);
-}
-
 /* These set display, which would otherwise beat the hidden attribute */
-:is(.btn, .save-btn, .print-btn, .draft-btn, .add-to-bill-btn, .quick-add-btn-inline, .split-rest-btn, .filter-btn)[hidden],
+:is(.btn, .save-btn, .print-btn, .draft-btn, .add-to-bill-btn, .quick-add-btn-inline, .split-rest-btn)[hidden],
 .seg[hidden],
-.filter-buttons[hidden],
-.tabs[hidden],
-.sub-tabs[hidden] {
+.tabs[hidden] {
   display: none;
 }
 
-/* ---------- Tabs: .tabs (old: .sub-tabs > .sub-tab), underline with a 2 px ink indicator ---------- */
-.tabs,
-.sub-tabs {
+/* ---------- Tabs: .tabs, role=tablist / tab + aria-selected (page sections), underline with a 2 px ink indicator ---------- */
+.tabs {
   display: flex;
   gap: 4px;
   border-bottom: 1px solid var(--line);
   background: none;
 }
 
-.tabs > button,
-.sub-tab {
+.tabs > button {
   min-height: 44px;
   padding: 0 12px;
   margin-bottom: -1px;
@@ -1524,19 +1501,17 @@ input[type="checkbox"].switch:focus-visible,
   transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 
-.tabs > button:hover,
-.sub-tab:hover {
+.tabs > button:hover {
   color: var(--ink);
 }
 
 .tabs > .on,
-.tabs > [aria-selected="true"],
-.sub-tab.active {
+.tabs > [aria-selected="true"] {
   border-bottom-color: var(--ink);
   color: var(--ink);
 }
 
-/* ---------- Chips (old: .filter-buttons-secondary .filter-btn; a lone .filter-btn.active) and tags ---------- */
+/* ---------- Chips: .chip + aria-pressed (on/off), and tags ---------- */
 .chip {
   min-height: 32px;
   padding: 0 14px;
@@ -1549,8 +1524,7 @@ input[type="checkbox"].switch:focus-visible,
 }
 
 .chip.on,
-.chip[aria-pressed="true"],
-.filter-btn.active {
+.chip[aria-pressed="true"] {
   border-color: var(--ink);
   background-color: var(--ink);
   color: var(--bg);
@@ -2519,33 +2493,14 @@ body {
 
 /* Business switcher (#149): a segmented control in the More sheet and the desktop sidebar; the menu shows only the current business's pages */
 .biz-switch {
-  display: flex;
   margin-top: var(--sp-3);
-  padding: var(--sp-1);
-  border-radius: var(--r-control);
-  background: var(--seg-track);
 }
-.biz-switch[hidden] { display: none; }
 .biz-switch button {
-  flex: 1 1 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sp-2);
   min-height: 40px;
   padding: var(--sp-1) var(--sp-3);
-  border: 0;
   border-radius: var(--r-sm);
-  background: transparent;
-  color: var(--ink-2);
   font-size: var(--fs-body);
   font-weight: var(--w-strong);
-  cursor: pointer;
-}
-.biz-switch button.active {
-  background: var(--seg-on);
-  color: var(--ink);
-  box-shadow: var(--e1);
 }
 .nav-menu a[hidden],
 .nav-menu a[data-biz="rentals"] { display: none; }
@@ -2966,15 +2921,6 @@ body.typing .bottom-nav {
   gap: var(--space-sm);
 }
 
-/* Sub-tab navigation style */
-.sub-tabs {
-  margin-bottom: 20px;
-}
-
-.sub-tab {
-  flex: 1;
-}
-
 /* ---- css/loading.css ---- */
 .loading-overlay {
   position: fixed;
@@ -3341,8 +3287,6 @@ html[data-updating] .updating-mark {
 
 /* Tap targets (#68): page toggles, primary buttons and list actions are at least 44 px tall */
 .btn,
-.filter-btn,
-.sub-tab,
 .save-btn,
 .draft-btn,
 .split-rest-btn,
@@ -4216,7 +4160,7 @@ input[type="number"] {
 }
 
 /* ---------- Billing entry (redesign 3.1a): labels above, ₹ / kg in the field, one line panel ---------- */
-#billing > .filter-buttons {
+.bill-mode {
   margin-bottom: var(--sp-3);
 }
 
@@ -4601,11 +4545,6 @@ input[type="number"] {
 
 .ws-seg {
   margin-bottom: var(--sp-3);
-}
-
-.ws-seg > button {
-  font-family: inherit;
-  cursor: pointer;
 }
 
 .ws-stock {
@@ -6137,22 +6076,8 @@ body.dark-mode .party-due-line.party-due-old {
 }
 
 /* Old-app carried dues: hidden by default, a separate group when shown */
-.opening-toggle-chip {
-  display: inline-flex;
-  align-items: center;
-  margin: 0 0 10px;
-  padding: 4px 12px;
-  border: 1px solid var(--primary-border);
-  border-radius: 999px;
-  background: var(--card-bg);
-  color: var(--on-primary-soft);
-  font-size: var(--fs-sm);
-  font-weight: var(--w-label);
-  cursor: pointer;
-}
-
-.opening-toggle-chip.active {
-  background: var(--primary-soft);
+.chip[data-group-toggle] {
+  margin: 0 var(--sp-2) var(--sp-2) 0;
 }
 
 .bill-group--opening {
@@ -6346,24 +6271,6 @@ body.dark-mode .party-due-line.party-due-old {
 .history-item.bill-row.is-voided .bill-row__amount,
 .bill-table__row.is-voided .bill-table__amount {
   text-decoration: line-through;
-}
-
-.voided-toggle-chip {
-  display: inline-flex;
-  align-items: center;
-  margin: 0 8px 10px 0;
-  padding: 4px 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  background: var(--card-bg);
-  color: var(--text-secondary);
-  font-size: var(--fs-sm);
-  font-weight: var(--w-label);
-  cursor: pointer;
-}
-
-.voided-toggle-chip.active {
-  background: var(--surface-muted);
 }
 
 .bill-group--voided {
@@ -6630,15 +6537,6 @@ body.dark-mode .party-due-line.party-due-old {
 
 .due-seg {
     margin-bottom: var(--sp-3);
-}
-
-.due-seg > button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--sp-2);
-    font-family: inherit;
-    cursor: pointer;
 }
 
 .due-search {
@@ -7295,15 +7193,6 @@ body.dark-mode .party-due-line.party-due-old {
   .stock-adjust-layout > :not(.stock-adjust-form) {
     grid-column: 2;
   }
-}
-
-/* ---- css/datefilter.css ---- */
-/* -------------------- DATE FILTER -------------------- */
-.filter-btn {
-  flex: 1;
-  min-width: 80px;
-  font-size: var(--fs-sm);
-  font-weight: var(--w-label);
 }
 
 /* ---- css/charts.css ---- */
@@ -8191,6 +8080,10 @@ body.no-perm-contacts [data-perm~="contacts"] {
   padding: 20px;
 }
 
+.day-tabs {
+  margin-bottom: var(--sp-4);
+}
+
 /* Section Title */
 .section-title {
   margin: 0 0 14px 0;
@@ -8297,7 +8190,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .today-reminder { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); }
 .today-reminder + .today-reminder { border-top: 1px var(--rule-style) var(--line); }
 .today-reminder-body { flex: 1; min-width: 0; color: var(--ink-2); font-size: var(--fs-sm); }
-.today-reminder-body > .filter-btn { margin-top: var(--sp-2); }
+.today-reminder-body > .btn { margin-top: var(--sp-2); }
 .today-reminder-head { display: flex; justify-content: space-between; gap: var(--sp-2); color: var(--ink); font-size: var(--fs-body); }
 .today-reminder-head strong { font-weight: var(--w-strong); }
 .today-reminder ul { margin: 6px 0; padding: 0; list-style: none; }
@@ -9003,24 +8896,6 @@ body.no-perm-contacts [data-perm~="contacts"] {
     background: var(--warning-soft);
     border-color: var(--warning-border);
     color: var(--on-warning-soft);
-}
-
-/* Sub-tab and date-filter bars: room for the tap hint, all five periods fit on a phone (F09) */
-@media (max-width: 1023.98px) {
-    #finance > .filter-buttons {
-        margin-bottom: 12px;
-    }
-
-    #finance .filter-buttons {
-        flex-wrap: wrap;
-    }
-
-    #finance .filter-buttons .filter-btn {
-        min-width: 0;
-        flex: 1 0 auto;
-        padding: 12px 8px;
-        white-space: nowrap;
-    }
 }
 
 /* ---- css/rate-trends.css ---- */
@@ -10298,7 +10173,7 @@ div.ins-wide,
   }
 
   /* ---------- Billing: mode and the drafts toolbar share one row under the page header (4.2) ---------- */
-  .tab > .filter-buttons:has(+ .bill-toolbar) {
+  .tab > .bill-mode:has(+ .bill-toolbar) {
     float: left;
     width: min(360px, 40%);
     margin: 0 var(--sp-4) var(--sp-4) 0;

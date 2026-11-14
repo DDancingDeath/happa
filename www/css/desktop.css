@@ -342,7 +342,7 @@
   }
 
   /* ---------- Billing: mode and the drafts toolbar share one row under the page header (4.2) ---------- */
-  .tab > .filter-buttons:has(+ .bill-toolbar) {
+  .tab > .bill-mode:has(+ .bill-toolbar) {
     float: left;
     width: min(360px, 40%);
     margin: 0 var(--sp-4) var(--sp-4) 0;

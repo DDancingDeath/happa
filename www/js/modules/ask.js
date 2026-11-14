@@ -53,7 +53,7 @@ export const AskManager = {
         const host = document.getElementById('askExamples');
         if (!host) return;
         host.innerHTML = Array.from({ length: EXAMPLES }, (_, i) => t(`ui.ask.example_${i + 1}`))
-            .map(q => `<button type="button" class="filter-btn ask-example" data-onclick="ask.ask('${Helpers.escapeJsAttr(q)}')">${esc(q)}</button>`)
+            .map(q => `<button type="button" class="btn btn-sm ask-example" data-onclick="ask.ask('${Helpers.escapeJsAttr(q)}')">${esc(q)}</button>`)
             .join('');
     },
 
@@ -371,7 +371,7 @@ export const AskManager = {
             if (a.loading) return html + quickHtml + line(t('ui.ask.report_loading'));
             return html + quickHtml + line(t(a.failed ? 'ui.ask.report_load_failed' : 'ui.ask.report_needs_older', { date: formatDay(a.windowFrom, { lang }) }))
                 + (quickHtml ? line(t('ui.ask.quick_exact')) : '')
-                + `<button type="button" class="filter-btn ask-open ask-load" data-onclick="ask.loadOlder('${Helpers.escapeJsAttr(id)}')">${esc(t('ui.ask.report_load'))}</button>`
+                + `<button type="button" class="btn btn-sm ask-open ask-load" data-onclick="ask.loadOlder('${Helpers.escapeJsAttr(id)}')">${esc(t('ui.ask.report_load'))}</button>`
                 + controls;
         }
         const r = a.report;
@@ -392,8 +392,8 @@ export const AskManager = {
         if (r.totals.billsTotal !== null) html += line(t('ui.ask.report_bills_total', { amount: formatRupees(r.totals.billsTotal) }));
         if (a.readAt) html += line(t('ui.ask.report_as_of', { time: formatDayTime(a.readAt, { lang }) }));
         if (Exporter.allowed()) {
-            html += `<button type="button" class="filter-btn ask-open ask-xlsx" data-onclick="ask.download('${Helpers.escapeJsAttr(id)}', 'xlsx')">${esc(t('ui.ask.download_excel'))}</button>`
-                + `<button type="button" class="filter-btn ask-open ask-csv" data-onclick="ask.download('${Helpers.escapeJsAttr(id)}', 'csv')">${esc(t('ui.ask.download_csv'))}</button>`;
+            html += `<button type="button" class="btn btn-sm ask-open ask-xlsx" data-onclick="ask.download('${Helpers.escapeJsAttr(id)}', 'xlsx')">${esc(t('ui.ask.download_excel'))}</button>`
+                + `<button type="button" class="btn btn-sm ask-open ask-csv" data-onclick="ask.download('${Helpers.escapeJsAttr(id)}', 'csv')">${esc(t('ui.ask.download_csv'))}</button>`;
         }
         return html + controls;
     },
@@ -408,7 +408,7 @@ export const AskManager = {
     /** One answer as HTML (text from t(), names escaped). */
     answerHtml(a, id) {
         const line = (text) => `<div class="ask-line">${esc(text)}</div>`;
-        const open = a.page ? `<button type="button" class="filter-btn ask-open" data-onclick="nav.showTab('${a.page}', event)">${esc(t(PAGE_NAMES[a.page]))}</button>` : '';
+        const open = a.page ? `<button type="button" class="btn btn-sm ask-open" data-onclick="nav.showTab('${a.page}', event)">${esc(t(PAGE_NAMES[a.page]))}</button>` : '';
         const choose = (names, more) => line(t('ui.ask.did_you_mean', { names: names.join(', ') }))
             + (more ? line(tn('ui.ask.and_more', more)) : '');
         const itemName = (n) => (getLang() === 'hi' && n.hindiName ? n.hindiName : n.name);
