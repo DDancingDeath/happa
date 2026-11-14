@@ -333,7 +333,7 @@ describe('taps, caveats and checks', () => {
         const sheet = document.getElementById('financeBreakdownSheet');
         expect(sheet.matches('.app-scrim.page-sheet.active')).toBe(true);
         expect(document.activeElement.dataset.action).toBe('close');
-        sheet.querySelector('[data-dismiss]').click();
+        document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
         expect(sheet.classList.contains('active')).toBe(false);
         // Gross profit = sales lines and their COGS rows: never "lines in bills" (each line would count twice)
         document.querySelector('#moneyProfit [data-breakdown="gross"]').click();
