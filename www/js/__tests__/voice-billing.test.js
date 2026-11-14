@@ -31,13 +31,13 @@ const DOM = `
   <input type="checkbox" id="settingVoiceBilling"><p id="voiceBillingUnavailable" hidden></p>
   <div id="purchaseSection">
     <input id="customerName"><datalist id="customerOptions"><option value="Ramesh kumar"></option></datalist>
-    <button class="voice-mic-btn" id="voiceMicPurchase" hidden></button>
+    <button data-voice-mic id="voiceMicPurchase" hidden></button>
     <div class="voice-strip" hidden><p id="voiceTranscriptPurchase" aria-live="polite"></p><button id="voiceUndoPurchase" hidden></button></div>
     <select id="billItem"><option value="0">Rice</option><option value="1">Wheat</option></select>
     <input id="billRate"><datalist id="rateOptions"></datalist><input id="newWeight"><div id="weightsDisplay"></div>
     <table id="billTable"><tbody></tbody></table>
   </div>
-  <div id="saleSection"><button class="voice-mic-btn" id="voiceMicSale" hidden></button></div>`;
+  <div id="saleSection"><button data-voice-mic id="voiceMicSale" hidden></button></div>`;
 
 /** A browser recogniser that hears `said` once. */
 const fakeWebSpeech = (said) => jest.fn().mockImplementation(function Rec() {
@@ -93,7 +93,7 @@ describe('VoiceMic switch', () => {
     test('off by default: no mic buttons and a tap does nothing', async () => {
         window.webkitSpeechRecognition = fakeWebSpeech(['10 kg rice 30']);
         VoiceMic.apply();
-        expect([...document.querySelectorAll('.voice-mic-btn')].every(b => b.hidden)).toBe(true);
+        expect([...document.querySelectorAll('[data-voice-mic]')].every(b => b.hidden)).toBe(true);
         expect(document.getElementById('settingVoiceBilling').checked).toBe(false);
         await expect(VoiceMic.start('purchase')).resolves.toBe(false);
         expect(window.webkitSpeechRecognition).not.toHaveBeenCalled();
@@ -110,7 +110,7 @@ describe('VoiceMic switch', () => {
         VoiceMic.apply();
         expect(document.getElementById('settingVoiceBilling').checked).toBe(true);
         expect(document.getElementById('voiceBillingUnavailable').hidden).toBe(true);
-        expect([...document.querySelectorAll('.voice-mic-btn')].every(b => !b.hidden)).toBe(true);
+        expect([...document.querySelectorAll('[data-voice-mic]')].every(b => !b.hidden)).toBe(true);
     });
 });
 

@@ -1,15 +1,9 @@
 /* Controls (redesign 2.5a, DIRECTION 3.6): buttons, kbd, fields, select, checkbox and switch,
    segmented control, tabs, chips and tags. Layer 3: tokens only.
-   The older class names listed beside each new one are kept as hooks (JS, E2E) and share its look. */
+   Buttons are only .btn and its variants; an older class left on a button is a hook (JS, E2E) with no look of its own. */
 
 /* ---------- Button: .btn + -primary / -secondary (default) / -tonal / -ghost / -danger, -sm, -icon ---------- */
-.btn,
-.save-btn,
-.print-btn,
-.draft-btn,
-.add-to-bill-btn,
-.quick-add-btn-inline,
-.split-rest-btn {
+.btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -31,18 +25,14 @@
     color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
 }
 
-.btn-primary,
-.save-btn,
-.add-to-bill-btn,
-.quick-add-btn-inline {
+.btn-primary {
   border-color: transparent;
   background-color: var(--btn-primary-bg);
   color: var(--btn-primary-ink);
   box-shadow: var(--btn-primary-shadow);
 }
 
-.btn-tonal,
-.print-btn {
+.btn-tonal {
   border-color: transparent;
   background-color: var(--accent-soft);
   color: var(--accent-text);
@@ -61,14 +51,15 @@
   color: var(--btn-danger-ink);
 }
 
-.btn-sm,
-.split-rest-btn {
+.btn-sm {
   padding: 0 12px;
   font-size: var(--fs-sm);
 }
 
-.btn-sm {
-  min-height: 32px;
+/* Tap targets (#68): every button, also .btn-sm and the Outstanding / Cash payment actions, is at least 44 px tall */
+[data-record-payment],
+[data-mark-cleared] {
+  min-height: 44px;
 }
 
 .btn-icon {
@@ -82,62 +73,32 @@
 }
 
 /* Hover is a veil over any variant's colour, so mode colours (purchase / sale / cash) keep theirs */
-.btn:hover:not(:disabled),
-.save-btn:hover:not(:disabled),
-.print-btn:hover:not(:disabled),
-.draft-btn:hover:not(:disabled),
-.add-to-bill-btn:hover:not(:disabled),
-.quick-add-btn-inline:hover:not(:disabled),
-.split-rest-btn:hover:not(:disabled) {
+.btn:hover:not(:disabled) {
   background-image: linear-gradient(var(--state-hover), var(--state-hover));
 }
 
-.btn:active:not(:disabled),
-.save-btn:active:not(:disabled),
-.print-btn:active:not(:disabled),
-.draft-btn:active:not(:disabled),
-.add-to-bill-btn:active:not(:disabled),
-.quick-add-btn-inline:active:not(:disabled),
-.split-rest-btn:active:not(:disabled) {
+.btn:active:not(:disabled) {
   transform: scale(0.98);
 }
 
-.btn:focus-visible,
-.save-btn:focus-visible,
-.print-btn:focus-visible,
-.draft-btn:focus-visible,
-.add-to-bill-btn:focus-visible,
-.quick-add-btn-inline:focus-visible,
-.split-rest-btn:focus-visible {
+.btn:focus-visible {
   outline: none;
   box-shadow: var(--focus);
 }
 
 .btn:disabled,
-.btn[aria-disabled="true"],
-.save-btn:disabled,
-.print-btn:disabled,
-.draft-btn:disabled,
-.add-to-bill-btn:disabled,
-.quick-add-btn-inline:disabled,
-.split-rest-btn:disabled {
+.btn[aria-disabled="true"] {
   opacity: 0.45;
   cursor: not-allowed;
   box-shadow: none;
 }
 
 /* Busy: the double-tap lock (runExclusive) sets aria-busy while a save runs */
-.btn[aria-busy="true"],
-.save-btn[aria-busy="true"],
-.print-btn[aria-busy="true"],
-.add-to-bill-btn[aria-busy="true"] {
+.btn[aria-busy="true"] {
   cursor: progress;
 }
 
-.btn[aria-busy="true"]::after,
-.save-btn[aria-busy="true"]::after,
-.print-btn[aria-busy="true"]::after,
-.add-to-bill-btn[aria-busy="true"]::after {
+.btn[aria-busy="true"]::after {
   content: '';
   width: 14px;
   height: 14px;
@@ -152,10 +113,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .btn[aria-busy="true"]::after,
-  .save-btn[aria-busy="true"]::after,
-  .print-btn[aria-busy="true"]::after,
-  .add-to-bill-btn[aria-busy="true"]::after {
+  .btn[aria-busy="true"]::after {
     animation: none;
   }
 }
@@ -362,7 +320,7 @@ input[type="checkbox"].switch:focus-visible,
 }
 
 /* These set display, which would otherwise beat the hidden attribute */
-:is(.btn, .save-btn, .print-btn, .draft-btn, .add-to-bill-btn, .quick-add-btn-inline, .split-rest-btn)[hidden],
+.btn[hidden],
 .seg[hidden],
 .tabs[hidden] {
   display: none;

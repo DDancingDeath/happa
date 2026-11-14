@@ -1,26 +1,3 @@
-.draft-btn {
-  flex: 1;
-  min-width: 80px;
-}
-
-.draft-save-btn {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
-.draft-open-btn {
-  border-color: transparent;
-  background: var(--primary-soft);
-  color: var(--on-primary-soft);
-}
-
-.draft-clear-btn {
-  border-color: var(--danger-border);
-  background: var(--danger-soft);
-  color: var(--on-danger-soft);
-}
-
-
 .bill-totals {
   background: var(--card-bg);
   padding: 16px;
@@ -190,71 +167,6 @@
 
 .payment-row.split-remaining-row strong {
   font-size: var(--fs-body);
-}
-
-/* -------------------- SAVE BUTTON -------------------- */
-.save-btn {
-  flex: 1;
-}
-
-.save-purchase-btn {
-  background: var(--btn-primary);
-}
-
-.save-sale-btn {
-  background: var(--btn-success);
-  color: var(--btn-sale-ink);
-}
-
-/* -------------------- PRINT BUTTON -------------------- */
-.print-btn {
-  flex: 1;
-}
-
-.print-purchase-btn {
-  background: var(--primary-soft);
-}
-
-.print-sale-btn {
-  background: var(--success-soft);
-  color: var(--on-success-soft);
-  box-shadow: inset 0 0 0 1px var(--success-border);
-}
-
-
-/* Tap targets (#68): page toggles, primary buttons and list actions are at least 44 px tall */
-.btn,
-.save-btn,
-.draft-btn,
-.split-rest-btn,
-.contact-pick-btn,
-.history-stale-refresh,
-[data-record-payment],
-[data-mark-cleared] {
-  min-height: 44px;
-}
-
-/* The 👤 emoji drawn as a solid glyph in the button's colour, readable in both themes */
-.contact-pick-btn {
-  min-width: 48px;
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 12px;
-  border: 1px solid var(--primary-border);
-  border-radius: var(--radius);
-  background: var(--primary-soft);
-  color: transparent;
-  text-shadow: 0 0 0 var(--on-primary-soft);
-  font-size: var(--fs-title);
-  cursor: pointer;
-}
-
-#saleSection .contact-pick-btn {
-  border-color: var(--success-border);
-  background: var(--success-soft);
-  text-shadow: 0 0 0 var(--on-success-soft);
 }
 
 /* With zoom allowed, iOS (only it matches this @supports) zooms into any field under 16 px when it is focused */

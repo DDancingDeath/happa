@@ -47,11 +47,6 @@ input[type="number"] {
   box-shadow: var(--focus-ring);
 }
 
-.quick-add-btn-inline {
-  white-space: nowrap;
-}
-
-
 label {
   display: block;
   margin-top: 12px;
@@ -131,16 +126,6 @@ input[type="number"] {
   border: 1px solid var(--border-color);
 }
 
-.add-to-bill-btn {
-  width: 100%;
-  margin: 16px 0;
-}
-
-#saleSection .quick-add-btn-inline,
-#saleSection .add-to-bill-btn {
-  background: var(--btn-success);
-  color: var(--btn-sale-ink);
-}
 
 
 /* -------------------- BILLING THEME -------------------- */
@@ -253,29 +238,12 @@ input[type="number"] {
   color: var(--text-secondary);
 }
 /* Voice billing (#81): shown only when switched on in Settings */
-.voice-mic-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  width: 100%;
-  margin-bottom: 12px;
-  padding: 10px;
-  border: 1px dashed var(--primary-border);
-  border-radius: 8px;
-  background: var(--primary-soft);
-  color: var(--on-primary-soft);
-  font-size: var(--fs-body);
+.btn[data-voice-mic] {
+  margin-bottom: var(--sp-3);
 }
 
-.voice-mic-btn[hidden] {
-  display: none;
-}
-
-.voice-mic-btn.voice-listening {
-  border-style: solid;
-  border-color: var(--danger-border);
-  background: var(--danger-soft);
+.btn[data-voice-mic].voice-listening {
+  background-color: var(--danger-soft);
   color: var(--on-danger-soft);
 }
 
@@ -320,18 +288,13 @@ input[type="number"] {
   margin-bottom: var(--sp-3);
 }
 
-#billing .bill-toolbar .draft-btn {
-  flex: none;
-  min-width: 0;
+.bill-toolbar > .btn {
   padding: 0 var(--sp-3);
-  border-color: transparent;
-  background-color: transparent;
-  box-shadow: none;
   color: var(--ink-2);
   font-weight: var(--w-label);
 }
 
-#billing .bill-toolbar .draft-clear-btn {
+.bill-toolbar > .bill-clear {
   margin-left: auto;
   color: var(--negative);
 }
@@ -392,19 +355,16 @@ input[type="number"] {
   padding-right: 52px;
 }
 
-:is(#billing, .bill-page) .bill-customer-box > .contact-pick-btn {
+.bill-customer-box > .btn-icon {
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
-  min-width: 48px;
-  border: none;
-  background: transparent;
+  width: 48px;
   color: var(--ink-3);
-  text-shadow: none;
 }
 
-:is(#billing, .bill-page) .bill-customer-box > .contact-pick-btn:hover {
+.bill-customer-box > .btn-icon:hover {
   color: var(--bill-tone-text, var(--accent-text));
 }
 
@@ -519,6 +479,7 @@ input[type="number"] {
   grid-column: 2;
   width: auto;
   min-height: 48px;
+  margin-top: var(--sp-3);
 }
 
 /* Rate | Weight | Add on one line */
@@ -535,13 +496,10 @@ input[type="number"] {
   order: 1;
 }
 
-#billing .bill-entry-grid > .quick-add-btn-inline {
+.bill-entry-grid > .quick-add-btn-inline {
   min-height: 48px;
   margin-bottom: var(--sp-3);
-  border-color: var(--line-strong);
-  background-color: var(--surface);
-  box-shadow: none;
-  color: var(--ink);
+  white-space: nowrap;
 }
 
 #billing .bill-summary {
@@ -562,18 +520,26 @@ input[type="number"] {
   font-variant-numeric: tabular-nums;
 }
 
-/* Add to bill is tonal: Save is the screen's one primary button */
-#billing .add-to-bill-btn {
-  margin: var(--sp-3) 0 0;
-  border-color: transparent;
-  background-color: var(--accent-soft);
-  box-shadow: none;
-  color: var(--accent-text);
+/* Save is the screen's one primary button (Add to bill, Rest → due are tonal); the sale and wholesale
+   screens give both their mode's colour */
+.bill-sale .btn-primary {
+  background-color: var(--btn-sale-bg);
+  color: var(--btn-sale-ink);
 }
 
-#billing #saleSection .add-to-bill-btn {
+.bill-sale .btn-tonal {
   background-color: var(--positive-soft);
   color: var(--positive);
+}
+
+.ws-entry .btn-primary {
+  background-color: var(--bill-tone-fill);
+  color: var(--bill-tone-ink);
+}
+
+.ws-entry .btn-tonal {
+  background-color: var(--bill-tone-soft);
+  color: var(--bill-tone-text);
 }
 
 .bill-breakdown:not(:empty) {
@@ -721,24 +687,14 @@ input[type="number"] {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-/* Add to bill is tonal: Save is the screen's one primary button */
-.ws-add-btn {
-  width: 100%;
+.ws-add {
   min-height: 48px;
-  border-color: transparent;
-  background-color: var(--bill-tone-soft);
-  color: var(--bill-tone-text);
 }
 
 .bill-line-remove {
   border: none;
   border-radius: var(--radius);
   cursor: pointer;
-}
-
-.bill-page .save-btn {
-  background-color: var(--bill-tone-fill);
-  color: var(--bill-tone-ink);
 }
 
 /* Expenses and the live profit (WS-PROFIT) */

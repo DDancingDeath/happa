@@ -16,7 +16,7 @@ describe('resolveShortcut', () => {
         expect(resolveShortcut(key('P', { metaKey: true }), { ...billing, billingMode: 'sale', typing: true }))
             .toEqual({ type: 'click', selector: '#printSaleBtn' });
         expect(resolveShortcut(key('s', { ctrlKey: true }), { activeTab: 'wholesale-sales', wholesaleEntryVisible: true }))
-            .toEqual({ type: 'click', selector: '#salesEntrySection .save-sale-btn' });
+            .toEqual({ type: 'click', selector: '#saveWholesaleBtn' });
     });
 
     test('Ctrl+S / Ctrl+P fall through where there is no bill, behind a dialog, on key repeat or AltGr', () => {
