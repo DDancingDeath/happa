@@ -9,7 +9,7 @@ import {
     normalizePartyName, sortParties
 } from '../utils/aging.js';
 import {
-    REMINDER_MAX_BILLS, buildReminderText, buildStatement, cleanText, formatINR, normalizePhone, whatsAppReminderUrl
+    REMINDER_MAX_BILLS, buildReminderText, buildStatement, cleanText, normalizePhone, whatsAppReminderUrl
 } from '../utils/due-reminder.js';
 import { OutstandingManager } from '../modules/outstanding.js';
 import { openExternal } from '../utils/open-external.js';
@@ -169,7 +169,6 @@ describe('#77 reminder message', () => {
         expect(normalizePhone('')).toBe('');
         expect(whatsAppReminderUrl('a & b\nc', '9876543210')).toBe('https://wa.me/919876543210?text=a%20%26%20b%0Ac');
         expect(whatsAppReminderUrl('hi', '')).toBe('https://wa.me/?text=hi');
-        expect(formatINR(1234567.4)).toBe('₹12,34,567');
     });
 
     test('statement model lists open bills with the right total label', () => {

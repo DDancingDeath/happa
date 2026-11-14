@@ -8,7 +8,6 @@
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { todayLocalISO, localISODaysAgo } from '../utils/dates.js';
-import { formatINR } from '../utils/due-reminder.js';
 import { moneyHtml, moneyInText } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import { t } from '../i18n/index.js';
@@ -21,10 +20,10 @@ import {
     propertyError, unitError, tenantError, moveInError,
     ELEC_MODES, mobile10, firstMonthRent, rentTotals
 } from './rent-math.js';
+import { formatRupees } from '../utils/money.js';
 
 const esc = (v) => Helpers.escapeHtml(v);
 const js = (v) => Helpers.escapeJsAttr(v);
-const money = (n) => { const h = moneyHtml(n); return h === '—' ? esc(formatINR(n)) : h; };
 const et = (key, p) => esc(t(key, p));
 const byId = (id) => document.getElementById(id);
 const fail = (key, p) => UIManager.showToast(t(key, p), 'error');
@@ -192,8 +191,8 @@ async function saveMoveIn({ unit, newUnit, occ, defs, from = null, save = null }
         }));
         const first = occ.lease.firstRent ?? firstMonthRent(occ.lease.rent, occ.lease.startDate, occ.lease.proRate);
         const moved = isShareToken(from?.shareToken);
-        UIManager.showToast(t(`msg.rent.${from ? 'unit_changed' : 'moved_in'}${res.charged ? '_charged' : ''}`, { amount: formatINR(first) })
-            + (moved ? ` ${t('msg.rent.link_moved')}` : '') + (res.oldKept ? ` ${t('msg.rent.old_month_kept')}` : res.oldCapped != null ? ` ${t('msg.rent.old_month_capped', { amount: formatINR(res.oldCapped) })}` : ''), 'success');
+        UIManager.showToast(t(`msg.rent.${from ? 'unit_changed' : 'moved_in'}${res.charged ? '_charged' : ''}`, { amount: formatRupees(first) })
+            + (moved ? ` ${t('msg.rent.link_moved')}` : '') + (res.oldKept ? ` ${t('msg.rent.old_month_kept')}` : res.oldCapped != null ? ` ${t('msg.rent.old_month_capped', { amount: formatRupees(res.oldCapped) })}` : ''), 'success');
         AuditService.log(from ? 'RENT_UNIT_CHANGE' : 'RENT_MOVE_IN', {
             tenantId: res.tenantId, unitId: res.unitId, rent: occ.lease.rent, startDate: occ.lease.startDate, fromLeaseId: from?.id || null
         }).catch(c.auditWarn);
@@ -240,7 +239,7 @@ function renderProperties(d) {
             <span class="rent-entry-head"><span class="row-main"><span class="row-title">${esc(p.name)}</span>
                 <span class="row-meta">${units.length ? et(units.length === 1 ? 'ui.rent.prop_unit_let' : 'ui.rent.prop_units_let', { units: units.length, n }) : et('ui.rent.no_units')}</span>
                 ${adv ? `<span class="row-meta">${esc([p.address, kindLabel(p.kind)].filter(Boolean).join(' · '))}</span>` : ''}</span>
-            <span class="row-trail">${owed > 0 ? `<span class="row-amt">${moneyInText(t('ui.rent.owed', { amount: formatINR(owed) }), owed)}</span>` : ''}${late ? c.badge('late', 'ui.rent.status_late') : ''}</span></span>
+            <span class="row-trail">${owed > 0 ? `<span class="row-amt">${moneyInText(t('ui.rent.owed', { amount: formatRupees(owed) }), owed)}</span>` : ''}${late ? c.badge('late', 'ui.rent.status_late') : ''}</span></span>
         </button>`).join('');
     return `<div class="rent-toolbar">${add}</div>
         ${rows ? `<div class="panel">${rows}</div>` : `<p class="empty">${et(c.canWrite ? 'ui.rent.start_hint' : 'ui.rent.no_properties')}</p>`}`;
@@ -263,7 +262,7 @@ function renderProperty(d, id) {
         const uid = js(u.id);
         const size = adv ? [u.floor ? t('ui.rent.floor_value', { floor: u.floor }) : '', Number.isFinite(u.area) ? t('ui.rent.area_value', { area: u.area }) : ''].filter(Boolean).join(' · ') : '';
         const sub = [lease ? names.get(lease.tenantId) || t('ui.rent.occupied') : t('ui.rent.vacant'), size].filter(Boolean).join(' · ');
-        const right = `<span class="row-trail"><span class="row-amt">${money(lease ? lease.rent : u.rent || 0)}</span>${r?.dues.total > 0 ? c.badge(r.late ? 'late' : 'due', r.late ? 'ui.rent.status_late' : 'ui.rent.status_due') : ''}</span>`;
+        const right = `<span class="row-trail"><span class="row-amt">${moneyHtml(lease ? lease.rent : u.rent || 0)}</span>${r?.dues.total > 0 ? c.badge(r.late ? 'late' : 'due', r.late ? 'ui.rent.status_late' : 'ui.rent.status_due') : ''}</span>`;
         const main = `<span class="rent-entry-head"><span class="row-main"><span class="row-title">${esc(typedPlace(c.typeWord(unitType(u)), u.label, ''))}</span><span class="row-meta">${esc(sub)}</span></span>${right}</span>`;
         const menu = w ? menuHtml([btn(' btn-ghost', 'editUnit', `'${uid}'`, 'ui.rent.edit'), u.leaseId || lease ? '' : btn(' btn-ghost tone-neg', 'archiveUnit', `'${uid}'`, 'ui.rent.remove')].filter(Boolean), t('ui.rent.more_actions')) : '';
         return `<div class="row" data-unit="${esc(u.id)}">

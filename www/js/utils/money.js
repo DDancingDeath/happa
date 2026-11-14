@@ -62,16 +62,49 @@ export function billLabour(bill) {
 }
 
 /**
+ * @typedef {{decimals?: number, small?: boolean, exact?: boolean, trueMinus?: boolean}} MoneyOpts
+ * @typedef {'whole'|'exact'|'rate'|'ratePaise'|'paise'|'small'|'signed'|'plain'} MoneyPreset
+ */
+
+/**
+ * MONEY-TEXT presets: `whole` ₹2,50,000; `exact` paise only when the amount has them (₹987.50, ₹987);
+ * `rate` a rate per kg, paise only when it has them (₹2,400/kg, ₹24.50/kg); `ratePaise` a rate with paise
+ * always, for receipts and share text (₹2,400.00); `paise` always 2 decimals (a cash difference);
+ * `small` paise below ₹100; `signed` the true minus (−₹500); `plain` the hyphen (-₹500), for print and share text.
+ * @type {Readonly<Record<MoneyPreset, MoneyOpts>>}
+ */
+export const MONEY_PRESETS = Object.freeze({
+    whole: Object.freeze({}),
+    exact: Object.freeze({ exact: true }),
+    rate: Object.freeze({ exact: true }),
+    ratePaise: Object.freeze({ decimals: 2 }),
+    paise: Object.freeze({ decimals: 2 }),
+    small: Object.freeze({ small: true }),
+    signed: Object.freeze({ trueMinus: true }),
+    plain: Object.freeze({ trueMinus: false })
+});
+
+/**
+ * Options from a preset name or an options object.
+ * @param {MoneyPreset|MoneyOpts|undefined} opts
+ * @returns {MoneyOpts}
+ */
+export function moneyOpts(opts) {
+    return (typeof opts === 'string' ? MONEY_PRESETS[opts] : opts) || {};
+}
+
+/**
  * Amount with Indian digit grouping and no ₹ sign ("2,50,000"), for texts whose
  * template already has the ₹ (MONEY-TEXT). Whole rupees unless `decimals` is set;
  * `small: true` shows paise below ₹100 so ₹0.40 is not shown as ₹0; `exact: true`
  * shows paise only when the amount has them (a record saved before #129, a cash
- * count), so ₹987.50 stays ₹987.50 and ₹987 is ₹987.
+ * count), so ₹987.50 stays ₹987.50 and ₹987 is ₹987. A preset name works too.
  * @param {*} amount
- * @param {{decimals?: number, small?: boolean, exact?: boolean}} [opts]
+ * @param {MoneyPreset|MoneyOpts} [opts]
  * @returns {string}
  */
-export function formatAmount(amount, { decimals = 0, small = false, exact = false } = {}) {
+export function formatAmount(amount, opts) {
+    const { decimals = 0, small = false, exact = false } = moneyOpts(opts);
     const n = Number(amount);
     const v = Number.isFinite(n) ? n : 0;
     let digits = decimals;
@@ -82,15 +115,37 @@ export function formatAmount(amount, { decimals = 0, small = false, exact = fals
 }
 
 /**
- * The app's one currency format: "₹2,50,000", "-₹500" (options as formatAmount); `trueMinus` gives "−₹500"
- * on screen (receipts, prints and CSV keep the plain hyphen).
+ * The app's one currency format: "₹2,50,000", "-₹500" (options or a preset as formatAmount); `trueMinus`
+ * (preset `signed`) gives "−₹500". Receipts, prints, share text and CSV use it as is, with the plain hyphen;
+ * screens use moneyText() / moneyHtml().
  * @param {*} amount
- * @param {{decimals?: number, small?: boolean, exact?: boolean, trueMinus?: boolean}} [opts]
+ * @param {MoneyPreset|MoneyOpts} [opts]
  * @returns {string}
  */
 export function formatRupees(amount, opts) {
-    const text = formatAmount(amount, opts);
-    return text.startsWith('-') ? `${opts?.trueMinus ? '−' : '-'}₹${text.slice(1)}` : `₹${text}`;
+    const o = moneyOpts(opts);
+    const text = formatAmount(amount, o);
+    return text.startsWith('-') ? `${o.trueMinus ? '−' : '-'}₹${text.slice(1)}` : `₹${text}`;
+}
+
+/**
+ * Whether an amount is missing (null, undefined, '' or not a number): screens show UNKNOWN_AMOUNT.
+ * @param {*} amount
+ * @returns {boolean}
+ */
+export function isMissingAmount(amount) {
+    return amount === null || amount === undefined || amount === '' || !Number.isFinite(Number(amount));
+}
+
+/**
+ * An amount as screen text: formatRupees(amount, opts), and UNKNOWN_AMOUNT ("—") for a missing amount.
+ * @param {*} amount
+ * @param {MoneyPreset|MoneyOpts} [opts]
+ * @returns {string}
+ */
+export function moneyText(amount, opts) {
+    if (isMissingAmount(amount)) return UNKNOWN_AMOUNT;
+    return formatRupees(Number(amount), opts);
 }
 
 /**
@@ -99,7 +154,7 @@ export function formatRupees(amount, opts) {
  * @returns {string}
  */
 export function formatRate(rate) {
-    return formatRupees(rate, { decimals: 2 });
+    return formatRupees(rate, 'ratePaise');
 }
 
 /**

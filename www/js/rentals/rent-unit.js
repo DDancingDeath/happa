@@ -9,12 +9,12 @@
 
 import { UIManager } from '../ui/ui-manager.js';
 import { t, getLang } from '../i18n/index.js';
-import { formatINR } from '../utils/due-reminder.js';
 import * as store from './rent-store.js';
 import { isShareToken, withLease, withMonth, PUBLIC_MONTHS } from './rent-public.js';
 import { vacantByProperty, typedPlace, moveTarget } from './rent-views.js';
 import { monthLabel, dateLabel, leaseDues, chargeId, isDate } from './rent-math.js';
 import { moveMonthRent, oldMonth, moveMonthSplit, changeUnitPlan, keptTerms, advanceLeft } from './rent-math-ledger.js';
+import { formatRupees } from '../utils/money.js';
 
 const el = (id) => document.getElementById(id);
 const toast = (key) => UIManager.showToast(t(key), 'error');
@@ -104,14 +104,14 @@ async function changeDialog(c, { d, ix, from, unit, occ, defs, mgr, on, typed })
     const month = monthLabel(s.month, lang);
     const ask = t('msg.rent.change_unit_confirm', {
         name: ix.tenants.get(from.tenantId)?.name || '', from: place, to, date: dateLabel(lease.startDate),
-        month: monthLabel(s.endMonth, lang), dues: formatINR(leaseDues(d.charges, from.id).total)
+        month: monthLabel(s.endMonth, lang), dues: formatRupees(leaseDues(d.charges, from.id).total)
     }) + (s.endMonth !== s.month ? ''
         : ` ${!on ? t('msg.rent.change_unit_both', { month })
-            : paidOld?.kept ? t('msg.rent.change_unit_old_paid', { month, from: place, to, new: formatINR(lease.firstRent) })
-                : paidOld?.capped ? t('msg.rent.change_unit_old_capped', { month, from: place, old: formatINR(paidOld.amount), to, new: formatINR(lease.firstRent) })
-                    : t('msg.rent.change_unit_split', { month, from: place, old: formatINR(oldRent === 'auto' ? s.old : oldRent), to, new: formatINR(lease.firstRent) })}`)
+            : paidOld?.kept ? t('msg.rent.change_unit_old_paid', { month, from: place, to, new: formatRupees(lease.firstRent) })
+                : paidOld?.capped ? t('msg.rent.change_unit_old_capped', { month, from: place, old: formatRupees(paidOld.amount), to, new: formatRupees(lease.firstRent) })
+                    : t('msg.rent.change_unit_split', { month, from: place, old: formatRupees(oldRent === 'auto' ? s.old : oldRent), to, new: formatRupees(lease.firstRent) })}`)
         // RENT-16: an advance carried on the old lease pays the new unit's first month.
-        + (advanceLeft(d.charges, from.id, s.endMonth) > 0 ? ` ${t('msg.rent.change_unit_adv', { amount: formatINR(advanceLeft(d.charges, from.id, s.endMonth)) })}` : '');
+        + (advanceLeft(d.charges, from.id, s.endMonth) > 0 ? ` ${t('msg.rent.change_unit_adv', { amount: formatRupees(advanceLeft(d.charges, from.id, s.endMonth)) })}` : '');
     if (!await UIManager.showModal(ask, t('ui.rent.change_unit'), true)) return;
     return c.saveMoveIn({
         unit, newUnit: false, occ, defs, from,

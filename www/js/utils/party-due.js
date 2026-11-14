@@ -11,8 +11,8 @@
 
 import { buildAging } from './aging.js';
 import { partyNameKey } from './parties.js';
-import { formatINR } from './due-reminder.js';
 import { getLang, t } from '../i18n/index.js';
+import { formatRupees } from './money.js';
 
 /**
  * Open bills that make up the Outstanding list for a billing form.
@@ -55,7 +55,7 @@ export function partyDue(bills, name, { excludeId = null, today = new Date() } =
  * @returns {string}
  */
 export function partyDueText(due, kind, lang = getLang()) {
-    const amount = formatINR(due.total);
+    const amount = formatRupees(due.total);
     const n = due.count;
     const bills = t(n === 1 ? 'ui.outstanding.bills_one' : 'ui.outstanding.bills_many', { count: n }, lang);
     const d = due.oldestDays;

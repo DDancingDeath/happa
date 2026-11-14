@@ -16,7 +16,7 @@
  */
 
 import {
-    billTotal, dueNeedsName, NAME_REQUIRED_FOR_DUE_KEY, paymentSplitMessage, readLineItem, round2, toMoney, formatKg, formatRupees, formatRate
+    billTotal, dueNeedsName, NAME_REQUIRED_FOR_DUE_KEY, paymentSplitMessage, readLineItem, round2, toMoney, formatKg, formatRate, moneyText
 } from './money.js';
 import { rateConfirmed, validatePaymentSplit, wholesaleCostRate } from './calc/billing.js';
 import { parseAnyBillDate, startOfLocalDay } from './dates.js';
@@ -61,7 +61,6 @@ const ITEM_RATE_FIELD = { purchase: 'rates', retail: 'saleRates', wholesale: 'wh
 const HARD_RULES = new Set(['payment-none', 'party-required', 'payment-split', 'qty-invalid', 'rate-invalid']);
 
 const normalize = (/** @type {*} */ s) => (s == null ? '' : String(s).trim().toLowerCase());
-const fmtRs = (/** @type {number} */ n) => formatRupees(n, { exact: true });
 const fmtKg = (/** @type {number} */ n) => formatKg(n);
 
 /**
@@ -582,8 +581,8 @@ export function evaluateCashCount({ expected, counted }, thresholds) {
     const exp = round2(expected);
     if (exp < 0) {
         out.push(issue('cash-expected-negative', 'expected', 'warn',
-            `Expected cash is ${fmtRs(exp)} — the drawer cannot be below ₹0; check today's entries`,
-            `अपेक्षित नकद ${fmtRs(exp)} है — गल्ला ₹0 से कम नहीं हो सकता; आज की एंट्री जाँचें`));
+            `Expected cash is ${moneyText(exp, 'exact')} — the drawer cannot be below ₹0; check today's entries`,
+            `अपेक्षित नकद ${moneyText(exp, 'exact')} है — गल्ला ₹0 से कम नहीं हो सकता; आज की एंट्री जाँचें`));
     }
     const diff = round2(round2(counted) - exp);
     const gap = Math.abs(diff);
@@ -592,8 +591,8 @@ export function evaluateCashCount({ expected, counted }, thresholds) {
         const word = diff < 0 ? 'short' : 'extra';
         const wordHi = diff < 0 ? 'कम' : 'ज़्यादा';
         out.push(issue(high ? 'cash-mismatch-high' : 'cash-mismatch', 'counted', 'warn',
-            `Cash is ${fmtRs(gap)} ${word}${high ? ' — big difference, count again' : ''}`,
-            `नकद ${fmtRs(gap)} ${wordHi} है${high ? ' — बड़ा अंतर, दोबारा गिनें' : ''}`));
+            `Cash is ${moneyText(gap, 'exact')} ${word}${high ? ' — big difference, count again' : ''}`,
+            `नकद ${moneyText(gap, 'exact')} ${wordHi} है${high ? ' — बड़ा अंतर, दोबारा गिनें' : ''}`));
     }
     return out;
 }

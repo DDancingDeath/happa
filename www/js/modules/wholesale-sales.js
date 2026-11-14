@@ -35,8 +35,6 @@ import { moneyHtml, moneyInText } from '../ui/components.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 
-/** formatRupees(amount) as markup with a muted ₹; the text stays formatRupees(amount) even when the amount is missing. */
-const money = (amount) => (moneyHtml(amount) === '—' ? Helpers.escapeHtml(formatRupees(amount)) : moneyHtml(amount));
 import {
     KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, readPayment, openingAmount, openingOldTotals, outstandingDue, isOpeningRecord, isActiveBill,
     formatAmount, formatKg, formatRate, formatRupees
@@ -289,7 +287,7 @@ export class WholesaleSalesManager {
                     <td>${Helpers.escapeHtml(lineItemIdentity(item, AppState.items, AppState.settings.showHindi).label)}</td>
                     <td>${formatRate(item.rate)}</td>
                     <td>${formatKg(item.qty)} kg</td>
-                    <td>${money(shownAmount(item.total))}</td>
+                    <td>${moneyHtml(shownAmount(item.total))}</td>
                     <td><button type="button" class="bill-line-remove" data-onclick="wholesaleSales.removeWholesaleItem(${index})" aria-label="${remove}" title="${remove}">×</button></td>
                 </tr>
             `;
@@ -788,7 +786,7 @@ export class WholesaleSalesManager {
         const bills = chosen.map(x => x.bill);
         const shown = bills.length < group.bills.length ? partyDues(bills, partyNameKey(name), partyNameKey) : group;
         const esc = (v) => Helpers.escapeHtml(v);
-        const amount = Helpers.formatCurrency(shown.total);
+        const amount = formatRupees(shown.total);
         const html = `
             <div class="due-dlg">
                 <div><strong>${esc(String(name).trim())}</strong><br>
@@ -855,7 +853,7 @@ export class WholesaleSalesManager {
             return;
         }
         settled.forEach(s => Object.assign(s.bill, s.fields));
-        UIManager.showToast(t('msg.wholesale.complete_all_due_done', { count: settled.length, total: Helpers.formatCurrency(total) }));
+        UIManager.showToast(t('msg.wholesale.complete_all_due_done', { count: settled.length, total: formatRupees(total) }));
         UIManager.hapticFeedback('light');
         // Saved: a screen that fails to redraw must not look like a failed payment
         try {
@@ -944,15 +942,15 @@ export class WholesaleSalesManager {
                     <div class="due-bill-body">
                         <div class="due-bill-line">
                             <span>${L('ui.common.total_receivable')}</span>
-                            <strong>${money(sale.totalAmount)}</strong>
+                            <strong>${moneyHtml(sale.totalAmount)}</strong>
                         </div>
                         <div class="due-bill-line">
                             <span>${L('ui.outstanding.received_label')}</span>
-                            <strong>${money(sale.paidAmount)}</strong>
+                            <strong>${moneyHtml(sale.paidAmount)}</strong>
                         </div>
                         <div class="due-bill-line due-bill-out">
                             <span>${L('ui.outstanding.outstanding_label')}</span>
-                            <strong>${money(sale.outstanding)}</strong>
+                            <strong>${moneyHtml(sale.outstanding)}</strong>
                         </div>
                         <div class="due-bill-pay">
                             <label>${L('ui.wholesale.payment_rs')}</label>
@@ -1196,7 +1194,7 @@ export class WholesaleSalesManager {
         const payRow = (key, amount, tone) => `
                     <div class="row bill-view-row">
                         <span class="row-main">${L(key)}</span>
-                        <span class="tag ${Helpers.escapeHtml(tone)}">${money(amount)}</span>
+                        <span class="tag ${Helpers.escapeHtml(tone)}">${moneyHtml(amount)}</span>
                     </div>`;
         const paymentHTML = (payment.online > 0 || payment.cash > 0 || payment.due > 0) ? `
             <div class="panel bill-view-panel">
@@ -1213,7 +1211,7 @@ export class WholesaleSalesManager {
                 ${sale.payments.map(p => `
                     <div class="row bill-view-row">
                         <span class="row-main">• ${Helpers.escapeHtml(p.date)}${p.recordedBy ? ` ${L('ui.wholesale.by_name', { name: p.recordedBy })}` : ''}${p.kind === 'writeOff' ? ` — ${L('ui.wholesale.written_off', { reason: p.reason || '' })}` : ''}</span>
-                        <strong class="row-amt">${money(p.amount)}</strong>
+                        <strong class="row-amt">${moneyHtml(p.amount)}</strong>
                     </div>
                 `).join('')}
             </div>
@@ -1271,7 +1269,7 @@ export class WholesaleSalesManager {
                 <div class="panel bill-view-panel">
                     <div class="row bill-view-row bill-view-total">
                         <span class="row-main">${L('ui.billing.sale_total')}</span>
-                        <strong class="row-amt">${money(sale.total)}</strong>
+                        <strong class="row-amt">${moneyHtml(sale.total)}</strong>
                     </div>
                 </div>
                 

@@ -43,8 +43,6 @@ import { icon } from '../ui/icons.js';
 import { billLabour, billLineTotal, billTotal, hasBillAmount, isActiveBill, isOpeningRecord, readPayment, UNKNOWN_AMOUNT, formatRupees, formatAmount, formatKg, toMoney } from '../utils/money.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
-/** A figure as moneyHtml; a missing amount keeps formatRupees' text. */
-const money = (amount) => (moneyHtml(amount) === '—' ? Helpers.escapeHtml(formatRupees(amount)) : moneyHtml(amount));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', sale: 'ui.history.noun_sale' };
 /** Bill type → Firestore collection key and AppState list. */
 const BILL_COLLECTION = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' };
@@ -551,9 +549,9 @@ export class HistoryManager {
                     <div class="row bill-view-row">
                         <div class="row-main">
                             <div>${L(key)}</div>
-                            ${split ? `<div class="row-meta">${moneyInText(t('ui.history.paid_later_split', { cash: Helpers.formatCurrency(parts.later.cash), online: Helpers.formatCurrency(parts.later.online) }), [parts.later.cash, parts.later.online])}</div>` : ''}
+                            ${split ? `<div class="row-meta">${moneyInText(t('ui.history.paid_later_split', { cash: formatRupees(parts.later.cash), online: formatRupees(parts.later.online) }), [parts.later.cash, parts.later.online])}</div>` : ''}
                         </div>
-                        <span class="tag ${Helpers.escapeHtml(tone)}">${money(value)}</span>
+                        <span class="tag ${Helpers.escapeHtml(tone)}">${moneyHtml(value)}</span>
                     </div>`;
         const paymentHTML = (parts.atSave.online > 0 || parts.atSave.cash > 0 || afterSave || parts.due > 0) ? `
             <div class="panel bill-view-panel">
@@ -639,24 +637,24 @@ export class HistoryManager {
                     ${isPurchase ? `
                         <div class="row bill-view-row bill-view-total">
                             <span class="row-main">${L('ui.billing.purchase_total')}</span>
-                            <strong class="row-amt">${known ? money(billLineTotal(bill, true)) : Helpers.escapeHtml(UNKNOWN_AMOUNT)}</strong>
+                            <strong class="row-amt">${known ? moneyHtml(billLineTotal(bill, true)) : Helpers.escapeHtml(UNKNOWN_AMOUNT)}</strong>
                         </div>
                         
                         ${billLabour(bill) > 0 ? `
                             <div class="row bill-view-row bill-view-total">
                                 <span class="row-main">${L('ui.billing.labor')}</span>
-                                <strong class="row-amt tone-warn">${money(billLabour(bill))}</strong>
+                                <strong class="row-amt tone-warn">${moneyHtml(billLabour(bill))}</strong>
                             </div>
                             
                             <div class="row bill-view-row bill-view-total bill-view-grand">
                                 <span class="row-main">${L('ui.billing.total_payable')}</span>
-                                <strong class="row-amt">${known ? money(billTotal(bill)) : Helpers.escapeHtml(UNKNOWN_AMOUNT)}</strong>
+                                <strong class="row-amt">${known ? moneyHtml(billTotal(bill)) : Helpers.escapeHtml(UNKNOWN_AMOUNT)}</strong>
                             </div>
                         ` : ''}
                     ` : `
                         <div class="row bill-view-row bill-view-total">
                             <span class="row-main">${L('ui.billing.sale_total')}</span>
-                            <strong class="row-amt">${known ? money(billTotal(bill)) : Helpers.escapeHtml(UNKNOWN_AMOUNT)}</strong>
+                            <strong class="row-amt">${known ? moneyHtml(billTotal(bill)) : Helpers.escapeHtml(UNKNOWN_AMOUNT)}</strong>
                         </div>
                     `}
                 </div>

@@ -12,13 +12,13 @@ import { t, getLang } from '../i18n/index.js';
 import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
 import { todayLocalISO } from '../utils/dates.js';
-import { formatINR } from '../utils/due-reminder.js';
 import { moneyHtml } from '../ui/components.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import * as store from './rent-store.js';
 import * as ds from './rent-deposit-store.js';
 import { PAYMENT_MODES, monthLabel, dateLabel, chargeDue, isDate } from './rent-math.js';
 import { DEPOSIT_KINDS, depositHeld, depositFill, depositsTotal } from './rent-math-ledger.js';
+import { formatRupees } from '../utils/money.js';
 
 const auditWarn = (e) => console.warn('Rentals audit entry not written:', e?.code || e);
 const ERRORS = { amount: 'msg.rent.bad_amount', over: 'msg.rent.dep_over', too_many: 'msg.rent.dep_full', missing: 'msg.rent.save_failed', changed: 'msg.rent.dep_changed' };
@@ -77,7 +77,7 @@ async function moveAdvance(chId, leaseId) {
     try {
         const adv = await ds.advanceToDeposit(chId, leaseId);
         if (!(adv > 0)) return;
-        UIManager.showToast(t('msg.rent.adv_to_deposit', { amount: formatINR(adv) }), 'success');
+        UIManager.showToast(t('msg.rent.adv_to_deposit', { amount: formatRupees(adv) }), 'success');
         AuditService.log('RENT_ADVANCE_TO_DEPOSIT', { chargeId: chId || '', leaseId: leaseId || '', amount: adv }).catch(auditWarn);
     } catch (e) {
         console.warn('Advance not moved to the deposit:', e?.code || e);
@@ -118,7 +118,7 @@ export async function action(c, kind, tenantId, i) {
     if (!DEPOSIT_KINDS.includes(kind)) return;
     const held = depositHeld(entries);
     const lang = getLang();
-    const months = kind === 'adjust' ? dues.map(ch => `<option value="${c.esc(ch.id)}" data-due="${c.esc(depositFill('adjust', held, chargeDue(ch)))}">${c.esc(monthLabel(ch.month, lang))} · ${c.esc(formatINR(chargeDue(ch)))}</option>`).join('') : '';
+    const months = kind === 'adjust' ? dues.map(ch => `<option value="${c.esc(ch.id)}" data-due="${c.esc(depositFill('adjust', held, chargeDue(ch)))}">${c.esc(monthLabel(ch.month, lang))} · ${c.esc(formatRupees(chargeDue(ch)))}</option>`).join('') : '';
     const fill = depositFill(kind, held, dues[0] ? chargeDue(dues[0]) : 0, lease?.deposit || 0);
     const ok = await c.dialog(`<h3>${c.esc(t(`ui.rent.dep_add_${kind}`))}</h3>
         <p class="rent-help">${c.esc(t('ui.rent.dep_held'))}: ${moneyHtml(held)}</p>
@@ -137,7 +137,7 @@ export async function action(c, kind, tenantId, i) {
     await Helpers.runExclusive('rent-dep', '[data-rent-dep]', async () => {
         try {
             const res = await ds.addDepositEntry(p);
-            UIManager.showToast(t('msg.rent.dep_saved', { amount: formatINR(res.amount), held: formatINR(res.held) }), 'success');
+            UIManager.showToast(t('msg.rent.dep_saved', { amount: formatRupees(res.amount), held: formatRupees(res.held) }), 'success');
             AuditService.log('RENT_DEPOSIT', { tenantId, kind, amount: res.amount, held: res.held, chargeId: p.chargeId || '' }).catch(auditWarn);
             setTimeout(() => showDeposit(c, tenantId), 300);
         } catch (e) {

@@ -675,7 +675,6 @@ class ReceiptDrawing {
             ctx.fillRect(side, y, width - side * 2, 2);
             return y + 10;
         };
-        const rupees = (n) => formatRupees(n);
 
         let y = 30;
         if (statement.shopName) y = center(statement.shopName, y, 24, true);
@@ -686,10 +685,10 @@ class ReceiptDrawing {
         y = leftRight(`${t('ui.bill.bill_no')} · ${t('ui.bill.date')}`, t('ui.bill.due'), y + 8, 16, true);
         rows.forEach(r => {
             const left = [r.billNumber ? `#${r.billNumber}` : '', r.date].filter(Boolean).join('  ');
-            y = leftRight(left.slice(0, 30), rupees(r.due), y, 17);
+            y = leftRight(left.slice(0, 30), formatRupees(r.due), y, 17);
         });
         y = rule(y);
-        y = leftRight(statement.totalLabel, rupees(statement.total), y + 12, 20, true);
+        y = leftRight(statement.totalLabel, formatRupees(statement.total), y + 12, 20, true);
         if (statement.footer) y = center(statement.footer, y + 6, 15);
         y += 6;
 

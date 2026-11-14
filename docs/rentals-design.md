@@ -55,7 +55,7 @@ tenant accounts of any kind, photo upload (Storage needs Blaze on new projects).
 
 | Building block | Reused how | Not reused |
 |---|---|---|
-| `utils/due-reminder.js` | `normalizePhone`, `whatsAppReminderUrl`, `cleanText`, `formatINR`, `formatDMY` (pure) | `buildReminderText` (bill wording); rentals has its own text builder |
+| `utils/due-reminder.js` | `normalizePhone`, `whatsAppReminderUrl`, `cleanText`, `formatDMY` (pure) | `buildReminderText` (bill wording); rentals has its own text builder |
 | `utils/open-external.js` | Opens `wa.me` in Android/web | – |
 | `utils/money.js` | `round2` only | `readPayment()` / bill `payment.due` shapes: rent charges have one simple shape (`amount`, `paid`) |
 | `utils/aging.js` | Phase 3: the same day buckets (0–30, 31–60, …) for "outstanding per tenant" via a small adapter | Party/bill model |

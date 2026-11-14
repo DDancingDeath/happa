@@ -114,28 +114,6 @@ describe('Helpers.formatDateTime', () => {
     });
 });
 
-describe('Helpers.formatCurrency', () => {
-    test('should format positive number as currency', () => {
-        const result = Helpers.formatCurrency(1234.56);
-        expect(result).toContain('₹');
-    });
-
-    test('should format zero', () => {
-        const result = Helpers.formatCurrency(0);
-        expect(result).toContain('0');
-    });
-
-    test('should format negative number', () => {
-        const result = Helpers.formatCurrency(-500);
-        expect(result).toContain('500');
-    });
-
-    test('should contain rupee symbol', () => {
-        const result = Helpers.formatCurrency(1234567.89);
-        expect(result).toContain('₹');
-    });
-});
-
 describe('Helpers.generateId', () => {
     test('should generate unique IDs', () => {
         const id1 = Helpers.generateId();

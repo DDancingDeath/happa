@@ -7,7 +7,7 @@
 
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
-import { formatINR, whatsAppReminderUrl } from '../utils/due-reminder.js';
+import { whatsAppReminderUrl } from '../utils/due-reminder.js';
 import { moneyHtml, moneyInText } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import { openExternal } from '../utils/open-external.js';
@@ -19,10 +19,10 @@ import { tenantRows, tenantDues } from './rent-views.js';
 import {
     monthLabel, chargeDue, chargeStatus, buildRentReminderText, increaseDue, meterBill, tenantError, leaseError, isMonth, addMonths, ELEC_MODES, elecMode, mobile10
 } from './rent-math.js';
+import { formatRupees } from '../utils/money.js';
 
 const esc = (v) => Helpers.escapeHtml(v);
 const js = (v) => Helpers.escapeJsAttr(v);
-const money = (n) => { const h = moneyHtml(n); return h === '—' ? esc(formatINR(n)) : h; };
 const et = (key, p) => esc(t(key, p));
 const byId = (id) => document.getElementById(id);
 const fail = (key, p) => UIManager.showToast(t(key, p), 'error');
@@ -59,12 +59,12 @@ function listRows(d, adv) {
     return list.map(({ tn, lease: l, due }) => {
         const where = l ? esc(c.placeOf(ix, l.unitId)) : et('ui.rent.no_unit');
         const more = adv ? [tn.phone ? phones(tn) : '',
-            l ? `${moneyInText(t('ui.rent.rent_terms', { amount: formatINR(l.rent), day: l.dueDay }), l.rent)} ${c.elecTag(l)}` : '', l?.startDate ? esc(c.sinceText(l)) : '',
+            l ? `${moneyInText(t('ui.rent.rent_terms', { amount: formatRupees(l.rent), day: l.dueDay }), l.rent)} ${c.elecTag(l)}` : '', l?.startDate ? esc(c.sinceText(l)) : '',
             isMonth(l?.agreementEnd) ? et('ui.rent.agr_till', { month: monthLabel(l.agreementEnd, getLang()) }) : '', tn.notes ? esc(tn.notes) : ''].filter(Boolean) : [];
         return `<button type="button" class="row rent-entry" data-tenant="${esc(tn.id)}" data-onclick="rentals.openTenant('${js(tn.id)}')">
             <span class="rent-entry-head"><span class="row-main"><span class="row-title">${esc(tn.name)}</span><span class="row-meta">${where}</span>
                 ${more.map(x => `<span class="rent-sub">${x}</span>`).join('')}</span>
-            <span class="row-trail">${due.total > 0 ? `<span class="row-amt">${money(due.total)}</span>` : ''}${statusOf(due)}</span></span>
+            <span class="row-trail">${due.total > 0 ? `<span class="row-amt">${moneyHtml(due.total)}</span>` : ''}${statusOf(due)}</span></span>
         </button>`;
     }).join('') || `<p class="empty">${et(d.tenants.length ? 'ui.rent.no_match' : 'ui.rent.no_tenants_hint')}</p>`;
 }
@@ -106,9 +106,9 @@ function tenantList(field, value) {
 function monthLine(ch, lang, place) {
     const s = chargeStatus(ch);
     const e = ch.electricity;
-    return `<li>${esc(monthLabel(ch.month, lang))}${place ? ` · ${esc(place)}` : ''}: ${money(chargeDue(ch))}
+    return `<li>${esc(monthLabel(ch.month, lang))}${place ? ` · ${esc(place)}` : ''}: ${moneyHtml(chargeDue(ch))}
         ${c.badge(s.status === 'partial' ? 'partial' : 'due', s.status === 'partial' ? 'ui.rent.status_partial' : 'ui.rent.status_due')}${s.late ? ` ${c.badge('late', 'ui.rent.status_late')}` : ''}
-        ${e ? `<span class="rent-sub">${moneyInText(t('ui.rent.incl_electricity', { amount: formatINR(e.amount), units: e.units }), e.amount)}</span>` : ''}</li>`;
+        ${e ? `<span class="rent-sub">${moneyInText(t('ui.rent.incl_electricity', { amount: formatRupees(e.amount), units: e.units }), e.amount)}</span>` : ''}</li>`;
 }
 
 function renderTenant(d, id) {
@@ -142,10 +142,10 @@ function renderTenant(d, id) {
         ? btn('', 'meter', `'${lid}'`, 'ui.rent.meter_reading', icon('bolt', 'i-sm')) : '';
     const leaseCard = lease ? `<section class="panel panel-pad rent-box">
             <h4 class="rent-section-title">${et('ui.rent.lease')}</h4>
-            <div>${moneyInText(t('ui.rent.rent_terms', { amount: formatINR(lease.rent), day: lease.dueDay }), lease.rent)} ${c.elecTag(lease)}</div>
+            <div>${moneyInText(t('ui.rent.rent_terms', { amount: formatRupees(lease.rent), day: lease.dueDay }), lease.rent)} ${c.elecTag(lease)}</div>
             ${lease.startDate ? `<div class="rent-sub">${esc(c.sinceText(lease))}</div>` : ''}
             ${isMonth(lease.agreementEnd) ? `<div class="rent-sub">${et('ui.rent.agr_till', { month: monthLabel(lease.agreementEnd, lang) })}</div>` : ''}
-            ${inc.due ? `<div class="notice info rent-increase">${icon('trend', 'i-sm')}<span class="grow">${moneyInText(t('ui.rent.increase_due', { pct: inc.pct, amount: formatINR(inc.newRent) }), inc.newRent)}</span></div>` : ''}
+            ${inc.due ? `<div class="notice info rent-increase">${icon('trend', 'i-sm')}<span class="grow">${moneyInText(t('ui.rent.increase_due', { pct: inc.pct, amount: formatRupees(inc.newRent) }), inc.newRent)}</span></div>` : ''}
             <div class="rent-actions">${w ? btn('', 'editLease', `'${lid}'`, 'ui.rent.update_rent') : ''}${meterBtn}
                 ${w ? btn(' btn-ghost tone-neg', 'moveOut', `'${lid}'`, 'ui.rent.move_out') : ''}</div>
         </section>`
@@ -157,9 +157,9 @@ function renderTenant(d, id) {
         <div class="rent-sub">${tn.phone ? `${phones(tn)} · ` : ''}${lease ? esc(c.placeOf(ix, lease.unitId)) : et('ui.rent.no_unit')}</div>
         ${tn.notes ? `<div class="rent-sub">${esc(tn.notes)}</div>` : ''}
         <section class="panel panel-pad rent-box">
-            ${due.total > 0 ? `<div class="rent-entry-head"><span class="rent-owes">${moneyInText(t('ui.rent.owes', { amount: formatINR(due.total) }), due.total)}</span><span>${statusOf(due)}</span></div>
+            ${due.total > 0 ? `<div class="rent-entry-head"><span class="rent-owes">${moneyInText(t('ui.rent.owes', { amount: formatRupees(due.total) }), due.total)}</span><span>${statusOf(due)}</span></div>
                 <ul class="rent-months">${months}</ul>` : `<p class="empty">${et('ui.rent.no_rent_due')}</p>`}
-            ${current?.adv > 0 ? `<div class="rent-sub">${moneyInText(t('ui.rent.adv_next', { amount: formatINR(current.adv) }), current.adv)}</div>` : ''}
+            ${current?.adv > 0 ? `<div class="rent-sub">${moneyInText(t('ui.rent.adv_next', { amount: formatRupees(current.adv) }), current.adv)}</div>` : ''}
             <div class="rent-actions">${payActs}${c.receiptsBtn(id)}${btn('', 'deposit', `'${tid}'`, 'ui.rent.dep_btn', icon('coins', 'i-sm'))}</div>
         </section>
         ${leaseCard}
@@ -270,7 +270,7 @@ async function meter(leaseId) {
     if (!unit) return fail('msg.rent.save_failed');
     try {
         await store.recordMeter(charge.id, unit.id, bill);
-        UIManager.showToast(t('msg.rent.meter_saved', { amount: formatINR(bill.amount), units: bill.units }), 'success');
+        UIManager.showToast(t('msg.rent.meter_saved', { amount: formatRupees(bill.amount), units: bill.units }), 'success');
         AuditService.log('RENT_METER', { chargeId: charge.id, units: bill.units, rate: bill.rate, amount: bill.amount }).catch(c.auditWarn);
     } catch (err) {
         fail(err?.message === 'below_paid' ? 'msg.rent.below_paid' : 'msg.rent.save_failed');
@@ -286,7 +286,7 @@ async function editLease(leaseId) {
     if (!lease) return;
     const inc = increaseDue(lease, c.state.month);
     const ok = await c.dialog(`<h3>${et('ui.rent.update_rent')}</h3>
-        ${inc.due ? `<p class="notice info rent-increase">${icon('trend', 'i-sm')}<span class="grow">${moneyInText(t('ui.rent.increase_due', { pct: inc.pct, amount: formatINR(inc.newRent) }), inc.newRent)}</span></p>` : ''}
+        ${inc.due ? `<p class="notice info rent-increase">${icon('trend', 'i-sm')}<span class="grow">${moneyInText(t('ui.rent.increase_due', { pct: inc.pct, amount: formatRupees(inc.newRent) }), inc.newRent)}</span></p>` : ''}
         ${lbl('ui.rent.monthly_rent', `<input class="input" id="rentEditRent" type="number" inputmode="decimal" min="0" step="1" value="${esc(inc.due ? inc.newRent : lease.rent)}">`)}
         ${lbl('ui.rent.due_day', `<input class="input" id="rentEditDay" type="number" min="1" max="28" step="1" value="${esc(lease.dueDay)}">`)}
         ${lbl('ui.rent.increase_pct', `<input class="input" id="rentEditPct" type="number" min="0" max="100" step="0.5" value="${esc(inc.pct)}">`)}

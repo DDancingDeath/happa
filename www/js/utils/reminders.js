@@ -11,11 +11,10 @@
 
 import { buildAging, chaseFirst } from './aging.js';
 import { AppState } from './state.js';
-import { round2 } from './money.js';
+import { round2, formatRupees } from './money.js';
 import { toLocalISODate, formatMonth } from './dates.js';
 import { emit, REMINDERS_CHANGED } from './events.js';
 import { t, getLang } from '../i18n/index.js';
-import { formatINR } from './due-reminder.js';
 
 /** Parties listed per reminder; the rest are counted. */
 export const REMINDER_LIMIT = 3;
@@ -139,7 +138,7 @@ export function leaseReminder(store, uid, month) {
 /** @param {Rec} x @returns {string} */
 export function leaseReminderText(x) {
     const mon = (/** @type {string} */ m) => formatMonth(`${m}-01`, { lang: getLang() });
-    if (x.kind === 'increase') return t('ui.today.lease_increase', { pct: x.pct, amount: formatINR(x.newRent) });
+    if (x.kind === 'increase') return t('ui.today.lease_increase', { pct: x.pct, amount: formatRupees(x.newRent) });
     return t(x.left < 0 ? 'ui.today.lease_ended' : x.left === 0 ? 'ui.today.lease_ends_now' : 'ui.today.lease_ends', { month: mon(x.end) })
         + (x.notice ? ` · ${t('ui.today.lease_notice', { month: mon(x.notice) })}` : '');
 }

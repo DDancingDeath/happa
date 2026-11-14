@@ -10,7 +10,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { AppState } from '../utils/state.js';
 import { t, getLang } from '../i18n/index.js';
-import { formatRupees } from '../utils/money.js';
+import { formatRupees, moneyText } from '../utils/money.js';
 import { formatMonth, formatDay, todayLocalISO } from '../utils/dates.js';
 import * as repo from '../firebase/repos/workers.js';
 import {
@@ -22,7 +22,6 @@ import { savePayDue } from '../utils/pay-reminder.js';
 const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const js = (v) => Helpers.escapeJsAttr(v);
 const et = (key, p) => esc(t(key, p));
-const money = (n) => esc(formatRupees(n));
 const byId = (id) => document.getElementById(id);
 const val = (id) => (byId(id)?.value ?? '').trim();
 const monthText = (key) => esc(formatMonth(`${key}-01`, { lang: getLang() }));
@@ -60,7 +59,7 @@ function balanceLine(balance) {
 }
 
 function metric(id, key, amount) {
-    return `<div class="metric"><div class="metric-label">${et(key)}</div><div class="metric-value" data-wp="${esc(id)}">${money(amount)}</div></div>`;
+    return `<div class="metric"><div class="metric-label">${et(key)}</div><div class="metric-value" data-wp="${esc(id)}">${moneyText(amount)}</div></div>`;
 }
 
 function renderSummary(sum) {
@@ -157,8 +156,8 @@ function renderMonths(months) {
     if (!shown.length) return '';
     const rows = shown.map(r => `<tr data-month="${esc(r.month)}">
             <td>${monthText(r.month)}</td>
-            <td class="num">${money(r.pay)}</td>
-            <td class="num">${money(r.paid)}</td>
+            <td class="num">${moneyText(r.pay)}</td>
+            <td class="num">${moneyText(r.paid)}</td>
             <td class="num">${r.recovered > 0 ? et('ui.workers.from_advance', { amount: formatRupees(r.recovered) }) : ''}</td>
             <td>${stateTag(r)}</td>
             <td>${balanceLine(r.closing)}</td>
@@ -172,7 +171,7 @@ function renderEntries(worker) {
     const list = [...(worker.entries || [])].sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.month).localeCompare(String(a.month)));
     if (!list.length) return `<p class="empty">${et('ui.workers.no_entries')}</p>`;
     return list.map(e => `<div class="row" data-entry="${esc(e.id)}">
-            <span class="row-main"><span class="row-title">${money(e.amount)} · ${et(KIND_KEYS[e.kind] || KIND_KEYS.pay)}</span>
+            <span class="row-main"><span class="row-title">${moneyText(e.amount)} · ${et(KIND_KEYS[e.kind] || KIND_KEYS.pay)}</span>
             <span class="row-meta">${et('ui.workers.entry_meta', { month: formatMonth(`${e.month}-01`, { lang: getLang() }), date: formatDay(e.date, { lang: getLang() }), mode: t(MODE_KEYS[e.mode] || MODE_KEYS.cash) })}${e.note ? ` · ${esc(e.note)}` : ''}</span></span>
             <button type="button" class="btn btn-ghost btn-sm" data-onclick="workers.removeEntry('${js(worker.id)}', '${js(e.id)}')">${et('ui.workers.remove')}</button>
         </div>`).join('');
