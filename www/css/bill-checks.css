@@ -121,14 +121,6 @@ tr.bill-check-line .bill-check-msg {
     box-sizing: border-box;
 }
 
-body.dark-mode tr.bill-check-block > td {
-    background: rgba(220, 38, 38, 0.18);
-}
-
-body.dark-mode tr.bill-check-warn > td {
-    background: rgba(217, 119, 6, 0.2);
-}
-
 /* Existing due of the party under the name field (#166) — information only */
 .party-due-line {
     display: block;
@@ -150,16 +142,4 @@ body.dark-mode tr.bill-check-warn > td {
     border-color: var(--warning-border);
     background: var(--warning-soft);
     color: var(--on-warning-soft);
-}
-
-body.dark-mode .party-due-line {
-    background: #172554;
-    border-color: #1e3a8a;
-    color: #bfdbfe;
-}
-
-body.dark-mode .party-due-line.party-due-old {
-    background: #3a2a06;
-    border-color: #92400e;
-    color: #fde68a;
 }

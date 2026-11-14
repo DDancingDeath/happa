@@ -161,8 +161,8 @@ In order:
   while it is out of date. The joined files are not precached on their own.
 - **UI rules** (full guide: `docs/design-system.md`): **tokens only** (colour, type, radius, shadow, spacing come from
   `variables.css`; when none fits, add one there with light and dark values). **No theme-specific selectors in page CSS**:
-  no `[data-theme=…]`, `[data-mode=…]` or new `.dark-mode` rules outside `www/css/themes/<id>.css` and `variables.css` (a
-  token already switches with the theme and mode; the old `.dark-mode` rules go screen by screen). Text on a fill uses its
+  no `[data-theme=…]`, `[data-mode=…]` or `.dark-mode` rules outside `www/css/themes/<id>.css` and `variables.css` (a
+  token already switches with the theme and mode). Text on a fill uses its
   ink token (below). Use the component classes in `forms.css` / `surfaces.css` and keep old classes and every id as hooks.
   **Icons come from the sprite** (`<use href="#i-…">`, below); a script that draws one uses a shared `icon(name)` helper
   (`js/ui/icons.js`, added with the first such script, which also makes `icon-sprite.test.js` check its names) with a
@@ -180,7 +180,7 @@ In order:
   when a count drops until you lower its baseline in the same PR.
   Light / Dark / System and the visual theme are per device (`js/ui/theme.js` ThemeManager, keys
   `happa.theme` / `happa.appearance`); `<html>` carries `data-theme`, `data-appearance` and `data-mode`, and CSS keys on
-  `[data-mode="dark"]` (`body.dark-mode` mirrors it). The pre-paint `#themeBoot` reads the same keys; it is data-only, so a new
+  `[data-mode="dark"]` (there is no `body.dark-mode` class). The pre-paint `#themeBoot` reads the same keys; it is data-only, so a new
   theme never changes it or its CSP hash. A theme is a registry entry in `js/ui/themes.js` plus a tokens-only file
   `www/css/themes/<id>.css` (imported in `styles.css`, ≤1.5 KB gzip, colours only inside `@media screen` so print stays
   Modern light; `tests/ci/themes.test.js`), names in en+hi, and rows in `tests/e2e/themes.spec.js` (axe per theme × mode;

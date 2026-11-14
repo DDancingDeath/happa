@@ -7,7 +7,7 @@
     "zIndex": 0,
     "important": 25,
     "idSelector": 159,
-    "themeSelector": 4,
+    "themeSelector": 0,
     "inlineStyle": 31,
     "emoji": 12,
     "titleCase": 15,
@@ -106,9 +106,7 @@
       "www/css/tables.css": 58,
       "www/css/totals.css": 49
     },
-    "themeSelector": {
-      "www/css/bill-checks.css": 4
-    },
+    "themeSelector": {},
     "inlineStyle": {
       "www/js/auth/authentication.js": 2,
       "www/js/modules/purchase.js": 4,

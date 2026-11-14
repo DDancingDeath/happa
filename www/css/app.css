@@ -240,6 +240,13 @@
   }
 }
 
+/* The browser's placeholder grey is tuned for light pages */
+@media screen {
+  [data-mode="dark"] ::placeholder {
+    color: var(--ink-3);
+  }
+}
+
 /* "Continue with Google" button: Google's own light and dark button colours (its branding guidelines) */
 :root {
   --google-btn-bg: #ffffff;
@@ -357,98 +364,6 @@ html[lang="hi"],
 html[lang="hi"] [data-theme] {
   --title-style: normal;
   --tracking-display: 0;
-}
-
-body.dark-mode {
-  background: var(--light-bg);
-  color: var(--text-primary);
-}
-
-body.dark-mode input,
-body.dark-mode select,
-body.dark-mode textarea {
-  background: var(--input-bg);
-  color: var(--text-primary);
-  border-color: var(--border-strong);
-}
-
-body.dark-mode input::placeholder {
-  color: var(--text-muted);
-}
-
-body.dark-mode .modal-box {
-  background: var(--card-bg);
-}
-
-body.dark-mode .modal-box {
-  color: var(--text-primary);
-}
-
-/* Inline colours written by page scripts stay readable in dark mode */
-.dark-mode [style*="background: white"],
-.dark-mode [style*="background: #fff"],
-.dark-mode [style*="background: #f7fafc"] {
-  background: var(--surface-muted) !important;
-}
-
-.dark-mode [style*="background: #fff3cd"] {
-  background: var(--warning-soft) !important;
-}
-
-.dark-mode [style*="background: #fef2f2"] {
-  background: var(--danger-soft) !important;
-}
-
-.dark-mode [style*="background: #d1fae5"] {
-  background: var(--success-soft) !important;
-}
-
-.dark-mode [style^="color: rgb(51, 51, 51)"],
-.dark-mode [style*=" color: rgb(51, 51, 51)"],
-.dark-mode [style^="color: #333"],
-.dark-mode [style*=" color: #333"] {
-  color: var(--text-primary) !important;
-}
-
-.dark-mode [style^="color: rgb(102, 102, 102)"],
-.dark-mode [style*=" color: rgb(102, 102, 102)"],
-.dark-mode [style^="color: rgb(85, 85, 85)"],
-.dark-mode [style*=" color: rgb(85, 85, 85)"],
-.dark-mode [style^="color: rgb(75, 85, 99)"],
-.dark-mode [style*=" color: rgb(75, 85, 99)"],
-.dark-mode [style^="color: #666"],
-.dark-mode [style^="color:#666"],
-.dark-mode [style*=" color:#555"],
-.dark-mode [style*=" color: #555"],
-.dark-mode [style*=";color:#555"],
-.dark-mode [style*=" color: #374151"] {
-  color: var(--text-secondary) !important;
-}
-
-.dark-mode [style*=" color: #059669"],
-.dark-mode [style^="color: #15803d"],
-.dark-mode [style*=" color: #15803d"],
-.dark-mode [style^="color: #059669"] {
-  color: var(--on-success-soft) !important;
-}
-
-.dark-mode [style^="color: #ef4444"],
-.dark-mode [style*=" color: #ef4444"],
-.dark-mode [style*=" color:#b91c1c"],
-.dark-mode [style^="color: #b91c1c"] {
-  color: var(--on-danger-soft) !important;
-}
-
-.dark-mode [style*=" color: #7c3aed"],
-.dark-mode [style*=" color: #9333ea"] {
-  color: var(--on-primary-soft) !important;
-}
-
-.dark-mode [style^="color: #2563eb"],
-.dark-mode [style*=" color: #2563eb"],
-.dark-mode [style*=" color: #0058b8"],
-.dark-mode [style^="color: #3b82f6"] {
-  color: var(--on-info-soft) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1683,6 +1598,14 @@ input[type="text"] {
   color: var(--ink);
   font-size: var(--fs-body);
   transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+/* Other text-like fields keep their own size but take the field colours in every theme and mode (no specificity: page rules win) */
+:where(textarea, input:not([type]), input[type="date"], input[type="month"], input[type="time"],
+  input[type="tel"], input[type="email"], input[type="password"], input[type="search"]) {
+  border-color: var(--input-border);
+  background-color: var(--input-bg);
+  color: var(--ink);
 }
 
 .input:focus,
@@ -5044,14 +4967,6 @@ tr.bill-check-line .bill-check-msg {
     box-sizing: border-box;
 }
 
-body.dark-mode tr.bill-check-block > td {
-    background: rgba(220, 38, 38, 0.18);
-}
-
-body.dark-mode tr.bill-check-warn > td {
-    background: rgba(217, 119, 6, 0.2);
-}
-
 /* Existing due of the party under the name field (#166) — information only */
 .party-due-line {
     display: block;
@@ -5073,18 +4988,6 @@ body.dark-mode tr.bill-check-warn > td {
     border-color: var(--warning-border);
     background: var(--warning-soft);
     color: var(--on-warning-soft);
-}
-
-body.dark-mode .party-due-line {
-    background: #172554;
-    border-color: #1e3a8a;
-    color: #bfdbfe;
-}
-
-body.dark-mode .party-due-line.party-due-old {
-    background: #3a2a06;
-    border-color: #92400e;
-    color: #fde68a;
 }
 
 /* ---- css/history.css ---- */

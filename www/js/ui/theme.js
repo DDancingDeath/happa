@@ -3,7 +3,7 @@
  * this device (localStorage, no Firestore). The inline #themeBoot in index.html applies the saved
  * choice before first paint with the same keys and rules; this module keeps it live afterwards.
  * <html> carries data-theme, data-appearance (the choice) and data-mode (light | dark, what the CSS
- * keys on); body.dark-mode mirrors data-mode="dark" for the older dark-mode selectors.
+ * keys on).
  */
 import { APPEARANCES, DEFAULT_APPEARANCE, DEFAULT_THEME, themeById } from './themes.js';
 import { safeSetItem } from '../utils/storage-full.js';
@@ -89,7 +89,6 @@ export const ThemeManager = {
         root.setAttribute('data-theme', th.id);
         root.setAttribute('data-appearance', choice);
         root.setAttribute('data-mode', mode);
-        document.body?.classList.toggle('dark-mode', mode === 'dark');
         const bar = getComputedStyle(root).getPropertyValue('--bg').trim();
         const meta = document.querySelector('meta[name="theme-color"]');
         if (meta && BAR_COLOUR.test(bar)) meta.setAttribute('content', bar);

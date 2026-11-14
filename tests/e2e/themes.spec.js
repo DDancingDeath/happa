@@ -159,7 +159,6 @@ test('printing from the serif themes looks like Modern: colours, faces, italic, 
         const html = document.documentElement;
         html.dataset.theme = th;
         html.dataset.mode = m;
-        document.body.classList.toggle('dark-mode', m === 'dark');
         const cs = (sel) => getComputedStyle(document.querySelector(sel));
         const title = cs('#billing .bill-section-title');
         const total = cs('#billing .grand-total strong');
