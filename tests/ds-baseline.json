@@ -67,16 +67,15 @@
   "metrics": {
     "spacing": {
       "www/css/bill-checks.css": 10,
-      "www/css/billing.css": 18,
+      "www/css/billing.css": 22,
       "www/css/day.css": 36,
       "www/css/desktop.css": 22,
       "www/css/finance.css": 10,
       "www/css/forms.css": 16,
       "www/css/history.css": 38,
+      "www/css/navigation.css": 4,
       "www/css/rate-trends.css": 24,
-      "www/css/surfaces.css": 13,
-      "www/css/tables.css": 5,
-      "www/css/tabs.css": 4,
+      "www/css/surfaces.css": 14,
       "www/css/toast.css": 4,
       "www/css/totals.css": 24,
       "www/js/main.js": 1,
@@ -92,18 +91,17 @@
     "important": {
       "www/css/auth.css": 1,
       "www/css/bill-checks.css": 4,
-      "www/css/buttons.css": 1,
       "www/css/desktop.css": 9,
+      "www/css/forms.css": 1,
       "www/css/rate-trends.css": 2,
       "www/css/settings.css": 1,
       "www/css/totals.css": 7
     },
     "idSelector": {
-      "www/css/billing.css": 12,
+      "www/css/billing.css": 70,
       "www/css/charts.css": 6,
       "www/css/day.css": 2,
       "www/css/desktop.css": 32,
-      "www/css/tables.css": 58,
       "www/css/totals.css": 49
     },
     "themeSelector": {

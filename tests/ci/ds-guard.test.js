@@ -20,7 +20,8 @@
  * @media print and the receipt files stay out, as in colour-guard.
  *
  * Counts may only go down, and the baseline must follow them down, so a fix can't be spent on a
- * new drift later. DS_BASELINE=lower npx jest ds-guard lowers tests/ds-baseline.json. Files in its
+ * new drift later (rules moved out of a deleted stylesheet may move its rows to their new file; the total
+ * may not rise). DS_BASELINE=lower npx jest ds-guard lowers tests/ds-baseline.json. Files in its
  * "strict" list are pinned at 0 on every metric; the list may only grow.
  */
 const fs = require('fs');
@@ -298,7 +299,13 @@ describe('design-system ratchet (counts only go down)', () => {
         const raised = [];
         for (const k of METRICS) {
             if (!prior.metrics?.[k]) continue;
-            raised.push(...diff(baseline.metrics[k] || {}, prior.metrics[k]).up.map((r) => `${k}${r}`));
+            const rows = baseline.metrics[k] || {};
+            const up = diff(rows, prior.metrics[k]).up;
+            // Rules moved out of a deleted stylesheet may raise their new file's row, within the deleted rows and the old total
+            const gone = Object.entries(prior.metrics[k]).filter(([f]) => !fs.existsSync(path.join(ROOT, f))).reduce((a, [, n]) => a + n, 0);
+            const rise = Object.entries(rows).reduce((a, [f, n]) => a + Math.max(0, n - (prior.metrics[k][f] || 0)), 0);
+            if (up.length && rise <= gone && sum(rows) <= sum(prior.metrics[k])) continue;
+            raised.push(...up.map((r) => `${k}${r}`));
         }
         expect(raised).toEqual([]);
         expect((prior.strict || []).filter((f) => !baseline.strict.includes(f) && fs.existsSync(path.join(ROOT, f)))).toEqual([]);

@@ -1127,301 +1127,6 @@ input[type="number"],
   stroke: none;
 }
 
-/* ---- css/tables.css ---- */
-#billTable, :is(#saleTable, .bill-lines) {
-  width: 100%;
-  margin-top: 16px;
-  table-layout: fixed;
-  border-collapse: collapse;
-}
-
-#billTable thead, :is(#saleTable, .bill-lines) thead {
-  display: table-header-group;
-  background: var(--surface-muted);
-  font-weight: var(--w-strong);
-  color: var(--text-primary);
-}
-
-#billTable thead tr, :is(#saleTable, .bill-lines) thead tr {
-  display: table-row;
-}
-
-#billTable thead th, :is(#saleTable, .bill-lines) thead th {
-  display: table-cell;
-  padding: 10px 8px;
-  text-align: center;
-  border-bottom: 1px solid var(--table-rule);
-  font-size: var(--fs-caption);
-  font-weight: var(--w-label);
-  color: var(--text-secondary);
-}
-
-#billTable tbody tr, :is(#saleTable, .bill-lines) tbody tr {
-  display: table-row;
-  background: var(--card-bg);
-  border-bottom: 1px var(--rule-style) var(--border-color);
-  transition: background var(--transition);
-}
-
-#billTable tbody tr:hover, :is(#saleTable, .bill-lines) tbody tr:hover {
-  background: var(--light-bg);
-}
-
-#billTable td, :is(#saleTable, .bill-lines) td {
-  display: table-cell;
-  padding: 14px 8px;
-  text-align: center;
-  font-size: var(--fs-sm);
-  vertical-align: middle;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  max-width: 0;
-  color: var(--text-primary);
-}
-
-#billTable td:before, :is(#saleTable, .bill-lines) td:before {
-  display: none;
-}
-
-#billTable td:first-child, :is(#saleTable, .bill-lines) td:first-child {
-  text-align: left;
-  font-weight: var(--w-strong);
-}
-
-#billTable td:last-child, :is(#saleTable, .bill-lines) td:last-child {
-  text-align: center;
-}
-
-/* Rate, Qty and Total line up on the right */
-#billTable :is(th, td):nth-child(n+2):nth-child(-n+4),
-:is(#saleTable, .bill-lines) :is(th, td):nth-child(n+2):nth-child(-n+4) {
-  text-align: right;
-}
-
-/* Bill lines written by purchase.js / retail-sale.js (3.3): a line opens for editing */
-#billTable tbody tr.bill-line, #saleTable tbody tr.bill-line {
-  cursor: pointer;
-}
-
-#billTable td.empty, :is(#saleTable, .bill-lines) td.empty {
-  padding: var(--sp-6) var(--sp-2);
-  color: var(--ink-3);
-  font-weight: var(--w-regular);
-  text-align: center;
-}
-
-/* Phone and tablet: the bill lines are a row list in a panel (3.5). Item over "kg × rate",
-   the amount and × on the right. Same cells as the desktop table. */
-@media (max-width: 1023.98px) {
-  #billTable, :is(#saleTable, .bill-lines) {
-    display: block;
-    margin-top: 0;
-    overflow: hidden;
-    border: 1px solid var(--panel-border);
-    border-radius: var(--r-panel);
-    background: var(--panel-bg);
-    box-shadow: var(--panel-shadow);
-  }
-
-  #billTable thead, :is(#saleTable, .bill-lines) thead {
-    display: none;
-  }
-
-  #billTable tbody, :is(#saleTable, .bill-lines) tbody {
-    display: block;
-  }
-
-  #billTable tbody tr, :is(#saleTable, .bill-lines) tbody tr {
-    display: block;
-    border-bottom: none;
-    background: none;
-  }
-
-  #billTable tbody tr + tr, :is(#saleTable, .bill-lines) tbody tr + tr {
-    border-top: 1px var(--rule-style) var(--line);
-  }
-
-  #billTable tbody tr.bill-line, :is(#saleTable, .bill-lines) tbody tr.bill-line {
-    display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
-    column-gap: var(--sp-1);
-    align-items: center;
-    min-height: var(--row-h);
-    padding: 10px var(--sp-2) 10px var(--sp-4);
-  }
-
-  #billTable tbody tr.bill-line > td, :is(#saleTable, .bill-lines) tbody tr.bill-line > td {
-    display: block;
-    max-width: none;
-    padding: 0;
-    text-align: left;
-  }
-
-  #billTable tbody tr.bill-line > td:nth-child(1), :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(1) {
-    grid-column: 1 / 4;
-    grid-row: 1;
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    color: var(--ink);
-    font-size: var(--fs-body);
-    line-height: 1.3;
-    overflow-wrap: anywhere;
-  }
-
-  #billTable tbody tr.bill-line > :is(td:nth-child(2), td:nth-child(3)),
-  :is(#saleTable, .bill-lines) tbody tr.bill-line > :is(td:nth-child(2), td:nth-child(3)) {
-    grid-row: 2;
-    color: var(--ink-3);
-    font-size: var(--fs-sm);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
-
-  #billTable tbody tr.bill-line > td:nth-child(3), :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(3) {
-    grid-column: 1;
-  }
-
-  #billTable tbody tr.bill-line > td:nth-child(2), :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(2) {
-    grid-column: 2;
-  }
-
-  #billTable tbody tr.bill-line > td:nth-child(2)::before, :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(2)::before {
-    display: inline;
-    content: "× ";
-  }
-
-  #billTable tbody tr.bill-line > td:nth-child(4), :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(4) {
-    grid-column: 4;
-    grid-row: 1 / 3;
-    padding-left: var(--sp-3);
-    color: var(--ink);
-    font-family: var(--font-num);
-    font-size: var(--fs-body);
-    font-weight: var(--w-strong);
-    font-variant-numeric: tabular-nums;
-    text-align: right;
-    white-space: nowrap;
-  }
-
-  #billTable tbody tr.bill-line > td:nth-child(5), :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(5) {
-    grid-column: 5;
-    grid-row: 1 / 3;
-  }
-
-  #billTable tbody tr.bill-line:hover, :is(#saleTable, .bill-lines) tbody tr.bill-line:hover {
-    background: var(--state-hover);
-  }
-
-  /* An empty bill and a check message under a line span the whole row */
-  #billTable :is(td.empty, tr.bill-check-line > td), :is(#saleTable, .bill-lines) :is(td.empty, tr.bill-check-line > td) {
-    display: block;
-    max-width: none;
-  }
-}
-
-/* Horizontal-scroll tables: fade on the right while columns are hidden (ui/scroll-cue.js) */
-.scroll-cue {
-  position: relative;
-}
-
-.scroll-cue-inner {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.scroll-cue.scroll-cue-more::after {
-  content: '\203A';
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 4px;
-  font-size: var(--fs-title);
-  font-weight: var(--w-strong);
-  color: var(--text-secondary);
-  background: linear-gradient(to right, transparent, var(--card-bg) 70%);
-  border-radius: 0 var(--r-panel) var(--r-panel) 0;
-  pointer-events: none;
-}
-
-/* ---- css/tabs.css ---- */
-.tab {
-  display: none;
-  /* The tab is the scroll container. 100dvh is the visible height while the
-     browser's URL bar shows, so the page bottom is not hidden under it (#104);
-     100vh is the fallback for older WebViews. */
-  padding: var(--tab-top) 16px calc(96px + env(safe-area-inset-bottom, 0px)) 16px;
-  max-width: 480px;
-  min-height: 100vh;
-  min-height: 100dvh;
-  height: 100vh;
-  height: 100dvh;
-  margin: 0 auto;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-  overscroll-behavior-y: contain;
-  background: var(--light-bg);
-  position: relative;
-}
-
-.tab.active {
-  animation: fadeInUp 0.3s ease;
-  display: block;
-}
-
-.tab h2 {
-  font-family: var(--font-display);
-  font-size: var(--text-2xl);
-  font-weight: var(--w-strong);
-  letter-spacing: var(--tracking-display);
-  color: var(--text-primary);
-  margin-bottom: 20px;
-  padding-bottom: 12px;
-  border-bottom: 3px solid transparent;
-  position: relative;
-}
-
-.tab h2::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 32px;
-  height: 3px;
-  background: var(--primary-color);
-  border-radius: var(--radius-full);
-}
-
-.tab h3 {
-  font-size: var(--fs-lead);
-  font-weight: var(--w-strong);
-  color: var(--text-primary);
-  margin: 20px 0 12px 0;
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 /* ---- css/toast.css ---- */
 /* Offline / waiting-to-sync pill (#70), between the menu button and the bell */
 .sync-pill {
@@ -1954,6 +1659,22 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   outline-offset: 2px;
 }
 
+/* With zoom allowed, iOS (only it matches this @supports) zooms into any field under 16 px when it is focused */
+@supports (-webkit-touch-callout: none) {
+  body input:not([type]),
+  body input[type="text"],
+  body input[type="number"],
+  body input[type="search"],
+  body input[type="tel"],
+  body input[type="email"],
+  body input[type="password"],
+  body input[type="date"],
+  body select,
+  body textarea {
+    font-size: var(--fs-input) !important;
+  }
+}
+
 /* ---- css/surfaces.css ---- */
 /* Surfaces and feedback (redesign 2.5b, DIRECTION 3.6): panel and rows, metrics, hero figure, meter,
    notice, empty, skeleton, table, dialog, sheet and scrim, toast, loading. Layer 3: tokens only.
@@ -2366,6 +2087,35 @@ a.row:active {
   text-align: right;
 }
 
+/* Horizontal-scroll tables: fade on the right while columns are hidden (ui/scroll-cue.js) */
+.scroll-cue {
+  position: relative;
+}
+
+.scroll-cue-inner {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroll-cue.scroll-cue-more::after {
+  content: '\203A';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 4px;
+  font-size: var(--fs-title);
+  font-weight: var(--w-strong);
+  color: var(--text-secondary);
+  background: linear-gradient(to right, transparent, var(--card-bg) 70%);
+  border-radius: 0 var(--r-panel) var(--r-panel) 0;
+  pointer-events: none;
+}
+
 /* ---------- Scrim, dialog, sheet ---------- */
 .scrim {
   background: var(--scrim);
@@ -2510,23 +2260,6 @@ a.row:active {
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
-}
-
-/* ---- css/buttons.css ---- */
-/* With zoom allowed, iOS (only it matches this @supports) zooms into any field under 16 px when it is focused */
-@supports (-webkit-touch-callout: none) {
-  body input:not([type]),
-  body input[type="text"],
-  body input[type="number"],
-  body input[type="search"],
-  body input[type="tel"],
-  body input[type="email"],
-  body input[type="password"],
-  body input[type="date"],
-  body select,
-  body textarea {
-    font-size: var(--fs-input) !important;
-  }
 }
 
 /* ---- css/auth.css ---- */
@@ -2887,6 +2620,77 @@ body {
 }
 
 /* ---- css/navigation.css ---- */
+/* ---------- Page (.tab): each page is its own scroll container ---------- */
+.tab {
+  display: none;
+  /* The tab is the scroll container. 100dvh is the visible height while the
+     browser's URL bar shows, so the page bottom is not hidden under it (#104);
+     100vh is the fallback for older WebViews. */
+  padding: var(--tab-top) 16px calc(96px + env(safe-area-inset-bottom, 0px)) 16px;
+  max-width: 480px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
+  background: var(--light-bg);
+  position: relative;
+}
+
+.tab.active {
+  animation: fadeInUp 0.3s ease;
+  display: block;
+}
+
+.tab h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--w-strong);
+  letter-spacing: var(--tracking-display);
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 3px solid transparent;
+  position: relative;
+}
+
+.tab h2::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 32px;
+  height: 3px;
+  background: var(--primary-color);
+  border-radius: var(--radius-full);
+}
+
+.tab h3 {
+  font-size: var(--fs-lead);
+  font-weight: var(--w-strong);
+  color: var(--text-primary);
+  margin: 20px 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .side-nav {
   position: fixed;
   top: 0;
@@ -3467,6 +3271,201 @@ body.typing .bottom-nav {
 }
 
 /* ---- css/billing.css ---- */
+/* ---------- Bill lines (#billTable, #saleTable, .bill-lines) ---------- */
+#billTable, :is(#saleTable, .bill-lines) {
+  width: 100%;
+  margin-top: 16px;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+#billTable thead, :is(#saleTable, .bill-lines) thead {
+  display: table-header-group;
+  background: var(--surface-muted);
+  font-weight: var(--w-strong);
+  color: var(--text-primary);
+}
+
+#billTable thead tr, :is(#saleTable, .bill-lines) thead tr {
+  display: table-row;
+}
+
+#billTable thead th, :is(#saleTable, .bill-lines) thead th {
+  display: table-cell;
+  padding: 10px 8px;
+  text-align: center;
+  border-bottom: 1px solid var(--table-rule);
+  font-size: var(--fs-caption);
+  font-weight: var(--w-label);
+  color: var(--text-secondary);
+}
+
+#billTable tbody tr, :is(#saleTable, .bill-lines) tbody tr {
+  display: table-row;
+  background: var(--card-bg);
+  border-bottom: 1px var(--rule-style) var(--border-color);
+  transition: background var(--transition);
+}
+
+#billTable tbody tr:hover, :is(#saleTable, .bill-lines) tbody tr:hover {
+  background: var(--light-bg);
+}
+
+#billTable td, :is(#saleTable, .bill-lines) td {
+  display: table-cell;
+  padding: 14px 8px;
+  text-align: center;
+  font-size: var(--fs-sm);
+  vertical-align: middle;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 0;
+  color: var(--text-primary);
+}
+
+#billTable td:before, :is(#saleTable, .bill-lines) td:before {
+  display: none;
+}
+
+#billTable td:first-child, :is(#saleTable, .bill-lines) td:first-child {
+  text-align: left;
+  font-weight: var(--w-strong);
+}
+
+#billTable td:last-child, :is(#saleTable, .bill-lines) td:last-child {
+  text-align: center;
+}
+
+/* Rate, Qty and Total line up on the right */
+#billTable :is(th, td):nth-child(n+2):nth-child(-n+4),
+:is(#saleTable, .bill-lines) :is(th, td):nth-child(n+2):nth-child(-n+4) {
+  text-align: right;
+}
+
+/* Bill lines written by purchase.js / retail-sale.js (3.3): a line opens for editing */
+#billTable tbody tr.bill-line, #saleTable tbody tr.bill-line {
+  cursor: pointer;
+}
+
+#billTable td.empty, :is(#saleTable, .bill-lines) td.empty {
+  padding: var(--sp-6) var(--sp-2);
+  color: var(--ink-3);
+  font-weight: var(--w-regular);
+  text-align: center;
+}
+
+/* Phone and tablet: the bill lines are a row list in a panel (3.5). Item over "kg × rate",
+   the amount and × on the right. Same cells as the desktop table. */
+@media (max-width: 1023.98px) {
+  #billTable, :is(#saleTable, .bill-lines) {
+    display: block;
+    margin-top: 0;
+    overflow: hidden;
+    border: 1px solid var(--panel-border);
+    border-radius: var(--r-panel);
+    background: var(--panel-bg);
+    box-shadow: var(--panel-shadow);
+  }
+
+  #billTable thead, :is(#saleTable, .bill-lines) thead {
+    display: none;
+  }
+
+  #billTable tbody, :is(#saleTable, .bill-lines) tbody {
+    display: block;
+  }
+
+  #billTable tbody tr, :is(#saleTable, .bill-lines) tbody tr {
+    display: block;
+    border-bottom: none;
+    background: none;
+  }
+
+  #billTable tbody tr + tr, :is(#saleTable, .bill-lines) tbody tr + tr {
+    border-top: 1px var(--rule-style) var(--line);
+  }
+
+  #billTable tbody tr.bill-line, :is(#saleTable, .bill-lines) tbody tr.bill-line {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+    column-gap: var(--sp-1);
+    align-items: center;
+    min-height: var(--row-h);
+    padding: 10px var(--sp-2) 10px var(--sp-4);
+  }
+
+  #billTable tbody tr.bill-line > td, :is(#saleTable, .bill-lines) tbody tr.bill-line > td {
+    display: block;
+    max-width: none;
+    padding: 0;
+    text-align: left;
+  }
+
+  #billTable tbody tr.bill-line > td:nth-child(1), :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(1) {
+    grid-column: 1 / 4;
+    grid-row: 1;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    color: var(--ink);
+    font-size: var(--fs-body);
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  #billTable tbody tr.bill-line > :is(td:nth-child(2), td:nth-child(3)),
+  :is(#saleTable, .bill-lines) tbody tr.bill-line > :is(td:nth-child(2), td:nth-child(3)) {
+    grid-row: 2;
+    color: var(--ink-3);
+    font-size: var(--fs-sm);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  #billTable tbody tr.bill-line > td:nth-child(3), :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(3) {
+    grid-column: 1;
+  }
+
+  #billTable tbody tr.bill-line > td:nth-child(2), :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(2) {
+    grid-column: 2;
+  }
+
+  #billTable tbody tr.bill-line > td:nth-child(2)::before, :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(2)::before {
+    display: inline;
+    content: "× ";
+  }
+
+  #billTable tbody tr.bill-line > td:nth-child(4), :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(4) {
+    grid-column: 4;
+    grid-row: 1 / 3;
+    padding-left: var(--sp-3);
+    color: var(--ink);
+    font-family: var(--font-num);
+    font-size: var(--fs-body);
+    font-weight: var(--w-strong);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  #billTable tbody tr.bill-line > td:nth-child(5), :is(#saleTable, .bill-lines) tbody tr.bill-line > td:nth-child(5) {
+    grid-column: 5;
+    grid-row: 1 / 3;
+  }
+
+  #billTable tbody tr.bill-line:hover, :is(#saleTable, .bill-lines) tbody tr.bill-line:hover {
+    background: var(--state-hover);
+  }
+
+  /* An empty bill and a check message under a line span the whole row */
+  #billTable :is(td.empty, tr.bill-check-line > td), :is(#saleTable, .bill-lines) :is(td.empty, tr.bill-check-line > td) {
+    display: block;
+    max-width: none;
+  }
+}
+
 .bill-form-field {
   display: flex;
   align-items: center;
@@ -8919,7 +8918,7 @@ div.ins-wide,
     margin: var(--desktop-header-h) 0 0 var(--desktop-nav-width);
     max-width: none;
     padding: var(--sp-6) var(--desktop-gutter) var(--desktop-tab-end);
-    /* The page scrolls under the header; dynamic viewport height where supported (tabs.css keeps 100vh for phones). */
+    /* The page scrolls under the header; dynamic viewport height where supported (navigation.css keeps 100vh for phones). */
     min-height: 0;
     height: calc(100vh - var(--desktop-header-h));
     height: calc(100dvh - var(--desktop-header-h));

@@ -16,16 +16,13 @@
 @import url('css/themes/dark.css');
 @import url('css/themes/midnight.css');
 
-/* Components: the older component sheets, then the controls and the shared surfaces over them.
+/* Components: icons and toast, then the controls and the shared surfaces over them.
    Everything below (the app shell, then the pages) overrides a component in its own context. */
 @import url('css/icons.css');
-@import url('css/tables.css');
-@import url('css/tabs.css');
 @import url('css/toast.css');
 @import url('css/forms.css');
 @import url('css/surfaces.css');
 @import url('css/loading.css');
-@import url('css/buttons.css');
 
 /* App shell */
 @import url('css/auth.css');
