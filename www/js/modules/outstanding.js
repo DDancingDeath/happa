@@ -30,7 +30,7 @@ import { track } from '../services/usage.js';
 import { paymentRecordProps, paymentErrorOutcome } from '../tip/scenarios/payment-record.js';
 import { refusedForClock } from '../utils/clock-skew.js';
 import { icon } from '../ui/icons.js';
-import { moneyHtml } from '../ui/components.js';
+import { moneyHtml, emptyState } from '../ui/components.js';
 
 /** i18n key + params for a bill age in days (null = unknown). */
 function ageKey(days) {
@@ -212,7 +212,7 @@ export class OutstandingManager {
                 : currentDueFilter === 'purchase' ? 'ui.outstanding.no_purchase_due'
                 : currentDueFilter === 'retail' ? 'ui.outstanding.no_retail_due'
                 : currentDueFilter === 'wholesale' ? 'ui.outstanding.no_wholesale_due' : 'ui.outstanding.no_sale_due');
-            container.innerHTML = `<p class="empty">${Helpers.escapeHtml(message)}</p>`;
+            container.innerHTML = emptyState({ icon: 'wallet', title: message });
             return;
         }
 
@@ -330,7 +330,7 @@ export class OutstandingManager {
                 ${chase.length ? `<ol class="panel">${chase.map(p => `
                     <li class="row aging-b${p.bucket}"><span class="row-main"><strong>${partyName(p)}</strong> — ${moneyHtml(p.total)} · ${withMoney(t('ui.outstanding.party_overdue', { amount: formatINR(p.overdue) }), p.overdue)}</span>
                         <span class="aging-age tag${esc(AGE_TONE[p.bucket])} aging-b${p.bucket}">${tt('ui.outstanding.oldest', { age: daysText(p.oldestDays) })}</span></li>`).join('')}</ol>`
-                    : `<p class="empty">${tt('ui.outstanding.no_one_owes')}</p>`}
+                    : emptyState({ icon: 'check', tone: 'pos', title: t('ui.outstanding.no_one_owes') })}
             </div>`;
 
         const parties = sortParties(aging.parties, this.agingSort)

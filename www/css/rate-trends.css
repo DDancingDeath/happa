@@ -9,7 +9,6 @@
 .rt-head select { width: auto; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: var(--fs-input); }
 .rt-sub { margin-top: 12px !important; }
 .rt-muted { color: var(--text-secondary); font-size: var(--fs-caption); margin-top: 6px; }
-.rt-empty { color: var(--text-secondary); padding: 12px; text-align: center; font-size: var(--fs-sm); }
 .rt-note { font-size: var(--fs-sm); line-height: 1.45; }
 .rt-ok { font-size: var(--fs-sm); line-height: 1.45; color: var(--on-success-soft); }
 .rt-warn { font-size: var(--fs-sm); line-height: 1.45; color: var(--on-warning-soft); background: var(--warning-soft); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }

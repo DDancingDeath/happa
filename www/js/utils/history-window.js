@@ -240,7 +240,7 @@ export function applyRangeState(scopes, status, opts = {}) {
     let notice = anchor.previousElementSibling;
     // The "older bills may be out of date" hint can sit between the notice and the list.
     while (notice && notice.classList.contains('history-stale-hint')) notice = notice.previousElementSibling;
-    if (!notice || !notice.classList.contains('history-range-notice')) notice = null;
+    if (!notice || !notice.classList.contains('history-range-note')) notice = null;
 
     list.forEach(el => el.classList.toggle('history-range-loading', status === 'loading'));
 
@@ -250,11 +250,13 @@ export function applyRangeState(scopes, status, opts = {}) {
     }
     if (!notice) {
         notice = document.createElement('div');
-        notice.className = 'history-range-notice';
+        notice.className = 'notice info history-range-note';
         notice.setAttribute('role', 'status');
         anchor.parentNode?.insertBefore(notice, anchor);
     }
     notice.classList.toggle('is-error', status === 'error');
+    notice.classList.toggle('info', status !== 'error');
+    notice.classList.toggle('warn', status === 'error');
     notice.textContent = '';
     const text = document.createElement('span');
     if (status === 'loading') {

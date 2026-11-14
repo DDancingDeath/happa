@@ -11,7 +11,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { AuditService } from '../services/audit.js';
 import { AppState } from '../utils/state.js';
 import { t, getLang } from '../i18n/index.js';
-import { moneyHtml } from '../ui/components.js';
+import { moneyHtml, emptyState } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import { toCsv, csvLanguage, readCsvEnglish } from '../utils/statements.js';
 import { saveLeaseReminders } from '../utils/reminders.js';
@@ -95,7 +95,7 @@ function reportHtml(c) {
         <div class="panel metrics rent-metrics">${[['ui.rent.yr_collected', r.total.collected], ['ui.rent.yr_expenses', r.total.expenses], ['ui.rent.yr_net', r.total.net]]
         .map(([k, v]) => `<div class="metric"><div class="metric-label">${c.esc(t(k))}</div><div class="metric-value">${moneyHtml(v)}</div></div>`).join('')}</div>
         ${report.data.cut ? `<p class="notice warn">${icon('alert', 'i-sm')}<span class="grow">${c.esc(t('msg.rent.yr_cut', { count: REPORT_LIMIT }))}</span></p>` : ''}
-        <p class="rent-help">${c.esc(t('ui.rent.yr_help'))}</p>${props || `<p class="empty">${c.esc(t('ui.rent.yr_none'))}</p>`}`;
+        <p class="rent-help">${c.esc(t('ui.rent.yr_help'))}</p>${props || emptyState({ icon: 'file', title: t('ui.rent.yr_none') })}`;
 }
 
 async function load(c) {

@@ -13,31 +13,22 @@
     outline-color: var(--warning-line);
 }
 
-.bill-check-banner {
+.bill-check-notice {
     position: sticky;
     top: 0;
     z-index: 5;
+    flex-direction: column;
+    gap: var(--sp-1);
     margin: 0 0 12px;
-    padding: 8px 12px;
-    border-radius: var(--r-panel);
     border: 1px solid var(--negative-line);
-    /* The soft tint over an opaque surface: the banner sticks over the bill as it scrolls */
-    background: linear-gradient(var(--negative-soft), var(--negative-soft)), var(--surface);
-    color: var(--negative);
-    font-size: var(--fs-sm);
+    border-radius: var(--r-panel);
 }
 
-.bill-check-banner[hidden] {
-    display: none;
-}
-
-.bill-check-banner.bill-check-warn {
+.bill-check-notice.warn {
     border-color: var(--warning-line);
-    background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--surface);
-    color: var(--warning);
 }
 
-.bill-check-banner-head {
+.bill-check-notice-head {
     display: block;
     width: 100%;
     padding: 0;
@@ -50,11 +41,10 @@
     cursor: pointer;
 }
 
-.bill-check-banner ul {
-    margin: 6px 0 0;
+.bill-check-notice ul {
+    margin: 0;
     padding-left: 4px;
     list-style: none;
-    font-size: var(--fs-sm);
 }
 
 input.bill-check-block,

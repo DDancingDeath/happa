@@ -11,6 +11,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { CashManagementManager } from './cash-management.js';
 import { sessionForDate } from '../utils/cash-session.js';
 import { t, tn, getLang, loadAllCatalogues } from '../i18n/index.js';
+import { emptyState } from '../ui/components.js';
 import { canOpenPage } from '../utils/role-access.js';
 import { on, REFRESH, REMINDERS_CHANGED } from '../utils/events.js';
 import { overdueReminder, rentReminder, leaseReminder, leaseReminderText } from '../utils/reminders.js';
@@ -398,7 +399,7 @@ export const DayManager = {
         if (!list) return;
         const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
         if (!rows.length) {
-            list.innerHTML = `<p class="empty-state">${esc(t('ui.today.no_bills_today'))}</p>`;
+            list.innerHTML = emptyState({ icon: 'receipt', title: t('ui.today.no_bills_today') });
         } else {
             const shown = this.showAllBills ? rows : rows.slice(0, BILLS_SHOWN);
             list.innerHTML = shown.map(({ type, bill, at, total }) => {
@@ -447,7 +448,7 @@ export const DayManager = {
         if (!container) return;
 
         if (itemsArray.length === 0) {
-            container.innerHTML = `<p class="empty-state">${Helpers.escapeHtml(t(type === 'purchase' ? 'ui.today.no_purchases_today' : 'ui.today.no_sales_today'))}</p>`;
+            container.innerHTML = emptyState({ icon: 'receipt', title: t(type === 'purchase' ? 'ui.today.no_purchases_today' : 'ui.today.no_sales_today') });
             return;
         }
 

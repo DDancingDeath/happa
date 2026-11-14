@@ -204,7 +204,8 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   unit and receipt-list dialogs use `.metrics`, `.table`, `.field`s, `.btn`s, `.tag` and `.notice`, with `moneyHtml()`
   figures; the receipt itself, its title and its share text are unchanged. The tenant's `/r/<token>` page is standalone
   like `/download`: `www/r/rent-history.css` copies the tokens it uses into `:root` (same test).
-- **Feedback** `.notice` (`.pos/.neg/.warn/.info`), `.empty`, `.skel`, `.toast` (near-black; light in the
+- **Notices and empty states (C4b)**: the old banners are notices: unsaved bill `.autosave-notice` (warn), live bill checks `.bill-check-notice` (neg / warn, solid, sticky), wrong clock `.clock-notice` and printer permission `.printer-perm-notice` (float), the Android update `.app-update` (info, solid, above the tab bar), a voided bill `.bill-voided-notice` and History's older-bills line `.history-range-note` (info, warn on error). Every page's empty list is an `emptyState()`.
+- **Feedback** `.notice` (`.pos/.neg/.warn/.info`; `.solid` puts the tint on an opaque surface for a notice that sticks or floats, `.float` pins it to the top of the screen, `.notice-actions` holds its buttons; `[hidden]` always hides it), `.empty` (write it with `emptyState({ icon, title, text, action, tone })` from `ui/components.js`: the icon tile, a title, an optional line and an optional button; loading and error lines stay a plain `<p class="empty">`), `.skel`, `.toast` (near-black; light in the
   Dark theme), `.dialog` / `.sheet` / `.scrim` (old `.modal-overlay > .modal-box`), `.spinner` (blocking
   saves only). Dialog buttons: Cancel (ghost) on the left, one primary on the right, labelled with a verb; a destructive
   confirm (Void bill) passes `{ confirmLabel, danger: true }` to `UIManager.showModal` / `showModalWithHtml` (`.modal-btn-danger`).

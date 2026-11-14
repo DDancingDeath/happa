@@ -14,6 +14,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { formatRupees } from '../utils/money.js';
 import { t, getLang, tn } from '../i18n/index.js';
+import { emptyState } from '../ui/components.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { setInsightsContext } from '../utils/insights-context.js';
 import { isQuotaExhaustedError } from '../utils/quota-guard.js';
@@ -738,7 +739,7 @@ export const RateTrendsManager = {
         const el = document.getElementById('rtOutlook');
         if (!el) return;
         if (!this.monthB.length && !this.series) {
-            el.innerHTML = `<div class="rt-empty">${esc(t('ui.trends.no_history_item'))}</div>`;
+            el.innerHTML = emptyState({ icon: 'trend', title: t('ui.trends.no_history_item') });
             return;
         }
         el.innerHTML = ITEM_RATE_KINDS.map(kind => {
@@ -771,7 +772,7 @@ export const RateTrendsManager = {
         const { periods, bills, items, cut, rows } = this.lineData();
         const byPeriod = new Map(rows.map(r => [r.period, r]));
         if (!periods.length) {
-            el.innerHTML = `<div class="rt-empty">${esc(t('ui.trends.no_data'))}</div>`;
+            el.innerHTML = emptyState({ icon: 'trend', title: t('ui.trends.no_data') });
             return;
         }
         const body = periods.slice().reverse().map(p => {
@@ -796,14 +797,14 @@ export const RateTrendsManager = {
         if (!el) return;
         const cutoff = this.cutoffMs();
         if (!cutoff) {
-            el.innerHTML = `<div class="rt-empty">${esc(t('ui.trends.steps_after_history'))}</div>`;
+            el.innerHTML = emptyState({ icon: 'trend', title: t('ui.trends.steps_after_history') });
             return;
         }
         const rows = rateChangeRows(this.series);
         const current = ITEM_RATE_KINDS.map(k => `${esc(t(KIND_KEYS[k]))}: ${rupees(this.series?.[k]?.current ?? null)}`).join(' · ');
         const head = `<div class="rt-muted">${esc(t('ui.trends.current_items_rate'))} ${current}</div>`;
         if (!rows.length) {
-            el.innerHTML = `${head}<div class="rt-empty">${esc(t('ui.trends.no_items_changes', { date: dateText(cutoff) }))}</div>`;
+            el.innerHTML = `${head}${emptyState({ icon: 'trend', title: t('ui.trends.no_items_changes', { date: dateText(cutoff) }) })}`;
             return;
         }
         el.innerHTML = `${head}<table class="table rt-table"><thead><tr><th>${esc(t('ui.trends.th_date'))}</th><th>${esc(t('ui.trends.th_rate'))}</th>
@@ -1100,7 +1101,7 @@ export const RateTrendsManager = {
         const el = document.getElementById('rtWeekly');
         if (!el) return;
         if (!itemId || this.metaError === 'denied' || !this.meta?.backfillDone) {
-            el.innerHTML = `<div class="rt-empty">${esc(t(this.meta?.backfillDone ? 'ui.trends.no_data' : 'ui.trends.traffic_needs_history'))}</div>`;
+            el.innerHTML = emptyState({ icon: 'trend', title: t(this.meta?.backfillDone ? 'ui.trends.no_data' : 'ui.trends.traffic_needs_history') });
             return;
         }
         let docs;
@@ -1121,7 +1122,7 @@ export const RateTrendsManager = {
         const now = Date.now();
         const rows = weeklyItemRows(weekBuckets(docs), weeksBackStart(now, this.trafficWeeks), istWeekStart(now));
         if (!rows.some(r => r.kg > 0)) {
-            el.innerHTML = `<div class="rt-empty">${esc(t('ui.trends.no_data'))}</div>`;
+            el.innerHTML = emptyState({ icon: 'trend', title: t('ui.trends.no_data') });
             return;
         }
         const lang = getLang();
@@ -1142,7 +1143,7 @@ export const RateTrendsManager = {
         if (!tr) {
             el.innerHTML = '';
         } else if (tr.state === 'loading') {
-            el.innerHTML = `<div class="rt-empty">${esc(t('ui.trends.loading'))}</div>`;
+            el.innerHTML = `<p class="empty">${esc(t('ui.trends.loading'))}</p>`;
         } else if (tr.state === 'denied') {
             el.innerHTML = `<div class="rt-note">${esc(t('ui.trends.rules_not_published'))}</div>`;
         } else if (tr.state === 'no-history') {
@@ -1150,7 +1151,7 @@ export const RateTrendsManager = {
         } else if (tr.state === 'error') {
             el.innerHTML = `<div class="rt-warn">${esc(t('ui.trends.traffic_error'))}</div>`;
         } else if (!tr.rows.length) {
-            el.innerHTML = `<div class="rt-empty">${esc(t('ui.trends.traffic_empty', { month: monthLabel(tr.month, lang) }))}</div>`;
+            el.innerHTML = emptyState({ icon: 'trend', title: t('ui.trends.traffic_empty', { month: monthLabel(tr.month, lang) }) });
         } else {
             const { prev, lastYear } = comparisonMonths(tr.month);
             const cell = (s) => `${kgText(s.kg)}<div class="rt-muted">${esc(tn('ui.trends.n_bills', s.bills))}</div>`;
@@ -1179,7 +1180,7 @@ export const RateTrendsManager = {
         const month = this.trafficMonth;
         const lang = getLang();
         if (!itemId || !month) {
-            el.innerHTML = `<div class="rt-empty">${esc(t('ui.trends.no_data'))}</div>`;
+            el.innerHTML = emptyState({ icon: 'trend', title: t('ui.trends.no_data') });
             return;
         }
         document.querySelectorAll('#rtTrafficTable tr.rt-click').forEach(tr => tr.classList.toggle('rt-selected', tr.dataset.item === itemId));
@@ -1195,7 +1196,7 @@ export const RateTrendsManager = {
         const d = dailyTraffic(loadedBills(), AppState.items || [], itemId, month);
         const moved = (x) => TRAFFIC_KINDS.some(k => x[k].kg > 0);
         if (!moved(d.total)) {
-            el.innerHTML = `<div class="rt-empty">${esc(t('ui.trends.no_movement', { month: monthLabel(month, lang) }))}</div>`;
+            el.innerHTML = emptyState({ icon: 'trend', title: t('ui.trends.no_movement', { month: monthLabel(month, lang) }) });
             return;
         }
         const weekRows = d.weeks.map(w => `<tr class="rt-week"><td>${esc(t('ui.trends.week_n', { n: w.week, from: w.from, to: w.to }))}</td>${cells(w)}</tr>`).join('');

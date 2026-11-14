@@ -6,7 +6,7 @@
 
 import { Helpers } from '../utils/helpers.js';
 import { formatINR } from '../utils/due-reminder.js';
-import { moneyHtml, moneyInText } from '../ui/components.js';
+import { moneyHtml, moneyInText, emptyState } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import { t, getLang } from '../i18n/index.js';
 import * as store from './rent-store.js';
@@ -93,7 +93,7 @@ function renderPropertyView(d, ix, rows) {
             </div>
             <div class="row-meta">${moneyInText(t('ui.rent.prop_month_line', { expected: formatINR(s.expected), collected: formatINR(s.collected) }), [s.expected, s.collected])}${ex.byProperty[p.id] ? ` · ${moneyInText(t('ui.rent.exp_line', { amount: formatINR(ex.byProperty[p.id]) }), ex.byProperty[p.id])}` : ''}</div>
         </button>`).join('');
-    const empty = `<p class="empty">${et('ui.rent.no_properties')}</p>`
+    const empty = emptyState({ icon: 'building', title: t('ui.rent.no_properties') })
         + (c.canWrite ? btn(' btn-primary', 'page', `'properties'`, 'ui.rent.add_property', icon('plus', 'i-sm')) : '');
     return `<div class="panel metrics rent-metrics">${totalsCards(summarize(rows), ex.total, c.received(d))}</div>
         ${cards ? `<div class="panel">${cards}</div>` : empty}`;
@@ -112,7 +112,7 @@ function renderPropertyDetail(d, ix, rows) {
             <div class="rent-sub">${esc(typeCounts(s.byType))} · ${et('ui.rent.occupancy', { occupied: s.occupied, vacant: s.vacant })}</div>
         </div>
         <div class="panel metrics rent-metrics">${totalsCards(s, expenseTotals(d.expenses, c.state.month).byProperty[p.id] || 0)}</div>
-        ${groups || `<p class="empty">${et('ui.rent.no_units')}</p>`}`;
+        ${groups || emptyState({ icon: 'home', title: t('ui.rent.no_units') })}`;
 }
 
 /** One unit: tenant, rent, status, amount due, open months, quick actions. */
@@ -174,7 +174,7 @@ function renderUnitView(d, rows) {
 function unitListHtml(d, rows) {
     const shown = filterRows(rows, c.state.filters);
     return `<div class="panel metrics rent-metrics">${totalsCards(summarize(shown))}</div>
-        ${shown.length ? `<div class="panel">${shown.map(r => unitRowHtml(r, d)).join('')}</div>` : `<p class="empty">${et('ui.rent.no_matching_units')}</p>`}`;
+        ${shown.length ? `<div class="panel">${shown.map(r => unitRowHtml(r, d)).join('')}</div>` : emptyState({ icon: 'search', title: t('ui.rent.no_matching_units') })}`;
 }
 
 /** Tenants who moved out and still owe rent (not on any unit any more). */

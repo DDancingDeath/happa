@@ -20,7 +20,7 @@ import { buildBackup, isDeleteConfirmed, DELETE_CONFIRM_WORD, canClearCollection
 import { t } from '../i18n/index.js';
 import { UserAdmin, isRemovedProfile, logUserAction } from '../services/user-admin.js';
 import { icon } from '../ui/icons.js';
-import { moneyHtml } from '../ui/components.js';
+import { moneyHtml, emptyState } from '../ui/components.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 /** Most audit entries the activity report reads per tap. */
@@ -314,7 +314,7 @@ const AdminManager = {
         if (loadedFrom && loadedFrom > from) notes.push(t('ui.admin.activity_bills_from', { date: formatDay(loadedFrom, { lang: getLang() }) }));
         const noteHtml = notes.map(n => `<p class="notice admin-note">${Helpers.escapeHtml(n)}</p>`).join('');
         if (!rows.length) {
-            host.innerHTML = `${noteHtml}<p class="empty">${tx('ui.admin.activity_none')}</p>`;
+            host.innerHTML = `${noteHtml}${emptyState({ icon: 'list', title: t('ui.admin.activity_none') })}`;
             return;
         }
         const cell = (v) => `<td class="num">${Helpers.escapeHtml(String(v))}</td>`;
@@ -339,7 +339,7 @@ const AdminManager = {
         if (!container) return;
 
         if (users.length === 0) {
-            container.innerHTML = `<div class="empty"><span class="lead-icon pos">${icon('check')}</span>${tx('ui.admin.no_pending')}</div>`;
+            container.innerHTML = emptyState({ icon: 'check', tone: 'pos', title: t('ui.admin.no_pending') });
             return;
         }
 
@@ -355,7 +355,7 @@ const AdminManager = {
         if (!container) return;
 
         if (users.length === 0) {
-            container.innerHTML = `<div class="empty"><span class="lead-icon">${icon('user')}</span>${tx('ui.admin.no_active_users')}</div>`;
+            container.innerHTML = emptyState({ icon: 'user', title: t('ui.admin.no_active_users') });
             return;
         }
 

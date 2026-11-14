@@ -12,7 +12,7 @@ import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
 import { todayLocalISO } from '../utils/dates.js';
 import { formatINR } from '../utils/due-reminder.js';
-import { moneyHtml } from '../ui/components.js';
+import { moneyHtml, emptyState } from '../ui/components.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import * as store from './rent-store.js';
 import * as es from './rent-expense-store.js';
@@ -50,7 +50,7 @@ export async function showExpenses(c, pid) {
             <div class="metric-value">${moneyHtml(expenseTotals(store.snapshot().expenses, c.month).byProperty[pid] || 0)}</div></div></div>
         <p class="rent-help">${c.esc(t('ui.rent.exp_help'))}</p>
         <div class="rent-actions">${act(c, 'add', pid, 'ui.rent.exp_add', ' btn-primary')}</div>
-        ${rows ? `<ul class="rent-months">${rows}</ul>` : `<p class="empty">${c.esc(t('ui.rent.exp_none'))}</p>`}`, { info: true });
+        ${rows ? `<ul class="rent-months">${rows}</ul>` : emptyState({ icon: 'banknote', title: t('ui.rent.exp_none') })}`, { info: true });
 }
 
 /** Add (any rentals role), or the owner's edit / delete of expense `id`. */

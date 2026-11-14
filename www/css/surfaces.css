@@ -283,9 +283,41 @@ a.row:active {
   font-weight: var(--w-strong);
 }
 
-/* ---------- Empty (old: .empty-state lines) and skeleton ---------- */
-.empty,
-.empty-state {
+.notice[hidden],
+.empty[hidden] {
+  display: none;
+}
+
+.notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+/* Solid: the tint over an opaque surface, for a notice that sticks or floats over the page */
+.notice.solid {
+  background-color: var(--surface);
+  background-image: linear-gradient(var(--notice-tint, transparent), var(--notice-tint, transparent));
+}
+
+.notice.solid.neg { --notice-tint: var(--negative-soft); }
+.notice.solid.warn { --notice-tint: var(--warning-soft); }
+.notice.solid.info { --notice-tint: var(--info-soft); }
+
+/* Float: one message for the whole app at the top of the screen (wrong clock, printer permission) */
+.notice.float {
+  position: fixed;
+  top: calc(var(--sp-2) + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  align-items: center;
+  width: min(92vw, 560px);
+  box-shadow: var(--e2);
+}
+
+/* ---------- Empty and skeleton ---------- */
+.empty {
   padding: var(--sp-6) var(--sp-4);
   color: var(--ink-3);
   font-size: var(--fs-sm);
@@ -293,6 +325,7 @@ a.row:active {
 }
 
 .empty .lead-icon {
+  display: flex;
   width: 44px;
   height: 44px;
   margin: 0 auto var(--sp-3);
@@ -304,6 +337,18 @@ a.row:active {
   color: var(--ink);
   font-size: var(--fs-body);
   font-weight: var(--w-strong);
+}
+
+.empty p {
+  margin: 0;
+}
+
+.empty.tone-neg {
+  color: var(--negative);
+}
+
+.empty > .btn {
+  margin-top: var(--sp-3);
 }
 
 .skel {

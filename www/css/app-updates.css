@@ -58,56 +58,19 @@
   margin-top: 8px;
 }
 
-.app-update-banner {
+.app-update {
   position: fixed;
-  left: 8px;
-  right: 8px;
-  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  left: var(--sp-2);
+  right: var(--sp-2);
+  bottom: calc(var(--sp-2) + env(safe-area-inset-bottom, 0px));
   z-index: 8999;
-  display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: #1e293b;
-  color: #fff;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-  font-size: var(--fs-sm);
+  box-shadow: var(--e3);
 }
 
 .app-update-text {
-  display: flex;
-  flex-direction: column;
   flex: 1 1 180px;
-}
-
-.app-update-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.app-update-download {
-  background: var(--btn-success);
-  color: var(--btn-sale-ink);
-  border: 0;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-weight: var(--w-strong);
-}
-
-.app-update-howto {
-  color: #c7d2fe;
-  font-size: var(--fs-sm);
-}
-
-.app-update-close {
-  background: transparent;
-  color: #fff;
-  border: 0;
-  font-size: var(--fs-lead);
-  padding: 4px 8px;
 }
 
 body.dark-mode .app-sheet {

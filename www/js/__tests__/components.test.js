@@ -1,5 +1,5 @@
 /** @jest-environment jsdom */
-import { moneyHtml, moneyInText } from '../ui/components.js';
+import { emptyState, moneyHtml, moneyInText } from '../ui/components.js';
 import { formatRupees } from '../utils/money.js';
 
 describe('moneyHtml', () => {
@@ -63,4 +63,28 @@ describe('moneyInText', () => {
         expect(d.textContent).toBe('₹12.50/kg → ₹13.00/kg');
         expect([...d.querySelectorAll('.money')].map(m => m.textContent)).toEqual(['₹12.50', '₹13.00']);
     });
+});describe('emptyState', () => {
+    test('icon tile, escaped title and line, then the action', () => {
+        const d = document.createElement('div');
+        d.innerHTML = emptyState({ icon: 'receipt', title: 'No <b>bills</b>', text: 'Ram & Sons', tone: 'pos', action: { label: 'Add <x>', onclick: 'rentals.add("a")' } });
+        const empty = d.firstElementChild;
+        expect(empty.className).toBe('empty');
+        expect([...empty.children].map(c => c.tagName)).toEqual(['SPAN', 'B', 'P', 'BUTTON']);
+        expect(empty.querySelector('.lead-icon.pos > svg > use').getAttribute('href')).toBe('#i-receipt');
+        expect(empty.querySelector('button').textContent).toBe('Add <x>');
+        expect(empty.querySelector('button').dataset.onclick).toBe('rentals.add("a")');
+        expect(empty.querySelector('b').textContent).toBe('No <b>bills</b>');
+        expect(empty.querySelector('p').textContent).toBe('Ram & Sons');
+    });
+
+    test('title only: no tile, no line', () => {
+        const d = document.createElement('div');
+        d.innerHTML = emptyState({ title: 'Nothing' });
+        expect(d.innerHTML).toBe('<div class="empty"><b>Nothing</b></div>');
+    });
+});
+test('a hidden notice or empty state stays hidden (.notice / .empty set display)', () => {
+    const css = require('fs').readFileSync(require('path').join(__dirname, '../../css/surfaces.css'), 'utf8');
+    const rule = css.match(/\.notice\[hidden\],\s*\.empty\[hidden\]\s*\{([^}]*)\}/);
+    expect(rule && rule[1]).toMatch(/display:\s*none/);
 });

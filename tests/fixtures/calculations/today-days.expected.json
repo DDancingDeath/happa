@@ -139,8 +139,8 @@
       "todayDueToPay": "₹0"
     },
     "netColor": "",
-    "purchaseItems": "<p class=\"empty-state\">No purchases today</p>",
-    "saleItems": "<p class=\"empty-state\">No sales today</p>",
+    "purchaseItems": "<div class=\"empty\"><span class=\"lead-icon\"><svg class=\"i\" width=\"1em\" height=\"1em\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#i-receipt\"></use></svg></span><b>No purchases today</b></div>",
+    "saleItems": "<div class=\"empty\"><span class=\"lead-icon\"><svg class=\"i\" width=\"1em\" height=\"1em\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#i-receipt\"></use></svg></span><b>No sales today</b></div>",
     "dayReport": {
       "sales": 0,
       "saleCount": 0,

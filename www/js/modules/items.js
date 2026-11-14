@@ -27,7 +27,7 @@ import { CHANGED_ELSEWHERE, isOffline, writeErrorKey } from '../utils/write-conf
 import { suggestHindiName, suggestEnglishName, autofillValue } from '../utils/item-name-autofill.js';
 import { formatRate, formatKg } from '../utils/money.js';
 import { icon } from '../ui/icons.js';
-import { moneyHtml } from '../ui/components.js';
+import { moneyHtml, emptyState } from '../ui/components.js';
 
 /**
  * Items Manager - Manages inventory items and rates
@@ -743,7 +743,7 @@ const ItemsManager = {
         
         if (sortedItems.length === 0) {
             const colspan = isStaff ? '3' : '4';
-            tbody.innerHTML = `<tr><td colspan="${colspan}"><p class="empty">${Helpers.escapeHtml(t('ui.stock.no_items_found'))}</p></td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${colspan}">${emptyState({ icon: 'search', title: t('ui.stock.no_items_found') })}</td></tr>`;
         }
         attachScrollCue(document.getElementById('itemsTableScroll'));
     },

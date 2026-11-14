@@ -166,24 +166,11 @@
   text-align: center;
 }
 
-.history-range-notice {
-  display: flex;
+.history-range-note {
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-  gap: 6px;
   margin: 8px 0 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--primary-soft);
-  color: var(--on-primary-soft);
-  font-size: var(--fs-sm);
-  font-weight: var(--w-regular);
-}
-
-.history-range-notice.is-error {
-  background: var(--warning-soft);
-  color: var(--on-warning-soft);
 }
 
 .history-range-loading {
@@ -597,25 +584,17 @@
   color: var(--text-secondary);
 }
 
-/* Bill details: voided banner, edit history (#121), reason dialog */
-.bill-voided-banner {
+/* Bill details: voided notice, edit history (#121), reason dialog */
+.bill-voided-notice {
+  flex-direction: column;
+  gap: var(--sp-1);
   margin: 0 0 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border-left: 4px solid var(--border-strong);
-  background: var(--surface-muted);
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
-.bill-voided-banner__reason {
-  margin-top: 6px;
-}
-
-.bill-voided-banner__by {
-  margin-top: 2px;
+.bill-voided-notice__by {
   font-size: var(--fs-caption);
-  color: var(--text-secondary);
+  color: var(--ink-3);
 }
 
 .bill-edits {

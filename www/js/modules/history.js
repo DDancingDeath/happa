@@ -38,7 +38,7 @@ import { openExternal } from '../utils/open-external.js';
 import { billTraceId } from '../utils/status-report.js';
 import { track } from '../services/usage.js';
 import { t, tn, loadAllCatalogues } from '../i18n/index.js';
-import { moneyHtml, moneyInText } from '../ui/components.js';
+import { moneyHtml, moneyInText, emptyState } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import { billLabour, billLineTotal, billTotal, hasBillAmount, isActiveBill, isOpeningRecord, readPayment, UNKNOWN_AMOUNT, formatRupees, formatAmount, formatKg, toMoney } from '../utils/money.js';
 
@@ -280,7 +280,7 @@ export class HistoryManager {
         }
 
         if (sortedBills.length === 0 && !showOpenings && !showVoided) {
-            container.innerHTML = `<p class="empty">${Helpers.escapeHtml(this.emptyMessage(type, searchTerm))}</p>`;
+            container.innerHTML = emptyState({ icon: 'receipt', title: this.emptyMessage(type, searchTerm) });
             this.renderShowMore(container);
             this.updateOlderHistoryUi();
             return;
@@ -1142,7 +1142,7 @@ export class HistoryManager {
         if (bills.length === 0 && this.pageOpenings.length === 0 && this.pageVoided.length === 0) {
             const searchInput = document.getElementById('historySearch');
             const searchTerm = searchInput ? searchInput.value : '';
-            container.innerHTML = `<p class="empty">${Helpers.escapeHtml(this.emptyMessage(type, searchTerm))}</p>`;
+            container.innerHTML = emptyState({ icon: 'receipt', title: this.emptyMessage(type, searchTerm) });
             return;
         }
 

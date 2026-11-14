@@ -8,7 +8,7 @@
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { formatINR, whatsAppReminderUrl } from '../utils/due-reminder.js';
-import { moneyHtml, moneyInText } from '../ui/components.js';
+import { moneyHtml, moneyInText, emptyState } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import { openExternal } from '../utils/open-external.js';
 import { t, getLang } from '../i18n/index.js';
@@ -66,7 +66,7 @@ function listRows(d, adv) {
                 ${more.map(x => `<span class="rent-sub">${x}</span>`).join('')}</span>
             <span class="row-trail">${due.total > 0 ? `<span class="row-amt">${money(due.total)}</span>` : ''}${statusOf(due)}</span></span>
         </button>`;
-    }).join('') || `<p class="empty">${et(d.tenants.length ? 'ui.rent.no_match' : 'ui.rent.no_tenants_hint')}</p>`;
+    }).join('') || emptyState({ icon: 'users', title: t(d.tenants.length ? 'ui.rent.no_match' : 'ui.rent.no_tenants_hint') });
 }
 
 function renderTenants(d) {
@@ -149,7 +149,7 @@ function renderTenant(d, id) {
             <div class="rent-actions">${w ? btn('', 'editLease', `'${lid}'`, 'ui.rent.update_rent') : ''}${meterBtn}
                 ${w ? btn(' btn-ghost tone-neg', 'moveOut', `'${lid}'`, 'ui.rent.move_out') : ''}</div>
         </section>`
-        : `<section class="panel panel-pad rent-box"><p class="empty">${et('ui.rent.no_unit')}.</p>${w ? btn('', 'moveIn', `'${tid}'`, 'ui.rent.let_unit') : ''}</section>`;
+        : `<section class="panel panel-pad rent-box">${emptyState({ icon: 'home', title: `${t('ui.rent.no_unit')}.` })}${w ? btn('', 'moveIn', `'${tid}'`, 'ui.rent.let_unit') : ''}</section>`;
     return `<div class="rent-detail" data-tenant-detail="${esc(id)}">
         <div class="rent-detail-bar">${btn(' btn-ghost btn-sm', 'back', '', 'ui.nav.tenants', icon('chevL', 'i-sm'))}
             ${menu.length ? `<details class="rent-menu"><summary class="btn btn-ghost btn-icon" aria-label="${et('ui.rent.more_actions')}">${icon('dots')}</summary><div class="panel rent-menu-list">${menu.join('')}</div></details>` : ''}</div>
@@ -158,7 +158,7 @@ function renderTenant(d, id) {
         ${tn.notes ? `<div class="rent-sub">${esc(tn.notes)}</div>` : ''}
         <section class="panel panel-pad rent-box">
             ${due.total > 0 ? `<div class="rent-entry-head"><span class="rent-owes">${moneyInText(t('ui.rent.owes', { amount: formatINR(due.total) }), due.total)}</span><span>${statusOf(due)}</span></div>
-                <ul class="rent-months">${months}</ul>` : `<p class="empty">${et('ui.rent.no_rent_due')}</p>`}
+                <ul class="rent-months">${months}</ul>` : emptyState({ icon: 'check', tone: 'pos', title: t('ui.rent.no_rent_due') })}
             ${current?.adv > 0 ? `<div class="rent-sub">${moneyInText(t('ui.rent.adv_next', { amount: formatINR(current.adv) }), current.adv)}</div>` : ''}
             <div class="rent-actions">${payActs}${c.receiptsBtn(id)}${btn('', 'deposit', `'${tid}'`, 'ui.rent.dep_btn', icon('coins', 'i-sm'))}</div>
         </section>

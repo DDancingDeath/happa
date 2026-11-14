@@ -10,6 +10,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { AppState } from '../utils/state.js';
 import { t, getLang } from '../i18n/index.js';
+import { emptyState } from '../ui/components.js';
 import { formatRupees } from '../utils/money.js';
 import { formatMonth, formatDay, todayLocalISO } from '../utils/dates.js';
 import * as repo from '../firebase/repos/workers.js';
@@ -179,7 +180,7 @@ function renderMonths(months) {
 
 function renderEntries(worker) {
     const list = [...(worker.entries || [])].sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.month).localeCompare(String(a.month)));
-    if (!list.length) return `<p class="empty">${et('ui.workers.no_entries')}</p>`;
+    if (!list.length) return emptyState({ icon: 'list', title: t('ui.workers.no_entries') });
     return list.map(e => `<div class="row" data-entry="${esc(e.id)}">
             <span class="row-main"><span class="row-title">${money(e.amount)} · ${et(KIND_KEYS[e.kind] || KIND_KEYS.pay)}</span>
             <span class="row-meta">${et('ui.workers.entry_meta', { month: formatMonth(`${e.month}-01`, { lang: getLang() }), date: formatDay(e.date, { lang: getLang() }), mode: t(MODE_KEYS[e.mode] || MODE_KEYS.cash) })}${e.note ? ` · ${esc(e.note)}` : ''}</span></span>
@@ -227,7 +228,7 @@ export function render() {
     const open = items.find(i => i.worker.id === state.open);
     const list = items.length
         ? `<div class="panel wp-list">${items.map(renderRow).join('')}</div>`
-        : `<p class="empty">${et('ui.workers.none')}</p>`;
+        : emptyState({ icon: 'users', title: t('ui.workers.none') });
     root.innerHTML = `${renderSummary(sum)}
         <div class="wp-actions"><button type="button" class="btn btn-tonal" data-onclick="workers.showForm('add')">${et('ui.workers.add')}</button></div>
         ${state.form === 'add' ? renderAddForm() : ''}
