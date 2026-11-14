@@ -1,12 +1,12 @@
 /* ==================== SUMMARY ROWS ==================== */
 .amount-positive {
-    color: var(--success-color);
+    color: var(--positive);
     font-weight: var(--w-strong);
     font-size: var(--fs-lead);
 }
 
 .amount-negative {
-    color: var(--danger-color);
+    color: var(--negative);
     font-weight: var(--w-strong);
     font-size: var(--fs-lead);
 }
@@ -15,24 +15,24 @@
 .form-control {
     width: 100%;
     padding: 13px 15px;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-control);
     font-size: var(--fs-body);
-    transition: all var(--transition);
-    background: var(--card-bg);
+    transition: all var(--dur-2) var(--ease);
+    background: var(--panel-bg);
     box-sizing: border-box;
 }
 
 .form-control:focus {
     outline: none;
-    border-color: var(--primary-color);
-    box-shadow: var(--focus-ring);
+    border-color: var(--accent-text);
+    box-shadow: var(--focus);
 }
 
 /* ==================== CARD BREAKDOWN (#215), an app dialog ==================== */
 .fin-period {
     font-size: var(--fs-caption);
-    color: var(--text-muted);
+    color: var(--ink-3);
 }
 
 .fin-value {
@@ -47,8 +47,8 @@
 }
 
 .fin-term {
-    border: 1px solid var(--border-color);
-    background: var(--light-bg);
+    border: 1px solid var(--line);
+    background: var(--bg);
     border-radius: var(--r-lg);
     padding: 2px 10px;
     font-size: var(--fs-sm);
@@ -75,7 +75,7 @@
     justify-content: space-between;
     gap: 10px;
     padding: 10px 0;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--line);
 }
 
 .fin-line-tap {
@@ -94,7 +94,7 @@
 
 .fin-line-sub {
     font-size: var(--fs-caption);
-    color: var(--text-muted);
+    color: var(--ink-3);
     overflow-wrap: anywhere;
 }
 
@@ -111,7 +111,7 @@
     padding: 10px 0;
     background: none;
     border: none;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--line);
     font-size: var(--fs-sm);
     text-align: left;
     cursor: pointer;
@@ -131,7 +131,7 @@
     display: flex;
     justify-content: space-between;
     padding-top: var(--sp-3);
-    border-top: 2px solid var(--border-color);
+    border-top: 2px solid var(--line);
     font-size: var(--fs-sm);
 }
 
@@ -144,6 +144,6 @@
 
 .fin-note {
     background: var(--warning-soft);
-    border-color: var(--warning-border);
-    color: var(--on-warning-soft);
+    border-color: var(--warning-line);
+    color: var(--warning);
 }

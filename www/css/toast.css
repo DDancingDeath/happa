@@ -16,7 +16,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--e2);
   pointer-events: none;
 }
 
@@ -25,23 +25,23 @@
 }
 
 .sync-pill[data-state="pending"] {
-  background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--card-bg);
-  color: var(--on-warning-soft);
+  background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--panel-bg);
+  color: var(--warning);
 }
 
 .sync-pill[data-state="synced"] {
-  background: linear-gradient(var(--positive-soft), var(--positive-soft)), var(--card-bg);
+  background: linear-gradient(var(--positive-soft), var(--positive-soft)), var(--panel-bg);
   color: var(--positive);
 }
 
 .sync-pill[data-state="updating"] {
-  background: linear-gradient(var(--info-soft), var(--info-soft)), var(--card-bg);
+  background: linear-gradient(var(--info-soft), var(--info-soft)), var(--panel-bg);
   color: var(--info);
 }
 
 .sync-pill[data-state="stale"] {
-  background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--card-bg);
-  color: var(--on-warning-soft);
+  background: linear-gradient(var(--warning-soft), var(--warning-soft)), var(--panel-bg);
+  color: var(--warning);
 }
 
 /* Figures from the phone's cache until the server answers (#59): ui/sync-status.js sets html[data-updating] */
@@ -54,7 +54,7 @@ html[data-updating] .updating-note {
   display: block;
   margin: 0 0 12px;
   padding: 8px 12px;
-  border-radius: var(--radius-md);
+  border-radius: var(--r-panel);
   background: var(--info-soft);
   color: var(--info);
   font-size: var(--fs-caption);
@@ -73,7 +73,7 @@ html[data-updating] .updating-mark {
   font-size: var(--fs-caption);
   font-weight: var(--w-label);
   background: var(--warning-soft);
-  color: var(--on-warning-soft);
+  color: var(--warning);
 }
 
 .sync-chip[hidden] {
@@ -81,8 +81,8 @@ html[data-updating] .updating-mark {
 }
 
 .sync-chip[data-state="synced"] {
-  background: var(--success-soft);
-  color: var(--on-success-soft);
+  background: var(--positive-soft);
+  color: var(--positive);
 }
 
 .ins-line .sync-chip {

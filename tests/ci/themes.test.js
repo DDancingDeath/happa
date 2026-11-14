@@ -63,7 +63,7 @@ test.each(OWN.map((th) => [th.id, th.kind]))('%s: tokens only, colours on screen
 });
 
 test('text on a theme fill uses its ink token, never literal white (the dark themes have light fills)', () => {
-    const FILL = /background(?:-color)?\s*:[^;]*var\(--(btn-success|btn-sale-bg|mode-sale|sale-color|btn-primary|btn-primary-bg|accent|accent-hover|wholesale-color|mode-wholesale|success-color|positive|danger-color|negative)\)/;
+    const FILL = /background(?:-color)?\s*:[^;]*var\(--(btn-sale-bg|mode-sale|btn-primary-bg|accent|accent-hover|mode-wholesale|positive|negative)\)/;
     const WHITE = /(?:^|[;{\s])color\s*:\s*(#fff\b|#ffffff\b|white\b)/i;
     const sources = [
         ...fs.readdirSync(path.join(WWW, 'css')).filter((f) => f.endsWith('.css') && f !== 'app.css').map((f) => `css/${f}`),
@@ -77,6 +77,25 @@ test('text on a theme fill uses its ink token, never literal white (the dark the
         }
     }
     expect(bad).toEqual([]);
+});
+
+test('every var() without a fallback names a declared token (one name per token: the old aliases are gone)', () => {
+    const files = [];
+    (function walk(dir) {
+        for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+            const p = path.join(dir, e.name);
+            if (e.isDirectory()) { if (!/__tests__|vendor/.test(e.name)) walk(p); } else if (/\.(css|js|html)$/.test(e.name) && e.name !== 'app.css') files.push(p);
+        }
+    })(WWW);
+    const declared = new Set();
+    const used = new Map();
+    for (const f of files) {
+        const src = fs.readFileSync(f, 'utf8');
+        for (const m of src.matchAll(/(--[\w-]+)\s*:/g)) declared.add(m[1]);
+        for (const m of src.matchAll(/setProperty\(\s*['"](--[\w-]+)/g)) declared.add(m[1]);
+        for (const m of src.matchAll(/var\(\s*(--[\w-]+)\s*\)/g)) if (!used.has(m[1])) used.set(m[1], path.relative(WWW, f));
+    }
+    expect([...used].filter(([name]) => !declared.has(name)).map(([name, f]) => `${f}: ${name}`)).toEqual([]);
 });
 
 test.each(['en', 'hi'])('every theme has a name and a description (%s)', (lang) => {

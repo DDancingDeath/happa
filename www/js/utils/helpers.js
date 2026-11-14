@@ -422,13 +422,13 @@ export class Helpers {
         const amount = formatAmount(Math.abs(check.difference), { exact: true });
         if (check.ok) {
             el.textContent = '✓ ₹0';
-            el.style.color = 'var(--success-color)';
+            el.style.color = 'var(--positive)';
         } else if (check.difference > 0) {
             el.textContent = t('ui.billing.split_left', { amount });
-            el.style.color = 'var(--danger-color)';
+            el.style.color = 'var(--negative)';
         } else {
             el.textContent = t('ui.billing.split_extra', { amount });
-            el.style.color = 'var(--danger-color)';
+            el.style.color = 'var(--negative)';
         }
     }
 

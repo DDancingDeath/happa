@@ -97,22 +97,22 @@
   padding: 0 0 0 var(--sp-2);
   border-radius: var(--r-control);
   border: 2px solid;
-  transition: all var(--transition);
+  transition: all var(--dur-2) var(--ease);
 }
 
 .rate-group:has(.rate-input.purchase) {
-  border-color: var(--purchase-color);
-  background: var(--purchase-light);
+  border-color: var(--accent-text);
+  background: var(--mode-purchase-soft);
 }
 
 .rate-group:has(.rate-input.wholesale) {
-  border-color: var(--wholesale-color);
-  background: var(--wholesale-soft);
+  border-color: var(--mode-wholesale);
+  background: var(--mode-wholesale-soft);
 }
 
 .rate-group:has(.rate-input.sale) {
-  border-color: var(--sale-color);
-  background: var(--sale-light);
+  border-color: var(--positive);
+  background: var(--mode-sale-soft);
 }
 
 .rates-container .rate-group > .rate-input {
@@ -146,6 +146,6 @@
 
 /* Item name suggested from the other language (#134), until the user takes it */
 .autofill-suggest {
-  color: var(--text-muted);
+  color: var(--ink-3);
   font-style: italic;
 }

@@ -1,7 +1,7 @@
 /* -------------------- SETTINGS -------------------- */
 .setting-description {
   font-size: var(--fs-sm);
-  color: var(--text-secondary);
+  color: var(--ink-2);
   margin: var(--sp-2) 0 var(--sp-4);
   font-style: italic;
   line-height: 1.6;

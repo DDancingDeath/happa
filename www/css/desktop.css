@@ -86,7 +86,7 @@
     background: transparent;
     color: var(--ink-2);
     box-shadow: none;
-    transition: background-color var(--transition-fast), color var(--transition-fast);
+    transition: background-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
   }
 
   .app-bar .notif-bell:hover {
@@ -227,7 +227,7 @@
     font-size: var(--fs-body);
     text-align: left;
     cursor: pointer;
-    transition: background-color var(--transition-fast), color var(--transition-fast);
+    transition: background-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
   }
 
   .nav-icon {
@@ -744,7 +744,7 @@
     margin-top: auto !important;
     padding: var(--sp-3) 0;
     border-top: 1px solid var(--line);
-    background: var(--light-bg);
+    background: var(--bg);
   }
 
   :is(#billing, .bill-page).tab {

@@ -13,7 +13,7 @@
 }
 
 .voice-lines thead th {
-  color: var(--text-secondary);
+  color: var(--ink-2);
   font-size: var(--fs-sm);
 }
 
@@ -43,7 +43,7 @@
 
 .voice-readback {
   margin-top: var(--sp-3);
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 
 /* Transcript strip under the mic and the Undo button (#131) */
@@ -63,7 +63,7 @@
 .voice-transcript {
   flex: 1 1 12rem;
   margin: 0;
-  color: var(--text-secondary);
+  color: var(--ink-2);
   font-size: var(--fs-sm);
   overflow-wrap: anywhere;
 }
@@ -84,7 +84,7 @@
   margin: var(--sp-2) 0;
   padding: var(--sp-2);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--r-control);
   background: var(--surface-2);
 }
 

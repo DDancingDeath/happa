@@ -169,8 +169,8 @@ In order:
   constant name. No emoji in navigation, titles or buttons.
   Print and receipts never read theme tokens.
 - **Colours come from design tokens** (`www/css/variables.css`: semantic `--bg`, `--surface`,
-  `--ink`, `--accent`, `--positive`…, component tokens, and the old names such as
-  `--primary-color` as aliases), so every theme and dark mode restyle them. A hard-coded colour
+  `--ink`, `--accent`, `--positive`…, component tokens; one name per token, no aliases),
+  so every theme and dark mode restyle them. A hard-coded colour
   (hex, `rgb()`, a colour name) in `www/css`, a template's `style=` / `<style>` or `www/js` fails
   `tests/ci/colour-guard.test.js` (per-file baseline `tests/colour-baseline.json`, which may only
   go down: `COLOUR_BASELINE=lower npx jest colour-guard`). Print and receipt output is exempt.
@@ -518,8 +518,8 @@ in `.github/review-rules-examples/`.
   A manual run on another branch, or with `simulate_slowdown` (gate self-test), leaves the trend alone. `BENCH_YEARS`, `BENCH_ACTIVITY`, `BENCH_RUNS` size a local run.
 - **Contrast (#68)**: `tests/e2e/a11y-contrast.spec.js` runs axe-core's WCAG AA
   `color-contrast` rule on the main pages (owner, en / hi, phone / desktop) and fails on
-  any finding. Text on a page card uses the theme variables (`--success-color`,
-  `--danger-color`, `--info-color`, `--text-secondary`), which also pass in dark mode;
+  any finding. Text on a page card uses the theme variables (`--positive`,
+  `--negative`, `--info`, `--ink-2`), which also pass in dark mode;
   text on a fixed light panel uses fixed colours that pass on it: green `#1c7430` /
   `#15803d` (`#166534` on the light green total rows), blue `#0058b8`, red `#b02a37` /
   `#b91c1c`, amber `#92400e`, brand `#5560d6`, grey `#4b5563` / `#666`.
