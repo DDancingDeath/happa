@@ -685,10 +685,10 @@ export class WholesaleSalesManager {
      */
     static filterSalesTab(view) {
         this.outstandingParty = null;
-        document.querySelectorAll('#wholesale-sales .ws-seg > [data-view]').forEach(btn => {
+        document.querySelectorAll('#wholesale-sales .ws-tabs > [data-view]').forEach(btn => {
             const on = btn.dataset.view === view;
             btn.classList.toggle('active', on);
-            btn.setAttribute('aria-pressed', String(on));
+            btn.setAttribute('aria-selected', String(on));
         });
         
         const sections = {

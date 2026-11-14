@@ -1,7 +1,0 @@
-/* -------------------- DATE FILTER -------------------- */
-.filter-btn {
-  flex: 1;
-  min-width: 80px;
-  font-size: var(--fs-sm);
-  font-weight: var(--w-label);
-}

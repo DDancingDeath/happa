@@ -223,7 +223,7 @@ export function buildOpeningGroup(bills, build, kind = 'opening') {
  * @returns {?HTMLElement}
  */
 export function addVoidedToggle(list, opts) {
-    return addToggleChip(list, { ...opts, cls: 'voided-toggle-chip', showKey: 'ui.void.show', hideKey: 'ui.void.hide' });
+    return addToggleChip(list, { ...opts, kind: 'voided', showKey: 'ui.void.show', hideKey: 'ui.void.hide' });
 }
 
 /**
@@ -238,17 +238,18 @@ export function addVoidedToggle(list, opts) {
  * @returns {?HTMLElement}
  */
 export function addOpeningToggle(list, opts) {
-    return addToggleChip(list, { ...opts, cls: 'opening-toggle-chip', showKey: 'ui.history.show_old_dues', hideKey: 'ui.history.hide_old_dues' });
+    return addToggleChip(list, { ...opts, kind: 'opening', showKey: 'ui.history.show_old_dues', hideKey: 'ui.history.hide_old_dues' });
 }
 
-function addToggleChip(list, { id, count, on, onToggle, cls, showKey, hideKey }) {
+function addToggleChip(list, { id, count, on, onToggle, kind, showKey, hideKey }) {
     if (!list || !id) return null;
     document.getElementById(id)?.remove();
     if (!count) return null;
     const chip = document.createElement('button');
     chip.type = 'button';
     chip.id = id;
-    chip.className = `${cls}${on ? ' active' : ''}`;
+    chip.className = 'chip';
+    chip.dataset.groupToggle = kind;
     chip.setAttribute('aria-pressed', on ? 'true' : 'false');
     chip.textContent = t(on ? hideKey : showKey, { count });
     chip.addEventListener('click', () => onToggle?.());

@@ -449,22 +449,8 @@
 }
 
 /* Old-app carried dues: hidden by default, a separate group when shown */
-.opening-toggle-chip {
-  display: inline-flex;
-  align-items: center;
-  margin: 0 0 10px;
-  padding: 4px 12px;
-  border: 1px solid var(--primary-border);
-  border-radius: 999px;
-  background: var(--card-bg);
-  color: var(--on-primary-soft);
-  font-size: var(--fs-sm);
-  font-weight: var(--w-label);
-  cursor: pointer;
-}
-
-.opening-toggle-chip.active {
-  background: var(--primary-soft);
+.chip[data-group-toggle] {
+  margin: 0 var(--sp-2) var(--sp-2) 0;
 }
 
 .bill-group--opening {
@@ -658,24 +644,6 @@
 .history-item.bill-row.is-voided .bill-row__amount,
 .bill-table__row.is-voided .bill-table__amount {
   text-decoration: line-through;
-}
-
-.voided-toggle-chip {
-  display: inline-flex;
-  align-items: center;
-  margin: 0 8px 10px 0;
-  padding: 4px 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  background: var(--card-bg);
-  color: var(--text-secondary);
-  font-size: var(--fs-sm);
-  font-weight: var(--w-label);
-  cursor: pointer;
-}
-
-.voided-toggle-chip.active {
-  background: var(--surface-muted);
 }
 
 .bill-group--voided {

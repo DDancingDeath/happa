@@ -1,9 +1,9 @@
 <div id="billing" class="tab active">
     <header class="page-head"><h2 data-i18n="ui.nav.billing">Billing</h2></header>
 
-        <div class="filter-buttons">
-            <button class="filter-btn active" id="purchaseModeBtn" data-onclick="billing.switchMode('purchase', event)" data-i18n="ui.common.purchase">Purchase</button>
-            <button class="filter-btn" id="saleModeBtn" data-onclick="billing.switchMode('sale', event)" data-i18n="ui.billing.sale">Retail sale</button>
+        <div class="seg bill-mode" role="group">
+            <button type="button" class="active" id="purchaseModeBtn" aria-pressed="true" data-onclick="billing.switchMode('purchase', event)"><span class="mode-dot" aria-hidden="true"></span><span data-i18n="ui.common.purchase">Purchase</span></button>
+            <button type="button" id="saleModeBtn" aria-pressed="false" data-onclick="billing.switchMode('sale', event)"><span class="mode-dot sale" aria-hidden="true"></span><span data-i18n="ui.billing.sale">Retail sale</span></button>
         </div>
         
         <!-- Drafts -->

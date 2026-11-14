@@ -53,12 +53,3 @@
   align-items: center;
   gap: var(--space-sm);
 }
-
-/* Sub-tab navigation style */
-.sub-tabs {
-  margin-bottom: 20px;
-}
-
-.sub-tab {
-  flex: 1;
-}
