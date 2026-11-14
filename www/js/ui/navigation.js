@@ -119,21 +119,6 @@ function roleMayOpenRoute(route) {
 }
 
 const NavigationManager = {
-    // Reset filter buttons to default state for a given tab
-    resetFilterButtons(tabId) {
-        const tabElement = document.getElementById(tabId);
-        if (!tabElement) return;
-        
-        const buttons = tabElement.querySelectorAll('.filter-btn');
-        buttons.forEach((btn, index) => {
-            if (index === 0) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
-    },
-    
     isMenuOpen() {
         const sideNav = document.querySelector('.side-nav');
         return !!sideNav && sideNav.classList.contains('active');
@@ -286,20 +271,17 @@ const NavigationManager = {
         
         // Render outstanding when Due tab is shown
         if (tabId === 'due' && window.app?.outstanding) {
-            this.resetFilterButtons('due');
-            setTimeout(() => window.app.outstanding.filterDue('purchase', { target: document.querySelector('#due .filter-btn') }), 100);
+            setTimeout(() => window.app.outstanding.filterDue('purchase'), 100);
         }
         
         // Wholesale page: Sales (entry) tab, or History for 'wholesale-history'
         if (route.tab === 'wholesale-sales' && window.app?.wholesaleSales) {
             const view = route.section || 'sales';
-            this.resetFilterButtons('wholesale-sales');
             setTimeout(() => window.app.wholesaleSales.filterTab(view), 100);
         }
         
         // Render stock when Stock tab is shown
         if (tabId === 'stock' && window.app?.stock) {
-            this.resetFilterButtons('stock');
             setTimeout(() => window.app.stock.filterTab('current'), 100);
         }
         
@@ -335,14 +317,12 @@ const NavigationManager = {
         
         // Initialize Day page when Day tab is shown
         if (tabId === 'day' && window.app?.day) {
-            this.resetFilterButtons('day');
             setTimeout(() => window.app.day.init(), 100);
         }
         
         // Initialize cash management when Cash Management tab is shown
         if (tabId === 'cash-management' && window.app?.cashManagement) {
             window.app.day?.returnCashBody?.();
-            this.resetFilterButtons('cash-management');
             setTimeout(() => window.app.cashManagement.init(), 100);
         }
         

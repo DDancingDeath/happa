@@ -4,6 +4,10 @@
   padding: 20px;
 }
 
+.day-tabs {
+  margin-bottom: var(--sp-4);
+}
+
 /* Section Title */
 .section-title {
   margin: 0 0 14px 0;
@@ -102,7 +106,7 @@
 .today-reminder { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); }
 .today-reminder + .today-reminder { border-top: 1px var(--rule-style) var(--line); }
 .today-reminder-body { flex: 1; min-width: 0; color: var(--ink-2); font-size: var(--fs-sm); }
-.today-reminder-body > .filter-btn { margin-top: var(--sp-2); }
+.today-reminder-body > .btn { margin-top: var(--sp-2); }
 .today-reminder-head { display: flex; justify-content: space-between; gap: var(--sp-2); color: var(--ink); font-size: var(--fs-body); }
 .today-reminder-head strong { font-weight: var(--w-strong); }
 .today-reminder ul { margin: 6px 0; padding: 0; list-style: none; }
@@ -178,6 +182,7 @@
 .ask-form { display: flex; gap: 8px; }
 .ask-form input { flex: 1; min-width: 0; min-height: 44px; font-size: var(--fs-input); padding: 8px 12px; }
 .ask-examples { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.ask-example { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .ask-answers { display: flex; flex-direction: column; gap: 10px; }
 .ask-answer { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; }
 .ask-question { font-weight: var(--w-strong); margin-bottom: 4px; }

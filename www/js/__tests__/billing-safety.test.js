@@ -320,7 +320,7 @@ describe('Print with no printer (S-12)', () => {
 describe('Billing mode (D-5)', () => {
     const DOM = `<div class="side-nav"><nav class="nav-menu"></nav></div><div class="overlay"></div>
         <div class="tab" id="billing">
-          <button class="filter-btn active" id="purchaseModeBtn"></button><button class="filter-btn" id="saleModeBtn"></button>
+          <button class="active" id="purchaseModeBtn"></button><button id="saleModeBtn"></button>
           <div id="purchaseSection" style="display: block;"></div><div id="saleSection" style="display: none;"></div>
         </div><div class="tab" id="day"></div>`;
 
@@ -354,6 +354,18 @@ describe('Billing mode (D-5)', () => {
         NavigationManager.showTabFromNav('billing');
         jest.advanceTimersByTime(1000);
         expect(BillingManager.currentMode).toBe('sale');
+    });
+
+    test('loading a sale draft while on Purchase moves the pressed button to Retail sale (no event)', () => {
+        ['setSaleItems', 'setSaleWeights', 'setPendingBill', 'renderSalesBill', 'renderSaleWeights']
+            .forEach(m => jest.spyOn(RetailSaleManager, m).mockImplementation(() => {}));
+        jest.spyOn(PurchaseManager, 'updateTotals').mockImplementation(() => {});
+        BillingManager.applyDraft({ mode: 'sale', items: [], weights: [] });
+        expect($('saleSection').style.display).toBe('block');
+        expect($('saleModeBtn').getAttribute('aria-pressed')).toBe('true');
+        expect($('saleModeBtn').classList.contains('active')).toBe(true);
+        expect($('purchaseModeBtn').getAttribute('aria-pressed')).toBe('false');
+        expect($('purchaseModeBtn').classList.contains('active')).toBe(false);
     });
 });
 

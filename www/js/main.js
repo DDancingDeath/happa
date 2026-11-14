@@ -54,6 +54,7 @@ import { startLongTaskRecorder } from './utils/perf-probe.js';
 import { shortcutFromSearch, withoutShortcut } from './utils/launch-shortcut.js';
 import { UsageView } from './ui/usage-view.js';
 import { installActions } from './ui/actions.js';
+import { installTablistKeys } from './ui/seg.js';
 import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT, loadCatalogue, loadAllCatalogues } from './i18n/index.js';
 
 // #59: only the app language's catalogue is loaded before the first screen (DOMContentLoaded waits for it)
@@ -740,6 +741,7 @@ async function initializeUserData() {
 // Initialize app on DOM ready
 // data-on* attributes (delegated handlers, #89) work from the first template on
 installActions();
+installTablistKeys();
 
 // Before the templates go in, so their text never changes weight (variables.css: --w-strong)
 if (window.Capacitor?.getPlatform?.() === 'android') document.documentElement.classList.add('platform-android');

@@ -257,8 +257,8 @@ describe('H. H-TOTAL: History › Sale lists retail + wholesale; its ₹ total =
             total: 999, items: [], voided: true, payment: { cash: 999, online: 0, due: 0 } }
     ];
     const SEPT = [new Date(2026, 8, 1).getTime(), new Date(2026, 9, 1).getTime()];
-    const html = `<div id="history"><div class="history-type-filter"><button class="filter-btn" data-type="purchase"></button>
-        <button class="filter-btn" data-type="sale"></button></div><select id="historyDatePreset"><option value="all"></option>
+    const html = `<div id="history"><div class="history-type-filter"><button data-type="purchase"></button>
+        <button data-type="sale"></button></div><select id="historyDatePreset"><option value="all"></option>
         <option value="custom"></option></select><div id="historyCustomRange" hidden><input id="historyFromDate"><input id="historyToDate"></div>
         <div id="historyRangeLabel" hidden></div><input id="historySearch" value=""><div id="historyList"></div></div>`;
     const label = () => document.getElementById('historyRangeLabel').textContent;

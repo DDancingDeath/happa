@@ -45,10 +45,10 @@
 
     <section class="ins-section" data-insights-pane="items" hidden>
         <div class="panel panel-pad ins-wide">
-            <div class="ins-subtabs seg" role="tablist">
-                <button type="button" class="active" data-items-type="both" data-onclick="insights.setItemsType('both')" data-i18n="ui.insights.both">Both</button>
-                <button type="button" data-items-type="retail" data-onclick="insights.setItemsType('retail')" data-i18n="ui.insights.retail">Retail</button>
-                <button type="button" data-items-type="wholesale" data-onclick="insights.setItemsType('wholesale')" data-i18n="ui.insights.wholesale">Wholesale</button>
+            <div class="ins-subtabs seg">
+                <button type="button" class="active" aria-pressed="true" data-items-type="both" data-onclick="insights.setItemsType('both')" data-i18n="ui.insights.both">Both</button>
+                <button type="button" aria-pressed="false" data-items-type="retail" data-onclick="insights.setItemsType('retail')" data-i18n="ui.insights.retail">Retail</button>
+                <button type="button" aria-pressed="false" data-items-type="wholesale" data-onclick="insights.setItemsType('wholesale')" data-i18n="ui.insights.wholesale">Wholesale</button>
             </div>
             <div class="ins-takeaway ins-takeaway-dark" data-takeaway id="insightsItemsTakeaway"></div>
             <div class="ins-caveats" id="insightsItemsCaveats"></div>
@@ -67,9 +67,9 @@
 
     <section class="ins-section" data-insights-pane="parties" hidden>
         <div class="panel panel-pad ins-wide">
-            <div class="ins-subtabs seg" role="tablist">
-                <button type="button" class="active" data-party-kind="sales" data-onclick="insights.setPartyKind('sales')" data-i18n="ui.insights.customers">Customers</button>
-                <button type="button" data-party-kind="purchases" data-onclick="insights.setPartyKind('purchases')" data-i18n="ui.insights.suppliers">Suppliers</button>
+            <div class="ins-subtabs seg">
+                <button type="button" class="active" aria-pressed="true" data-party-kind="sales" data-onclick="insights.setPartyKind('sales')" data-i18n="ui.insights.customers">Customers</button>
+                <button type="button" aria-pressed="false" data-party-kind="purchases" data-onclick="insights.setPartyKind('purchases')" data-i18n="ui.insights.suppliers">Suppliers</button>
             </div>
             <div class="ins-takeaway ins-takeaway-dark" data-takeaway id="insightsPartiesTakeaway"></div>
             <div class="ins-scroll"><table class="table" id="insightsCustomersTable" data-metric="I3"></table></div>
@@ -84,10 +84,10 @@
 
     <section class="ins-section" data-insights-pane="seasons" hidden>
         <div class="panel panel-pad ins-wide">
-            <div class="ins-subtabs seg" role="tablist">
-                <button type="button" class="active" data-season-view="calendar" data-onclick="insights.setSeasonView('calendar')" data-i18n="ui.insights.calendar">Calendar</button>
-                <button type="button" data-season-view="trends" data-onclick="insights.setSeasonView('trends')" data-i18n="ui.insights.rate_trends">Rate trends</button>
-                <button type="button" data-season-view="traffic" data-onclick="insights.setSeasonView('traffic')" data-i18n="ui.insights.product_traffic">Product traffic</button>
+            <div class="ins-subtabs seg">
+                <button type="button" class="active" aria-pressed="true" data-season-view="calendar" data-onclick="insights.setSeasonView('calendar')" data-i18n="ui.insights.calendar">Calendar</button>
+                <button type="button" aria-pressed="false" data-season-view="trends" data-onclick="insights.setSeasonView('trends')" data-i18n="ui.insights.rate_trends">Rate trends</button>
+                <button type="button" aria-pressed="false" data-season-view="traffic" data-onclick="insights.setSeasonView('traffic')" data-i18n="ui.insights.product_traffic">Product traffic</button>
             </div>
         </div>
         <div class="panel panel-pad ins-wide" id="insightsCalendarCard">
