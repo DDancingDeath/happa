@@ -210,13 +210,18 @@ body.no-perm-contacts [data-perm~="contacts"] {
   font-size: var(--fs-caption);
 }
 
-/* Settings sections: Common, Aadhat, Rentals */
-.settings-section-title {
+/* Settings sections: Common, Aadhat, Rentals. A section title, not a page title: no .tab h2 underline */
+.tab h2.settings-section-title {
   margin: var(--sp-2) 0 var(--sp-3);
-  font-family: var(--font-display);
-  font-style: var(--title-style);
-  font-size: var(--fs-title);
-  font-weight: var(--w-strong);
+  padding-bottom: 0;
+  border-bottom: 0;
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
+}
+
+.tab h2.settings-section-title::after {
+  content: none;
 }
 
 .settings-biz-bar {
@@ -230,7 +235,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
   border-top: 1px solid var(--line);
 }
 
-.settings-biz-bar .settings-section-title {
+.settings-biz-bar h2.settings-section-title {
   margin: 0;
 }
 /* "Bluetooth permission needed" banner (#77) */

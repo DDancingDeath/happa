@@ -844,7 +844,7 @@ const ItemsManager = {
     },
 
     /**
-     * Item dialog title: "Add item" or "Edit item"; kept through a language change.
+     * Item dialog title: "Add rate" or "Edit rate"; kept through a language change.
      * @param {string} key
      */
     setModalTitle(key) {

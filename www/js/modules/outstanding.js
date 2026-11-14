@@ -166,6 +166,14 @@ export class OutstandingManager {
         const kinds = document.getElementById('dueSaleKinds');
         if (kinds) kinds.hidden = !sale || !this.seesWholesale();
         document.querySelectorAll('#dueSaleKinds [data-due-kind]').forEach(btn => set(btn, btn.dataset.dueKind === filter));
+        const search = document.getElementById('outstandingSearchInput');
+        if (search) {
+            const key = sale ? 'ui.outstanding.search_customer_name_id' : 'ui.outstanding.search_supplier_name_id';
+            search.dataset.i18nPlaceholder = key;
+            search.dataset.i18nAriaLabel = key;
+            search.placeholder = t(key);
+            search.setAttribute('aria-label', t(key));
+        }
     }
 
     /**
