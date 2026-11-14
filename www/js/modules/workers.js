@@ -419,7 +419,7 @@ export async function removeEntry(workerId, entryId) {
     const w = state.workers.find(x => x.id === workerId);
     const entry = w?.entries?.find(e => e.id === entryId);
     if (!entry || Helpers.isBusy('workers.remove')) return;
-    const ok = await UIManager.showModal(t('msg.workers.remove_confirm', { amount: formatRupees(entry.amount), name: w.name }), t('ui.workers.remove'), true);
+    const ok = await UIManager.showModal(t('msg.workers.remove_confirm', { amount: formatRupees(entry.amount), name: w.name }), t('ui.workers.remove'), true, { confirmLabel: t('ui.workers.remove'), danger: true });
     if (!ok) return;
     await save('workers.remove', async () => {
         await repo.removeEntry(w.id, entry);

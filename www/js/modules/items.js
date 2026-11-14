@@ -448,7 +448,7 @@ const ItemsManager = {
         const { quantity } = adjustItemStock(AppState.stock?.[id]);
         const message = [t('msg.items.archive', { itemName }), quantity > 0 ? t('msg.items.archive_stock', { kg: formatKg(quantity) }) : '']
             .filter(Boolean).join(' ');
-        const confirmed = await UIManager.showModal(message, t('ui.items.archive_item'), true);
+        const confirmed = await UIManager.showModal(message, t('ui.items.archive_item'), true, { confirmLabel: t('ui.items.archive_item') });
         if (!confirmed) return false;
         if (!this.requireItem(id)) return false;
         return this.setArchived(id, true);
@@ -860,7 +860,7 @@ const ItemsManager = {
      */
     resetModalHistory(visible) {
         const section = document.getElementById('itemModalHistorySection');
-        if (section) section.style.display = visible ? '' : 'none';
+        if (section) section.hidden = !visible;
         const list = document.getElementById('itemModalHistoryList');
         if (list) list.innerHTML = '';
         const btn = document.getElementById('itemModalHistoryBtn');

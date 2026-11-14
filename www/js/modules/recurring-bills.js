@@ -417,7 +417,7 @@ export async function saveStop() {
     if (!isMonthKey(last) || last < it.startMonth) return warn('msg.rbills.bad_month');
     const later = billsAfter(it, last);
     if (later.length && !Helpers.isBusy('rbills.stop')) {
-        const ok = await UIManager.showModal(t('msg.rbills.stop_drops_bills', { month: monthName(later[0]), last: monthName(last) }), t('ui.rbills.stop'), true);
+        const ok = await UIManager.showModal(t('msg.rbills.stop_drops_bills', { month: monthName(later[0]), last: monthName(last) }), t('ui.rbills.stop'), true, { confirmLabel: t('ui.rbills.stop') });
         if (!ok) return;
     }
     const patch = { active: false, endMonth: last };
@@ -431,7 +431,7 @@ export async function removeEntry(itemId, entryId) {
     const it = state.items.find(x => x.id === itemId);
     const entry = it?.entries?.find(e => e.id === entryId && e.kind === 'pay');
     if (!entry || Helpers.isBusy('rbills.remove')) return;
-    const ok = await UIManager.showModal(t('msg.rbills.remove_confirm', { amount: formatRupees(entry.amount), name: it.name }), t('ui.rbills.remove'), true);
+    const ok = await UIManager.showModal(t('msg.rbills.remove_confirm', { amount: formatRupees(entry.amount), name: it.name }), t('ui.rbills.remove'), true, { confirmLabel: t('ui.rbills.remove'), danger: true });
     if (!ok) return;
     await save('rbills.remove', async () => {
         await repo.removeEntry(it.id, entry);

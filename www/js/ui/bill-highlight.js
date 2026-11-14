@@ -428,7 +428,8 @@ export const BillChecksUI = {
             const ok = await UIManager.showModal(
                 t('msg.checks.save_anyway_list', { list }),
                 t('msg.checks.check_before_saving'),
-                true
+                true,
+                { confirmLabel: t('ui.confirm.save_anyway') }
             );
             if (!ok) return stop;
         }
@@ -469,7 +470,7 @@ async function askOverrideReason(blocks) {
     const html = `<ul class="bill-check-modal-list">${list}</ul>
         <label for="billCheckOverrideReason">${Helpers.escapeHtml(t('ui.checks.reason_to_save_anyway'))}</label>
         <input type="text" id="billCheckOverrideReason" class="bill-check-reason" maxlength="200" autocomplete="off" />`;
-    const ok = await UIManager.showModalWithHtml(html, t('msg.checks.save_anyway'), true);
+    const ok = await UIManager.showModalWithHtml(html, t('msg.checks.save_anyway'), true, { confirmLabel: t('ui.confirm.save_anyway') });
     if (!ok) return null;
     const reason = (byId('billCheckOverrideReason')?.value || '').trim();
     if (!reason) {

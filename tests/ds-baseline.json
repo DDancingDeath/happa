@@ -8,10 +8,10 @@
     "important": 30,
     "idSelector": 175,
     "themeSelector": 6,
-    "inlineStyle": 36,
+    "inlineStyle": 31,
     "emoji": 12,
     "titleCase": 15,
-    "legacyClass": 232
+    "legacyClass": 230
   },
   "strict": [
     "www/css/admin.css",
@@ -167,7 +167,6 @@
       "www/js/utils/quota-guard.js": 3,
       "www/templates/billing.html": 3,
       "www/templates/day.html": 2,
-      "www/templates/modals.html": 5,
       "www/templates/rate-trends.html": 9
     },
     "emoji": {
@@ -207,7 +206,6 @@
       "www/js/ui/pending-line.js": 6,
       "www/js/ui/period-compare.js": 2,
       "www/js/ui/rate-check.js": 6,
-      "www/js/ui/ui-manager.js": 2,
       "www/js/utils/keyboard-shortcuts.js": 1,
       "www/templates/billing.html": 75,
       "www/templates/day.html": 4,

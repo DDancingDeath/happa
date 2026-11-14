@@ -3546,5 +3546,14 @@ export default {
     'msg.rbills.stopped': "{name} बंद किया",
     'msg.rbills.remove_confirm': "{name} के लिए {amount} का भुगतान हटाएँ? जिस बिल में गिना था, वह फिर बकाया दिखेगा।",
     'msg.rbills.stop_drops_bills': "{last} के बाद {month} का बिल पहले से लिखा है। बंद करने पर वह नहीं गिना जाएगा। फिर भी बंद करें?",
-    'msg.rbills.removed': "हटा दिया"
+    'msg.rbills.removed': "हटा दिया",
+    'ui.confirm.mark_cleared': "चुकता करें",
+    'ui.confirm.write_off': "माफ़ करें",
+    'ui.confirm.record_payment': "भुगतान लिखें",
+    'ui.confirm.record_again': "फिर से दर्ज करें",
+    'ui.confirm.close_cash': "नकद बंद करें",
+    'ui.confirm.save_anyway': "फिर भी सेव करें",
+    'ui.confirm.send_email': "ईमेल भेजें",
+    'ui.confirm.remove': "हटाएँ",
+    'ui.confirm.delete_user': "सदस्य हटाएँ"
 };

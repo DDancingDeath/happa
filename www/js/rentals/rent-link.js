@@ -50,7 +50,7 @@ export async function linkAction(c, action, leaseId) {
     }
     try {
         if (action === 'off') {
-            if (!await UIManager.showModal(t('msg.rent.link_off_confirm'), t('ui.rent.link_off'), true)) return;
+            if (!await UIManager.showModal(t('msg.rent.link_off_confirm'), t('ui.rent.link_off'), true, { confirmLabel: t('ui.rent.link_off'), danger: true })) return;
             await store.removeShareLink(lease);
             UIManager.showToast(t('msg.rent.link_turned_off'), 'success');
         } else {

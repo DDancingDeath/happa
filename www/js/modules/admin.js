@@ -424,7 +424,8 @@ const AdminManager = {
         const confirmed = await UIManager.showModal(
             t('msg.admin.change_s_role_from', { userName, roleLabel: Helpers.roleLabel(currentRole), roleLabel2: Helpers.roleLabel(newRole) }),
             t('msg.admin.change_role'),
-            true
+            true,
+            { confirmLabel: t('msg.admin.change_role') }
         );
         if (!confirmed) return;
 

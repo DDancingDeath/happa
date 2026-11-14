@@ -808,7 +808,7 @@ export class WholesaleSalesManager {
                 <label class="due-dlg-opt"><input type="radio" name="completeAllMethod" value="cash"> ${esc(t('ui.wholesale.complete_all_due_cash'))}</label>
                 <label class="due-dlg-opt"><input type="radio" name="completeAllMethod" value="online"> ${esc(t('ui.wholesale.complete_all_due_online'))}</label>
             </div>`;
-        const confirmed = await UIManager.showModalWithHtml(html, t('ui.wholesale.complete_all_due'), true);
+        const confirmed = await UIManager.showModalWithHtml(html, t('ui.wholesale.complete_all_due'), true, { confirmLabel: t('ui.wholesale.complete_all_due') });
         if (!confirmed) return;
         const method = document.querySelector('input[name="completeAllMethod"]:checked')?.value || '';
         if (!method) {

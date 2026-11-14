@@ -72,6 +72,75 @@ html {
   transform: scale(1);
 }
 
+/* The app dialog (ui-manager.js): a .dialog from 600 px, a bottom .sheet below; title, message, then ghost Cancel + one primary on the right */
+.modal-overlay.scrim.active {
+  transition: opacity var(--transition-slow), visibility 0s;
+}
+
+.app-dialog {
+  width: min(480px, 100%);
+  min-width: min(320px, 100%);
+  max-width: none;
+  gap: var(--sp-3);
+  padding: var(--sp-5);
+  outline: none;
+}
+
+.app-dialog > .grabber,
+.app-dialog [hidden] {
+  display: none;
+}
+
+.app-dialog .modal-header {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+.app-dialog .modal-header h3 {
+  font-family: var(--font-display);
+  font-size: var(--fs-lead);
+  color: var(--ink);
+}
+
+.app-dialog .modal-body {
+  padding: 0;
+  color: var(--ink-2);
+}
+
+.app-dialog .modal-footer {
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: var(--sp-1) 0 0;
+  border: 0;
+  background: none;
+}
+
+.app-dialog.sheet {
+  width: auto;
+  min-width: 0;
+  max-height: 90vh;
+  padding: var(--sp-3) var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
+  border-bottom: 0;
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  transform: translateY(100%);
+}
+
+.modal-overlay.active > .app-dialog.sheet {
+  transform: none;
+}
+
+.app-dialog.sheet > .grabber {
+  display: block;
+  margin-bottom: 0;
+}
+
+.app-dialog.sheet .modal-footer > .modal-btn {
+  flex: 1 1 0;
+}
+
 .modal-header {
   background: var(--card-bg);
   color: var(--text-primary);
@@ -330,6 +399,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .bill-action-btn.btn-delete:hover {
   background: var(--danger-soft);
+}
+
+.bill-details-footer [hidden],
+.item-modal-body [hidden] {
+  display: none;
+}
+
+.bill-details-content.drafts-list {
+  max-height: 60vh;
 }
 
 .item-modal-body {

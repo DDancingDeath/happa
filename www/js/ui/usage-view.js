@@ -79,7 +79,7 @@ export const UsageView = {
     },
 
     async clear() {
-        const ok = await UIManager.showModal(t('msg.usage.clear_confirm'), t('ui.usage.clear'), true);
+        const ok = await UIManager.showModal(t('msg.usage.clear_confirm'), t('ui.usage.clear'), true, { confirmLabel: t('ui.usage.clear'), danger: true });
         if (!ok) return;
         try {
             await Usage.clear();

@@ -119,9 +119,10 @@ function findOpenModal() {
         const cancel = document.getElementById('modalCancel');
         const ok = document.getElementById('modalConfirm');
         if (cancel && isShown(cancel)) return { closer: () => cancel.click() };
-        // Alert-only dialog: Esc acknowledges it. Custom modals (no stock buttons) are left alone.
+        // Alert-only dialog: Esc acknowledges it. A custom modal closes only through its own [data-dismiss] button.
         if (ok && isShown(ok)) return { closer: () => ok.click() };
-        return { closer: null };
+        const own = /** @type {HTMLElement|null} */ (alertOverlay.querySelector('#modalFooter [data-dismiss]:not([hidden])'));
+        return { closer: own && isShown(own) ? () => own.click() : null };
     }
     // Popups built in JS (Users role change, Expense delete, ...) are full-screen fixed
     // children of <body> with no shared class; appended last, they sit on top.
@@ -144,6 +145,27 @@ export function closeTopDialog() {
     if (!open || !open.closer) return false;
     open.closer();
     return true;
+}
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Keeps Tab / Shift+Tab inside `box` (its visible focusable elements): the More sheet, the Rentals sheet and the app dialog.
+ * @param {KeyboardEvent} e
+ * @param {?Element} box
+ */
+export function trapFocus(e, box) {
+    if (!box) return;
+    const items = /** @type {HTMLElement[]} */ ([...box.querySelectorAll(FOCUSABLE)]).filter(el => el.getClientRects().length > 0);
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    const at = document.activeElement;
+    const outside = !at || at === box || !box.contains(at);
+    if (e.shiftKey ? (at === first || outside) : (at === last || outside)) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+    }
 }
 
 const NON_DIALOG_IDS = new Set(['appContent', 'toast', 'loadingOverlay', 'overlay', 'modalOverlay', HELP_ID]);

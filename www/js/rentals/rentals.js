@@ -510,7 +510,7 @@ async function pay(leaseId, typed = null) {
         }
         const adv = parts[parts.length - 1].adv;
         const lines = parts.map(p => `${monthLabel(p.month, lang)}: ${formatRupees(p.amount)}`).concat(adv ? [t('ui.rent.adv_next', { amount: formatRupees(adv) })] : []).join(' · ');
-        if (!await UIManager.showModal(t('msg.rent.pay_split', { lines }), t('ui.rent.record_payment'), true)) return;
+        if (!await UIManager.showModal(t('msg.rent.pay_split', { lines }), t('ui.rent.record_payment'), true, { confirmLabel: t('ui.confirm.record_payment') })) return;
     } else if (charge) {
         // The same check the save runs (applyPayment), before the form closes.
         try { applyPayment(charge, amount); } catch (e) { return again(e.message === 'too_many' ? 'msg.rent.too_many_payments' : 'msg.rent.bad_amount'); }

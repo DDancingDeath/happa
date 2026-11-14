@@ -3546,5 +3546,14 @@ export default {
     'msg.rbills.stopped': "{name} stopped",
     'msg.rbills.remove_confirm': "Remove the payment of {amount} for {name}? The bill it paid shows as owed again.",
     'msg.rbills.stop_drops_bills': "A bill is already entered for {month}, after {last}. Once stopped, it no longer counts. Stop anyway?",
-    'msg.rbills.removed': "Removed"
+    'msg.rbills.removed': "Removed",
+    'ui.confirm.mark_cleared': "Mark cleared",
+    'ui.confirm.write_off': "Write off",
+    'ui.confirm.record_payment': "Record payment",
+    'ui.confirm.record_again': "Record again",
+    'ui.confirm.close_cash': "Close cash",
+    'ui.confirm.save_anyway': "Save anyway",
+    'ui.confirm.send_email': "Send email",
+    'ui.confirm.remove': "Remove",
+    'ui.confirm.delete_user': "Delete user"
 };

@@ -224,7 +224,7 @@ async function editTenant(id) {
 
 async function archiveTenant(id) {
     const name = store.snapshot().tenants.find(x => x.id === id)?.name || '';
-    if (!await UIManager.showModal(t('msg.rent.confirm_remove_tenant', { name }), t('ui.rent.remove'), true)) return;
+    if (!await UIManager.showModal(t('msg.rent.confirm_remove_tenant', { name }), t('ui.rent.remove'), true, { confirmLabel: t('ui.confirm.remove'), danger: true })) return;
     if (await c.saveRent(() => store.updateTenant(id, { archived: true })) !== null) c.back();
 }
 

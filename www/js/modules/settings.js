@@ -641,7 +641,7 @@ export class SettingsManager {
     static async changePassword() {
         const email = AppState.currentUser?.email;
         if (!email) return false;
-        const ok = await UIManager.showModal(t('msg.common.send_password_reset_email', { email }), t('msg.common.reset_password'), true);
+        const ok = await UIManager.showModal(t('msg.common.send_password_reset_email', { email }), t('msg.common.reset_password'), true, { confirmLabel: t('ui.confirm.send_email') });
         if (!ok) return false;
         try {
             await firebase.auth().sendPasswordResetEmail(email, { url: APP_IDENTITY.siteUrl, handleCodeInApp: false });

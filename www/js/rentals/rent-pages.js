@@ -319,7 +319,7 @@ async function editProperty(id) {
 
 async function archiveProperty(id) {
     const name = store.snapshot().properties.find(p => p.id === id)?.name || '';
-    if (!await UIManager.showModal(t('msg.rent.confirm_remove_property', { name }), t('ui.rent.remove'), true)) return;
+    if (!await UIManager.showModal(t('msg.rent.confirm_remove_property', { name }), t('ui.rent.remove'), true, { confirmLabel: t('ui.confirm.remove'), danger: true })) return;
     const units = store.snapshot().units.filter(u => u.propertyId === id);
     if (units.some(u => u.leaseId)) return fail('msg.rent.has_tenant');
     const done = await saveRent(async () => {
@@ -396,7 +396,7 @@ async function archiveUnit(id) {
     const d = store.snapshot();
     const u = d.units.find(x => x.id === id);
     const msg = t('msg.rent.confirm_remove_unit', { unit: u?.label || '', property: d.properties.find(p => p.id === u?.propertyId)?.name || '' });
-    if (!await UIManager.showModal(msg, t('ui.rent.remove'), true)) return;
+    if (!await UIManager.showModal(msg, t('ui.rent.remove'), true, { confirmLabel: t('ui.confirm.remove'), danger: true })) return;
     await saveRent(() => store.updateUnit(id, { archived: true }));
 }
 

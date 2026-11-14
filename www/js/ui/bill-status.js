@@ -105,6 +105,7 @@ export function setBillActions(bill, who, { editable = true } = {}) {
         const el = document.getElementById(id);
         if (!el) return;
         el.style.display = on ? '' : 'none';
+        el.hidden = !on;
         if (locked === null) return;
         // Edit / Void: a locked button is greyed with "🔒 Edit window closed"; a tap only explains the window
         el.classList.toggle('bill-action-locked', on && locked);

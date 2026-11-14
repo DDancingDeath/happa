@@ -65,7 +65,7 @@ const langReady = loadCatalogue(getLang()).catch(e => console.error('Language ca
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261108fa-dates';
+const BUILD_ID = '20261108fc-dialogs';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -1558,7 +1558,7 @@ window.app = {
         showLoading: () => UIManager.showLoading(),
         hideLoading: () => UIManager.hideLoading(),
         showToast: (msg, durationOrType, duration) => UIManager.showToast(msg, durationOrType, duration),
-        showModal: (msg, title, showCancel) => UIManager.showModal(msg, title, showCancel),
+        showModal: (msg, title, showCancel, opts) => UIManager.showModal(msg, title, showCancel, opts),
         closeModal: (result) => UIManager.closeModal(result)
     }
 };

@@ -1,15 +1,16 @@
-<!-- Modal Popup -->
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal-box" id="modalBox">
-            <div class="modal-header">
+<!-- App dialog (ui-manager.js): a .dialog from 600 px, a bottom .sheet below, over a .scrim -->
+    <div class="modal-overlay scrim" id="modalOverlay">
+        <div class="modal-box app-dialog dialog" id="modalBox" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalMessage" tabindex="-1">
+            <div class="grabber" aria-hidden="true"></div>
+            <div class="modal-header" id="modalHeader">
                 <h3 id="modalTitle"><span data-i18n="ui.modals.alert">Alert</span></h3>
             </div>
             <div class="modal-body" id="modalBody">
                 <div id="modalMessage"><span data-i18n="ui.modals.this_is_a_message">This is a message</span></div>
             </div>
             <div class="modal-footer" id="modalFooter">
-                <button class="modal-btn modal-btn-cancel" id="modalCancel" data-dismiss data-onclick="ui.closeModal(false)" data-i18n="ui.modals.cancel">Cancel</button>
-                <button class="modal-btn modal-btn-confirm" id="modalConfirm" data-onclick="ui.closeModal(true)" data-i18n="ui.modals.ok">OK</button>
+                <button type="button" class="modal-btn modal-btn-cancel" id="modalCancel" data-dismiss data-onclick="ui.closeModal(false)" data-i18n="ui.modals.cancel">Cancel</button>
+                <button type="button" class="modal-btn modal-btn-confirm" id="modalConfirm" data-onclick="ui.closeModal(true)" data-i18n="ui.modals.ok">OK</button>
             </div>
         </div>
     </div>
@@ -22,7 +23,7 @@
             </div>
             <div class="bill-details-footer">
                 <button class="bill-action-btn btn-delete" id="billVoidBtn" data-onclick="history.confirmVoidBill()" data-i18n="ui.void.button">Void</button>
-                <button class="bill-action-btn btn-delete" id="billDeleteBtn" style="display: none;" data-onclick="history.confirmDeleteBill()" data-i18n="ui.void.delete_permanently">Delete permanently</button>
+                <button class="bill-action-btn btn-delete" id="billDeleteBtn" hidden data-onclick="history.confirmDeleteBill()" data-i18n="ui.void.delete_permanently">Delete permanently</button>
                 <button class="bill-action-btn btn-edit" id="billEditBtn" data-onclick="history.editCurrentBill()" data-i18n="ui.modals.edit">Edit</button>
                 <button class="bill-action-btn btn-reprint" id="billReprintBtn" data-onclick="history.reprintBill()" title="Print a copy with the bill's date" data-i18n="ui.modals.reprint" data-i18n-title="ui.modals.print_copy_with_bill">Reprint</button>
                 <button class="bill-action-btn btn-share" id="billShareBtn" data-onclick="history.shareBill()" title="Share on WhatsApp" data-i18n="ui.modals.share" data-i18n-title="ui.modals.share_on_whatsapp">Share</button>
@@ -38,14 +39,14 @@
                 <h2 data-i18n="ui.modals.saved_drafts">Saved drafts</h2>
                 <button type="button" class="bill-details-close" data-onclick="billing.closeDrafts()" aria-label="Close" data-i18n-aria-label="ui.common.close"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-x"/></svg></button>
             </div>
-            <div class="bill-details-content" id="draftsContent" style="max-height: 60vh; overflow-y: auto;">
+            <div class="bill-details-content drafts-list" id="draftsContent">
                 <!-- Drafts will be inserted here -->
             </div>
         </div>
     </div>
 
     <!-- ITEM EDIT MODAL -->
-    <div class="bill-details-overlay" id="itemEditOverlay" style="display: none;">
+    <div class="bill-details-overlay" id="itemEditOverlay">
         <div class="bill-details-container item-modal">
             <div class="bill-details-header">
                 <h2 id="itemModalTitle" data-i18n="ui.items.dialog_add_title">Add rate</h2>
@@ -95,13 +96,13 @@
                            placeholder="Enter contact person name (optional)" data-i18n-placeholder="ui.modals.enter_contact_person_name">
                 </div>
 
-                <div id="itemModalHistorySection" class="field" style="display: none;">
+                <div id="itemModalHistorySection" class="field" hidden>
                     <label data-i18n="ui.modals.change_history">Change history</label>
                     <button type="button" id="itemModalHistoryBtn" class="btn btn-sm" data-onclick="items.loadModalHistory()" data-i18n="ui.modals.show_rate_name_changes">Show rate &amp; name changes</button>
                     <div id="itemModalHistoryList"></div>
                 </div>
                 <div class="item-modal-danger">
-                    <button type="button" class="item-delete-btn" id="itemModalArchiveBtn" data-onclick="items.archiveFromModal()" style="display: none;" data-i18n="ui.items.archive_item">Archive item</button>
+                    <button type="button" class="item-delete-btn" id="itemModalArchiveBtn" data-onclick="items.archiveFromModal()" hidden data-i18n="ui.items.archive_item">Archive item</button>
                 </div>
             </div>
             <div class="bill-details-footer item-modal-footer">

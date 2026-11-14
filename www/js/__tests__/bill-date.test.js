@@ -222,7 +222,7 @@ describe('saving a back-dated bill', () => {
         UIManager.showModal.mockResolvedValueOnce(false);
         expect(await PurchaseManager.saveBillToHistory()).toBeUndefined();
         expect(sessions).toHaveBeenCalledWith('2026-10-31');
-        expect(UIManager.showModal).toHaveBeenCalledWith(expect.stringContaining('already closed'), expect.any(String), true);
+        expect(UIManager.showModal).toHaveBeenCalledWith(expect.stringContaining('already closed'), expect.any(String), true, { confirmLabel: 'Save anyway' });
         expect(saved).not.toHaveBeenCalled();
 
         const bill = await PurchaseManager.saveBillToHistory();
@@ -236,7 +236,7 @@ describe('saving a back-dated bill', () => {
         document.getElementById('cashPayment').value = '300';
         pick('2026-10-31');
         expect(await PurchaseManager.saveBillToHistory()).toBeDefined();
-        expect(UIManager.showModal).not.toHaveBeenCalledWith(expect.stringContaining('already closed'), expect.any(String), true);
+        expect(UIManager.showModal).not.toHaveBeenCalledWith(expect.stringContaining('already closed'), expect.any(String), true, expect.anything());
     });
 
     test('a retry is checked again with the payment as now typed, on its fixed day and entry time', async () => {

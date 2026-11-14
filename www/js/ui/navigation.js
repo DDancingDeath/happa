@@ -4,13 +4,13 @@ import { UIManager } from './ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { canOpenTab, canOpenPage, canOpenSection, roleMayOpenTab, SECTION_TABS } from '../utils/role-access.js';
 import { t } from '../i18n/index.js';
-import { closeTopDialog } from '../utils/keyboard-shortcuts.js';
+import { closeTopDialog, trapFocus } from '../utils/keyboard-shortcuts.js';
 import { TemplateLoader } from '../utils/template-loader.js';
+
+export { trapFocus };
 
 /** Below the desktop width the side menu is a modal bottom sheet (redesign 4.1). */
 const isSheet = () => typeof window === 'undefined' || !window.matchMedia || !window.matchMedia('(min-width: 1024px)').matches;
-
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 const shown = (el) => !!el && el.isConnected && el.getClientRects().length > 0;
 
@@ -22,20 +22,6 @@ function focusOpener(prev) {
     const target = [prev, ...document.querySelectorAll('.bottom-nav-item[data-tab="more"], .app-bar .hamburger')].find(shown)
         || document.getElementById('appBarTitle');
     target?.focus?.({ preventScroll: true });
-}
-
-/** Keeps Tab / Shift+Tab inside `box` (its visible focusable elements). */
-export function trapFocus(e, box) {
-    if (!box) return;
-    const items = [...box.querySelectorAll(FOCUSABLE)].filter(el => el.getClientRects().length > 0);
-    if (!items.length) return;
-    const first = items[0];
-    const last = items[items.length - 1];
-    const at = document.activeElement;
-    if (e.shiftKey ? (at === first || !box.contains(at)) : (at === last || !box.contains(at))) {
-        e.preventDefault();
-        (e.shiftKey ? last : first).focus();
-    }
 }
 
 // Routes: every id that showTab() accepts besides plain page ids (the .tab element id).

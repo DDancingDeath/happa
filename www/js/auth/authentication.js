@@ -656,7 +656,7 @@ const AuthManager = {
 
     // Handle logout
     async handleLogout() {
-        const confirmed = await UIManager.showModal(t('msg.auth.are_sure_want_logout'), t('msg.auth.confirm_logout'), true);
+        const confirmed = await UIManager.showModal(t('msg.auth.are_sure_want_logout'), t('msg.auth.confirm_logout'), true, { confirmLabel: t('ui.settings.logout') });
         
         if (!confirmed) return;
         
