@@ -80,50 +80,13 @@
   text-align: center;
 }
 
-.remove-bill-item, .remove-sale-item {
-  background: var(--danger-soft);
-  color: var(--on-danger-soft);
-  border: none;
-  padding: 8px 12px;
-  border-radius: var(--radius);
-  font-size: var(--fs-body);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-  min-width: 40px;
-  transition: all var(--transition);
-  box-shadow: inset 0 0 0 1px var(--danger-border);
-}
-
-.remove-bill-item:hover, .remove-sale-item:hover {
-  box-shadow: var(--shadow-sm);
-}
-
-.remove-bill-item:active, .remove-sale-item:active {
-  transform: scale(0.95);
-}
-
-/* Billing's remove is a quiet × (3.5) */
-:is(#billing, .bill-page) :is(.remove-bill-item, .remove-sale-item, .bill-line-remove) {
-  min-width: 40px;
-  min-height: 40px;
-  padding: 0;
-  background: none;
-  box-shadow: none;
+/* A bill line's remove is a quiet ghost × (3.5) */
+.bill-line-remove {
   color: var(--ink-2);
-  font-size: var(--fs-title);
-  font-weight: var(--w-regular);
-  line-height: 1;
 }
 
-:is(#billing, .bill-page) :is(.remove-bill-item, .remove-sale-item, .bill-line-remove):hover {
-  background: var(--state-hover);
-  box-shadow: none;
+.bill-line-remove:hover {
   color: var(--negative);
-}
-
-:is(#billing, .bill-page) :is(.remove-bill-item, .remove-sale-item, .bill-line-remove):focus-visible {
-  outline: none;
-  box-shadow: var(--focus);
 }
 
 /* Phone and tablet: the bill lines are a row list in a panel (3.5). Item over "kg × rate",
@@ -235,11 +198,6 @@
   #billTable :is(td.bill-empty, tr.bill-check-row > td), :is(#saleTable, .bill-lines) :is(td.bill-empty, td.empty, tr.bill-check-row > td) {
     display: block;
     max-width: none;
-  }
-
-  :is(#billing, .bill-page) :is(.remove-bill-item, .remove-sale-item, .bill-line-remove) {
-    min-width: 44px;
-    min-height: 44px;
   }
 }
 

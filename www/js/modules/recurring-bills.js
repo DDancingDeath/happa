@@ -211,8 +211,8 @@ function renderDetail(v) {
             ${it.note ? `<p class="tone-muted">${esc(it.note)}</p>` : ''}
             <p>${balanceLine(v.balance)}${v.nextDue ? ` · ${et('ui.rbills.next_due', { date: dayName(v.nextDue) })}` : ''}</p>
             <div class="rb-actions">
-                <button type="button" class="btn btn-primary btn-sm" data-onclick="recurring.showForm('bill')">${et('ui.rbills.enter_bill_btn')}</button>
-                <button type="button" class="btn btn-primary btn-sm" data-onclick="recurring.showForm('pay')">${et('ui.rbills.record_btn')}</button>
+                <button type="button" class="btn btn-tonal btn-sm" data-onclick="recurring.showForm('bill')">${et('ui.rbills.enter_bill_btn')}</button>
+                <button type="button" class="btn btn-tonal btn-sm" data-onclick="recurring.showForm('pay')">${et('ui.rbills.record_btn')}</button>
                 <button type="button" class="btn btn-tonal btn-sm" data-onclick="recurring.showForm('edit')">${et('ui.rbills.edit')}</button>
                 ${stop}
             </div>

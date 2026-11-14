@@ -151,11 +151,7 @@
 .today-bill-retail .today-bill-kind::before { background: var(--mode-sale); }
 .today-bill-wholesale .today-bill-kind::before { background: var(--mode-wholesale); }
 .today-bill-total { flex: none; }
-.today-bills-more {
-  width: 100%; min-height: 44px; border: none; border-top: 1px solid var(--line); border-radius: 0 0 var(--r-panel) var(--r-panel);
-  background: none; color: var(--accent-text); font: inherit; font-weight: var(--w-strong); cursor: pointer;
-}
-.today-bills-more[hidden] { display: none; }
+.today-bills-more { border-top-color: var(--line); border-radius: 0 0 var(--r-panel) var(--r-panel); }
 
 /* Item details (T17) */
 .today-item .row-meta { white-space: normal; }
@@ -174,7 +170,7 @@
 .today-reminder-form { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .today-reminder-form input, .today-reminder-form select { min-height: 44px; font-size: var(--fs-input); padding: 6px 10px; }
 .today-reminder-repeat { color: var(--text-secondary); font-size: var(--fs-caption); }
-.today-reminder-form-buttons { display: flex; gap: 8px; }
+.today-reminder-form-actions { display: flex; gap: var(--sp-2); }
 
 /* Ask (#88) */
 .ask-page { max-width: 720px; }

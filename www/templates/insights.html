@@ -10,9 +10,9 @@
             <button type="button" data-insights-section="seasons" role="tab" aria-selected="false" data-onclick="insights.setSection('seasons')" data-i18n="ui.insights.tab_seasons">Seasons</button>
         </div>
         <div class="ins-period" id="insightsPeriodBar">
-            <button type="button" class="ins-step" data-onclick="insights.step(-1)" aria-label="Earlier" data-i18n-aria-label="ui.money.earlier">‹</button>
+            <button type="button" class="btn btn-icon" data-onclick="insights.step(-1)" aria-label="Earlier" data-i18n-aria-label="ui.money.earlier"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-chevL"/></svg></button>
             <span class="ins-period-label" id="insightsPeriodLabel"></span>
-            <button type="button" class="ins-step" data-onclick="insights.step(1)" aria-label="Later" data-i18n-aria-label="ui.money.later">›</button>
+            <button type="button" class="btn btn-icon" data-onclick="insights.step(1)" aria-label="Later" data-i18n-aria-label="ui.money.later"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-chevR"/></svg></button>
             <select class="ins-preset" id="insightsPreset" data-onchange="insights.setPreset(this.value)" aria-label="Period" data-i18n-aria-label="ui.money.period">
                 <option value="today" data-i18n="ui.money.p_today">Today</option>
                 <option value="this-week" data-i18n="ui.money.p_this_week">This week</option>

@@ -21,12 +21,12 @@
                 <!-- Bill content will be inserted here -->
             </div>
             <div class="bill-details-footer">
-                <button class="bill-action-btn btn-delete" id="billVoidBtn" data-onclick="history.confirmVoidBill()" data-i18n="ui.void.button">Void</button>
-                <button class="bill-action-btn btn-delete" id="billDeleteBtn" style="display: none;" data-onclick="history.confirmDeleteBill()" data-i18n="ui.void.delete_permanently">Delete permanently</button>
-                <button class="bill-action-btn btn-edit" id="billEditBtn" data-onclick="history.editCurrentBill()" data-i18n="ui.modals.edit">Edit</button>
-                <button class="bill-action-btn btn-reprint" id="billReprintBtn" data-onclick="history.reprintBill()" title="Print a copy with the bill's date" data-i18n="ui.modals.reprint" data-i18n-title="ui.modals.print_copy_with_bill">Reprint</button>
-                <button class="bill-action-btn btn-share" id="billShareBtn" data-onclick="history.shareBill()" title="Share on WhatsApp" data-i18n="ui.modals.share" data-i18n-title="ui.modals.share_on_whatsapp">Share</button>
-                <button class="bill-action-btn btn-close" data-dismiss data-onclick="history.closeBillDetails()" data-i18n="ui.common.close">Close</button>
+                <button type="button" class="btn btn-ghost" data-dismiss data-onclick="history.closeBillDetails()" data-i18n="ui.common.close">Close</button>
+                <button type="button" class="btn btn-danger" id="billVoidBtn" data-onclick="history.confirmVoidBill()" data-i18n="ui.void.button">Void</button>
+                <button type="button" class="btn btn-danger" id="billDeleteBtn" style="display: none;" data-onclick="history.confirmDeleteBill()" data-i18n="ui.void.delete_permanently">Delete permanently</button>
+                <button type="button" class="btn btn-tonal" id="billReprintBtn" data-onclick="history.reprintBill()" title="Print a copy with the bill's date" data-i18n="ui.modals.reprint" data-i18n-title="ui.modals.print_copy_with_bill">Reprint</button>
+                <button type="button" class="btn btn-tonal" id="billShareBtn" data-onclick="history.shareBill()" title="Share on WhatsApp" data-i18n="ui.modals.share" data-i18n-title="ui.modals.share_on_whatsapp">Share</button>
+                <button type="button" class="btn btn-primary" id="billEditBtn" data-onclick="history.editCurrentBill()" data-i18n="ui.modals.edit">Edit</button>
             </div>
         </div>
     </div>
@@ -36,7 +36,7 @@
         <div class="bill-details-container">
             <div class="bill-details-header">
                 <h2 data-i18n="ui.modals.saved_drafts">Saved drafts</h2>
-                <button type="button" class="bill-details-close" data-onclick="billing.closeDrafts()" aria-label="Close" data-i18n-aria-label="ui.common.close"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-x"/></svg></button>
+                <button type="button" class="btn btn-ghost btn-icon" data-dismiss data-onclick="billing.closeDrafts()" aria-label="Close" data-i18n-aria-label="ui.common.close"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-x"/></svg></button>
             </div>
             <div class="bill-details-content" id="draftsContent" style="max-height: 60vh; overflow-y: auto;">
                 <!-- Drafts will be inserted here -->
@@ -69,7 +69,7 @@
                     <label data-i18n="ui.modals.purchase_rates_kg">Purchase rates (₹/kg)</label>
                     <div class="item-modal-rates">
                         <div id="itemModalPurchaseRates" class="rates-container"></div>
-                        <button class="add-rate-plus purchase" data-onclick="items.addModalRate('purchase')">+</button>
+                        <button type="button" class="btn btn-tonal btn-icon" data-onclick="items.addModalRate('purchase')" aria-label="Add rate" data-i18n-aria-label="ui.items.add_item"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></button>
                     </div>
                 </div>
 
@@ -77,7 +77,7 @@
                     <label data-i18n="ui.modals.wholesale_rates_kg">Wholesale rates (₹/kg)</label>
                     <div class="item-modal-rates">
                         <div id="itemModalWholesaleRates" class="rates-container"></div>
-                        <button class="add-rate-plus wholesale" data-onclick="items.addModalRate('wholesale')">+</button>
+                        <button type="button" class="btn btn-tonal btn-icon" data-onclick="items.addModalRate('wholesale')" aria-label="Add rate" data-i18n-aria-label="ui.items.add_item"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></button>
                     </div>
                 </div>
 
@@ -85,7 +85,7 @@
                     <label data-i18n="ui.modals.retail_sale_rates_kg">Retail rates (₹/kg)</label>
                     <div class="item-modal-rates">
                         <div id="itemModalSaleRates" class="rates-container"></div>
-                        <button class="add-rate-plus sale" data-onclick="items.addModalRate('sale')">+</button>
+                        <button type="button" class="btn btn-tonal btn-icon" data-onclick="items.addModalRate('sale')" aria-label="Add rate" data-i18n-aria-label="ui.items.add_item"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></button>
                     </div>
                 </div>
 
@@ -101,7 +101,7 @@
                     <div id="itemModalHistoryList"></div>
                 </div>
                 <div class="item-modal-danger">
-                    <button type="button" class="item-delete-btn" id="itemModalArchiveBtn" data-onclick="items.archiveFromModal()" style="display: none;" data-i18n="ui.items.archive_item">Archive item</button>
+                    <button type="button" class="btn btn-danger btn-sm" id="itemModalArchiveBtn" data-onclick="items.archiveFromModal()" style="display: none;" data-i18n="ui.items.archive_item">Archive item</button>
                 </div>
             </div>
             <div class="bill-details-footer item-modal-footer">

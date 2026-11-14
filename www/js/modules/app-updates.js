@@ -111,7 +111,7 @@ export class AppUpdatesManager {
         const fallbackNote = el('p', 'app-sheet-fallback');
         fallbackNote.setAttribute('role', 'note');
         const list = el('ul', 'app-sheet-notes');
-        const close = el('button', 'add-item-btn app-sheet-close');
+        const close = el('button', 'btn btn-primary btn-block app-sheet-close');
         close.type = 'button';
         sheet.append(title, versionLine, fallbackNote, list, close);
 
