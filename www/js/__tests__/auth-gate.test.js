@@ -32,7 +32,7 @@ function loginForm(email = 'a@x.com', password = 'secret1') {
     document.body.innerHTML = `
       <div id="authScreen" style="display:flex"></div>
       <input id="loginEmail" value="${email}"><input id="loginPassword" value="${password}">
-      <div class="auth-tab"></div><div class="auth-tab"></div>
+      <button data-auth-tab="login"></button><button data-auth-tab="register"></button>
       <form id="loginForm"><div id="loginMessage" role="alert"></div><button type="submit">Login</button></form>
       <form id="registerForm"><div id="registerMessage" role="alert"></div><button type="submit">Create Account</button></form>
       <input id="registerName"><input id="registerEmail"><input id="registerPassword"><input id="registerConfirmPassword">

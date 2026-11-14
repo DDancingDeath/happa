@@ -68,17 +68,17 @@
             <span class="notif-badge" id="notifBadge" hidden></span>
         </button>
     </header>
-    <div class="notif-backdrop" id="notifBackdrop" hidden data-onclick="notifications.close()"></div>
-    <div class="notif-panel" id="notifPanel" role="dialog" aria-label="Notifications" hidden data-i18n-aria-label="ui.common.notifications">
-        <div class="notif-panel-header">
+    <div class="scrim notif-backdrop" id="notifBackdrop" hidden data-onclick="notifications.close()"></div>
+    <div class="sheet notif-sheet" id="notifPanel" role="dialog" aria-label="Notifications" hidden data-i18n-aria-label="ui.common.notifications">
+        <div class="notif-head">
             <h3><svg class="i" aria-hidden="true" focusable="false"><use href="#i-bell"/></svg> <span data-i18n="ui.common.notifications">Notifications</span></h3>
-            <button type="button" class="notif-close" data-onclick="notifications.close()" aria-label="Close" data-i18n-aria-label="ui.common.close"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-x"/></svg></button>
+            <button type="button" class="btn btn-ghost btn-icon notif-close" data-dismiss data-onclick="notifications.close()" aria-label="Close" data-i18n-aria-label="ui.common.close"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-x"/></svg></button>
         </div>
-        <div class="notif-panel-actions">
-            <button type="button" class="notif-mark-all" data-onclick="notifications.markAllRead()" ><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-check"/></svg> <span data-i18n="ui.nav.mark_all_read">Mark all read</span></button>
+        <div class="notif-actions">
+            <button type="button" class="btn btn-tonal btn-sm notif-mark-all" data-onclick="notifications.markAllRead()"><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-check"/></svg> <span data-i18n="ui.nav.mark_all_read">Mark all read</span></button>
         </div>
         <div class="notif-list" id="notifList"></div>
-        <button type="button" class="notif-more" id="notifMore" hidden data-onclick="notifications.loadMore()" data-i18n="ui.nav.show_more">Show more</button>
+        <button type="button" class="btn btn-tonal btn-sm notif-more" id="notifMore" hidden data-onclick="notifications.loadMore()" data-i18n="ui.nav.show_more">Show more</button>
     </div>
 
     <!-- Side Navigation -->
