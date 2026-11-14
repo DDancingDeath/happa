@@ -194,6 +194,7 @@ function resetModalParts() {
     if (ok) ok.hidden = false;
     const cancel = document.getElementById('modalCancel');
     if (cancel) cancel.hidden = false;
+    document.getElementById('modalMessage')?.classList.remove('dialog-lines');
 }
 
 /**
@@ -394,7 +395,10 @@ const UIManager = {
      * @returns {Promise<boolean>} Resolves with user's choice (true for OK, false for Cancel, Esc, Back or a scrim tap)
      */
     showModal(message, title = t('ui.modals.alert'), showCancel = false, opts = {}) {
-        return this.openStockModal((el) => { el.textContent = message; }, title, showCancel, opts);
+        return this.openStockModal((el) => {
+            el.textContent = message;
+            el.classList.toggle('dialog-lines', String(message).includes('\n'));
+        }, title, showCancel, opts);
     },
 
     /**
