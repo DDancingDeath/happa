@@ -542,10 +542,6 @@
   }
 
   /* ---------- Modals: centered dialogs with comfortable width ---------- */
-  .modal-box {
-    max-width: 520px;
-  }
-
   .bill-details-container {
     max-width: 680px;
   }

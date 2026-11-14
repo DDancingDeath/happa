@@ -132,6 +132,22 @@ describe('one dialog controller (C5a)', () => {
         expect(document.activeElement).toBe(opener);
     });
 
+    test('a dialog opened over another is the top one: Esc closes it first, and focus goes back to the one under it', async () => {
+        const { closeTopDialog } = await import('../utils/keyboard-shortcuts.js');
+        const { askPendingLine } = await import('../ui/pending-line.js');
+        const under = UIManager.showModal('under', 'Under', true);
+        const line = askPendingLine({ label: 'Wheat', line: { rate: 30, qty: 4, total: 120 } });
+        const top = document.querySelector('.pending-line-dialog');
+        expect(Number(top.style.getPropertyValue('--sheet-layer'))).toBeGreaterThan(Number(overlay().style.getPropertyValue('--sheet-layer') || 0));
+        expect(document.activeElement.dataset.choice).toBe('add');
+        expect(closeTopDialog()).toBe(true);
+        await expect(line).resolves.toBe('cancel');
+        expect(overlay().classList.contains('active')).toBe(true);
+        expect(document.activeElement).toBe(box());
+        expect(closeTopDialog()).toBe(true);
+        await expect(under).resolves.toBe(false);
+    });
+
     test('a sheet below 600 px, a dialog from 600 px', async () => {
         const original = window.matchMedia;
         try {

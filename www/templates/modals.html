@@ -1,14 +1,14 @@
 <!-- App dialog (ui-manager.js): a .dialog from 600 px, a bottom .sheet below, over a .scrim -->
-    <div class="modal-overlay scrim" id="modalOverlay">
-        <div class="modal-box app-dialog dialog" id="modalBox" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalMessage" tabindex="-1">
+    <div class="scrim app-scrim" id="modalOverlay">
+        <div class="app-dialog dialog" id="modalBox" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalMessage" tabindex="-1">
             <div class="grabber" aria-hidden="true"></div>
-            <div class="modal-header" id="modalHeader">
-                <h3 id="modalTitle"><span data-i18n="ui.modals.alert">Alert</span></h3>
+            <div id="modalHeader">
+                <h3 class="dialog-title" id="modalTitle"><span data-i18n="ui.modals.alert">Alert</span></h3>
             </div>
-            <div class="modal-body" id="modalBody">
+            <div class="dialog-body" id="modalBody">
                 <div id="modalMessage"><span data-i18n="ui.modals.this_is_a_message">This is a message</span></div>
             </div>
-            <div class="modal-footer" id="modalFooter">
+            <div class="dialog-actions" id="modalFooter">
                 <button type="button" class="btn btn-ghost" id="modalCancel" data-dismiss data-onclick="ui.closeModal(false)" data-i18n="ui.modals.cancel">Cancel</button>
                 <button type="button" class="btn btn-primary" id="modalConfirm" data-onclick="ui.closeModal(true)" data-i18n="ui.modals.ok">OK</button>
             </div>

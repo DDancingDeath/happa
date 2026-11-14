@@ -536,7 +536,7 @@ export const VoiceBilling = {
         const val = (v) => (v !== null ? esc(v) : missing);
         const warns = (line, i) => (line.extraNumbers ? `<p class="voice-warn" data-voice-warn="${esc(i)}">${esc(t('ui.voice.extra_numbers'))}</p>` : '')
             + (line.rateUnusual ? `<p class="voice-warn" data-voice-warn="${esc(i)}">${esc(t('ui.voice.rate_unusual'))}</p>` : '');
-        let html = `<div id="voiceCheck" class="voice-dialog"><p class="voice-heard">${esc(t('ui.voice.heard'))} <q>${esc(bill.heard)}</q></p>`;
+        let html = `<div id="voiceCheck"><p class="voice-heard">${esc(t('ui.voice.heard'))} <q>${esc(bill.heard)}</q></p>`;
         if (bill.customer) {
             html += `<p class="voice-customer"><label><input type="checkbox" id="voiceCustomerTick" checked> ${esc(t('ui.voice.customer_fill'))} <strong>${esc(bill.customer)}</strong></label></p>`;
             if (currentCustomer && currentCustomer !== bill.customer) html += `<p class="voice-warn">${esc(t('ui.voice.customer_replaces', { name: currentCustomer }))}</p>`;

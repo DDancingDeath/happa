@@ -17,6 +17,7 @@ import { formatKg, formatRate, formatRupees, readLineItem } from '../utils/money
 import { AppState } from '../utils/state.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
 import { t } from '../i18n/index.js';
+import { buildSheet, openSheet, closeSheet } from './ui-manager.js';
 
 /**
  * A blocking question with two answers; "fix" is focused and is what Esc does.
@@ -25,40 +26,24 @@ import { t } from '../i18n/index.js';
  */
 function askFixOrConfirm({ kind, title, message, fix, confirm }) {
     return new Promise((resolve) => {
-        const overlay = document.createElement('div');
-        overlay.className = `modal-overlay active rate-check-dialog ${kind}-check-dialog`;
-        overlay.setAttribute('role', 'alertdialog');
-        overlay.setAttribute('aria-modal', 'true');
-        overlay.setAttribute('aria-labelledby', `${kind}CheckTitle`);
-        overlay.setAttribute('aria-describedby', `${kind}CheckMessage`);
-
-        const box = document.createElement('div');
-        box.className = 'modal-box';
-        const header = document.createElement('div');
-        header.className = 'modal-header';
-        const h = document.createElement('h3');
-        h.id = `${kind}CheckTitle`;
-        h.textContent = title;
-        header.appendChild(h);
-
-        const body = document.createElement('div');
-        body.className = 'modal-body';
+        const { overlay, body, footer } = buildSheet({
+            role: 'alertdialog', labelId: `${kind}CheckTitle`, title, describedBy: `${kind}CheckMessage`, className: `rate-check-dialog ${kind}-check-dialog`
+        });
         const p = document.createElement('p');
         p.id = `${kind}CheckMessage`;
         p.textContent = message;
         body.appendChild(p);
 
-        const footer = document.createElement('div');
-        footer.className = 'modal-footer';
         const button = (/** @type {string} */ cls, /** @type {string} */ text, /** @type {'fix'|'confirm'} */ choice) => {
             const b = document.createElement('button');
             b.type = 'button';
             b.className = cls;
             b.dataset.choice = choice;
-            // Esc (keyboard-shortcuts.js closes [data-dismiss]) is "Fix"
+            // Esc, Back and a scrim tap press [data-dismiss]: "Fix"
             if (choice === 'fix') b.dataset.dismiss = '';
             b.textContent = text;
             b.addEventListener('click', () => {
+                closeSheet(overlay);
                 overlay.remove();
                 resolve(choice);
             });
@@ -68,10 +53,8 @@ function askFixOrConfirm({ kind, title, message, fix, confirm }) {
         button('btn btn-danger-outline rate-check-confirm', confirm, 'confirm');
         const fixBtn = button('btn btn-primary', fix, 'fix');
 
-        box.append(header, body, footer);
-        overlay.appendChild(box);
         document.body.appendChild(overlay);
-        fixBtn.focus();
+        openSheet(overlay, { focus: fixBtn });
     });
 }
 
