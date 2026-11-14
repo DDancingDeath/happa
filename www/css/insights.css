@@ -62,17 +62,6 @@
 .ins-cmp-toggle[aria-expanded="true"] .ins-cmp-chev { transform: rotate(180deg); }
 .ins-head:not(.ins-cmp-open) .ins-cmp-more { display: none; }
 
-/* Hero: a plain figure on the page (.hero-num), no card */
-.ins-hero {
-    margin: var(--sp-1) 0 var(--sp-4);
-    padding: var(--sp-2) 0 var(--sp-1);
-    border-radius: var(--r-control);
-    color: var(--ink);
-}
-
-.ins-hero-label { color: var(--ink-3); font-size: var(--fs-sm); font-weight: var(--w-label); }
-.ins-hero-value { margin: var(--sp-1) 0 var(--sp-2); color: var(--ink); }
-
 .ins-compare { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); color: var(--ink-2); font-size: var(--fs-sm); }
 .ins-cmp-none, .ins-dot { color: var(--ink-3); }
 
@@ -89,7 +78,7 @@ div.ins-wide,
 .ins-section > div,
 .st-view > .panel { margin-bottom: var(--sp-4); }
 
-.ins-section > .ins-hero { margin: var(--sp-1) 0 var(--sp-4); }
+.ins-section > .hero { margin: var(--sp-1) 0 var(--sp-4); }
 
 .ins-page .section-title {
     display: block;
@@ -203,7 +192,8 @@ div.ins-wide,
 .st-totals { margin-top: var(--sp-3); }
 .st-flag td { background: var(--warning-soft); }
 .st-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); margin-top: var(--sp-2); }
-.st-balance { margin-top: 0; }
+.st-balance { margin: 0 0 var(--sp-4); }
+.st-balance > .hero-value { margin-bottom: var(--sp-2); }
 .st-match { margin-top: var(--sp-2); }
 
 /* Period A vs period B, saved ranges, summary (#140) */

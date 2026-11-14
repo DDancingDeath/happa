@@ -1754,6 +1754,47 @@ a.row:active {
   font-size: var(--fs-display);
 }
 
+/* Hero figure: caption, the figure, then its in/out or compare line, plain on the page (no fill) */
+.hero {
+  padding: var(--sp-2) 0 var(--sp-1);
+  color: var(--ink);
+}
+
+.hero > .hero-label {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--ink-3);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: var(--w-label);
+  letter-spacing: normal;
+}
+
+.hero > .hero-label::after {
+  content: none;
+}
+
+.hero > .hero-num,
+.hero > .hero-value {
+  margin-top: var(--sp-1);
+  color: var(--ink);
+}
+
+/* A panel that opens something when tapped */
+.panel-tap {
+  cursor: pointer;
+}
+
+.panel-tap:hover {
+  background: var(--surface-2);
+}
+
+.panel-tap:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
 /* Money figure: the ₹ sign smaller and muted beside the digits (<span class="cur">₹</span>) */
 .money {
   font-variant-numeric: tabular-nums;
@@ -4539,20 +4580,12 @@ input[type="number"] {
   color: var(--negative);
 }
 
-.draft-card {
+.draft {
   margin-bottom: var(--sp-3);
   padding: var(--sp-3) var(--sp-4);
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--mode-purchase);
-  border-radius: var(--r-control);
-  background: var(--surface);
 }
 
-.draft-card-sale {
-  border-left-color: var(--mode-sale);
-}
-
-.draft-card-head {
+.draft-head {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -4560,34 +4593,37 @@ input[type="number"] {
   gap: 2px var(--sp-2);
 }
 
-.draft-card-title {
+.draft-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
   color: var(--ink);
   font-weight: var(--w-strong);
 }
 
-.draft-card-meta,
-.draft-card-date {
+.draft-meta,
+.draft-date {
   color: var(--ink-3);
   font-size: var(--fs-sm);
 }
 
-.draft-card-date {
+.draft-date {
   margin-top: 2px;
 }
 
-.draft-card-customer {
+.draft-customer {
   margin-top: 4px;
   color: var(--ink-2);
   font-size: var(--fs-sm);
 }
 
-.draft-card-actions {
+.draft-actions {
   display: flex;
   gap: var(--sp-2);
   margin-top: var(--sp-3);
 }
 
-.draft-card-actions > .btn {
+.draft-actions > .btn {
   flex: 1;
 }
 
@@ -8032,9 +8068,10 @@ body.no-perm-contacts [data-perm~="contacts"] {
   flex-direction: column;
   overflow: hidden;
   padding: 0;
-  border: 1px solid var(--line);
+  border: 1px solid var(--panel-border);
   border-radius: var(--r-panel);
-  background: var(--surface);
+  background: var(--panel-bg);
+  box-shadow: var(--panel-shadow);
   color: var(--ink);
   font: inherit;
   text-align: left;
@@ -8284,10 +8321,6 @@ body.no-perm-contacts [data-perm~="contacts"] {
 #dayTodayContent .items-grid { gap: 0; }
 
 /* Hero: net (T12), in (T10) and out (T11) */
-.today-hero { padding: var(--sp-2) 0 var(--sp-1); }
-#dayTodayContent .today-hero-label { margin: 0; padding: 0; border: 0; color: var(--ink-3); font-family: inherit; font-size: var(--fs-sm); font-weight: var(--w-label); letter-spacing: normal; }
-#dayTodayContent .today-hero-label::after { content: none; }
-.today-hero .hero-num { margin-top: var(--sp-1); color: var(--ink); }
 .today-inout { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-5); margin-top: var(--sp-2); color: var(--ink-2); font-size: var(--fs-sm); }
 .today-inout > span { display: inline-flex; align-items: center; gap: 6px; }
 .today-in .i { color: var(--positive); }
@@ -8311,12 +8344,10 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .today-reminder-party span:first-child { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .today-reminder-party .today-reminder-days { flex-basis: 100%; }
 .today-reminder-days, .today-reminder-more { color: var(--ink-3); font-size: var(--fs-caption); }
-.day-report-card { margin-top: var(--section-gap); padding: var(--sp-4); }
+.day-report { margin-top: var(--section-gap); }
 
 /* Labour (T-LAB-*): tap for each bill */
-.today-labour-card { padding: var(--sp-3) var(--sp-4); cursor: pointer; }
-.today-labour-card:hover { background: var(--surface-2); }
-.today-labour-card:focus-visible { outline: none; box-shadow: var(--focus); }
+.today-labour { padding: var(--sp-3) var(--sp-4); }
 .today-labour-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; padding: 2px 0; color: var(--ink-2); font-size: var(--fs-sm); }
 .today-labour-sub, .today-labour-diff { color: var(--ink-3); font-size: var(--fs-caption); }
 .today-labour-hint { margin-top: var(--sp-2); color: var(--accent-text); font-size: var(--fs-sm); font-weight: var(--w-label); }
@@ -9033,11 +9064,12 @@ body.no-perm-contacts [data-perm~="contacts"] {
 /* ==================== RATE TRENDS (#65) ==================== */
 
 .rt-page { padding: 16px; }
-.rt-card { margin-bottom: 12px; }
-.rt-card h3 { margin: 0 0 8px; font-size: var(--fs-body); }
-.rt-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.rt-card-head h3 { margin: 0; }
-.rt-card-head select { width: auto; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: var(--fs-input); }
+.rt-panel { margin-bottom: var(--sp-3); }
+.rt-panel:empty { display: none; }
+.rt-panel h3 { margin: 0 0 var(--sp-2); font-size: var(--fs-body); }
+.rt-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-2); }
+.rt-head h3 { margin: 0; }
+.rt-head select { width: auto; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: var(--fs-input); }
 .rt-sub { margin-top: 12px !important; }
 .rt-muted { color: var(--text-secondary); font-size: var(--fs-caption); margin-top: 6px; }
 .rt-empty { color: var(--text-secondary); padding: 12px; text-align: center; font-size: var(--fs-sm); }
@@ -9805,17 +9837,6 @@ body.dark-mode .app-sheet-fallback {
 .ins-cmp-toggle[aria-expanded="true"] .ins-cmp-chev { transform: rotate(180deg); }
 .ins-head:not(.ins-cmp-open) .ins-cmp-more { display: none; }
 
-/* Hero: a plain figure on the page (.hero-num), no card */
-.ins-hero {
-    margin: var(--sp-1) 0 var(--sp-4);
-    padding: var(--sp-2) 0 var(--sp-1);
-    border-radius: var(--r-control);
-    color: var(--ink);
-}
-
-.ins-hero-label { color: var(--ink-3); font-size: var(--fs-sm); font-weight: var(--w-label); }
-.ins-hero-value { margin: var(--sp-1) 0 var(--sp-2); color: var(--ink); }
-
 .ins-compare { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); color: var(--ink-2); font-size: var(--fs-sm); }
 .ins-cmp-none, .ins-dot { color: var(--ink-3); }
 
@@ -9832,7 +9853,7 @@ div.ins-wide,
 .ins-section > div,
 .st-view > .panel { margin-bottom: var(--sp-4); }
 
-.ins-section > .ins-hero { margin: var(--sp-1) 0 var(--sp-4); }
+.ins-section > .hero { margin: var(--sp-1) 0 var(--sp-4); }
 
 .ins-page .section-title {
     display: block;
@@ -9946,7 +9967,8 @@ div.ins-wide,
 .st-totals { margin-top: var(--sp-3); }
 .st-flag td { background: var(--warning-soft); }
 .st-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); margin-top: var(--sp-2); }
-.st-balance { margin-top: 0; }
+.st-balance { margin: 0 0 var(--sp-4); }
+.st-balance > .hero-value { margin-bottom: var(--sp-2); }
 .st-match { margin-top: var(--sp-2); }
 
 /* Period A vs period B, saved ranges, summary (#140) */
@@ -10481,7 +10503,7 @@ div.ins-wide,
   #dayTodayContent > .today-main { grid-column: 1; }
   #dayTodayContent > .today-side { grid-column: 2; }
 
-  #dayTodayContent .today-hero {
+  #dayTodayContent .hero {
     margin-bottom: var(--sp-2);
     padding: var(--sp-4) var(--sp-5);
     border: 1px solid var(--panel-border);
@@ -10873,7 +10895,7 @@ div.ins-wide,
     align-items: start;
   }
 
-  .ins-section > .ins-hero { grid-column: 1 / -1; }
+  .ins-section > .hero { grid-column: 1 / -1; }
   .ins-section > .ins-wide { grid-column: 1 / -1; }
 }
 

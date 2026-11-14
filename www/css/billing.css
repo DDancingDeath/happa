@@ -669,20 +669,12 @@ input[type="number"] {
   color: var(--negative);
 }
 
-.draft-card {
+.draft {
   margin-bottom: var(--sp-3);
   padding: var(--sp-3) var(--sp-4);
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--mode-purchase);
-  border-radius: var(--r-control);
-  background: var(--surface);
 }
 
-.draft-card-sale {
-  border-left-color: var(--mode-sale);
-}
-
-.draft-card-head {
+.draft-head {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -690,34 +682,37 @@ input[type="number"] {
   gap: 2px var(--sp-2);
 }
 
-.draft-card-title {
+.draft-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
   color: var(--ink);
   font-weight: var(--w-strong);
 }
 
-.draft-card-meta,
-.draft-card-date {
+.draft-meta,
+.draft-date {
   color: var(--ink-3);
   font-size: var(--fs-sm);
 }
 
-.draft-card-date {
+.draft-date {
   margin-top: 2px;
 }
 
-.draft-card-customer {
+.draft-customer {
   margin-top: 4px;
   color: var(--ink-2);
   font-size: var(--fs-sm);
 }
 
-.draft-card-actions {
+.draft-actions {
   display: flex;
   gap: var(--sp-2);
   margin-top: var(--sp-3);
 }
 
-.draft-card-actions > .btn {
+.draft-actions > .btn {
   flex: 1;
 }
 

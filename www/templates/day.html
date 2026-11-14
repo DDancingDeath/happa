@@ -18,8 +18,8 @@
             <div id="tipHealthBanner" class="notice neg tip-health" hidden></div>
 
             <!-- Net cash (T12) with the day's in (T10) and out (T11) -->
-            <section class="today-hero" aria-labelledby="todayCashFlowLabel">
-                <h2 class="today-hero-label" id="todayCashFlowLabel"><span data-i18n="ui.today.net_outflow">Net outflow</span></h2>
+            <section class="hero" aria-labelledby="todayCashFlowLabel">
+                <h2 class="hero-label" id="todayCashFlowLabel"><span data-i18n="ui.today.net_outflow">Net outflow</span></h2>
                 <div class="hero-num" id="todayNetCashFlow">₹0</div>
                 <div class="today-inout">
                     <span class="today-in"><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-arrIn"/></svg><span data-i18n="ui.today.total_in">Total in</span> <strong id="todayTotalIn">₹0</strong></span>
@@ -39,7 +39,7 @@
             <div id="todayReminders" class="today-reminders" hidden></div>
 
             <!-- Day report / review queue (#187, #40): owner/manager only, filled by anomalies.js -->
-            <div id="dayReportCard" class="panel day-report-card" style="display: none;"></div>
+            <div id="dayReportCard" class="panel panel-pad day-report" style="display: none;"></div>
             </div>
 
             <div class="today-main">
@@ -70,7 +70,7 @@
 
             <!-- LABOUR: deducted from farmers (T-LAB-1), paid to labourers (T-LAB-4), the difference (T-LAB-5) and the estimate to pay (T-LAB-2); tap for bill-wise breakdown -->
             <h3 class="section-title" data-i18n="ui.today.labor">Labour</h3>
-            <div id="todayLabourCard" class="panel today-labour-card" role="button" tabindex="0"
+            <div id="todayLabourCard" class="panel panel-tap today-labour" role="button" tabindex="0"
                 data-onclick="day.showLabourBreakdown()">
                 <div class="today-labour-row">
                     <span data-i18n="ui.today.labour_deducted">Deducted from farmers</span>

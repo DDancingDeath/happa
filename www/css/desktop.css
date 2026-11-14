@@ -519,7 +519,7 @@
   #dayTodayContent > .today-main { grid-column: 1; }
   #dayTodayContent > .today-side { grid-column: 2; }
 
-  #dayTodayContent .today-hero {
+  #dayTodayContent .hero {
     margin-bottom: var(--sp-2);
     padding: var(--sp-4) var(--sp-5);
     border: 1px solid var(--panel-border);
@@ -911,7 +911,7 @@
     align-items: start;
   }
 
-  .ins-section > .ins-hero { grid-column: 1 / -1; }
+  .ins-section > .hero { grid-column: 1 / -1; }
   .ins-section > .ins-wide { grid-column: 1 / -1; }
 }
 
