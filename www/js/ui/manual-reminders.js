@@ -95,7 +95,7 @@ export const ManualReminders = {
     },
 
     rowHtml(r, manage) {
-        return `<li class="today-reminder-item" data-reminder-id="${esc(r.id)}">`
+        return `<li class="reminder-line" data-reminder-id="${esc(r.id)}">`
             + `<span class="today-reminder-title">${esc(r.title)}</span>`
             + (r.party ? ` <span class="today-reminder-party-name">· ${esc(r.party)}</span>` : '')
             + ` <span class="today-reminder-days${r.days < 0 ? ' late' : ''}">${esc(this.whenText(r))}</span>`

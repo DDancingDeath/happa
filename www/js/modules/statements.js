@@ -263,7 +263,7 @@ export const StatementsManager = {
             + `<h3 class="st-title">${esc(title)}</h3>`
             + this.duesCaveat(sessions)
             + `<div class="ins-scroll"><table class="table"><thead><tr><th>${esc(t('ui.statements.time'))}</th><th>${esc(t('ui.statements.what'))}</th><th>${esc(t('ui.statements.details'))}</th><th class="num">${esc(t('ui.money.amount'))}</th><th class="num">${esc(t('ui.statements.due'))}</th></tr></thead><tbody>${body || `<tr><td colspan="5">${esc(t('ui.statements.nothing'))}</td></tr>`}</tbody></table></div>`
-            + (isToday ? '' : `<div class="st-totals">${tot.map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.statements.t_sales' ? 'M1' : k === 'ui.statements.t_purchases' ? 'M16' : 'M4'}">${Number.isFinite(Number(v)) ? esc(formatRupees(Number(v))) : '—'}</span></div>`).join('')}</div>`);
+            + (isToday ? '' : `<div class="st-totals">${tot.map(([k, v, c]) => `<div class="ins-line"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.statements.t_sales' ? 'M1' : k === 'ui.statements.t_purchases' ? 'M16' : 'M4'}">${Number.isFinite(Number(v)) ? esc(formatRupees(Number(v))) : '—'}</span></div>`).join('')}</div>`);
         let share = [title, ...tot.map(([k, v]) => `${t(k)}: ${formatRupees(v)}`)].join('\n');
         // Today's totals have one home (Today); today's day book lists the bills only.
         if (isToday) share = [title, ...rows.map(r => [timeOf(r), this.kindLabel(r.kind), r.billNo, r.party, r.note, formatRupees(r.amount)].filter(Boolean).join(' · '))].join('\n');
@@ -295,7 +295,7 @@ export const StatementsManager = {
         ].filter(([, , , perm]) => !perm || perms[perm]);
         const caveats = perms.profit ? m.caveats : m.caveats.filter(c => c.key === 'dues');
         const html = `<h3 class="st-title">${esc(title)}</h3>`
-            + lines.map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="${perm}"` : ''}><span>${esc(t(k))}</span><span${id ? ` data-metric-export="${id}"` : ''}>${moneyHtml(v)}</span></div>`).join('')
+            + lines.map(([k, v, id, perm]) => `<div class="ins-line${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="${perm}"` : ''}><span>${esc(t(k))}</span><span${id ? ` data-metric-export="${id}"` : ''}>${moneyHtml(v)}</span></div>`).join('')
             + caveats.map(c => `<div class="notice warn ins-caveat"${c.key === 'dues' ? '' : ' data-perm="profit"'}>${icon('triangle', 'i-sm')}<span class="sr-only">⚠ </span><span class="grow">${esc(t(`ui.money.caveat_${c.key}`, { qty: c.qty, amount: formatAmount(c.estimate ?? c.amount ?? c.gap ?? 0) }))}</span></div>`).join('');
         const share = [title, ...lines.map(([k, v]) => `${plainLabel(t(k))}: ${v === null ? '—' : formatRupees(v)}`)].join('\n');
         return { title, html, share, csvHeader: [t('ui.statements.what', null, cl), t('ui.money.amount', null, cl)], csvRows: lines.map(([k, v]) => [plainLabel(t(k, null, cl)), v === null ? '' : v]) };
@@ -311,7 +311,7 @@ export const StatementsManager = {
         const body = l.rows.map(r => `<tr><td>${esc(formatDay(r.t, { lang }))}</td><td>${esc([this.kindLabel(r.kind), r.billNo].filter(Boolean).join(' · '))}</td><td class="num">${r.debit ? moneyHtml(r.debit) : ''}</td><td class="num">${r.credit ? moneyHtml(r.credit) : ''}</td><td class="num">${moneyHtml(r.balance)}</td></tr>`).join('');
         const loadedNote = isFullHistoryLoaded() ? '' : `<p class="ins-hint">${esc(t('ui.statements.loaded_only'))} <button type="button" class="btn btn-ghost btn-sm" data-onclick="statements.loadOlder(null)">${esc(t('ui.money.load_older'))}</button></p>`;
         const html = `<h3 class="st-title">${esc(title)}</h3>`
-            + `<div class="hero st-balance"><div class="hero-label">${esc(t('ui.statements.balance'))}</div><div class="hero-value display-num" data-metric-export="O4">${esc(word(l.closing))}</div>`
+            + `<div class="hero st-balance"><div class="hero-cap">${esc(t('ui.statements.balance'))}</div><div class="hero-fig display-num" data-metric-export="O4">${esc(word(l.closing))}</div>`
             + `<div class="notice ${matches ? 'pos' : 'warn'} st-match">${matches ? `${icon('check', 'i-sm')}<span class="grow"><span class="sr-only">✓ </span>${esc(t('ui.statements.matches_outstanding'))}</span>` : `${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>${esc(t('ui.statements.differs_outstanding', { amount: formatRupees(l.due) }))}</span>`}</div></div>`
             + loadedNote
             + `<div class="ins-scroll"><table class="table"><thead><tr><th>${esc(t('ui.statements.date'))}</th><th>${esc(t('ui.statements.what'))}</th><th class="num">${esc(t(this.partyKind === 'supplier' ? 'ui.statements.bought_col' : 'ui.statements.sold_col'))}</th><th class="num">${esc(t('ui.statements.paid_col'))}</th><th class="num">${esc(t('ui.statements.balance'))}</th></tr></thead><tbody>${body || `<tr><td colspan="5">${esc(t('ui.statements.nothing'))}</td></tr>`}</tbody></table></div>`;
@@ -350,7 +350,7 @@ export const StatementsManager = {
             : t('ui.statements.kg_left', { kg: formatKg(l.closing.qty) }));
         const closing = closingText('rate');
         const html = `<h3 class="st-title">${esc(title)}</h3>`
-            + `<div class="ins-row ins-total"><span>${esc(t('ui.statements.closing_stock'))}</span><span data-metric-export="S4"${perms.stockValue ? ' data-perm="stockValue"' : ''}>${esc(closing)}</span></div>`
+            + `<div class="ins-line ins-total"><span>${esc(t('ui.statements.closing_stock'))}</span><span data-metric-export="S4"${perms.stockValue ? ' data-perm="stockValue"' : ''}>${esc(closing)}</span></div>`
             + `<div class="ins-scroll"><table class="table"><thead><tr><th>${esc(t('ui.statements.date'))}</th><th>${esc(t('ui.statements.what'))}</th><th class="num">${esc(t('ui.insights.kg'))}</th><th class="num">${esc(t('ui.statements.stock_kg'))}</th>${showCost ? `<th class="num" data-perm="purchaseRates">${esc(t('ui.statements.avg_cost'))}</th>` : ''}</tr></thead><tbody>${body || `<tr><td colspan="5">${esc(t('ui.statements.nothing'))}</td></tr>`}</tbody></table></div>`;
         const share = [title, closingText('ratePaise')].join('\n');
         const csvHeader = [tc('ui.statements.date'), tc('ui.statements.what'), tc('ui.statements.bill_no'), tc('ui.insights.party'), tc('ui.insights.kg'), tc('ui.statements.rate'), tc('ui.statements.stock_kg'), ...(showCost ? [tc('ui.statements.avg_cost')] : [])];

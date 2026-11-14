@@ -83,7 +83,7 @@ function bind(kind) {
 }
 
 function clearMarks(section) {
-    section.querySelectorAll('.bill-check-msg, .bill-check-row').forEach(el => el.remove());
+    section.querySelectorAll('.bill-check-msg, .bill-check-line').forEach(el => el.remove());
     section.querySelectorAll('[data-bill-check]').forEach(el => {
         el.classList.remove(CLASS.block, CLASS.warn);
         el.removeAttribute('aria-invalid');
@@ -120,7 +120,7 @@ function messageEl(issue, msgId) {
 
 function itemRows(cfg) {
     const tbody = cfg.tableSelector ? document.querySelector(`${cfg.tableSelector} tbody`) : null;
-    return tbody ? [...tbody.children].filter(tr => !tr.classList.contains('bill-check-row')) : [];
+    return tbody ? [...tbody.children].filter(tr => !tr.classList.contains('bill-check-line')) : [];
 }
 
 function placeFieldIssue(cfg, issue, n) {
@@ -131,7 +131,7 @@ function placeFieldIssue(cfg, issue, n) {
     if (!anchor) return null;
     const msgId = `billcheck-${cfg.kind}-${n}`;
     inputs.forEach(el => mark(el, issue.severity, msgId));
-    const row = anchor.closest('.form-row, .payment-row') || anchor;
+    const row = anchor.closest('.bill-form-field, .pay-line') || anchor;
     let after = row;
     while (after.nextElementSibling?.classList.contains('bill-check-msg')) after = after.nextElementSibling;
     after.insertAdjacentElement('afterend', messageEl(issue, msgId));
@@ -150,13 +150,13 @@ function placeLineIssue(cfg, issue, n) {
         first = first || tr;
         if (k !== lines.length - 1) return;
         const msgRow = document.createElement('tr');
-        msgRow.className = 'bill-check-row';
+        msgRow.className = 'bill-check-line';
         const td = document.createElement('td');
         td.colSpan = tr.children.length || 5;
         td.appendChild(messageEl(issue, msgId));
         msgRow.appendChild(td);
         let after = tr;
-        while (after.nextElementSibling?.classList.contains('bill-check-row')) after = after.nextElementSibling;
+        while (after.nextElementSibling?.classList.contains('bill-check-line')) after = after.nextElementSibling;
         after.insertAdjacentElement('afterend', msgRow);
     });
     return first;
@@ -467,7 +467,7 @@ function showLine(kind, index) {
  */
 async function askOverrideReason(blocks) {
     const list = blocks.map(b => `<li>${ICON.block} ${Helpers.escapeHtml(text(b))}</li>`).join('');
-    const html = `<ul class="bill-check-modal-list">${list}</ul>
+    const html = `<ul class="bill-check-list">${list}</ul>
         <label for="billCheckOverrideReason">${Helpers.escapeHtml(t('ui.checks.reason_to_save_anyway'))}</label>
         <input type="text" id="billCheckOverrideReason" class="bill-check-reason" maxlength="200" autocomplete="off" />`;
     const ok = await UIManager.showModalWithHtml(html, t('msg.checks.save_anyway'), true, { confirmLabel: t('ui.confirm.save_anyway') });

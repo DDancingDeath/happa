@@ -502,8 +502,8 @@ html[lang="hi"] body {
 /* Money and weight columns line up digit under digit */
 table,
 input[type="number"],
-.total-row strong,
-.payment-row strong {
+.total-line strong,
+.pay-line strong {
   font-variant-numeric: tabular-nums;
 }
 
@@ -1203,7 +1203,7 @@ input[type="number"],
   cursor: pointer;
 }
 
-#billTable td.bill-empty, :is(#saleTable, .bill-lines) :is(td.bill-empty, td.empty) {
+#billTable td.empty, :is(#saleTable, .bill-lines) td.empty {
   padding: var(--sp-6) var(--sp-2);
   color: var(--ink-3);
   font-weight: var(--w-regular);
@@ -1316,7 +1316,7 @@ input[type="number"],
   }
 
   /* An empty bill and a check message under a line span the whole row */
-  #billTable :is(td.bill-empty, tr.bill-check-row > td), :is(#saleTable, .bill-lines) :is(td.bill-empty, td.empty, tr.bill-check-row > td) {
+  #billTable :is(td.empty, tr.bill-check-line > td), :is(#saleTable, .bill-lines) :is(td.empty, tr.bill-check-line > td) {
     display: block;
     max-width: none;
   }
@@ -1510,14 +1510,14 @@ html[data-updating] .updating-mark {
   color: var(--on-success-soft);
 }
 
-.ins-row .sync-chip {
+.ins-line .sync-chip {
   margin-left: 6px;
 }
 
 /* ---- css/forms.css ---- */
 /* Controls (redesign 2.5a, DIRECTION 3.6): buttons, kbd, fields, select, checkbox and switch,
    segmented control, tabs, chips and tags. Layer 3: tokens only.
-   Buttons are only .btn and its variants; an older class left on a button is a hook (JS, E2E) with no look of its own. */
+   Buttons are only .btn and its variants; a hook on a button is a data-* attribute. */
 
 /* ---------- Button: .btn + -primary / -secondary (default) / -tonal / -ghost / -danger, -sm, -icon ---------- */
 .btn {
@@ -1777,7 +1777,7 @@ input[type="radio"] {
 }
 
 input[type="checkbox"].switch,
-.labor-input-row .checkbox-label input[type="checkbox"] {
+.checkbox-label input[type="checkbox"].switch {
   -webkit-appearance: none;
   appearance: none;
   flex: none;
@@ -1791,12 +1791,12 @@ input[type="checkbox"].switch,
 }
 
 input[type="checkbox"].switch:checked,
-.labor-input-row .checkbox-label input[type="checkbox"]:checked {
+.checkbox-label input[type="checkbox"].switch:checked {
   background: radial-gradient(circle at 25px 50%, var(--on-accent) 8px, transparent 8.5px), var(--accent);
 }
 
 input[type="checkbox"].switch:focus-visible,
-.labor-input-row .checkbox-label input[type="checkbox"]:focus-visible {
+.checkbox-label input[type="checkbox"].switch:focus-visible {
   outline: none;
   box-shadow: var(--focus);
 }
@@ -1957,7 +1957,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 /* ---- css/surfaces.css ---- */
 /* Surfaces and feedback (redesign 2.5b, DIRECTION 3.6): panel and rows, metrics, hero figure, meter,
    notice, empty, skeleton, table, dialog, sheet and scrim, toast, loading. Layer 3: tokens only.
-   Older classes listed beside a new one keep their hooks (JS, E2E) and share its look. */
+   Hooks for JS and tests are data-* attributes, not classes. */
 
 /* ---------- Text tones ---------- */
 .tone-pos { color: var(--positive); }
@@ -2141,7 +2141,7 @@ a.row:active {
   color: var(--ink);
 }
 
-.hero > .hero-label {
+.hero > .hero-cap {
   margin: 0;
   padding: 0;
   border: 0;
@@ -2152,12 +2152,12 @@ a.row:active {
   letter-spacing: normal;
 }
 
-.hero > .hero-label::after {
+.hero > .hero-cap::after {
   content: none;
 }
 
 .hero > .hero-num,
-.hero > .hero-value {
+.hero > .hero-fig {
   margin-top: var(--sp-1);
   color: var(--ink);
 }
@@ -2367,8 +2367,7 @@ a.row:active {
 }
 
 /* ---------- Scrim, dialog, sheet ---------- */
-.scrim,
-.overlay {
+.scrim {
   background: var(--scrim);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
@@ -2406,7 +2405,7 @@ a.row:active {
 }
 
 /* The side menu's scrim on the phone (desktop has a permanent sidebar) */
-.overlay {
+.nav-scrim {
   position: fixed;
   top: 0;
   left: 0;
@@ -2418,13 +2417,13 @@ a.row:active {
   transition: all var(--transition-slow);
 }
 
-.overlay.active {
+.nav-scrim.active {
   opacity: 1;
   visibility: visible;
 }
 
 @media (min-width: 1024px) {
-  .overlay {
+  .nav-scrim {
     display: none;
   }
 }
@@ -2475,7 +2474,7 @@ a.row:active {
 
 /* ---- css/loading.css ---- */
 /* The full-screen spinner, for blocking saves only: above any stack of page dialogs, below the confirms */
-.loading-overlay {
+.app-loading {
   position: fixed;
   top: 0;
   left: 0;
@@ -2490,7 +2489,7 @@ a.row:active {
   backdrop-filter: none;
 }
 
-.loading-overlay.active {
+.app-loading.active {
   display: flex;
 }
 
@@ -2811,7 +2810,7 @@ body {
     text-overflow: ellipsis;
   }
 
-  .app-bar .app-bar-btn {
+  .app-bar .app-bar-action {
     position: relative;
     top: auto;
     left: auto;
@@ -2834,11 +2833,11 @@ body {
     -webkit-tap-highlight-color: transparent;
   }
 
-  .app-bar .app-bar-btn:hover {
+  .app-bar .app-bar-action:hover {
     background: var(--state-hover);
   }
 
-  .app-bar .app-bar-btn:active {
+  .app-bar .app-bar-action:active {
     transform: scale(0.96);
   }
 
@@ -2923,7 +2922,7 @@ body {
   margin: 0;
 }
 
-.close-btn {
+.nav-close {
   background: none;
   border: none;
   color: var(--ink-2);
@@ -2936,11 +2935,11 @@ body {
   justify-content: center;
 }
 
-.close-btn:hover {
+.nav-close:hover {
   background: var(--state-hover);
 }
 
-.close-btn:active {
+.nav-close:active {
   transform: scale(0.96);
 }
 
@@ -3092,7 +3091,7 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none; }
     color: var(--ink-3);
   }
 
-  .close-btn {
+  .nav-close {
     grid-column: 2;
     grid-row: 1 / span 2;
     width: 44px;
@@ -3100,7 +3099,7 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none; }
   }
 
   /* Not "all": an inherited visibility change would be animated too, and the sheet's controls could not take focus as it opens */
-  .close-btn,
+  .nav-close,
   .nav-menu a {
     transition: background-color var(--transition-fast), color var(--transition-fast);
   }
@@ -3468,14 +3467,14 @@ body.typing .bottom-nav {
 }
 
 /* ---- css/billing.css ---- */
-.form-row {
+.bill-form-field {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
   margin-bottom: 12px;
 }
 
-.form-row label {
+.bill-form-field label {
   width: 140px;
   flex-shrink: 0;
   font-weight: var(--w-label);
@@ -3484,10 +3483,10 @@ body.typing .bottom-nav {
   margin: 0;
 }
 
-.form-row input.bill-date-input,
-.form-row select,
-.form-row input[type="number"],
-.form-row input[type="text"] {
+.bill-form-field input.bill-date-input,
+.bill-form-field select,
+.bill-form-field input[type="number"],
+.bill-form-field input[type="text"] {
   flex: 1;
   padding: 13px 15px;
   border: 1px solid var(--border-strong);
@@ -3510,8 +3509,8 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
-.form-row select:focus,
-.form-row input:focus {
+.bill-form-field select:focus,
+.bill-form-field input:focus {
   border-color: var(--primary-color);
   outline: none;
   box-shadow: var(--focus-ring);
@@ -3572,7 +3571,7 @@ input[type="number"] {
   color: var(--negative);
 }
 
-.bill-summary {
+.bill-line-sum {
   background: var(--card-bg);
   padding: 12px 16px;
   border-radius: var(--radius-md);
@@ -3653,8 +3652,8 @@ input[type="number"] {
 }
 
 /* Save with a line not added to the bill (BF-PENDING), extreme rate (BF-RATECHECK): choices wrap on a phone */
-.pending-line-dialog .dialog-actions > .btn,
-.rate-check-dialog .dialog-actions > .btn {
+.pending-line-sheet .dialog-actions > .btn,
+.rate-check-sheet .dialog-actions > .btn {
   flex: 1 1 auto;
 }
 
@@ -3696,14 +3695,14 @@ input[type="number"] {
   font-variant-numeric: tabular-nums;
 }
 
-:is(#billing, .bill-page) .form-row.field {
+:is(#billing, .bill-page) .bill-form-field.field {
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
   margin-bottom: var(--sp-3);
 }
 
-:is(#billing, .bill-page) .form-row.field > label {
+:is(#billing, .bill-page) .bill-form-field.field > label {
   width: auto;
   margin: 0;
   color: var(--ink-2);
@@ -3711,7 +3710,7 @@ input[type="number"] {
   font-weight: var(--w-label);
 }
 
-:is(#billing, .bill-page) .form-row.field .input {
+:is(#billing, .bill-page) .bill-form-field.field .input {
   flex: 1;
   min-width: 0;
   border-color: var(--input-border);
@@ -3719,7 +3718,7 @@ input[type="number"] {
   color: var(--ink);
 }
 
-.bill-customer-box {
+.bill-party {
   position: relative;
 }
 
@@ -3733,12 +3732,12 @@ input[type="number"] {
   border-bottom-right-radius: 0;
 }
 
-:is(#billing, .bill-page) .bill-customer-box > .input {
+:is(#billing, .bill-page) .bill-party > .input {
   width: 100%;
   padding-right: 52px;
 }
 
-.bill-customer-box > .btn-icon {
+.bill-party > .btn-icon {
   position: absolute;
   top: 0;
   right: 0;
@@ -3747,7 +3746,7 @@ input[type="number"] {
   color: var(--ink-3);
 }
 
-.bill-customer-box > .btn-icon:hover {
+.bill-party > .btn-icon:hover {
   color: var(--bill-tone-text, var(--accent-text));
 }
 
@@ -3841,7 +3840,7 @@ input[type="number"] {
   font-weight: var(--w-label);
 }
 
-.bill-entry {
+.bill-line-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -3850,15 +3849,15 @@ input[type="number"] {
 }
 
 /* One column, except the line preview (packets, kg) with Add to bill beside it */
-.bill-entry > * {
+.bill-line-form > * {
   grid-column: 1 / -1;
 }
 
-#billing .bill-entry > .bill-summary {
+#billing .bill-line-form > .bill-line-sum {
   grid-column: 1;
 }
 
-#billing .bill-entry > .add-to-bill-btn {
+#billing .bill-line-form > [data-add-line] {
   grid-column: 2;
   width: auto;
   min-height: 48px;
@@ -3866,7 +3865,7 @@ input[type="number"] {
 }
 
 /* Rate | Weight | Add on one line */
-.bill-entry-grid {
+.bill-line-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   column-gap: var(--sp-2);
@@ -3874,18 +3873,18 @@ input[type="number"] {
 }
 
 /* A live check message under Rate or Weight (bill-highlight.js) takes its own row below the three */
-:is(#billing, .bill-page) .bill-entry-grid > .bill-check-msg {
+:is(#billing, .bill-page) .bill-line-grid > .bill-check-msg {
   grid-column: 1 / -1;
   order: 1;
 }
 
-.bill-entry-grid > .quick-add-btn-inline {
+.bill-line-grid > [data-add-weight] {
   min-height: 48px;
   margin-bottom: var(--sp-3);
   white-space: nowrap;
 }
 
-#billing .bill-summary {
+#billing .bill-line-sum {
   justify-content: flex-start;
   gap: var(--sp-4);
   margin: var(--sp-1) 0 0;
@@ -3897,7 +3896,7 @@ input[type="number"] {
   font-size: var(--fs-sm);
 }
 
-#billing .bill-summary strong {
+#billing .bill-line-sum strong {
   color: var(--ink);
   font-weight: var(--w-strong);
   font-variant-numeric: tabular-nums;
@@ -4080,12 +4079,12 @@ input[type="number"] {
   padding: var(--sp-1) var(--sp-4);
 }
 
-.ws-profit .payment-row > span {
+.ws-profit .pay-line > span {
   color: var(--ink-2);
   font-weight: var(--w-regular);
 }
 
-.ws-profit .payment-row > strong {
+.ws-profit .pay-line > strong {
   color: var(--ink);
   font-size: var(--fs-lead);
   font-weight: var(--w-strong);
@@ -4338,7 +4337,7 @@ input[type="number"] {
   border: 1px solid var(--border-color);
 }
 
-.total-row {
+.total-line {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -4346,18 +4345,18 @@ input[type="number"] {
   font-size: var(--fs-body);
 }
 
-.total-row span {
+.total-line span {
   font-weight: var(--w-strong);
   color: var(--text-secondary);
 }
 
-.total-row strong {
+.total-line strong {
   font-size: var(--fs-lead);
   font-weight: var(--w-strong);
   color: var(--primary-color);
 }
 
-.labor-input-row {
+.bill-labour {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -4383,7 +4382,7 @@ input[type="number"] {
   border-radius: var(--radius-sm);
 }
 
-.labor-input-row input[type="number"] {
+.bill-labour input[type="number"] {
   width: 120px;
   padding: 11px;
   text-align: right;
@@ -4396,7 +4395,7 @@ input[type="number"] {
   transition: all var(--transition);
 }
 
-.labor-input-row input[type="number"]:focus {
+.bill-labour input[type="number"]:focus {
   border-color: var(--primary-color);
   box-shadow: var(--focus-ring);
 }
@@ -4420,7 +4419,7 @@ input[type="number"] {
   color: var(--on-success-soft) !important;
 }
 
-.payment-row {
+.pay-line {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -4429,11 +4428,11 @@ input[type="number"] {
   border-bottom: 1px var(--rule-style) var(--border-color);
 }
 
-.payment-row:last-child {
+.pay-line:last-child {
   border-bottom: none;
 }
 
-.payment-row label {
+.pay-line label {
   margin: 0;
   font-weight: var(--w-label);
   font-size: var(--fs-body);
@@ -4441,19 +4440,19 @@ input[type="number"] {
   color: var(--text-primary);
 }
 
-.payment-row span {
+.pay-line span {
   font-weight: var(--w-strong);
   font-size: var(--fs-body);
   color: var(--text-secondary);
 }
 
-.payment-row strong {
+.pay-line strong {
   font-size: var(--fs-lead);
   color: var(--primary-color);
   transition: color var(--transition);
 }
 
-.payment-row input[type="number"] {
+.pay-line input[type="number"] {
   width: 120px;
   min-width: 120px;
   max-width: 120px;
@@ -4468,12 +4467,12 @@ input[type="number"] {
   transition: all var(--transition);
 }
 
-.payment-row input[type="number"]:focus {
+.pay-line input[type="number"]:focus {
   border-color: var(--primary-color);
   box-shadow: var(--focus-ring);
 }
 
-.payment-row.payment-total {
+.pay-line.payment-total {
   background: var(--info-soft);
   padding: 14px;
   border-radius: var(--radius);
@@ -4481,40 +4480,40 @@ input[type="number"] {
   transition: background var(--transition);
 }
 
-.payment-row.payment-total span {
+.pay-line.payment-total span {
   font-weight: var(--w-strong);
   color: var(--on-info-soft);
 }
 
-.payment-row.payment-total strong {
+.pay-line.payment-total strong {
   font-size: var(--fs-lead);
   color: var(--info-dark);
 }
 
 /* Cash + Online + Due must add up to the bill total (#23) */
-.payment-row.split-remaining-row {
+.pay-line.pay-rest {
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.payment-row.split-remaining-row strong {
+.pay-line.pay-rest strong {
   font-size: var(--fs-body);
 }
 
 /* ---------- Billing totals and payment (redesign 3.1b): colon-less labels, ₹ in the field ---------- */
-:is(#billing, .bill-page) .bill-col-summary > .bill-totals {
+:is(#billing, .bill-page) .bill-side > .bill-totals {
   border: 1px solid var(--panel-border);
   border-radius: var(--r-panel);
   background: var(--panel-bg);
   box-shadow: var(--panel-shadow);
 }
 
-:is(#billing, .bill-page) .total-row span {
+:is(#billing, .bill-page) .total-line span {
   color: var(--ink-2);
   font-weight: var(--w-regular);
 }
 
-:is(#billing, .bill-page) .total-row strong {
+:is(#billing, .bill-page) .total-line strong {
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
@@ -4540,7 +4539,7 @@ input[type="number"] {
 }
 
 :is(#billing, .bill-page) .grand-total,
-:is(#billing, .bill-page) .payment-row.payment-total {
+:is(#billing, .bill-page) .pay-line.payment-total {
   margin: 0;
   padding: var(--sp-3) 0 !important;
   border-radius: 0;
@@ -4556,12 +4555,12 @@ input[type="number"] {
   font-weight: var(--w-strong);
 }
 
-:is(#billing, .bill-page) .payment-row.payment-total > span {
+:is(#billing, .bill-page) .pay-line.payment-total > span {
   color: var(--ink-2);
   font-weight: var(--w-regular);
 }
 
-:is(#billing, .bill-page) .payment-row.payment-total strong {
+:is(#billing, .bill-page) .pay-line.payment-total strong {
   color: var(--ink);
   font-size: var(--fs-lead);
   font-weight: var(--w-strong);
@@ -4577,7 +4576,7 @@ input[type="number"] {
   letter-spacing: var(--tracking-display);
 }
 
-:is(#billing, .bill-page) .labor-input-row .checkbox-label {
+:is(#billing, .bill-page) .bill-labour .checkbox-label {
   margin: 0;
 }
 
@@ -4609,13 +4608,13 @@ input[type="number"] {
   font-weight: var(--w-label);
 }
 
-:is(#billing, .bill-page) .payment-row > label {
+:is(#billing, .bill-page) .pay-line > label {
   color: var(--ink);
 }
 
 /* "Fill" puts the whole bill in that row: the row's tick box, drawn as a text button. Ticked it reads
    "Filled ✓" on a solid fill; its name is the visible word plus the hidden hint (.pay-fill-hint). */
-:is(#billing, .bill-page) .payment-row > .pay-fill {
+:is(#billing, .bill-page) .pay-line > .pay-fill {
   position: relative;
   display: inline-flex;
   flex: none;
@@ -4629,7 +4628,7 @@ input[type="number"] {
   cursor: pointer;
 }
 
-:is(#billing, .bill-page) .payment-row > .pay-fill > input {
+:is(#billing, .bill-page) .pay-line > .pay-fill > input {
   position: absolute;
   inset: 0;
   z-index: var(--z-base);
@@ -4640,7 +4639,7 @@ input[type="number"] {
   cursor: pointer;
 }
 
-:is(#billing, .bill-page) .payment-row > .pay-fill > span {
+:is(#billing, .bill-page) .pay-line > .pay-fill > span {
   display: flex;
   flex: 1;
   align-items: center;
@@ -4654,12 +4653,12 @@ input[type="number"] {
   white-space: nowrap;
 }
 
-:is(#billing, .bill-page) .payment-row > .pay-fill > .pay-fill-on,
-:is(#billing, .bill-page) .payment-row > .pay-fill > input:checked ~ .pay-fill-off {
+:is(#billing, .bill-page) .pay-line > .pay-fill > .pay-fill-on,
+:is(#billing, .bill-page) .pay-line > .pay-fill > input:checked ~ .pay-fill-off {
   display: none;
 }
 
-:is(#billing, .bill-page) .payment-row > .pay-fill > input:checked ~ .pay-fill-on {
+:is(#billing, .bill-page) .pay-line > .pay-fill > input:checked ~ .pay-fill-on {
   display: flex;
   border-color: var(--bill-tone-fill, var(--accent-text));
   background: var(--bill-tone-fill, var(--btn-primary-bg));
@@ -4667,12 +4666,12 @@ input[type="number"] {
   font-weight: var(--w-strong);
 }
 
-:is(#billing, .bill-page) .payment-row > .pay-fill > .pay-fill-on::after {
+:is(#billing, .bill-page) .pay-line > .pay-fill > .pay-fill-on::after {
   content: "✓" / "";
   margin-left: 4px;
 }
 
-:is(#billing, .bill-page) .payment-row > .pay-fill > .pay-fill-hint {
+:is(#billing, .bill-page) .pay-line > .pay-fill > .pay-fill-hint {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -4683,32 +4682,32 @@ input[type="number"] {
 }
 
 @media (hover: hover) {
-  :is(#billing, .bill-page) .payment-row > .pay-fill:hover > input:not(:checked) ~ .pay-fill-off {
+  :is(#billing, .bill-page) .pay-line > .pay-fill:hover > input:not(:checked) ~ .pay-fill-off {
     background: var(--state-hover);
   }
 }
 
-:is(#billing, .bill-page) .payment-row > .pay-fill > input:focus-visible ~ span {
+:is(#billing, .bill-page) .pay-line > .pay-fill > input:focus-visible ~ span {
   box-shadow: var(--focus);
 }
 
-#billing #saleSection .payment-row > .pay-fill {
+#billing #saleSection .pay-line > .pay-fill {
   color: var(--positive);
 }
 
-#billing #saleSection .payment-row > .pay-fill > input:checked ~ .pay-fill-on {
+#billing #saleSection .pay-line > .pay-fill > input:checked ~ .pay-fill-on {
   border-color: var(--positive);
   background: var(--btn-sale-bg);
   color: var(--btn-sale-ink);
 }
 
 @media (forced-colors: active) {
-  :is(#billing, .bill-page) .payment-row > .pay-fill > input:checked ~ .pay-fill-on {
+  :is(#billing, .bill-page) .pay-line > .pay-fill > input:checked ~ .pay-fill-on {
     outline: 2px solid Highlight;
   }
 }
 
-:is(#billing, .bill-page) .form-row.field > .bill-note-print {
+:is(#billing, .bill-page) .bill-form-field.field > .bill-note-print {
   align-self: flex-start;
   min-height: 44px;
   font-weight: var(--w-regular);
@@ -4723,11 +4722,11 @@ input[type="number"] {
   margin-bottom: var(--sp-3);
 }
 
-:is(#billing, .bill-page) .bill-notes-date > .form-row.field {
+:is(#billing, .bill-page) .bill-notes-date > .bill-form-field.field {
   margin-bottom: 0;
 }
 
-:is(#billing, .bill-page) .form-row.field.bill-notes {
+:is(#billing, .bill-page) .bill-form-field.field.bill-notes {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -4747,7 +4746,7 @@ input[type="number"] {
   grid-column: 1 / -1;
 }
 
-:is(#billing, .bill-page) .form-row.field.bill-notes > .bill-note-print {
+:is(#billing, .bill-page) .bill-form-field.field.bill-notes > .bill-note-print {
   grid-row: 1;
   grid-column: 2;
   align-self: end;
@@ -4909,7 +4908,7 @@ input[type="number"] {
 }
 
 /* Payment checkbox styling */
-.payment-row input[type="checkbox"] {
+.pay-line input[type="checkbox"] {
   width: 22px;
   height: 22px;
   min-width: 22px;
@@ -5012,12 +5011,12 @@ tr.bill-check-warn > td:first-child {
     color: var(--on-warning-soft);
 }
 
-tr.bill-check-row > td {
+tr.bill-check-line > td {
     padding-top: 0;
     border-top: none;
 }
 
-tr.bill-check-row .bill-check-msg {
+tr.bill-check-line .bill-check-msg {
     margin: 0 0 4px;
 }
 
@@ -5031,7 +5030,7 @@ tr.bill-check-row .bill-check-msg {
     outline-offset: 2px;
 }
 
-.bill-check-modal-list {
+.bill-check-list {
     margin: 0 0 12px;
     padding-left: 4px;
     list-style: none;
@@ -5089,7 +5088,7 @@ body.dark-mode .party-due-line.party-due-old {
 }
 
 /* ---- css/history.css ---- */
-/* .history-item is a hook (tests, oracle, Outstanding, Stock); the look comes from .row / .due-bill / .stock-adj */
+/* [data-history-item] is a hook (tests, oracle, Outstanding, Stock); the look comes from .row / .due-bill / .stock-adj */
 .history-header {
   display: flex;
   justify-content: space-between;
@@ -5105,7 +5104,7 @@ body.dark-mode .party-due-line.party-due-old {
   margin-bottom: 8px;
 }
 
-.history-summary {
+.bill-row__items {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin-bottom: 8px;
@@ -5358,7 +5357,7 @@ body.dark-mode .party-due-line.party-due-old {
 /* ==================== BILL ROW (History + Wholesale › History) ==================== */
 /* Phone: two lines. Line 1: bill no · party · amount (right). Line 2: date · items · chips.
    Desktop columns are in desktop.css. */
-.history-item.bill-row {
+[data-history-item][data-bill-row] {
   display: grid;
   grid-template-columns: 8.5rem minmax(0, 1fr) auto;
   grid-template-areas:
@@ -5373,19 +5372,19 @@ body.dark-mode .party-due-line.party-due-old {
 }
 
 /* Consecutive rows join into one panel; .row + .row::before draws the hairline */
-.history-item.bill-row + .history-item.bill-row {
+[data-history-item][data-bill-row] + [data-history-item][data-bill-row] {
   border-top: 0;
   border-top-left-radius: 0;
   border-top-right-radius: 0;
 }
 
-.history-item.bill-row:has(+ .history-item.bill-row) {
+[data-history-item][data-bill-row]:has(+ [data-history-item][data-bill-row]) {
   border-bottom: 0;
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
 }
 
-.history-item.bill-row + :not(.history-item) {
+[data-history-item][data-bill-row] + :not([data-history-item]) {
   margin-top: var(--sp-3);
 }
 
@@ -5411,11 +5410,11 @@ body.dark-mode .party-due-line.party-due-old {
   vertical-align: 0.1em;
 }
 
-.bill-row[role="button"] {
+[data-bill-row][role="button"] {
   cursor: pointer;
 }
 
-.bill-row[role="button"]:hover {
+[data-bill-row][role="button"]:hover {
   background: var(--surface-2);
 }
 
@@ -5459,7 +5458,7 @@ body.dark-mode .party-due-line.party-due-old {
   display: none;
 }
 
-.bill-row .bill-row__items {
+[data-bill-row] .bill-row__items {
   flex: 1 1 4.5rem;
   min-width: 0;
   margin: 0;
@@ -5468,7 +5467,7 @@ body.dark-mode .party-due-line.party-due-old {
 }
 
 /* Chips wrap inside the card instead of running off a narrow phone (#68: 14 px text) */
-.bill-row .bill-row__chips {
+[data-bill-row] .bill-row__chips {
   flex: 0 1 auto;
   min-width: 0;
   max-width: 100%;
@@ -5481,7 +5480,7 @@ body.dark-mode .party-due-line.party-due-old {
   color: var(--ink);
 }
 
-.bill-row .old-app-chip {
+[data-bill-row] .old-app-chip {
   align-self: center;
 }
 
@@ -5521,19 +5520,19 @@ body.dark-mode .party-due-line.party-due-old {
 }
 
 /* Table View: one row per bill, same columns as the row */
-.bill-table-wrap {
+.bill-table-scroll {
   overflow-x: auto;
 }
 
-.bill-table {
+[data-bill-table] {
   font-size: var(--fs-sm);
 }
 
-.bill-table thead th {
+[data-bill-table] thead th {
   white-space: nowrap;
 }
 
-.bill-table td {
+[data-bill-table] td {
   padding-top: var(--sp-2);
   padding-bottom: var(--sp-2);
   vertical-align: top;
@@ -5548,7 +5547,7 @@ body.dark-mode .party-due-line.party-due-old {
   font-weight: var(--w-strong);
 }
 
-.bill-table .bill-table__amount {
+[data-bill-table] .bill-table__amount {
   text-align: right;
   white-space: nowrap;
   font-weight: var(--w-strong);
@@ -5609,12 +5608,12 @@ body.dark-mode .party-due-line.party-due-old {
   font-style: italic;
 }
 
-.history-item.bill-row.is-voided,
+[data-history-item][data-bill-row].is-voided,
 .bill-table__row.is-voided {
   opacity: 0.6;
 }
 
-.history-item.bill-row.is-voided .bill-row__amount,
+[data-history-item][data-bill-row].is-voided .bill-row__amount,
 .bill-table__row.is-voided .bill-table__amount {
   text-decoration: line-through;
 }
@@ -6121,8 +6120,8 @@ body.dark-mode .party-due-line.party-due-old {
     margin-bottom: var(--sp-3);
 }
 
-/* ---------- Bills: one panel per open bill (BILL-DUE); .history-item is the hook (tests, search) ---------- */
-.history-item.due-bill {
+/* ---------- Bills: one panel per open bill (BILL-DUE); [data-history-item] is the hook (tests, search) ---------- */
+[data-history-item].due-bill {
     margin-bottom: var(--sp-3);
     padding: var(--sp-4);
     border: 1px solid var(--panel-border);
@@ -6347,7 +6346,7 @@ body.dark-mode .party-due-line.party-due-old {
   padding: 0;
 }
 
-.stock-low-card {
+[data-stock-low] {
   margin-bottom: var(--sp-4);
 }
 
@@ -6416,8 +6415,8 @@ body.dark-mode .party-due-line.party-due-old {
   background: var(--surface-2);
 }
 
-/* .history-item is the hook (tests) */
-.history-item.stock-adj {
+/* [data-history-item] is the hook (tests) */
+[data-history-item].stock-adj {
   margin-bottom: var(--sp-3);
   padding: var(--sp-4);
   border: 1px solid var(--panel-border);
@@ -6701,7 +6700,7 @@ body:has(.tab.sale-theme.active) .dialog-actions > .btn-primary {
   flex: 1;
 }
 
-.item-modal-danger {
+.item-danger-zone {
   display: flex;
   justify-content: flex-start;
   margin-top: var(--sp-2);
@@ -7257,7 +7256,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .today-inout > span { display: inline-flex; align-items: center; gap: 6px; }
 .today-in .i { color: var(--positive); }
 .today-out .i { color: var(--ink-3); }
-.today-inout strong, .today-labour-row strong, .today-channel-total, .today-channel-split strong, .today-bill-total {
+.today-inout strong, .today-labour-line strong, .today-channel-total, .today-channel-split strong, .today-bill-total {
   color: var(--ink); font-family: var(--font-num); font-weight: var(--w-strong); font-variant-numeric: tabular-nums;
 }
 
@@ -7280,7 +7279,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 
 /* Labour (T-LAB-*): tap for each bill */
 .today-labour { padding: var(--sp-3) var(--sp-4); }
-.today-labour-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; padding: 2px 0; color: var(--ink-2); font-size: var(--fs-sm); }
+.today-labour-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; padding: 2px 0; color: var(--ink-2); font-size: var(--fs-sm); }
 .today-labour-sub, .today-labour-diff { color: var(--ink-3); font-size: var(--fs-caption); }
 .today-labour-hint { margin-top: var(--sp-2); color: var(--accent-text); font-size: var(--fs-sm); font-weight: var(--w-label); }
 
@@ -7297,13 +7296,13 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .today-channel-writeoff { grid-column: 1 / -1; }
 
 /* Today's bills (T19): each row opens the bill; the dot is the bill's mode */
-.today-bill-row {
+[data-today-bill] {
   display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--row-h); padding: 10px var(--sp-4);
   border: none; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer;
 }
-.today-bill-row + .today-bill-row { border-top: 1px var(--rule-style) var(--line); }
-.today-bill-row:hover { background: var(--surface-2); }
-.today-bill-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+[data-today-bill] + [data-today-bill] { border-top: 1px var(--rule-style) var(--line); }
+[data-today-bill]:hover { background: var(--surface-2); }
+[data-today-bill]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .today-bill-time { flex: none; min-width: 4.5em; color: var(--ink-3); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
 .today-bill-main { display: flex; flex: 1; min-width: 0; flex-direction: column; }
 .today-bill-party, .today-bill-kind { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -7324,7 +7323,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .cash-long-open { background: var(--warning-soft); border: 1px solid var(--warning-border); color: var(--on-warning-soft); border-radius: var(--radius); padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3); font-weight: var(--w-strong); }
 
 /* Manual reminders (#86) */
-.today-reminder-item { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: var(--fs-sm); padding: 4px 0; }
+.reminder-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: var(--fs-sm); padding: 4px 0; }
 .today-reminder-title { font-weight: var(--w-strong); }
 .today-reminder-days.late { color: var(--negative); font-weight: var(--w-strong); }
 .today-reminder-actions { display: flex; gap: 6px; margin-left: auto; }
@@ -7758,7 +7757,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
     flex: 1 1 40%;
 }
 
-.fin-row {
+.fin-line {
     display: flex;
     justify-content: space-between;
     gap: 10px;
@@ -7766,27 +7765,27 @@ body.no-perm-contacts [data-perm~="contacts"] {
     border-bottom: 1px solid var(--border-color);
 }
 
-.fin-row-tappable {
+.fin-line-tap {
     cursor: pointer;
 }
 
-.fin-row-main {
+.fin-line-main {
     min-width: 0;
 }
 
-.fin-row-title {
+.fin-line-title {
     font-size: var(--fs-sm);
     font-weight: var(--w-strong);
     overflow-wrap: anywhere;
 }
 
-.fin-row-sub {
+.fin-line-sub {
     font-size: var(--fs-caption);
     color: var(--text-muted);
     overflow-wrap: anywhere;
 }
 
-.fin-row-amt {
+.fin-line-amt {
     font-weight: var(--w-strong);
     white-space: nowrap;
 }
@@ -7806,7 +7805,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
     color: inherit;
 }
 
-.fin-group-rows {
+.fin-group-lines {
     padding-left: 12px;
 }
 
@@ -7877,11 +7876,11 @@ body.no-perm-contacts [data-perm~="contacts"] {
 .rt-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; font-size: var(--fs-caption); }
 .rt-legend i { display: inline-block; width: 10px; height: 10px; border-radius: var(--r-2xs); margin-right: 4px; vertical-align: middle; }
 
-.rt-table-wrap { overflow-x: auto; }
-.rt-table { font-size: var(--fs-caption); }
-.rt-table th, .rt-table td { height: auto; padding: 6px; text-align: right; white-space: nowrap; }
-.rt-table th { text-align: center; }
-.rt-table td:first-child { text-align: left; font-weight: var(--w-strong); }
+.rt-scroll { overflow-x: auto; }
+[data-rt-table] { font-size: var(--fs-caption); }
+[data-rt-table] th, [data-rt-table] td { height: auto; padding: 6px; text-align: right; white-space: nowrap; }
+[data-rt-table] th { text-align: center; }
+[data-rt-table] td:first-child { text-align: left; font-weight: var(--w-strong); }
 .rt-neg { color: var(--on-danger-soft); }
 
 .rt-line { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--text-secondary); margin-right: 4px; vertical-align: middle; }
@@ -8467,7 +8466,7 @@ body.no-perm-contacts [data-perm~="contacts"] {
 
     .ins-head > .tabs { order: 1; }
     .ins-head > .ins-period { order: 2; }
-    .ins-head > .ins-cmp-toggle { order: 3; }
+    .ins-head > .ins-more { order: 3; }
     .ins-head > .ins-abbar { order: 4; }
 }
 
@@ -8490,8 +8489,8 @@ body.no-perm-contacts [data-perm~="contacts"] {
 
 .ins-period .ins-preset:not([multiple]):not([size]) { width: auto; max-width: 42%; min-height: 44px; padding: 0 var(--sp-6) 0 var(--sp-3); background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%; font-size: var(--fs-sm); }
 
-.ins-cmp-toggle { align-self: flex-end; margin-top: var(--sp-1); }
-.ins-cmp-toggle[aria-expanded="true"] .ins-cmp-chev { transform: rotate(180deg); }
+.ins-more { align-self: flex-end; margin-top: var(--sp-1); }
+.ins-more[aria-expanded="true"] .ins-cmp-chev { transform: rotate(180deg); }
 .ins-head:not(.ins-cmp-open) .ins-cmp-more { display: none; }
 
 .ins-compare { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); color: var(--ink-2); font-size: var(--fs-sm); }
@@ -8597,8 +8596,8 @@ div.ins-wide,
 .ins-host .rt-page { padding: 0; }
 .ins-takeaway-dark { margin: 0 0 var(--sp-3); }
 
-/* Statements: the document's rows (.ins-row and .ins-total are also the print hooks, services/exporter.js) */
-.st-doc .ins-row {
+/* Statements: the document's rows (.ins-line and .ins-total are also the print hooks, services/exporter.js) */
+.st-doc .ins-line {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -8609,10 +8608,10 @@ div.ins-wide,
     color: var(--ink);
 }
 
-.st-doc .ins-row:last-child { border-bottom: 0; }
-.st-doc .ins-row > span:last-child { font-family: var(--font-num); font-weight: var(--w-strong); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
-.st-doc .ins-row.ins-sub { min-height: 0; padding-top: 0; border-bottom: 0; color: var(--ink-3); font-size: var(--fs-sm); }
-.st-doc .ins-row.ins-total { font-weight: var(--w-strong); }
+.st-doc .ins-line:last-child { border-bottom: 0; }
+.st-doc .ins-line > span:last-child { font-family: var(--font-num); font-weight: var(--w-strong); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.st-doc .ins-line.ins-sub { min-height: 0; padding-top: 0; border-bottom: 0; color: var(--ink-3); font-size: var(--fs-sm); }
+.st-doc .ins-line.ins-total { font-weight: var(--w-strong); }
 
 .st-list { margin-top: var(--sp-2); }
 .st-list .row { min-height: 64px; }
@@ -8625,7 +8624,7 @@ div.ins-wide,
 .st-flag td { background: var(--warning-soft); }
 .st-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); margin-top: var(--sp-2); }
 .st-balance { margin: 0 0 var(--sp-4); }
-.st-balance > .hero-value { margin-bottom: var(--sp-2); }
+.st-balance > .hero-fig { margin-bottom: var(--sp-2); }
 .st-match { margin-top: var(--sp-2); }
 
 /* Period A vs period B, saved ranges, summary (#140) */
@@ -8635,8 +8634,8 @@ div.ins-wide,
 .ins-ab-bar select, .ins-ab-dates input, .ins-ab-bar .btn, .ins-ab-dates .btn { min-height: 44px; font-size: var(--fs-sm); }
 .ins-ab-bar .btn, .ins-ab-dates .btn { padding: 0 var(--sp-3); }
 .ins-ab-saved { max-width: 100%; }
-.ins-ab-table .ins-cmp-up { color: var(--positive); }
-.ins-ab-table .ins-cmp-down { color: var(--negative); }
+.ins-cmp-table .ins-cmp-up { color: var(--positive); }
+.ins-cmp-table .ins-cmp-down { color: var(--negative); }
 
 /* ---- css/desktop.css ---- */
 /* ==================== DESKTOP LAYOUT (wide screens only) ====================
@@ -8667,7 +8666,7 @@ div.ins-wide,
 
   /* ---------- App shell (redesign 4.2): page header, permanent sidebar, no menu button or overlay ---------- */
   .hamburger,
-  .side-nav .close-btn {
+  .side-nav .nav-close {
     display: none !important;
   }
 
@@ -9026,16 +9025,16 @@ div.ins-wide,
     grid-column: 1 / -1;
   }
 
-  #salesEntrySection > :not(.bill-col-entry):not(.bill-col-summary) {
+  #salesEntrySection > :not(.bill-main):not(.bill-side) {
     grid-column: 1 / -1;
   }
 
-  .bill-col-entry,
-  .bill-col-summary {
+  .bill-main,
+  .bill-side {
     min-width: 0;
   }
 
-  .bill-col-summary {
+  .bill-side {
     position: sticky;
     top: 0;
     max-height: calc(100vh - 48px);
@@ -9044,11 +9043,11 @@ div.ins-wide,
     padding: 4px 4px 8px;
   }
 
-  .bill-col-summary > .bill-totals:first-child {
+  .bill-side > .bill-totals:first-child {
     margin-top: 0;
   }
 
-  .bill-col-entry > .form-row:first-child {
+  .bill-main > .bill-form-field:first-child {
     margin-top: 0;
   }
 
@@ -9096,7 +9095,7 @@ div.ins-wide,
 
   /* ---------- History / Wholesale › History: one aligned row per bill ---------- */
   /* bill no | party | amount | date & by | items | payment chips (ui/bill-row.js) */
-  .history-item.bill-row {
+  [data-history-item][data-bill-row] {
     grid-template-columns: 9.5rem minmax(7rem, 1.2fr) 7rem 12rem minmax(6rem, 1fr) 12rem;
     grid-template-areas: none;
     align-items: center;
@@ -9104,7 +9103,7 @@ div.ins-wide,
     padding: 8px 16px;
   }
 
-  .history-item.bill-row > *,
+  [data-history-item][data-bill-row] > *,
   .bill-row__meta > * {
     grid-area: auto;
     margin: 0;
@@ -9120,16 +9119,16 @@ div.ins-wide,
   }
 
   .bill-row__date,
-  .bill-row .bill-row__items {
+  [data-bill-row] .bill-row__items {
     font-size: var(--fs-sm);
   }
 
-  .bill-row .bill-row__chips {
+  [data-bill-row] .bill-row__chips {
     justify-content: flex-end;
     flex-wrap: wrap;
   }
 
-  .bill-row .payment-badge {
+  [data-bill-row] .payment-badge {
     padding: 3px 8px;
     font-size: var(--fs-caption);
   }
@@ -9288,52 +9287,52 @@ div.ins-wide,
 @media (min-width: 1024px) and (max-height: 900px) {
   /* Laptop heights (768/720): compact the bill summary column so the total and
      Save/Print stay visible without scrolling the page. */
-  .bill-col-summary .bill-totals {
+  .bill-side .bill-totals {
     padding: 8px 16px;
   }
 
-  .bill-col-summary .total-row,
-  .bill-col-summary .labor-input-row,
-  .bill-col-summary .payment-row {
+  .bill-side .total-line,
+  .bill-side .bill-labour,
+  .bill-side .pay-line {
     padding-top: 5px;
     padding-bottom: 5px;
   }
 
-  .bill-col-summary .grand-total,
-  .bill-col-summary .payment-row.payment-total {
+  .bill-side .grand-total,
+  .bill-side .pay-line.payment-total {
     padding: 9px 14px !important;
     margin-top: 4px;
     margin-bottom: 4px;
   }
 
-  .bill-col-summary input[type="number"],
-  :is(#billing, .bill-page) .bill-col-summary .bill-money > .input {
+  .bill-side input[type="number"],
+  :is(#billing, .bill-page) .bill-side .bill-money > .input {
     padding-top: 6px;
     padding-bottom: 6px;
   }
 
-  :is(#billing, .bill-page) .bill-col-summary .grand-total strong {
+  :is(#billing, .bill-page) .bill-side .grand-total strong {
     font-size: var(--fs-title) !important;
   }
 
-  :is(#billing, .bill-page) .bill-col-summary :is(.grand-total, .payment-row.payment-total) {
+  :is(#billing, .bill-page) .bill-side :is(.grand-total, .pay-line.payment-total) {
     padding: 6px 0 !important;
   }
 
-  :is(#billing, .bill-page) .bill-col-summary .bill-notes-date {
+  :is(#billing, .bill-page) .bill-side .bill-notes-date {
     margin-bottom: 0;
   }
 
-  :is(#billing, .bill-page) .bill-col-summary > .bill-totals {
+  :is(#billing, .bill-page) .bill-side > .bill-totals {
     margin-bottom: 0;
   }
 
-  :is(#billing, .bill-page) .bill-col-summary .payment-row > .pay-fill,
-  :is(#billing, .bill-page) .bill-col-summary .form-row.field.bill-notes > .bill-note-print {
+  :is(#billing, .bill-page) .bill-side .pay-line > .pay-fill,
+  :is(#billing, .bill-page) .bill-side .bill-form-field.field.bill-notes > .bill-note-print {
     min-height: 30px;
   }
 
-  :is(#billing, .bill-page) .bill-col-summary > .bill-actions:last-child {
+  :is(#billing, .bill-page) .bill-side > .bill-actions:last-child {
     padding: var(--sp-2) 0;
   }
 
@@ -9342,13 +9341,13 @@ div.ins-wide,
     padding-top: 6px;
   }
 
-  .bill-col-summary > :is(.form-row, .bill-notes-date),
-  .bill-col-summary > .bill-actions {
+  .bill-side > :is(.bill-form-field, .bill-notes-date),
+  .bill-side > .bill-actions {
     margin-top: 10px !important;
   }
 
   /* Hidden receipt-preview holder still reserves its inline 20px margin. */
-  .bill-col-summary > div:has(> img[id$="DebugPreview"][style*="none"]) {
+  .bill-side > div:has(> img[id$="DebugPreview"][style*="none"]) {
     margin-top: 0 !important;
   }
 
@@ -9356,7 +9355,7 @@ div.ins-wide,
      scrolls with the page, as tall as the bill beside it: its totals card sticks
      to the top and its Save/Print row to the bottom of the screen, and the fields
      between them (notes, date) scroll past in the gap, never hidden for good. */
-  .bill-col-summary {
+  .bill-side {
     position: static;
     align-self: stretch;
     display: flex;
@@ -9370,7 +9369,7 @@ div.ins-wide,
     position: static;
   }
 
-  .bill-col-summary > .bill-totals:first-child {
+  .bill-side > .bill-totals:first-child {
     position: sticky;
     top: 0;
     z-index: var(--z-raised);
@@ -9378,7 +9377,7 @@ div.ins-wide,
 
   /* The Save / Print row is the column's footer: it reaches the bottom of the screen (over the
      tab's 48px bottom padding, so no field shows under it) and focus scrolls a field clear of it. */
-  .bill-col-summary > .bill-actions:last-child {
+  .bill-side > .bill-actions:last-child {
     position: sticky;
     bottom: calc(-1 * var(--desktop-tab-end));
     z-index: var(--z-raised);
@@ -9487,7 +9486,7 @@ div.ins-wide,
 
   .ins-head > .ins-abbar { grid-column: 1 / -1; }
   .ins-head .ins-period { margin-top: 0; }
-  .ins-cmp-toggle { display: none; }
+  .ins-more { display: none; }
   .ins-head:not(.ins-cmp-open) .ins-cmp-more { display: block; }
 
   .ins-section:not([hidden]) {

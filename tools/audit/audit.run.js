@@ -117,7 +117,7 @@ function outstandingScreen(filter) {
     OutstandingManager.agingBucket = null;
     OutstandingManager.renderDue();
     const byParty = {};
-    document.querySelectorAll('#dueList .history-item').forEach(row => {
+    document.querySelectorAll('#dueList [data-history-item]').forEach(row => {
         const name = row.querySelector('.history-header strong')?.textContent || '';
         const m = row.querySelector('.history-header').textContent.match(/Due: ₹([\d,.]+)/);
         byParty[name] = r2((byParty[name] || 0) + (m ? Number(m[1].replace(/,/g, '')) : NaN));

@@ -24,7 +24,7 @@ export function scrollIntoGap(field, topBarBottom, bottomBarTop) {
 /** @param {Event} event */
 function onFocusIn(event) {
     const field = event.target;
-    const column = field?.closest?.('.bill-col-summary');
+    const column = field?.closest?.('.bill-side');
     if (!column) return;
     const card = column.querySelector(':scope > .bill-totals:first-child');
     const row = column.lastElementChild;

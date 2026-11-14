@@ -44,7 +44,7 @@ export function renderPartyDue(kind, inputId, draft) {
         el.addEventListener('click', () => {
             if (el.dataset.party) window.app?.outstanding?.showParty?.(kind, el.dataset.party);
         });
-        const row = input.closest('.form-row') || input;
+        const row = input.closest('.bill-form-field') || input;
         row.insertAdjacentElement('afterend', el);
     }
     el.hidden = false;

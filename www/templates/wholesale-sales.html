@@ -9,10 +9,10 @@
         </div>
 
         <div id="salesEntrySection" class="ws-entry">
-            <div class="bill-col-entry">
-            <div class="form-row field bill-customer">
+            <div class="bill-main">
+            <div class="bill-form-field field bill-customer">
                 <label for="wholesaleCustomerName" data-i18n="ui.billing.customer_label">Customer</label>
-                <div class="bill-customer-box">
+                <div class="bill-party">
                     <input type="text" class="input" id="wholesaleCustomerName" list="wholesaleCustomerOptions" placeholder="Enter customer name" data-i18n-placeholder="ui.common.enter_customer_name"/>
                     <button type="button" class="btn btn-ghost btn-icon" data-perm="contacts" data-onclick="wholesaleSales.pickContact()" title="Pick contact" aria-label="Pick contact" data-i18n-title="ui.common.pick_contact" data-i18n-aria-label="ui.common.pick_contact"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-contact"/></svg></button>
                 </div>
@@ -20,8 +20,8 @@
             </div>
 
             <h3 class="bill-section-title" data-i18n="ui.billing.new_line">New line</h3>
-            <div class="panel panel-pad bill-entry">
-                <div class="form-row field">
+            <div class="panel panel-pad bill-line-form">
+                <div class="bill-form-field field">
                     <label for="sellItem" data-i18n="ui.common.item_2">Item</label>
                     <select id="sellItem" class="input" data-onchange="wholesaleSales.loadItemDetails()"></select>
                 </div>
@@ -40,8 +40,8 @@
                     <p id="availableStockApprox" class="notice warn ws-stock-note" hidden></p>
                 </div>
 
-                <div class="bill-entry-grid ws-entry-grid">
-                    <div class="form-row field">
+                <div class="bill-line-grid ws-entry-grid">
+                    <div class="bill-form-field field">
                         <label for="sellRate" data-i18n="ui.wholesale.rate_kg">Rate</label>
                         <div class="adorn">
                             <span class="adorn-pre" aria-hidden="true">₹</span>
@@ -49,7 +49,7 @@
                             <span class="adorn-post" aria-hidden="true">/kg</span>
                         </div>
                     </div>
-                    <div class="form-row field">
+                    <div class="bill-form-field field">
                         <label for="sellQuantity" data-i18n="ui.wholesale.quantity">Quantity</label>
                         <div class="adorn">
                             <input type="number" class="input" inputmode="decimal" id="sellQuantity" placeholder="Enter quantity" data-onenter="event.preventDefault(); wholesaleSales.addToWholesaleBill()" data-i18n-placeholder="ui.wholesale.enter_quantity"/>
@@ -76,16 +76,16 @@
             </table>
             </div>
 
-            <div class="bill-col-summary">
+            <div class="bill-side">
             <div class="bill-totals">
-                <div class="total-row grand-total">
+                <div class="total-line grand-total">
                     <span data-i18n="ui.billing.total_receivable_label">Total receivable</span>
                     <strong class="money"><span class="cur">₹</span><span id="salesTotalAmount">0</span></strong>
                 </div>
 
                 <div class="bill-pay-title" data-i18n="ui.billing.payment">Payment</div>
 
-                <div class="payment-row">
+                <div class="pay-line">
                     <label for="wholesaleOnlinePayment" id="wholesaleOnlinePaymentLabel" data-i18n="ui.billing.online_label">Online</label>
                     <label class="pay-fill" title="Fill: put the whole bill here" data-i18n-title="ui.billing.fill_all"><input type="checkbox" id="wholesaleOnlineCheckbox" aria-describedby="wholesaleOnlinePaymentLabel" data-onchange="wholesaleSales.fillReceivableAmount('online')" /><span class="pay-fill-off" data-i18n="ui.billing.fill">Fill</span><span class="pay-fill-on" data-i18n="ui.billing.filled">Filled</span><span class="pay-fill-hint" data-i18n="ui.billing.fill_hint">(put the whole bill here)</span></label>
                     <div class="adorn bill-money">
@@ -94,7 +94,7 @@
                     </div>
                 </div>
 
-                <div class="payment-row">
+                <div class="pay-line">
                     <label for="wholesaleCashPayment" id="wholesaleCashPaymentLabel" data-i18n="ui.billing.cash_label">Cash</label>
                     <label class="pay-fill" title="Fill: put the whole bill here" data-i18n-title="ui.billing.fill_all"><input type="checkbox" id="wholesaleCashCheckbox" aria-describedby="wholesaleCashPaymentLabel" data-onchange="wholesaleSales.fillReceivableAmount('cash')" /><span class="pay-fill-off" data-i18n="ui.billing.fill">Fill</span><span class="pay-fill-on" data-i18n="ui.billing.filled">Filled</span><span class="pay-fill-hint" data-i18n="ui.billing.fill_hint">(put the whole bill here)</span></label>
                     <div class="adorn bill-money">
@@ -103,12 +103,12 @@
                     </div>
                 </div>
 
-                <div class="payment-row payment-total">
+                <div class="pay-line payment-total">
                     <span data-i18n="ui.billing.total_received_label">Total received</span>
                     <strong class="money"><span class="cur">₹</span><span id="wholesaleTotalReceived">0</span></strong>
                 </div>
 
-                <div class="payment-row">
+                <div class="pay-line">
                     <label for="wholesaleDueAmount" id="wholesaleDueAmountLabel" data-i18n="ui.billing.due_label">Due</label>
                     <label class="pay-fill" title="Fill: put the whole bill here" data-i18n-title="ui.billing.fill_all"><input type="checkbox" id="wholesaleDueCheckbox" aria-describedby="wholesaleDueAmountLabel" data-onchange="wholesaleSales.fillReceivableAmount('due')" /><span class="pay-fill-off" data-i18n="ui.billing.fill">Fill</span><span class="pay-fill-on" data-i18n="ui.billing.filled">Filled</span><span class="pay-fill-hint" data-i18n="ui.billing.fill_hint">(put the whole bill here)</span></label>
                     <div class="adorn bill-money">
@@ -117,7 +117,7 @@
                     </div>
                 </div>
 
-                <div class="payment-row split-remaining-row">
+                <div class="pay-line pay-rest">
                     <span data-i18n="ui.billing.not_split_label">Not split yet</span>
                     <strong id="wholesaleSplitRemaining">₹0</strong>
                     <button type="button" class="btn btn-tonal btn-sm" data-onclick="wholesaleSales.putRestInDue()" data-i18n="ui.common.rest_due">Rest → due</button>
@@ -125,30 +125,30 @@
             </div>
 
             <div class="panel ws-profit">
-                <div class="payment-row">
+                <div class="pay-line">
                     <label for="salesExpensesAmount" data-i18n="ui.wholesale.expenses">Expenses</label>
                     <div class="adorn bill-money">
                         <span class="adorn-pre" aria-hidden="true">₹</span>
                         <input type="number" class="input" inputmode="decimal" id="salesExpensesAmount" data-oninput="wholesaleSales.updateProfitCalculation()" placeholder="0" value="0" />
                     </div>
                 </div>
-                <div class="payment-row" data-perm="profit">
+                <div class="pay-line" data-perm="profit">
                     <span data-i18n="ui.wholesale.profit">Profit</span>
                     <strong class="money"><span id="salesProfitSign"></span><span class="cur">₹</span><span id="salesProfitAmount">0</span></strong>
                 </div>
-                <div class="payment-row" data-perm="profit">
+                <div class="pay-line" data-perm="profit">
                     <span data-i18n="ui.wholesale.profit_2">Profit %</span>
                     <strong><span id="salesProfitPercent">0</span>%</strong>
                 </div>
             </div>
 
             <div class="bill-notes-date">
-            <div class="form-row field bill-notes">
+            <div class="bill-form-field field bill-notes">
                 <label for="salesComments" data-i18n="ui.billing.notes_label">Notes</label>
                 <input type="text" class="input" id="salesComments" />
             </div>
 
-            <div class="form-row field bill-date">
+            <div class="bill-form-field field bill-date">
                 <label for="wholesaleDate" data-i18n="ui.billing.bill_date">Date</label>
                 <input type="date" id="wholesaleDate" class="bill-date-input input" />
             </div>

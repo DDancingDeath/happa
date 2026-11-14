@@ -369,8 +369,8 @@ export const InsightsManager = {
         this.html('insightsItemsCaveats', unc ? `<div class="notice warn ins-caveat">${icon('triangle', 'i-sm')}<span class="grow"><span class="sr-only">⚠ </span>${esc(screenMinus(t('ui.money.caveat_uncosted', { qty: unc.qty, amount: formatAmount(unc.estimate) })))}</span></div>` : '');
         const total = m.M1.total || 0;
         const pct = (v) => sharePct(v, total);
-        this.html('insightsSplit', `<div class="row ins-row"><span class="row-main">${esc(t('ui.insights.retail'))}</span><span class="row-amt">${esc(formatRupees(m.M1.retail.total, TM))} · ${pct(m.M1.retail.total)}%</span></div>`
-            + `<div class="row ins-row"><span class="row-main">${esc(t('ui.insights.wholesale'))}</span><span class="row-amt">${esc(formatRupees(m.M1.wholesale.total, TM))} · ${pct(m.M1.wholesale.total)}%</span></div>`);
+        this.html('insightsSplit', `<div class="row ins-line"><span class="row-main">${esc(t('ui.insights.retail'))}</span><span class="row-amt">${esc(formatRupees(m.M1.retail.total, TM))} · ${pct(m.M1.retail.total)}%</span></div>`
+            + `<div class="row ins-line"><span class="row-main">${esc(t('ui.insights.wholesale'))}</span><span class="row-amt">${esc(formatRupees(m.M1.wholesale.total, TM))} · ${pct(m.M1.wholesale.total)}%</span></div>`);
         const bought = purchaseItems(AppState.purchaseHistory || [], AppState.items || [], r);
         const paid = this.may('purchaseRates');
         this.html('insightsBoughtTable', bought.length

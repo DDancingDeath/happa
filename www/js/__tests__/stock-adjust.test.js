@@ -367,7 +367,7 @@ describe('low-stock card and alert level on Current stock (#146)', () => {
         AppState.items = [{ id: 'a', name: 'Chana' }, { id: 'b', name: 'Gehu', lowStockKg: 0 }];
         FirebaseService.getStock.mockResolvedValue({ a: { quantity: 8, rate: 50 }, b: { quantity: 2, rate: 20 } });
         await StockManager.renderStock();
-        const card = document.querySelector('.stock-low-card');
+        const card = document.querySelector('[data-stock-low]');
         expect(card.textContent).toContain('Low stock (1)');
         expect(card.textContent).toContain('Chana');
         expect(card.textContent).toContain('8 kg (alert below 10 kg)');

@@ -97,7 +97,7 @@ function ensureList(kind, input) {
         const state = open.get(kind);
         if (li && state) choose(kind, state.items[Number(li.dataset.index)]);
     });
-    (input.closest('.bill-customer-box') || input.parentElement).appendChild(list);
+    (input.closest('.bill-party') || input.parentElement).appendChild(list);
     input.setAttribute('role', 'combobox');
     input.setAttribute('aria-autocomplete', 'list');
     input.setAttribute('aria-controls', list.id);
@@ -230,7 +230,7 @@ export function renderNameHint(kind, draft = undefined) {
         el.id = hintId(kind);
         el.className = 'party-name-hint';
         el.setAttribute('role', 'status');
-        (input.closest('.form-row') || input).insertAdjacentElement('afterend', el);
+        (input.closest('.bill-form-field') || input).insertAdjacentElement('afterend', el);
     }
     const text = document.createElement('span');
     text.className = 'party-name-hint-text';

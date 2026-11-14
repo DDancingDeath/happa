@@ -26,7 +26,7 @@
 
   /* ---------- App shell (redesign 4.2): page header, permanent sidebar, no menu button or overlay ---------- */
   .hamburger,
-  .side-nav .close-btn {
+  .side-nav .nav-close {
     display: none !important;
   }
 
@@ -385,16 +385,16 @@
     grid-column: 1 / -1;
   }
 
-  #salesEntrySection > :not(.bill-col-entry):not(.bill-col-summary) {
+  #salesEntrySection > :not(.bill-main):not(.bill-side) {
     grid-column: 1 / -1;
   }
 
-  .bill-col-entry,
-  .bill-col-summary {
+  .bill-main,
+  .bill-side {
     min-width: 0;
   }
 
-  .bill-col-summary {
+  .bill-side {
     position: sticky;
     top: 0;
     max-height: calc(100vh - 48px);
@@ -403,11 +403,11 @@
     padding: 4px 4px 8px;
   }
 
-  .bill-col-summary > .bill-totals:first-child {
+  .bill-side > .bill-totals:first-child {
     margin-top: 0;
   }
 
-  .bill-col-entry > .form-row:first-child {
+  .bill-main > .bill-form-field:first-child {
     margin-top: 0;
   }
 
@@ -455,7 +455,7 @@
 
   /* ---------- History / Wholesale › History: one aligned row per bill ---------- */
   /* bill no | party | amount | date & by | items | payment chips (ui/bill-row.js) */
-  .history-item.bill-row {
+  [data-history-item][data-bill-row] {
     grid-template-columns: 9.5rem minmax(7rem, 1.2fr) 7rem 12rem minmax(6rem, 1fr) 12rem;
     grid-template-areas: none;
     align-items: center;
@@ -463,7 +463,7 @@
     padding: 8px 16px;
   }
 
-  .history-item.bill-row > *,
+  [data-history-item][data-bill-row] > *,
   .bill-row__meta > * {
     grid-area: auto;
     margin: 0;
@@ -479,16 +479,16 @@
   }
 
   .bill-row__date,
-  .bill-row .bill-row__items {
+  [data-bill-row] .bill-row__items {
     font-size: var(--fs-sm);
   }
 
-  .bill-row .bill-row__chips {
+  [data-bill-row] .bill-row__chips {
     justify-content: flex-end;
     flex-wrap: wrap;
   }
 
-  .bill-row .payment-badge {
+  [data-bill-row] .payment-badge {
     padding: 3px 8px;
     font-size: var(--fs-caption);
   }
@@ -647,52 +647,52 @@
 @media (min-width: 1024px) and (max-height: 900px) {
   /* Laptop heights (768/720): compact the bill summary column so the total and
      Save/Print stay visible without scrolling the page. */
-  .bill-col-summary .bill-totals {
+  .bill-side .bill-totals {
     padding: 8px 16px;
   }
 
-  .bill-col-summary .total-row,
-  .bill-col-summary .labor-input-row,
-  .bill-col-summary .payment-row {
+  .bill-side .total-line,
+  .bill-side .bill-labour,
+  .bill-side .pay-line {
     padding-top: 5px;
     padding-bottom: 5px;
   }
 
-  .bill-col-summary .grand-total,
-  .bill-col-summary .payment-row.payment-total {
+  .bill-side .grand-total,
+  .bill-side .pay-line.payment-total {
     padding: 9px 14px !important;
     margin-top: 4px;
     margin-bottom: 4px;
   }
 
-  .bill-col-summary input[type="number"],
-  :is(#billing, .bill-page) .bill-col-summary .bill-money > .input {
+  .bill-side input[type="number"],
+  :is(#billing, .bill-page) .bill-side .bill-money > .input {
     padding-top: 6px;
     padding-bottom: 6px;
   }
 
-  :is(#billing, .bill-page) .bill-col-summary .grand-total strong {
+  :is(#billing, .bill-page) .bill-side .grand-total strong {
     font-size: var(--fs-title) !important;
   }
 
-  :is(#billing, .bill-page) .bill-col-summary :is(.grand-total, .payment-row.payment-total) {
+  :is(#billing, .bill-page) .bill-side :is(.grand-total, .pay-line.payment-total) {
     padding: 6px 0 !important;
   }
 
-  :is(#billing, .bill-page) .bill-col-summary .bill-notes-date {
+  :is(#billing, .bill-page) .bill-side .bill-notes-date {
     margin-bottom: 0;
   }
 
-  :is(#billing, .bill-page) .bill-col-summary > .bill-totals {
+  :is(#billing, .bill-page) .bill-side > .bill-totals {
     margin-bottom: 0;
   }
 
-  :is(#billing, .bill-page) .bill-col-summary .payment-row > .pay-fill,
-  :is(#billing, .bill-page) .bill-col-summary .form-row.field.bill-notes > .bill-note-print {
+  :is(#billing, .bill-page) .bill-side .pay-line > .pay-fill,
+  :is(#billing, .bill-page) .bill-side .bill-form-field.field.bill-notes > .bill-note-print {
     min-height: 30px;
   }
 
-  :is(#billing, .bill-page) .bill-col-summary > .bill-actions:last-child {
+  :is(#billing, .bill-page) .bill-side > .bill-actions:last-child {
     padding: var(--sp-2) 0;
   }
 
@@ -701,13 +701,13 @@
     padding-top: 6px;
   }
 
-  .bill-col-summary > :is(.form-row, .bill-notes-date),
-  .bill-col-summary > .bill-actions {
+  .bill-side > :is(.bill-form-field, .bill-notes-date),
+  .bill-side > .bill-actions {
     margin-top: 10px !important;
   }
 
   /* Hidden receipt-preview holder still reserves its inline 20px margin. */
-  .bill-col-summary > div:has(> img[id$="DebugPreview"][style*="none"]) {
+  .bill-side > div:has(> img[id$="DebugPreview"][style*="none"]) {
     margin-top: 0 !important;
   }
 
@@ -715,7 +715,7 @@
      scrolls with the page, as tall as the bill beside it: its totals card sticks
      to the top and its Save/Print row to the bottom of the screen, and the fields
      between them (notes, date) scroll past in the gap, never hidden for good. */
-  .bill-col-summary {
+  .bill-side {
     position: static;
     align-self: stretch;
     display: flex;
@@ -729,7 +729,7 @@
     position: static;
   }
 
-  .bill-col-summary > .bill-totals:first-child {
+  .bill-side > .bill-totals:first-child {
     position: sticky;
     top: 0;
     z-index: var(--z-raised);
@@ -737,7 +737,7 @@
 
   /* The Save / Print row is the column's footer: it reaches the bottom of the screen (over the
      tab's 48px bottom padding, so no field shows under it) and focus scrolls a field clear of it. */
-  .bill-col-summary > .bill-actions:last-child {
+  .bill-side > .bill-actions:last-child {
     position: sticky;
     bottom: calc(-1 * var(--desktop-tab-end));
     z-index: var(--z-raised);
@@ -846,7 +846,7 @@
 
   .ins-head > .ins-abbar { grid-column: 1 / -1; }
   .ins-head .ins-period { margin-top: 0; }
-  .ins-cmp-toggle { display: none; }
+  .ins-more { display: none; }
   .ins-head:not(.ins-cmp-open) .ins-cmp-more { display: block; }
 
   .ins-section:not([hidden]) {

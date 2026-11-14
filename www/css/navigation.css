@@ -33,7 +33,7 @@
   margin: 0;
 }
 
-.close-btn {
+.nav-close {
   background: none;
   border: none;
   color: var(--ink-2);
@@ -46,11 +46,11 @@
   justify-content: center;
 }
 
-.close-btn:hover {
+.nav-close:hover {
   background: var(--state-hover);
 }
 
-.close-btn:active {
+.nav-close:active {
   transform: scale(0.96);
 }
 
@@ -202,7 +202,7 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none; }
     color: var(--ink-3);
   }
 
-  .close-btn {
+  .nav-close {
     grid-column: 2;
     grid-row: 1 / span 2;
     width: 44px;
@@ -210,7 +210,7 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none; }
   }
 
   /* Not "all": an inherited visibility change would be animated too, and the sheet's controls could not take focus as it opens */
-  .close-btn,
+  .nav-close,
   .nav-menu a {
     transition: background-color var(--transition-fast), color var(--transition-fast);
   }

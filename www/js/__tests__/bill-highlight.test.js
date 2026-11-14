@@ -13,12 +13,12 @@ import { AppState } from '../utils/state.js';
 
 const DOM = `
   <div id="testSection">
-    <div class="form-row"><label>Customer</label><input id="party"></div>
-    <div class="form-row"><label>Rate</label><input id="rate"></div>
+    <div class="bill-form-field"><label>Customer</label><input id="party"></div>
+    <div class="bill-form-field"><label>Rate</label><input id="rate"></div>
     <table id="testTable"><tbody></tbody></table>
-    <div class="payment-row"><input id="cash"></div>
-    <div class="payment-row"><input id="due"></div>
-    <div class="payment-row"><strong id="remaining"></strong></div>
+    <div class="pay-line"><input id="cash"></div>
+    <div class="pay-line"><input id="due"></div>
+    <div class="pay-line"><strong id="remaining"></strong></div>
     <button id="saveBtn">Save</button><button id="printBtn">Print</button>
   </div>`;
 
@@ -81,7 +81,7 @@ describe('live marks', () => {
             expect($(id).classList.contains('bill-check-block')).toBe(true);
             expect($(id).getAttribute('aria-invalid')).toBe('true');
         }
-        const msg = $('remaining').closest('.payment-row').nextElementSibling;
+        const msg = $('remaining').closest('.pay-line').nextElementSibling;
         expect(msg.classList.contains('bill-check-msg')).toBe(true);
         expect(msg.textContent).toMatch(/^⛔ Cash \+ Online \+ Due is ₹300 less [^\u0900-\u097F]*$/);
         expect($('cash').getAttribute('aria-describedby')).toBe(msg.id);
@@ -99,7 +99,7 @@ describe('live marks', () => {
         BillChecksUI.run('test');
         $('cash').value = '400';
         BillChecksUI.run('test');
-        expect(document.querySelectorAll('.bill-check-msg, .bill-check-row, [aria-invalid]')).toHaveLength(0);
+        expect(document.querySelectorAll('.bill-check-msg, .bill-check-line, [aria-invalid]')).toHaveLength(0);
         expect(banner().hidden).toBe(true);
         expect($('testSection').className).toBe('');
         expect($('saveBtn').hasAttribute('aria-disabled')).toBe(false);
@@ -112,7 +112,7 @@ describe('live marks', () => {
         BillChecksUI.run('test');
         const rows = document.querySelectorAll('#testTable tbody tr');
         expect(rows[0].classList.contains('bill-check-warn')).toBe(true);
-        expect(rows[1].className).toBe('bill-check-row');
+        expect(rows[1].className).toBe('bill-check-line');
         expect(rows[1].textContent).toContain('⚠️ Rate ₹90.00 is 2.3× the usual ₹40.00');
         expect($('testSection').classList.contains('bill-checks-warn')).toBe(true);
         expect($('saveBtn').hasAttribute('aria-disabled')).toBe(false);
@@ -226,7 +226,7 @@ describe('save gate', () => {
         $('cash').value = '4000';
         const toast = jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
         const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
-        const dialog = () => document.querySelector('.rate-check-dialog');
+        const dialog = () => document.querySelector('.rate-check-sheet');
 
         const fixed = BillChecksUI.confirmSave('test');
         await Promise.resolve();

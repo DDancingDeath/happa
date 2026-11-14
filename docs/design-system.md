@@ -111,8 +111,9 @@ fills, the toast.
 
 ## 3. Components
 
-Class names and states are in the first lines of `forms.css` and `surfaces.css`. Older classes are
-kept as hooks (JS and E2E use them) and share the new look; they are listed beside the new one.
+Class names and states are in the first lines of `forms.css` and `surfaces.css`. The legacy
+component classes are gone (K2): a hook that JS or a test needs is a `data-*` attribute (`[data-history-item]`, `[data-bill-row]`, `[data-stock-item]`, …),
+and page layout uses page-scoped classes (`.bill-form-field`, `.pay-line`, …).
 
 - **Buttons** `.btn` + `-primary` / `-tonal` / `-ghost` / `-danger` / `-danger-outline` / `-success`, `-sm`, `-icon`,
   `-block` (`-danger-outline`: a risky choice that is not the main action, e.g. Discard the line, Save anyway at a rate check). One primary button per screen. Hover is a veil over the button's own colour; a busy
@@ -120,8 +121,8 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   (`[data-record-payment]`, `[data-mark-cleared]`) are at least 44 px tall. No page has a button class with its own
   look (C2): Billing and Wholesale use Save `-primary`, Print and Share (`-icon`) the default, Add to bill and
   Rest → due `-tonal`, the draft toolbar and the contact picker `-ghost`; inside `.bill-sale` (Retail sale) and
-  `.ws-entry` (Wholesale) the primary and tonal buttons take the mode's colour. `.add-to-bill-btn` and
-  `.quick-add-btn-inline` stay as E2E hooks with no look of their own. Bill details' footer: Close (ghost, left), Void and
+  `.ws-entry` (Wholesale) the primary and tonal buttons take the mode's colour. `[data-add-line]` and
+  `[data-add-weight]` are the E2E hooks. Bill details' footer: Close (ghost, left), Void and
   Delete permanently (danger), Reprint and Share (tonal), Edit (the one primary, right). Small × and + inside a row
   (weight chips, bill lines, rate chips) are `-ghost -icon` / `-tonal -icon` with the sprite icon; period steppers are `-icon`.
   Inline text links inside a sentence (`.due-bill-link`, `.bill-edits__view`) stay links.
@@ -142,7 +143,7 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   `.row-amt`, `.lead-icon`). **Metrics** `.metrics > .metric`, `.hero-num`, `.display-num`, `.meter`.
   `.panel-tap` is a panel that opens something (hover and focus ring).
 - **Hero figure** `.hero` (C1): the page's one big figure, plain on the page with no fill: a caption
-  `.hero-label` (or `.metric-label`) above a `.hero-num` (or a `.display-num` `.hero-value`), then its
+  `.hero-cap` (or `.metric-label`) above a `.hero-num` (or a `.display-num` `.hero-fig`), then its
   in / out or compare line. Money, Statements and Today use it; `ins-hero`, `today-hero` and the
   bespoke card classes of the legacy registry are gone (theme tiles keep their previews in a panel frame).
 - **Money figure** `.money` with the sign in `<span class="cur">₹</span>` (smaller, `--fs-cur`, and muted
@@ -156,7 +157,7 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
   its ⚠ / ✓ status words that way beside the sprite icon).
 - **Money, Insights, Statements (5.7)**: plain hero figures (`.hero-num`), section titles above panels of `.row`s,
   Cash in / out as `.metrics`, `.tabs` for the sections and `.seg` for sub-views, `.notice` caveats and checks,
-  `.empty`, `.table`; `.ins-row` stays only as a hook (oracle, number audit, statement print).
+  `.empty`, `.table`; `.ins-line` is the hook (oracle, number audit, statement print).
 - **Billing (3.5)**: the totals are a plain panel (the payable is the big ink figure, Total paid a plain row);
   each payment row's "Fill" (`.pay-fill`) is its tick box (`#cashCheckbox` …) drawn as a text button, so ticking
   still puts the whole bill there; ticked it reads "Filled ✓" on the primary (sale: sale) fill, its name is the visible word plus a hidden hint; the bill lines are a row list in a panel below 1024 px (the same `#billTable`
@@ -183,10 +184,10 @@ kept as hooks (JS and E2E use them) and share the new look; they are listed besi
 - **Rates and Stock (5.6)**: Rates is a `.table` in a panel (purchase / retail / wholesale headers carry their `.mode-dot`,
   rates in ink), Export / Import / Add item as buttons (Add item primary), a `.search-field`, archived items a `.tag`.
   Stock: Current | Adjustment | Not selling is a `.seg`; the summary is `.metrics`; items and dead stock are `.row`s
-  in a panel (`.stock-item` stays as the hook; an unmatched bucket takes a tone on its note and kg); the low-stock list is a
+  in a panel (`[data-stock-item]` is the hook; an unmatched bucket takes a tone on its note and kg); the low-stock list is a
   `.notice`; the adjustment form is a panel of `.field`s with kg and ₹ … /kg as `.adorn`, current stock and average
-  rate as `.metrics`; adjustments are panels (`.history-item` hook). Sections switch with `hidden`.
-- **History (5.4a, C4)**: a bill is a `.row` (`.history-item.bill-row` stays as the hook, also on Wholesale › History); consecutive rows join into one panel with hairlines. The bill number has its `.mode-dot` (no side stripe), number and amount in ink; online / cash / due are `.tag`s (the Due tag ages with `dueTone`). Table View and the other desktop lists (Day labour, Rate trends, Recurring bills, Workers) are `.table`s.
+  rate as `.metrics`; adjustments are panels (`[data-history-item]` hook). Sections switch with `hidden`.
+- **History (5.4a, C4)**: a bill is a `.row` (`[data-history-item][data-bill-row]` is the hook, also on Wholesale › History); consecutive rows join into one panel with hairlines. The bill number has its `.mode-dot` (no side stripe), number and amount in ink; online / cash / due are `.tag`s (the Due tag ages with `dueTone`). Table View and the other desktop lists (Day labour, Rate trends, Recurring bills, Workers) are `.table`s.
 - **Expenses (5.4b)**: Business | Personal is a `.seg`; each form is a `.panel` of `.field`s (₹ as an `.adorn`) with a primary
   Save and a tonal Print; a section's list is a `.panel` of `.row`s (amount in `.row-trail`, voided rows `.is-voided` with a
   `.tag`), "Show voided" is a `.switch` and the quick-fill templates are `.chip`s. Expense details: the amount as a

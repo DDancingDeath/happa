@@ -1,4 +1,4 @@
-/* .history-item is a hook (tests, oracle, Outstanding, Stock); the look comes from .row / .due-bill / .stock-adj */
+/* [data-history-item] is a hook (tests, oracle, Outstanding, Stock); the look comes from .row / .due-bill / .stock-adj */
 .history-header {
   display: flex;
   justify-content: space-between;
@@ -14,7 +14,7 @@
   margin-bottom: 8px;
 }
 
-.history-summary {
+.bill-row__items {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin-bottom: 8px;
@@ -267,7 +267,7 @@
 /* ==================== BILL ROW (History + Wholesale › History) ==================== */
 /* Phone: two lines. Line 1: bill no · party · amount (right). Line 2: date · items · chips.
    Desktop columns are in desktop.css. */
-.history-item.bill-row {
+[data-history-item][data-bill-row] {
   display: grid;
   grid-template-columns: 8.5rem minmax(0, 1fr) auto;
   grid-template-areas:
@@ -282,19 +282,19 @@
 }
 
 /* Consecutive rows join into one panel; .row + .row::before draws the hairline */
-.history-item.bill-row + .history-item.bill-row {
+[data-history-item][data-bill-row] + [data-history-item][data-bill-row] {
   border-top: 0;
   border-top-left-radius: 0;
   border-top-right-radius: 0;
 }
 
-.history-item.bill-row:has(+ .history-item.bill-row) {
+[data-history-item][data-bill-row]:has(+ [data-history-item][data-bill-row]) {
   border-bottom: 0;
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
 }
 
-.history-item.bill-row + :not(.history-item) {
+[data-history-item][data-bill-row] + :not([data-history-item]) {
   margin-top: var(--sp-3);
 }
 
@@ -320,11 +320,11 @@
   vertical-align: 0.1em;
 }
 
-.bill-row[role="button"] {
+[data-bill-row][role="button"] {
   cursor: pointer;
 }
 
-.bill-row[role="button"]:hover {
+[data-bill-row][role="button"]:hover {
   background: var(--surface-2);
 }
 
@@ -368,7 +368,7 @@
   display: none;
 }
 
-.bill-row .bill-row__items {
+[data-bill-row] .bill-row__items {
   flex: 1 1 4.5rem;
   min-width: 0;
   margin: 0;
@@ -377,7 +377,7 @@
 }
 
 /* Chips wrap inside the card instead of running off a narrow phone (#68: 14 px text) */
-.bill-row .bill-row__chips {
+[data-bill-row] .bill-row__chips {
   flex: 0 1 auto;
   min-width: 0;
   max-width: 100%;
@@ -390,7 +390,7 @@
   color: var(--ink);
 }
 
-.bill-row .old-app-chip {
+[data-bill-row] .old-app-chip {
   align-self: center;
 }
 
@@ -430,19 +430,19 @@
 }
 
 /* Table View: one row per bill, same columns as the row */
-.bill-table-wrap {
+.bill-table-scroll {
   overflow-x: auto;
 }
 
-.bill-table {
+[data-bill-table] {
   font-size: var(--fs-sm);
 }
 
-.bill-table thead th {
+[data-bill-table] thead th {
   white-space: nowrap;
 }
 
-.bill-table td {
+[data-bill-table] td {
   padding-top: var(--sp-2);
   padding-bottom: var(--sp-2);
   vertical-align: top;
@@ -457,7 +457,7 @@
   font-weight: var(--w-strong);
 }
 
-.bill-table .bill-table__amount {
+[data-bill-table] .bill-table__amount {
   text-align: right;
   white-space: nowrap;
   font-weight: var(--w-strong);
@@ -518,12 +518,12 @@
   font-style: italic;
 }
 
-.history-item.bill-row.is-voided,
+[data-history-item][data-bill-row].is-voided,
 .bill-table__row.is-voided {
   opacity: 0.6;
 }
 
-.history-item.bill-row.is-voided .bill-row__amount,
+[data-history-item][data-bill-row].is-voided .bill-row__amount,
 .bill-table__row.is-voided .bill-table__amount {
   text-decoration: line-through;
 }

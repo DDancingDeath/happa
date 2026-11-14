@@ -287,7 +287,7 @@ describe('Exporter.printPage: a statement printed in its own window (#444)', () 
         const w = frame.contentWindow;
         w.print = jest.fn();
         jest.spyOn(window, 'open').mockReturnValue(w);
-        const html = `<div class="ins-row"><span>= Profit</span>${moneyHtml(-12741)}</div><p>${moneyText(-500)} · − Cost of what was sold</p>`;
+        const html = `<div class="ins-line"><span>= Profit</span>${moneyHtml(-12741)}</div><p>${moneyText(-500)} · − Cost of what was sold</p>`;
         expect(html).toContain('−');
         Exporter.printPage({ title: 'Month statement', html, stampText: 'Shop', lang: 'en' });
         const text = w.document.body.textContent;

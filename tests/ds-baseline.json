@@ -11,7 +11,7 @@
     "inlineStyle": 31,
     "emoji": 12,
     "titleCase": 15,
-    "legacyClass": 132
+    "legacyClass": 2
   },
   "strict": [
     "www/css/admin.css",
@@ -138,31 +138,7 @@
       "www/js/i18n/en.js#ui.today": 3
     },
     "legacyClass": {
-      "www/js/modules/day.js": 3,
-      "www/js/modules/insights.js": 2,
-      "www/js/modules/money.js": 6,
-      "www/js/modules/outstanding.js": 1,
-      "www/js/modules/purchase.js": 1,
-      "www/js/modules/rate-trends.js": 6,
-      "www/js/modules/retail-sale.js": 1,
-      "www/js/modules/statements.js": 5,
-      "www/js/modules/stock.js": 4,
-      "www/js/modules/wholesale-sales.js": 1,
-      "www/js/ui/bill-highlight.js": 2,
-      "www/js/ui/bill-row.js": 5,
-      "www/js/ui/finance-breakdown-sheet.js": 7,
-      "www/js/ui/manual-reminders.js": 1,
-      "www/js/ui/pending-line.js": 1,
-      "www/js/ui/period-compare.js": 2,
-      "www/js/ui/rate-check.js": 1,
-      "www/templates/billing.html": 45,
-      "www/templates/day.html": 4,
-      "www/templates/insights.html": 1,
-      "www/templates/modals.html": 1,
-      "www/templates/money.html": 1,
-      "www/templates/navigation.html": 5,
-      "www/templates/rate-trends.html": 5,
-      "www/templates/wholesale-sales.html": 21
+      "www/js/modules/day.js": 2
     }
   }
 }

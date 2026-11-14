@@ -73,7 +73,7 @@
   cursor: pointer;
 }
 
-#billTable td.bill-empty, :is(#saleTable, .bill-lines) :is(td.bill-empty, td.empty) {
+#billTable td.empty, :is(#saleTable, .bill-lines) td.empty {
   padding: var(--sp-6) var(--sp-2);
   color: var(--ink-3);
   font-weight: var(--w-regular);
@@ -186,7 +186,7 @@
   }
 
   /* An empty bill and a check message under a line span the whole row */
-  #billTable :is(td.bill-empty, tr.bill-check-row > td), :is(#saleTable, .bill-lines) :is(td.bill-empty, td.empty, tr.bill-check-row > td) {
+  #billTable :is(td.empty, tr.bill-check-line > td), :is(#saleTable, .bill-lines) :is(td.empty, tr.bill-check-line > td) {
     display: block;
     max-width: none;
   }

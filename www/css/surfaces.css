@@ -1,6 +1,6 @@
 /* Surfaces and feedback (redesign 2.5b, DIRECTION 3.6): panel and rows, metrics, hero figure, meter,
    notice, empty, skeleton, table, dialog, sheet and scrim, toast, loading. Layer 3: tokens only.
-   Older classes listed beside a new one keep their hooks (JS, E2E) and share its look. */
+   Hooks for JS and tests are data-* attributes, not classes. */
 
 /* ---------- Text tones ---------- */
 .tone-pos { color: var(--positive); }
@@ -184,7 +184,7 @@ a.row:active {
   color: var(--ink);
 }
 
-.hero > .hero-label {
+.hero > .hero-cap {
   margin: 0;
   padding: 0;
   border: 0;
@@ -195,12 +195,12 @@ a.row:active {
   letter-spacing: normal;
 }
 
-.hero > .hero-label::after {
+.hero > .hero-cap::after {
   content: none;
 }
 
 .hero > .hero-num,
-.hero > .hero-value {
+.hero > .hero-fig {
   margin-top: var(--sp-1);
   color: var(--ink);
 }
@@ -410,8 +410,7 @@ a.row:active {
 }
 
 /* ---------- Scrim, dialog, sheet ---------- */
-.scrim,
-.overlay {
+.scrim {
   background: var(--scrim);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
@@ -449,7 +448,7 @@ a.row:active {
 }
 
 /* The side menu's scrim on the phone (desktop has a permanent sidebar) */
-.overlay {
+.nav-scrim {
   position: fixed;
   top: 0;
   left: 0;
@@ -461,13 +460,13 @@ a.row:active {
   transition: all var(--transition-slow);
 }
 
-.overlay.active {
+.nav-scrim.active {
   opacity: 1;
   visibility: visible;
 }
 
 @media (min-width: 1024px) {
-  .overlay {
+  .nav-scrim {
     display: none;
   }
 }

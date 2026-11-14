@@ -27,7 +27,7 @@ import { buildSheet, openSheet, closeSheet } from './ui-manager.js';
 function askFixOrConfirm({ kind, title, message, fix, confirm }) {
     return new Promise((resolve) => {
         const { overlay, body, footer } = buildSheet({
-            role: 'alertdialog', labelId: `${kind}CheckTitle`, title, describedBy: `${kind}CheckMessage`, className: `rate-check-dialog ${kind}-check-dialog`
+            role: 'alertdialog', labelId: `${kind}CheckTitle`, title, describedBy: `${kind}CheckMessage`, className: `rate-check-sheet ${kind}-check-dialog`
         });
         const p = document.createElement('p');
         p.id = `${kind}CheckMessage`;

@@ -95,7 +95,7 @@
 .today-inout > span { display: inline-flex; align-items: center; gap: 6px; }
 .today-in .i { color: var(--positive); }
 .today-out .i { color: var(--ink-3); }
-.today-inout strong, .today-labour-row strong, .today-channel-total, .today-channel-split strong, .today-bill-total {
+.today-inout strong, .today-labour-line strong, .today-channel-total, .today-channel-split strong, .today-bill-total {
   color: var(--ink); font-family: var(--font-num); font-weight: var(--w-strong); font-variant-numeric: tabular-nums;
 }
 
@@ -118,7 +118,7 @@
 
 /* Labour (T-LAB-*): tap for each bill */
 .today-labour { padding: var(--sp-3) var(--sp-4); }
-.today-labour-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; padding: 2px 0; color: var(--ink-2); font-size: var(--fs-sm); }
+.today-labour-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; padding: 2px 0; color: var(--ink-2); font-size: var(--fs-sm); }
 .today-labour-sub, .today-labour-diff { color: var(--ink-3); font-size: var(--fs-caption); }
 .today-labour-hint { margin-top: var(--sp-2); color: var(--accent-text); font-size: var(--fs-sm); font-weight: var(--w-label); }
 
@@ -135,13 +135,13 @@
 .today-channel-writeoff { grid-column: 1 / -1; }
 
 /* Today's bills (T19): each row opens the bill; the dot is the bill's mode */
-.today-bill-row {
+[data-today-bill] {
   display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--row-h); padding: 10px var(--sp-4);
   border: none; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer;
 }
-.today-bill-row + .today-bill-row { border-top: 1px var(--rule-style) var(--line); }
-.today-bill-row:hover { background: var(--surface-2); }
-.today-bill-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+[data-today-bill] + [data-today-bill] { border-top: 1px var(--rule-style) var(--line); }
+[data-today-bill]:hover { background: var(--surface-2); }
+[data-today-bill]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .today-bill-time { flex: none; min-width: 4.5em; color: var(--ink-3); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
 .today-bill-main { display: flex; flex: 1; min-width: 0; flex-direction: column; }
 .today-bill-party, .today-bill-kind { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -162,7 +162,7 @@
 .cash-long-open { background: var(--warning-soft); border: 1px solid var(--warning-border); color: var(--on-warning-soft); border-radius: var(--radius); padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3); font-weight: var(--w-strong); }
 
 /* Manual reminders (#86) */
-.today-reminder-item { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: var(--fs-sm); padding: 4px 0; }
+.reminder-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: var(--fs-sm); padding: 4px 0; }
 .today-reminder-title { font-weight: var(--w-strong); }
 .today-reminder-days.late { color: var(--negative); font-weight: var(--w-strong); }
 .today-reminder-actions { display: flex; gap: 6px; margin-left: auto; }

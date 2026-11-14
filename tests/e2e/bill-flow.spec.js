@@ -19,8 +19,8 @@ test('bill → History → due payment → cash close', async ({ page, problems 
     await page.selectOption('#saleItem', riceValue);
     await page.fill('#saleRate', '36');
     await page.fill('#saleWeight', '10');
-    await page.click('#saleSection .quick-add-btn-inline');
-    await page.click('#saleSection .add-to-bill-btn');
+    await page.click('#saleSection [data-add-weight]');
+    await page.click('#saleSection [data-add-line]');
     await expect(page.locator('#saleTotal')).toHaveText('360');
     await page.fill('#saleCustomerName', customer);
     await page.check('#saleDueCheckbox');

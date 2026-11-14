@@ -1,6 +1,6 @@
 /* Controls (redesign 2.5a, DIRECTION 3.6): buttons, kbd, fields, select, checkbox and switch,
    segmented control, tabs, chips and tags. Layer 3: tokens only.
-   Buttons are only .btn and its variants; an older class left on a button is a hook (JS, E2E) with no look of its own. */
+   Buttons are only .btn and its variants; a hook on a button is a data-* attribute. */
 
 /* ---------- Button: .btn + -primary / -secondary (default) / -tonal / -ghost / -danger, -sm, -icon ---------- */
 .btn {
@@ -260,7 +260,7 @@ input[type="radio"] {
 }
 
 input[type="checkbox"].switch,
-.labor-input-row .checkbox-label input[type="checkbox"] {
+.checkbox-label input[type="checkbox"].switch {
   -webkit-appearance: none;
   appearance: none;
   flex: none;
@@ -274,12 +274,12 @@ input[type="checkbox"].switch,
 }
 
 input[type="checkbox"].switch:checked,
-.labor-input-row .checkbox-label input[type="checkbox"]:checked {
+.checkbox-label input[type="checkbox"].switch:checked {
   background: radial-gradient(circle at 25px 50%, var(--on-accent) 8px, transparent 8.5px), var(--accent);
 }
 
 input[type="checkbox"].switch:focus-visible,
-.labor-input-row .checkbox-label input[type="checkbox"]:focus-visible {
+.checkbox-label input[type="checkbox"].switch:focus-visible {
   outline: none;
   box-shadow: var(--focus);
 }

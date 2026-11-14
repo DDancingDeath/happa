@@ -38,7 +38,7 @@ const bill = (id, extra = {}) => ({
 });
 const VOIDED = bill('P-void', { voided: true, voidReason: 'Entered twice', voidedByName: 'Ravi', voidedAt: NOW - 1000 });
 
-const rows = () => [...document.querySelectorAll('#historyList .history-item')].map(r => [r.querySelector('.bill-row__link').textContent.replace('#', ''), r.classList.contains('is-voided')]);
+const rows = () => [...document.querySelectorAll('#historyList [data-history-item]')].map(r => [r.querySelector('.bill-row__link').textContent.replace('#', ''), r.classList.contains('is-voided')]);
 const shown = (id) => document.getElementById(id).style.display !== 'none';
 const flush = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
 
@@ -88,7 +88,7 @@ describe('voided bills in History (#75)', () => {
         chip.click();
         expect(rows()).toEqual([['P-void', true], ['P-1', false], ['P-2', false]]);
         expect(document.querySelector('.bill-group--voided .bill-group__title').textContent).toBe('Voided bills (not counted anywhere)');
-        const row = document.querySelector('.history-item.is-voided');
+        const row = document.querySelector('[data-history-item].is-voided');
         expect(row.querySelector('.voided-chip').textContent).toBe('Voided');
         expect(row.querySelector('.voided-reason').textContent).toBe('Entered twice');
         expect(document.getElementById('historyVoidedToggle').textContent).toBe('Hide voided bills (1)');

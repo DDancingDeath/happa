@@ -85,6 +85,6 @@ html[data-updating] .updating-mark {
   color: var(--on-success-soft);
 }
 
-.ins-row .sync-chip {
+.ins-line .sync-chip {
   margin-left: 6px;
 }

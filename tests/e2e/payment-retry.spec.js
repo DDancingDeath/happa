@@ -112,7 +112,7 @@ test('D-2: two people record a payment on one bill at once: the second is told i
         expect(doc.payments).toHaveLength(1);
         expect(doc.payment.due).toBe(160);
         // The staff phone shows the due as it is now
-        await expect.poll(() => staff.evaluate((id) => document.getElementById(`payment_${id}`)?.closest('.history-item')?.innerText || '', sale.id))
+        await expect.poll(() => staff.evaluate((id) => document.getElementById(`payment_${id}`)?.closest('[data-history-item]')?.innerText || '', sale.id))
             .toContain('160');
         expect(staffErrors).toEqual([]);
         expect(problems.pageErrors).toEqual([]);

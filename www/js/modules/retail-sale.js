@@ -278,7 +278,7 @@ const RetailSaleManager = {
         this.billingManager?.renderBillNumber?.();
         
         if (saleItems.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="bill-empty" data-i18n="msg.common.no_items_in_bill">${Helpers.escapeHtml(t('msg.common.no_items_in_bill'))}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="empty" data-i18n="msg.common.no_items_in_bill">${Helpers.escapeHtml(t('msg.common.no_items_in_bill'))}</td></tr>`;
             if (saleTotalSpan) saleTotalSpan.textContent = '0';
             if (totalSalePacketsSpan) totalSalePacketsSpan.textContent = '0';
             if (saleWeightBreakdownSection) saleWeightBreakdownSection.innerHTML = '';

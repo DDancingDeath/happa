@@ -553,7 +553,7 @@ describe('wholesale sale form', () => {
 
         test('Wholesale › Outstanding: total, received and due of each open bill', () => {
             WholesaleSalesManager.renderSalesOutstanding();
-            const cards = [...$('salesOutstandingList').querySelectorAll('.history-item')].map(c => c.textContent.replace(/\s+/g, ' ').trim());
+            const cards = [...$('salesOutstandingList').querySelectorAll('[data-history-item]')].map(c => c.textContent.replace(/\s+/g, ' ').trim());
             expect(cards).toHaveLength(2);
             expect(cards[0]).toContain('Due: ₹500');
             expect(cards[0]).toMatch(/Total receivable:? ₹1,001 .*Received:? ₹500 .*Outstanding:? ₹500/);
@@ -565,7 +565,7 @@ describe('wholesale sale form', () => {
 
         test('recent sales leave the opening record out; the form figures ignore the history', async () => {
             WholesaleSalesManager.renderRecentSales();
-            expect($('salesRecentList').querySelectorAll('[data-bill-id], .history-item, .bill-row').length).toBeGreaterThan(0);
+            expect($('salesRecentList').querySelectorAll('[data-bill-id], [data-history-item], [data-bill-row]').length).toBeGreaterThan(0);
             expect($('salesRecentList').textContent).not.toContain('W-OLD');
             await buildSale();
             expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['706', '190', '26.9']);

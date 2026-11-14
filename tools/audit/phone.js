@@ -499,7 +499,7 @@ async function auditOneDay({ fake, moment, at, label, open, cmp, unknown, T, pas
         MoneyManager.init('profit');
         Object.assign(scr, { M1_sales: shown('moneySales'), M2_cogs: shown('moneyCogs'), M6_profit: shown('moneyProfitValue'), M16_purchases: shown('moneyPurchases') });
         cmpShown.M6_profit = cmpOf('moneyProfitCompare');
-        const movement = [...document.querySelectorAll('#moneyStockMovement .ins-row span:last-child')].map(el => shownNumber(el.textContent));
+        const movement = [...document.querySelectorAll('#moneyStockMovement .ins-line span:last-child')].map(el => shownNumber(el.textContent));
         const movementText = document.getElementById('moneyStockMovement')?.textContent || '';
         MoneyManager.init('cash');
         scr.M14_net = shown('moneyNetCash');
@@ -870,7 +870,7 @@ async function auditOneDay({ fake, moment, at, label, open, cmp, unknown, T, pas
         cmp('ST1_duePaymentRows', page, P(key), dues.receivedCount + dues.paidCount, bookRows.filter(x => x.kind === 'dueReceived' || x.kind === 'duePaid').length, null, to, 'count');
         if (sess.length && !MoneyManager.covered(-Infinity)) cmp('SESS_dayLoaded', page, P(key), sess.length, sessions.list.filter(s => s.date === key).length, null, to, 'count');
         if (key !== day) {
-            const shownTotals = [...document.querySelectorAll('#statementsDoc .st-totals .ins-row span:last-child')].map(el => shownNumber(el.textContent));
+            const shownTotals = [...document.querySelectorAll('#statementsDoc .st-totals .ins-line span:last-child')].map(el => shownNumber(el.textContent));
             rows.forEach(([spec, w], i) => cmp(`${spec}_screen`, page, P(key), Math.round(w), shownTotals[i], null, to));
         }
     }

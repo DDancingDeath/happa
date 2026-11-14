@@ -244,7 +244,7 @@ describe('Stock', () => {
         'Old Bajra': { quantity: -5, rate: 0 }        // no catalogue item
     };
     const cloneStock = () => JSON.parse(JSON.stringify(STOCK));
-    const rows = () => [...document.querySelectorAll('#stockList .stock-item')];
+    const rows = () => [...document.querySelectorAll('#stockList [data-stock-item]')];
 
     test('merges id + legacy name buckets with a weighted rate; hides empty items; flags unmatched', async () => {
         jest.spyOn(FirebaseService, 'getStock').mockResolvedValue(cloneStock());

@@ -1055,7 +1055,7 @@ describe('Money › Worth shared accounts (#74, settings/accounts)', () => {
         MoneyManager.init('worth');
         await flush();
     };
-    const accountsRow = () => [...document.querySelectorAll('#moneyWorthTerms .ins-row')].find(el => el.querySelector('[data-input]'));
+    const accountsRow = () => [...document.querySelectorAll('#moneyWorthTerms .ins-line')].find(el => el.querySelector('[data-input]'));
     afterEach(() => localStorage.removeItem('financeCustomAccounts'));
 
     test('until the shared accounts load, their term and net worth say "—"; then the shared values count', async () => {

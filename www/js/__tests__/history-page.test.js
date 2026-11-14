@@ -108,7 +108,7 @@ describe('History tabs: Purchase | Sale (retail + wholesale)', () => {
     test('the whole row opens the bill (one call, not one per nested element)', () => {
         AppState.userRole = 'owner';
         HistoryManager.filterHistory('sale');
-        const row = document.querySelector('#historyList .bill-row');
+        const row = document.querySelector('#historyList [data-bill-row]');
         expect(row.getAttribute('role')).toBe('button');
         expect(row.getAttribute('data-onclick')).toMatch(/^history\.viewBill\('id:W1', 'wholesale'\)$/);
         expect(row.querySelectorAll('[data-onclick]')).toHaveLength(0);
@@ -186,10 +186,10 @@ describe('aligned bill row', () => {
 
     test('every row has the same slots in column order; chips have their own slot', () => {
         HistoryManager.toggleOpenings();
-        const rows = [...document.querySelectorAll('#historyList .history-item')];
+        const rows = [...document.querySelectorAll('#historyList [data-history-item]')];
         expect(rows.length).toBe(3);
         rows.forEach(row => {
-            expect(row.classList.contains('bill-row')).toBe(true);
+            expect(row.hasAttribute('data-bill-row')).toBe(true);
             expect(slots(row)).toEqual(['no', 'party', 'amount', 'date', 'items', 'chips']);
         });
         const old = rows.find(r => r.classList.contains('is-opening'));
@@ -212,12 +212,12 @@ describe('aligned bill row', () => {
     test('Wholesale › History uses the same row component and lists only wholesale bills', () => {
         WholesaleSalesManager.renderSalesHistory();
         expect(wholesaleNos()).toEqual(['W1', 'W2']);
-        const row = document.querySelector('#salesHistoryList .history-item');
-        expect(row.classList.contains('bill-row')).toBe(true);
+        const row = document.querySelector('#salesHistoryList [data-history-item]');
+        expect(row.hasAttribute('data-bill-row')).toBe(true);
         expect(slots(row)).toEqual(['no', 'party', 'amount', 'date', 'items', 'chips']);
         expect(row.getAttribute('data-type')).toBe('wholesale');
         // Recent list under the entry form uses it too
-        expect(document.querySelectorAll('#salesRecentList .bill-row')).toHaveLength(2);
+        expect(document.querySelectorAll('#salesRecentList [data-bill-row]')).toHaveLength(2);
         for (const mod of ['js/modules/history.js', 'js/modules/wholesale-sales.js']) {
             expect(read(mod)).toMatch(/import \{[^}]*buildBillRow[^}]*\} from '\.\.\/ui\/bill-row\.js'/);
         }
@@ -247,7 +247,7 @@ describe('aligned bill row', () => {
         expect(rule(css, '.bill-table__no')).toMatch(/white-space:\s*nowrap/);
 
         const desktop = read('css/desktop.css');
-        const grid = desktop.match(/\.history-item\.bill-row\s*\{([^}]*)\}/)[1];
+        const grid = desktop.match(/\[data-history-item]\[data-bill-row]\s*\{([^}]*)\}/)[1];
         const cols = grid.match(/grid-template-columns:\s*([^;]+);/)[1].trim().split(/\s+(?![^(]*\))/);
         expect(cols).toHaveLength(6);
         expect(desktop).not.toMatch(/bill-row__no[^{]*\{[^}]*white-space:\s*(normal|pre-wrap)/);

@@ -64,7 +64,7 @@
   padding: 0;
 }
 
-.stock-low-card {
+[data-stock-low] {
   margin-bottom: var(--sp-4);
 }
 
@@ -133,8 +133,8 @@
   background: var(--surface-2);
 }
 
-/* .history-item is the hook (tests) */
-.history-item.stock-adj {
+/* [data-history-item] is the hook (tests) */
+[data-history-item].stock-adj {
   margin-bottom: var(--sp-3);
   padding: var(--sp-4);
   border: 1px solid var(--panel-border);

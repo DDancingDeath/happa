@@ -940,7 +940,8 @@ export class WholesaleSalesManager {
 
         outstandingSales.forEach(sale => {
                 const div = document.createElement("div");
-                div.className = "history-item due-bill";
+                div.className = "due-bill";
+                div.dataset.historyItem = '';
                 
                 const billNumber = sale.billNumber || sale.id;
                 const id = Helpers.escapeJsAttr(sale.id);

@@ -99,7 +99,7 @@ function outstandingScreenByParty(filter) {
     AppState.currentDueFilter = filter;
     OutstandingManager.renderDue();
     const out = {};
-    document.querySelectorAll('#dueList .history-item').forEach(row => {
+    document.querySelectorAll('#dueList [data-history-item]').forEach(row => {
         const name = row.querySelector('.history-header strong')?.textContent || '';
         const due = Number(row.querySelector('.history-header').textContent.match(/Due: ₹([\d,]+)/)[1].replace(/,/g, ''));
         out[name] = (out[name] || 0) + due;
