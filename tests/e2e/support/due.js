@@ -13,7 +13,7 @@ async function creditSale(page, customer) {
     await page.click('#saleSection [data-add-line]');
     await expect(page.locator('#saleTotal')).toHaveText('360');
     await page.fill('#saleCustomerName', customer);
-    await page.click('#saleSection .pay-rest button');
+    await page.check('#saleDueCheckbox');
     await clickAfterTyping(page, '#saveSaleBtn');
     await page.waitForTimeout(300);
     await confirmModalIfOpen(page);

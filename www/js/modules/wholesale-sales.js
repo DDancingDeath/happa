@@ -285,8 +285,6 @@ export class WholesaleSalesManager {
         const profitPercentEl = document.getElementById('salesProfitPercent');
         
         if (!tbody || !totalEl) return;
-        const share = document.querySelector('#salesEntrySection .bill-share');
-        if (share) share.hidden = wholesaleSaleItems.length === 0;
         
         if (wholesaleSaleItems.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" class="empty" data-i18n="msg.common.no_items_in_bill">${L('msg.common.no_items_in_bill')}</td></tr>`;
@@ -557,8 +555,6 @@ export class WholesaleSalesManager {
         const receivedEl = document.getElementById('wholesaleTotalReceived');
         if (receivedEl) {
             receivedEl.textContent = formatAmount(paidOnScreen(split), 'exact');
-            const row = receivedEl.closest('.payment-total');
-            if (row) row.hidden = !(split.cash > 0 && split.online > 0);
         }
         Helpers.showSplitRemaining('wholesaleSplitRemaining', validatePaymentSplit(this.computeTotals().total, split));
         BillChecksUI.schedule('wholesale');

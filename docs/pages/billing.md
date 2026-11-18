@@ -56,9 +56,9 @@ While a bill is being typed:
 - **A per-quintal rate** (BF-UNITSLIP): a rate 50–200× the usual one says "₹2,400/kg looks like a
   per-quintal rate — usually ₹24/kg" and offers **Use ₹24/kg** (at Add to bill it puts the rate in
   the box; on a bill line it changes that line). The bill's rate column says "Rate ₹/kg".
-- **Share draft (not saved)**: the WhatsApp button shows once the bill has a line, with "Draft"
-  under it; it sends the bill on the form without saving it, and the message itself says "DRAFT,
-  not saved". Save first to record it. Both say "Customer".
+- **Share draft (not saved)**: the WhatsApp icon is always in the bottom row (with no lines yet it
+  says "No items in bill"); it sends the bill on the form without saving it, and the message itself
+  says "DRAFT, not saved". Save first to record it. Both say "Customer".
 - **Save & print** saves the bill, then prints it. In the Android app with no printer to print on,
   it asks first: **Save only**, or Cancel to connect the printer in Settings. A print that fails
   after the save keeps the bill saved and shows the picture with Print to try again.
@@ -77,8 +77,8 @@ While a bill is being typed:
   takes you to the first problem; it never looks disabled. Once anything is in Due, the name box
   says "needed if anything is in Due".
 - **Each line once**: a line's bag / packet weights are one small line under the item ("3 packets:
-  52.5 · 48 · 50.5"); tap the line to change it. "Total paid / received" shows only when both Cash
-  and Online have money; Retail's "Sale total" (always the same as Total receivable) is not shown.
+  52.5 · 48 · 50.5"); tap the line to change it. Cash, Online, "Total paid / received" and Due
+  always show, each with **Fill**; Retail's "Sale total" (always the same as Total receivable) is not shown.
   Labour reads "7 bags over 30 kg × ₹6 = ₹42" (the bill and the slip keep "6 × 7").
 - **Drafts**: this form's drafts first, each with its lines and amount (or "1 weight, no lines yet")
   and the Customer; drafts with nothing in them are not listed. Drafts belong

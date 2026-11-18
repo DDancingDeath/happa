@@ -118,26 +118,32 @@ describe('1. "Not split yet" shows only while some of the bill is not split', ()
         expect(row.hidden).toBe(true);
     });
 
-    test('shorter payment (U-18): Due folds while empty; the whole bill in one way leaves one row and "Split payment"', () => {
-        const folded = () => ['onlinePayment', 'cashPayment', 'dueAmount'].filter(id => $(id).closest('.pay-line').classList.contains('pay-folded'));
-        const split = () => document.querySelector('#purchaseSection .pay-split');
+    test('WhatsApp and the Cash / Online / Total paid / Due rows always show, also on an empty or one-way-paid bill (owner)', () => {
+        const shown = (section, ids) => {
+            const box = document.querySelector(section);
+            const share = box.querySelector('.bill-actions > .bill-share');
+            expect(share.hidden).toBe(false);
+            expect(share.classList.contains('btn-icon')).toBe(true);
+            ids.forEach(id => {
+                const line = $(id).closest('.pay-line');
+                expect(line.hidden).toBe(false);
+                expect(line.classList.contains('pay-folded')).toBe(false);
+            });
+        };
+        PurchaseManager.renderBill();
+        RetailSaleManager.renderSalesBill();
+        shown('#purchaseSection', ['onlinePayment', 'cashPayment', 'totalPayment', 'dueAmount']);
+        shown('#saleSection', ['saleOnlinePayment', 'saleCashPayment', 'totalReceived', 'saleDueAmount']);
+
         PurchaseManager.setBillItems([rice(10, 25)]);
         PurchaseManager.renderBill();
-        expect(folded()).toEqual(['dueAmount']);
-        PurchaseManager.putRestInDue();
-        expect(folded()).toEqual(['onlinePayment', 'cashPayment']);
-
-        typeIn('dueAmount', '');
-        $('dueCheckbox').checked = false;
         $('cashCheckbox').checked = true;
         PurchaseManager.fillPayableAmount('cash');
-        expect(folded()).toEqual(['onlinePayment', 'dueAmount']);
-        expect(split().hidden).toBe(false);
-        split().click();
-        expect($('cashCheckbox').checked).toBe(false);
-        expect($('cashPayment').value).toBe('250');
-        expect(folded()).toEqual(['dueAmount']);
-        expect(split().hidden).toBe(true);
+        shown('#purchaseSection', ['onlinePayment', 'cashPayment', 'totalPayment', 'dueAmount']);
+        expect(document.querySelector('#purchaseSection .pay-split')).toBeNull();
+
+        document.body.innerHTML = WHOLESALE;
+        shown('#salesEntrySection', ['wholesaleOnlinePayment', 'wholesaleCashPayment', 'wholesaleTotalReceived', 'wholesaleDueAmount']);
     });
 });
 
@@ -443,18 +449,5 @@ describe('7. lighter, safer bill form (U-05, U-06, U-18)', () => {
         PurchaseManager.renderBill();
         expect($('weightBreakdownSection').textContent.trim()).toBe('');
         expect(document.querySelector('#billTable .bill-line-weights').textContent).toBe('2 packets: 52.5 · 48.5');
-    });
-
-    test('Total paid shows only when both Cash and Online have money', () => {
-        PurchaseManager.setBillItems([rice(10, 25)]);
-        PurchaseManager.renderBill();
-        const row = $('totalPayment').closest('.payment-total');
-        typeIn('cashPayment', 250);
-        PurchaseManager.updatePaymentTotal();
-        expect(row.hidden).toBe(true);
-        typeIn('cashPayment', 200);
-        typeIn('onlinePayment', 50);
-        PurchaseManager.updatePaymentTotal();
-        expect(row.hidden).toBe(false);
     });
 });

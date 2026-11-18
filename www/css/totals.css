@@ -336,16 +336,6 @@
   font-weight: var(--w-label);
 }
 
-/* Paid one way (U-18): the other rows fold away until "Split payment" */
-.pay-line.pay-folded,
-.pay-split[hidden] {
-  display: none;
-}
-
-/* The 48 px button sits in the title's padding, so the row stays one text line high */
-.bill-pay-title > .pay-split {
-  margin-block: calc(var(--sp-3) * -1) calc(var(--sp-2) * -1);
-}
 
 :is(#billing, .bill-page) .pay-line > label {
   color: var(--ink);
@@ -607,19 +597,11 @@
   min-width: min-content;
 }
 
-/* Share is an icon with a visible "Draft" under it (the bill is not saved yet, U-27); shown once the bill has a line */
+/* Share is an icon (its words stay for screen readers and the tooltip) */
 .bill-actions > .bill-share {
   flex: none;
-  flex-direction: column;
-  gap: 0;
   width: 48px;
-  padding: 0;
   color: var(--positive);
-  line-height: 1.1;
-}
-
-.bill-actions > .bill-share[hidden] {
-  display: none;
 }
 
 /* "Back-dated: 12 Nov" beside the total when the bill's day is not today (U-78) */
@@ -640,11 +622,6 @@
   font-weight: var(--w-label);
 }
 
-.bill-share-tag {
-  color: var(--ink-2);
-  font-size: var(--fs-caption);
-  font-weight: var(--w-regular);
-}
 
 .bill-actions > .bill-share .i {
   width: 22px;

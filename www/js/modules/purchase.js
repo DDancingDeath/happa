@@ -313,8 +313,6 @@ const PurchaseManager = {
         const billTotalSpan = document.getElementById('billTotal');
         const lines = document.getElementById('purchaseLines');
         if (lines) lines.hidden = billItems.length === 0;
-        const share = document.querySelector('#purchaseSection .bill-share');
-        if (share) share.hidden = billItems.length === 0;
         
         if (billItems.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" class="empty" data-i18n="msg.common.no_items_in_bill">${Helpers.escapeHtml(t('msg.common.no_items_in_bill'))}</td></tr>`;
@@ -514,9 +512,6 @@ const PurchaseManager = {
         const totalPaymentElement = document.getElementById('totalPayment');
         if (totalPaymentElement) {
             totalPaymentElement.textContent = formatAmount(paidOnScreen(split), 'exact');
-            // Total paid repeats a single Cash or Online figure: shown only when both have money (U-18)
-            const row = totalPaymentElement.closest('.payment-total');
-            if (row) row.hidden = !(split.cash > 0 && split.online > 0);
         }
         Helpers.showSplitRemaining('purchaseSplitRemaining', validatePaymentSplit(this.computeTotals().grandTotal, split));
         BillChecksUI.schedule('purchase');

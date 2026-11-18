@@ -23,8 +23,7 @@ test('bill → History → due payment → cash close', async ({ page, problems 
     await page.click('#saleSection [data-add-line]');
     await expect(page.locator('#saleTotal')).toHaveText('360');
     await page.fill('#saleCustomerName', customer);
-    // Nothing in Due yet: its row is folded and "Rest → due" fills it (U-18)
-    await page.click('#saleSection .pay-rest button');
+    await page.check('#saleDueCheckbox');
     await expect(page.locator('#saleDueAmount')).toHaveValue('360');
     await clickAfterTyping(page, '#saveSaleBtn');
     await page.waitForTimeout(300);

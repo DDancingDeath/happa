@@ -295,8 +295,6 @@ const RetailSaleManager = {
         this.billingManager?.renderBillNumber?.();
         const lines = document.getElementById('saleLines');
         if (lines) lines.hidden = saleItems.length === 0;
-        const share = document.querySelector('#saleSection .bill-share');
-        if (share) share.hidden = saleItems.length === 0;
         
         if (saleItems.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" class="empty" data-i18n="msg.common.no_items_in_bill">${Helpers.escapeHtml(t('msg.common.no_items_in_bill'))}</td></tr>`;
@@ -446,8 +444,6 @@ const RetailSaleManager = {
         const totalReceivedEl = document.getElementById('totalReceived');
         if (totalReceivedEl) {
             totalReceivedEl.textContent = formatAmount(paidOnScreen(split), 'exact');
-            const row = totalReceivedEl.closest('.payment-total');
-            if (row) row.hidden = !(split.cash > 0 && split.online > 0);
         }
         Helpers.showSplitRemaining('saleSplitRemaining', validatePaymentSplit(computeRetailTotals(saleItems).total, split));
         BillChecksUI.schedule('retail');

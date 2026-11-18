@@ -163,7 +163,7 @@
                 </div>
             </div>
 
-            <div class="pay-line payment-total" hidden>
+            <div class="pay-line payment-total">
                 <span data-i18n="ui.billing.total_paid_label">Total paid</span>
                 <strong class="money"><span class="cur">₹</span><span id="totalPayment">0</span></strong>
             </div>
@@ -218,9 +218,9 @@
                 <strong class="bill-bar-money money"><span class="cur">₹</span><span id="barPayable">0</span></strong>
                 <span class="bill-backdated" data-backdated-for="billDate" role="status" hidden></span>
             </div>
-            <button type="button" data-onclick="billing.shareWhatsApp()" class="btn bill-share" hidden title="Share draft (not saved)" data-i18n-title="ui.billing.share_draft">
+            <button type="button" data-onclick="billing.shareWhatsApp()" class="btn btn-icon bill-share" title="Share draft (not saved)" data-i18n-title="ui.billing.share_draft">
                 <svg class="i i-fill" aria-hidden="true" focusable="false"><use href="#i-wa"/></svg>
-                <span class="bill-share-tag" aria-hidden="true" data-i18n="ui.billing.draft_tag">Draft</span><span class="sr-only" data-i18n="ui.billing.share_draft">Share draft (not saved)</span>
+                <span class="sr-only" data-i18n="ui.billing.share_draft">Share draft (not saved)</span>
             </button>
             <button type="button" class="btn btn-primary" id="saveBillBtn" data-onclick="billing.saveBill()" data-i18n="ui.common.save" data-kbd="Ctrl S">Save</button>
             <button type="button" class="btn bill-print" id="printBillBtn" data-onclick="billing.printBill()" data-kbd="Ctrl P">
@@ -344,7 +344,7 @@
                 </div>
             </div>
 
-            <div class="pay-line payment-total" hidden>
+            <div class="pay-line payment-total">
                 <span data-i18n="ui.billing.total_received_label">Total received</span>
                 <strong class="money"><span class="cur">₹</span><span id="totalReceived">0</span></strong>
             </div>
@@ -395,9 +395,9 @@
                 <strong class="bill-bar-money money"><span class="cur">₹</span><span id="barReceivable">0</span></strong>
                 <span class="bill-backdated" data-backdated-for="saleDate" role="status" hidden></span>
             </div>
-            <button type="button" data-onclick="billing.shareSaleWhatsApp()" class="btn bill-share" hidden title="Share draft (not saved)" data-i18n-title="ui.billing.share_draft">
+            <button type="button" data-onclick="billing.shareSaleWhatsApp()" class="btn btn-icon bill-share" title="Share draft (not saved)" data-i18n-title="ui.billing.share_draft">
                 <svg class="i i-fill" aria-hidden="true" focusable="false"><use href="#i-wa"/></svg>
-                <span class="bill-share-tag" aria-hidden="true" data-i18n="ui.billing.draft_tag">Draft</span><span class="sr-only" data-i18n="ui.billing.share_draft">Share draft (not saved)</span>
+                <span class="sr-only" data-i18n="ui.billing.share_draft">Share draft (not saved)</span>
             </button>
             <button type="button" class="btn btn-primary" id="saveSaleBtn" data-onclick="billing.completeSale()" data-i18n="ui.common.save" data-kbd="Ctrl S">Save</button>
             <button type="button" class="btn bill-print" id="printSaleBtn" data-onclick="billing.printSale()" data-kbd="Ctrl P">

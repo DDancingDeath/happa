@@ -16,7 +16,7 @@ const BILLING_E2E_IDS = [
     'amountPayable', 'amountReceivable', 'autoSaveBanner', 'barPayable', 'barReceivable', 'billComments', 'billDate', 'billDateChange', 'billDateText', 'billItem', 'billMenu', 'billNoteToggle', 'billRate', 'billTable',
     'billTotal', 'billing', 'cashCheckbox', 'cashPayment', 'customerName', 'dueAmount', 'manualLaborCharges', 'newWeight', 'printBillBtn',
     'printSaleBtn', 'purchaseModeBtn', 'purchaseSection', 'saleCashCheckbox', 'saleCashPayment',
-    'saleCustomerName', 'saleDateText', 'saleNoteToggle', 'saleDueAmount', 'saleItem', 'saleModeBtn', 'saleRate',
+    'saleCustomerName', 'saleDateText', 'saleNoteToggle', 'saleDueAmount', 'saleDueCheckbox', 'saleItem', 'saleModeBtn', 'saleRate',
     'saleSection', 'saleTotal', 'saleWeight', 'saveBillBtn', 'saveSaleBtn',
     'voiceMicPurchase', 'voiceMicSale', 'voiceNamePurchase', 'voiceTranscriptPurchase', 'voiceTranscriptSale', 'voiceUndoPurchase', 'voiceUndoSale',
 ];
